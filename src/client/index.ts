@@ -57,6 +57,7 @@ export function createClient(options: ClientOptions) {
 
 		if (!res.ok) {
 			const error = await res.json().catch(() => ({ message: res.statusText }));
+			
 			throw new ClientError(res.status, error as { message: string });
 		}
 
