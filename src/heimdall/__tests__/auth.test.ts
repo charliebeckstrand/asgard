@@ -1,5 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+vi.mock("server-only", () => ({}))
+
+vi.mock("next-auth", () => ({
+    default: (config: Record<string, unknown>) => ({
+        auth: vi.fn(),
+        handlers: { GET: vi.fn(), POST: vi.fn() },
+        signIn: vi.fn(),
+        signOut: vi.fn(),
+        _config: config,
+    }),
+}))
+
+vi.mock("next-auth/providers/credentials", () => ({
+    default: (opts: Record<string, unknown>) => ({ id: "credentials", ...opts }),
+}))
+
 const mockFetch = vi.fn()
 vi.stubGlobal("fetch", mockFetch)
 

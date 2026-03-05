@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "API gateway and BFF bridging services",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./heimdall": {
+      "types": "./dist/heimdall.d.ts",
+      "default": "./dist/heimdall.js"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsup",
@@ -20,7 +30,20 @@
     "@hono/swagger-ui": "^0.6.0",
     "@hono/zod-openapi": "^1.2.2",
     "hono": "^4.12.5",
+    "server-only": "^0.0.1",
     "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "next": "^16.0.0",
+    "next-auth": "^5.0.0-beta.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
+    "next-auth": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.6",

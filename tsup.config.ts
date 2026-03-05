@@ -1,7 +1,10 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-	entry: ["src/index.ts"],
+	entry: {
+		index: "src/index.ts",
+		heimdall: "src/heimdall/index.ts",
+	},
 	format: ["esm"],
 	target: "node22",
 	outDir: "dist",
