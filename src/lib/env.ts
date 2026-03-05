@@ -14,6 +14,7 @@ export function loadEnv(): Env {
 	
 	if (!result.success) {
 		console.error("Invalid environment variables:", result.error.format());
+		
 		process.exit(1);
 	}
 	
