@@ -23,6 +23,9 @@ services:
       initial_delay_seconds: 30
       period_seconds: 10
     envs:
+      - key: NODE_ENV
+        scope: RUN_AND_BUILD_TIME
+        value: production
       - key: DATABASE_URL
         scope: RUN_TIME
         type: SECRET
