@@ -12,15 +12,18 @@ jobs:
     name: Detect changes
     runs-on: ubuntu-latest
     outputs:
-      bifrost: ${{ github.event_name == 'push' || steps.filter.outputs.bifrost }}
-      syn: ${{ github.event_name == 'push' || steps.filter.outputs.syn }}
-      heimdall: ${{ github.event_name == 'push' || steps.filter.outputs.heimdall }}
+      bifrost: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.bifrost == 'true' }}
+      syn: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.syn == 'true' }}
+      heimdall: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.heimdall == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
+            shared:
+              - '**'
+              - '!services/**'
             bifrost:
               - 'services/bifrost/**'
             syn:
@@ -47,7 +50,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: services/bifrost/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
@@ -73,7 +76,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: services/syn/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint

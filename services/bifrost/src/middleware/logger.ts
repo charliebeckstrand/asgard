@@ -7,7 +7,7 @@ export function requestLogger(): MiddlewareHandler {
 		await next();
 
 		const duration = (performance.now() - start).toFixed(2);
-		
+
 		console.log(`${c.req.method} ${c.req.path} ${c.res.status} ${duration}ms`);
 	};
 }
