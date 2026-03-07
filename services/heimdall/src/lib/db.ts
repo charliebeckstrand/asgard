@@ -9,10 +9,15 @@ export function getPool(): pg.Pool {
 	if (!pool) {
 		const env = loadEnv()
 
-		const requiresSsl = env.DATABASE_URL.includes("sslmode=")
+		const url = new URL(env.DATABASE_URL)
+		const requiresSsl = url.searchParams.has("sslmode")
 
 		pool = new Pool({
-			connectionString: env.DATABASE_URL,
+			host: url.hostname,
+			port: parseInt(url.port, 10) || 5432,
+			database: url.pathname.slice(1),
+			user: decodeURIComponent(url.username),
+			password: decodeURIComponent(url.password),
 			max: 5,
 			idleTimeoutMillis: 30000,
 			connectionTimeoutMillis: 5000,
