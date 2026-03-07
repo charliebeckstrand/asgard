@@ -78,7 +78,7 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "sigil=info,tower_http=info".parse().unwrap()),
+                .unwrap_or_else(|_| "heimdall=info,tower_http=info".parse().unwrap()),
         )
         .json()
         .flatten_event(true)
@@ -133,7 +133,7 @@ async fn main() {
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(7),
-        api_key: std::env::var("SIGIL_API_KEY").ok(),
+        api_key: std::env::var("HEIMDALL_API_KEY").ok(),
     };
 
     let x_request_id = axum::http::HeaderName::from_static("x-request-id");
@@ -157,7 +157,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
-    tracing::info!("Sigil listening on {addr}");
+    tracing::info!("Heimdall listening on {addr}");
 
     let listener = match tokio::net::TcpListener::bind(addr).await {
         Ok(l) => l,

@@ -43,6 +43,20 @@ jobs:
     defaults:
       run:
         working-directory: services/heimdall
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -55,5 +69,14 @@ jobs:
           workspaces: services/heimdall
 
       - run: cargo fmt --check
-      - run: cargo clippy -- -D warnings
-      - run: cargo test
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+        env:
+          SQLX_OFFLINE: true
+
+      - name: Tests
+        run: cargo test
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/test
+          SECRET_KEY: ci-test-secret-key-not-used-in-production
