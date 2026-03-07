@@ -34,6 +34,33 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  syn:
+    name: Syn (Auth SDK)
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' ||
+      contains(join(github.event.pull_request.*.changed_files.**, ','), 'services/syn/')
+    defaults:
+      run:
+        working-directory: services/syn
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: services/syn/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
   heimdall:
     name: Heimdall (Auth)
     runs-on: ubuntu-latest
