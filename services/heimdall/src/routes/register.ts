@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
-import argon2 from "argon2"
+import { Algorithm, hash } from "@node-rs/argon2"
 import { DetailSchema, RegisterSchema, UserResponseSchema } from "../lib/schemas.js"
 import { rateLimit } from "../middleware/rate-limit.js"
 import { createUser } from "../services/users.js"
@@ -42,7 +42,7 @@ register.openapi(registerRoute, async (c) => {
 	const { email: rawEmail, password } = c.req.valid("json")
 	const email = rawEmail.trim().toLowerCase()
 
-	const hashedPassword = await argon2.hash(password, { type: argon2.argon2id })
+	const hashedPassword = await hash(password, { algorithm: Algorithm.Argon2id })
 
 	let user: Awaited<ReturnType<typeof createUser>>
 	try {

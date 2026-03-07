@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
-import argon2 from "argon2"
+import { Algorithm, hash, verify } from "@node-rs/argon2"
 import { signToken } from "../lib/jwt.js"
 import { DetailSchema, LoginSchema, TokenResponseSchema } from "../lib/schemas.js"
 import { rateLimit } from "../middleware/rate-limit.js"
@@ -8,7 +8,7 @@ import { findCredentialsByEmail } from "../services/users.js"
 // Generate a dummy hash at module load for timing-safe login.
 // This ensures argon2 always runs even when the user is not found,
 // preventing timing-based email enumeration.
-const dummyHashPromise = argon2.hash("dummy-timing-pad", { type: argon2.argon2id })
+const dummyHashPromise = hash("dummy-timing-pad", { algorithm: Algorithm.Argon2id })
 
 const loginRoute = createRoute({
 	method: "post",
@@ -49,7 +49,7 @@ login.openapi(loginRoute, async (c) => {
 	const dummyHash = await dummyHashPromise
 	const hash = creds?.hashed_password ?? dummyHash
 
-	const passwordOk = await argon2.verify(hash, password)
+	const passwordOk = await verify(hash, password)
 
 	if (!creds || !passwordOk) {
 		return c.json({ detail: "Incorrect email or password" }, 401)
