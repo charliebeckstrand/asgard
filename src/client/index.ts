@@ -8,7 +8,7 @@
  *
  * const api = createClient({
  *   baseUrl: "http://localhost:3000",
- *   token: "your-ironclad-token",
+ *   token: "your-bifrost-token",
  * });
  *
  * const health = await api.get("/health");

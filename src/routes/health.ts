@@ -46,7 +46,7 @@ export const health = new OpenAPIHono().openapi(healthRoute, async (c) => {
 			version: "0.1.0",
 			uptime: uptimeSeconds,
 			services: {
-				ironclad: { status: "unknown" as const },
+				bifrost: { status: "unknown" as const },
 			},
 		},
 		200,

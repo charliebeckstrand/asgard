@@ -14,12 +14,12 @@ type AuthEnv = {
 };
 
 /**
- * Authentication middleware that validates requests against Ironclad.
+ * Authentication middleware that validates requests against Bifrost.
  *
  * Expects a Bearer token in the Authorization header and verifies it
- * with the Ironclad auth service. On success, sets `c.get("user")`.
+ * with the Bifrost auth service. On success, sets `c.get("user")`.
  *
- * TODO: Wire up to Ironclad service once available.
+ * TODO: Wire up to Bifrost service once available.
  */
 export function auth(): MiddlewareHandler<AuthEnv> {
 	return async (c: Context<AuthEnv>, next) => {
@@ -35,9 +35,9 @@ export function auth(): MiddlewareHandler<AuthEnv> {
 			throw new HTTPException(401, { message: "Invalid token" });
 		}
 
-		// TODO: Replace with actual Ironclad verification
-		// const ironcladUrl = process.env.IRONCLAD_URL;
-		// const response = await fetch(`${ironcladUrl}/verify`, {
+		// TODO: Replace with actual Bifrost verification
+		// const bifrostUrl = process.env.BIFROST_URL;
+		// const response = await fetch(`${bifrostUrl}/verify`, {
 		//   method: "POST",
 		//   headers: { "Content-Type": "application/json" },
 		//   body: JSON.stringify({ token }),
