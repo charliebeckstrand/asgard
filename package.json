@@ -3,6 +3,15 @@
   "private": true,
   "packageManager": "pnpm@10.29.3",
   "pnpm": {
-    "onlyBuiltDependencies": ["argon2"]
+    "onlyBuiltDependencies": [
+      "argon2"
+    ]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.6",
+    "husky": "^9.1.7"
+  },
+  "scripts": {
+    "prepare": "husky"
   }
 }
