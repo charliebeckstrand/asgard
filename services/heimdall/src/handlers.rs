@@ -42,7 +42,7 @@ async fn health(State(state): State<AppState>) -> Result<Json<HealthResponse>, A
 
     Ok(Json(HealthResponse {
         status: "ok".into(),
-        service: "sigil".into(),
+        service: "heimdall".into(),
     }))
 }
 

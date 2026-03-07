@@ -21,15 +21,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 # Install dotenvx for encrypted .env decryption at runtime
 RUN curl -sfS https://dotenvx.sh | sh
 
-RUN addgroup --system sigil && adduser --system --ingroup sigil sigil
+RUN addgroup --system heimdall && adduser --system --ingroup heimdall heimdall
 
 WORKDIR /app
 
-COPY --from=builder /app/target/release/sigil /usr/local/bin/sigil
-COPY .env.production .env.production
+COPY --from=builder /app/target/release/heimdall /usr/local/bin/heimdall
 
-USER sigil
+USER heimdall
 
 EXPOSE 8000
 
-CMD ["dotenvx", "run", "-f", ".env.production", "--", "sigil"]
+CMD ["heimdall"]
