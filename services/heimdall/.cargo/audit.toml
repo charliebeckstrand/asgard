@@ -1,4 +1,0 @@
-[advisories]
-# rsa timing side-channel (Marvin Attack) - no fix available.
-# Not exploitable here: we use HMAC (HS256) for JWTs, not RSA.
-ignore = ["RUSTSEC-2023-0071"]

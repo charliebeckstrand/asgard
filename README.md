@@ -1,19 +1,18 @@
 # Yggdrasil
 
-A microservices monorepo with the following services:
+Hono + TypeScript Microservices
 
-| Service | Language | Role | Port |
-| --- | --- | --- | --- |
-| **Heimdall** | Rust / Axum | JWT authentication | `8000` |
-| **Bifrost** | TypeScript / Hono | API gateway | `3000` |
-| **Ratatoskr** | TypeScript / Hono | Event bus | `3001` |
-| **Syn** | TypeScript | API proxy | |
+| Service | Role | Port |
+| --- | --- | --- |
+| **Heimdall** | JWT authentication | `8000` |
+| **Bifrost** | API gateway | `3000` |
+| **Ratatoskr** | Event bus | `3001` |
+| **Syn** | API proxy | |
 
 ## Prerequisites
 
 - Node.js 22+
 - pnpm 10+
-- Rust (stable)
 - PostgreSQL 16+ (or Docker)
 
 ## Development
@@ -21,17 +20,10 @@ A microservices monorepo with the following services:
 Each service has its own scripts:
 
 ```bash
-# Bifrost / Syn
 pnpm dev          # Watch mode
 pnpm build        # Production build
 pnpm test         # Run tests
 pnpm lint         # Lint with Biome
-
-# Heimdall
-cargo run         # Dev server
-cargo test        # Run tests
-cargo clippy      # Lint
-cargo fmt --check # Format check
 ```
 
 ## CI/CD
@@ -41,6 +33,6 @@ GitHub Actions runs on push to `main` and on pull requests:
 - **Bifrost**: lint, test, build (Node 22)
 - **Ratatoskr**: lint, test, build (Node 22)
 - **Syn**: lint, test, build (Node 22)
-- **Heimdall**: fmt, clippy, test (Rust stable + Postgres)
+- **Heimdall**: lint, test, build (Node 22 + Postgres)
 
 On push to `main`, a successful CI run triggers deployment to DigitalOcean App Platform.
