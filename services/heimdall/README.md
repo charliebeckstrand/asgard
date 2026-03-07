@@ -45,9 +45,9 @@ curl -X POST http://localhost:8000/token/verify \
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `HEIMDALL_API_KEY` | No | — | API key for `/token/verify` (disabled when unset) |
-| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
-| `SECRET_KEY` | Yes | — | JWT signing secret |
+| `HEIMDALL_API_KEY` | No | | API key for `/token/verify` (disabled when unset) |
+| `DATABASE_URL` | Yes | | PostgreSQL connection string |
+| `SECRET_KEY` | Yes | | JWT signing secret |
 | `CORS_ORIGINS` | No | `http://localhost:3000` | Comma-separated allowed origins |
 | `PORT` | No | `8000` | Server port |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `30` | Access token lifetime |
