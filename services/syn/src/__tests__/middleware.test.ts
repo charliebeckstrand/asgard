@@ -109,6 +109,67 @@ describe("createMiddleware", () => {
 		});
 	});
 
+	describe("API routes (apiPatterns)", () => {
+		it("returns 401 JSON for unauthenticated API requests", async () => {
+			const middleware = createMiddleware({
+				auth: { ...baseAuth, auth: makeAuthHandler(null) },
+				apiPatterns: [/^\/api(\/.*)?$/],
+			});
+
+			const response = await middleware(makeRequest("/api/users"));
+
+			expect(response?.status).toBe(401);
+
+			const body = await response?.json();
+
+			expect(body).toEqual({ message: "Unauthorized", error: "Unauthorized", statusCode: 401 });
+		});
+
+		it("allows authenticated API requests through", async () => {
+			const session: Session = {
+				user: { id: "1", email: "test@example.com" },
+				expires: new Date(Date.now() + 3600 * 1000).toISOString(),
+			};
+
+			const middleware = createMiddleware({
+				auth: { ...baseAuth, auth: makeAuthHandler(session) },
+				apiPatterns: [/^\/api(\/.*)?$/],
+			});
+
+			const response = await middleware(makeRequest("/api/users"));
+
+			expect(response?.status).not.toBe(401);
+		});
+
+		it("still redirects non-API unauthenticated requests", async () => {
+			const middleware = createMiddleware({
+				auth: { ...baseAuth, auth: makeAuthHandler(null) },
+				apiPatterns: [/^\/api(\/.*)?$/],
+			});
+
+			const response = await middleware(makeRequest("/dashboard"));
+
+			expect(response?.status).toBe(307);
+
+			const location = response?.headers.get("location") ?? "";
+
+			expect(location).toContain("/auth/login");
+		});
+
+		it("public patterns take precedence over API patterns", async () => {
+			const middleware = createMiddleware({
+				auth: { ...baseAuth, auth: makeAuthHandler(null) },
+				publicPatterns: [/^\/api\/health$/],
+				apiPatterns: [/^\/api(\/.*)?$/],
+			});
+
+			const response = await middleware(makeRequest("/api/health"));
+
+			expect(response?.status).not.toBe(401);
+			expect(response?.status).not.toBe(307);
+		});
+	});
+
 	describe("pattern edge cases", () => {
 		it("does not treat partial matches as public", async () => {
 			const middleware = createMiddleware({

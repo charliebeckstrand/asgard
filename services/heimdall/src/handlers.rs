@@ -6,6 +6,7 @@ use axum_extra::TypedHeader;
 use axum_extra::headers::{Authorization, authorization::Bearer};
 use tower_governor::GovernorLayer;
 use tower_governor::governor::GovernorConfigBuilder;
+use tower_governor::key_extractor::SmartIpKeyExtractor;
 use uuid::Uuid;
 
 use secrecy::ExposeSecret;
@@ -17,6 +18,7 @@ use crate::models::*;
 
 pub fn routes() -> Router<AppState> {
     let rate_limit_config = GovernorConfigBuilder::default()
+        .key_extractor(SmartIpKeyExtractor)
         .per_second(5)
         .burst_size(10)
         .finish()

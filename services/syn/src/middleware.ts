@@ -6,10 +6,11 @@ import type { CreateAuthReturn } from "./auth";
 export interface CreateMiddlewareConfig {
 	auth: Pick<CreateAuthReturn, "auth"> | CreateAuthReturn["auth"];
 	publicPatterns?: RegExp[];
+	apiPatterns?: RegExp[];
 }
 
 export function createMiddleware(config: CreateMiddlewareConfig): NextProxy {
-	const { publicPatterns = [] } = config;
+	const { publicPatterns = [], apiPatterns = [] } = config;
 
 	// Accept either the full object ({ auth: fn }) or the bare function
 	const authFn =
@@ -25,6 +26,13 @@ export function createMiddleware(config: CreateMiddlewareConfig): NextProxy {
 		}
 
 		if (!req.auth) {
+			if (apiPatterns.some((pattern) => pattern.test(pathname))) {
+				return NextResponse.json(
+					{ message: "Unauthorized", error: "Unauthorized", statusCode: 401 },
+					{ status: 401 },
+				);
+			}
+
 			const loginUrl = new URL("/auth/login", req.nextUrl.origin);
 
 			loginUrl.searchParams.set("callbackUrl", req.nextUrl.href);
