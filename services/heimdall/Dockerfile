@@ -18,9 +18,6 @@ FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
 
-# Install dotenvx for encrypted .env decryption at runtime
-RUN curl -sfS https://dotenvx.sh | sh
-
 RUN addgroup --system heimdall && adduser --system --ingroup heimdall heimdall
 
 WORKDIR /app

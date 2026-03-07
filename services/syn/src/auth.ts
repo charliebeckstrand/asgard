@@ -60,7 +60,7 @@ export function createAuth(config: CreateAuthConfig): CreateAuthReturn {
 
 		const attempt = (async () => {
 			try {
-				const res = await fetch(`${apiOrigin}/auth/refresh`, {
+				const res = await fetch(`${apiOrigin}/auth/token/refresh`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ refresh_token: token["refreshToken"] }),

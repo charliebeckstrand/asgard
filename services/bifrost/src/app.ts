@@ -18,14 +18,14 @@ export function createApp() {
 
 	// --- Routes ---
 
-	app.route("/", health);
-	app.route("/", users);
+	app.route("/api", health);
+	app.route("/api", users);
 
 	// --- OpenAPI ---
 
-	app.doc("/openapi.json", openApiConfig);
+	app.doc("/api/openapi.json", openApiConfig);
 
-	app.get("/docs", swaggerUI({ url: "/openapi.json" }));
+	app.get("/api/docs", swaggerUI({ url: "/api/openapi.json" }));
 
 	// --- Error handling ---
 

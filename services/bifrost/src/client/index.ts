@@ -11,8 +11,8 @@
  *   token: "your-bifrost-token",
  * });
  *
- * const health = await api.get("/health");
- * const users = await api.get("/users", { query: { page: 1, limit: 10 } });
+ * const health = await api.get("/api/health");
+ * const users = await api.get("/api/users", { query: { page: 1, limit: 10 } });
  * ```
  */
 

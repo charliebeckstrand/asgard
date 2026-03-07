@@ -28,10 +28,10 @@ pub fn routes() -> Router<AppState> {
         .layer(GovernorLayer::new(rate_limit_config));
 
     Router::new()
-        .route("/health", get(health))
+        .route("/auth/health", get(health))
         .merge(rate_limited)
-        .route("/token/refresh", post(refresh))
-        .route("/token/verify", post(verify))
+        .route("/auth/token/refresh", post(refresh))
+        .route("/auth/token/verify", post(verify))
         .route("/auth/me", get(me).delete(deactivate))
 }
 

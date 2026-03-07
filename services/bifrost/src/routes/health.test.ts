@@ -24,8 +24,8 @@ type ErrorResponse = {
 const app = createApp();
 
 describe("Health route", () => {
-	it("GET /health returns healthy status", async () => {
-		const res = await app.request("/health");
+	it("GET /api/health returns healthy status", async () => {
+		const res = await app.request("/api/health");
 		expect(res.status).toBe(200);
 
 		const body = (await res.json()) as HealthResponse;
@@ -37,19 +37,19 @@ describe("Health route", () => {
 });
 
 describe("OpenAPI", () => {
-	it("GET /openapi.json returns the spec", async () => {
-		const res = await app.request("/openapi.json");
+	it("GET /api/openapi.json returns the spec", async () => {
+		const res = await app.request("/api/openapi.json");
 		expect(res.status).toBe(200);
 
 		const spec = (await res.json()) as OpenAPISpec;
 		expect(spec.openapi).toBe("3.0.0");
 		expect(spec.info.title).toBe("Bifrost API Gateway");
-		expect(spec.paths["/health"]).toBeDefined();
-		expect(spec.paths["/users"]).toBeDefined();
+		expect(spec.paths["/api/health"]).toBeDefined();
+		expect(spec.paths["/api/users"]).toBeDefined();
 	});
 
-	it("GET /docs returns Swagger UI HTML", async () => {
-		const res = await app.request("/docs");
+	it("GET /api/docs returns Swagger UI HTML", async () => {
+		const res = await app.request("/api/docs");
 		expect(res.status).toBe(200);
 
 		const text = await res.text();

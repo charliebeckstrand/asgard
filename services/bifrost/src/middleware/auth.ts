@@ -44,7 +44,7 @@ export function auth(): MiddlewareHandler<AuthEnv> {
 			throw new HTTPException(500, { message: "HEIMDALL_API_KEY is not configured" });
 		}
 
-		const response = await fetch(`${env.HEIMDALL_URL}/token/verify`, {
+		const response = await fetch(`${env.HEIMDALL_URL}/auth/token/verify`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
