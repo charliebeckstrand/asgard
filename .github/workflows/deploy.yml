@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: digitalocean/action-doctl@v2
         with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          token: ${{ secrets.DO_API_TOKEN }}
 
       - name: Trigger App Platform deployment
         run: doctl apps create-deployment ${{ vars.DO_APP_ID }} --wait
