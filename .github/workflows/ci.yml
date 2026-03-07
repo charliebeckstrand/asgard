@@ -50,7 +50,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: services/bifrost/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
@@ -76,7 +76,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: services/syn/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
