@@ -1,4 +1,4 @@
-import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
 // --- Schema ---
 
@@ -15,7 +15,7 @@ const HealthResponseSchema = z
 			}),
 		),
 	})
-	.openapi("HealthResponse");
+	.openapi("HealthResponse")
 
 // --- Route ---
 
@@ -31,14 +31,14 @@ const healthRoute = createRoute({
 			description: "Service health status",
 		},
 	},
-});
+})
 
 // --- Handler ---
 
-const startTime = Date.now();
+const startTime = Date.now()
 
 export const health = new OpenAPIHono().openapi(healthRoute, async (c) => {
-	const uptimeSeconds = (Date.now() - startTime) / 1000;
+	const uptimeSeconds = (Date.now() - startTime) / 1000
 
 	return c.json(
 		{
@@ -50,5 +50,5 @@ export const health = new OpenAPIHono().openapi(healthRoute, async (c) => {
 			},
 		},
 		200,
-	);
-});
+	)
+})

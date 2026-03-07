@@ -1,6 +1,6 @@
-import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
-import { ErrorSchema, PaginationSchema } from "../lib/schemas.js";
+import { ErrorSchema, PaginationSchema } from "../lib/schemas.js"
 
 // --- Schemas ---
 
@@ -12,7 +12,7 @@ const UserSchema = z
 		roles: z.array(z.string()),
 		createdAt: z.string().datetime(),
 	})
-	.openapi("User");
+	.openapi("User")
 
 const UserListSchema = z
 	.object({
@@ -21,7 +21,7 @@ const UserListSchema = z
 		page: z.number(),
 		limit: z.number(),
 	})
-	.openapi("UserList");
+	.openapi("UserList")
 
 // --- Routes ---
 // To guard with Ironclad: add `middleware: [auth(), requireRole("admin")]` to route config
@@ -46,7 +46,7 @@ const listUsers = createRoute({
 			description: "Unauthorized",
 		},
 	},
-});
+})
 
 const getUser = createRoute({
 	method: "get",
@@ -77,13 +77,13 @@ const getUser = createRoute({
 			description: "User not found",
 		},
 	},
-});
+})
 
 // --- Handlers ---
 
 export const users = new OpenAPIHono()
 	.openapi(listUsers, async (c) => {
-		const { page, limit } = c.req.valid("query");
+		const { page, limit } = c.req.valid("query")
 
 		// TODO: Proxy to actual user service
 		return c.json(
@@ -94,10 +94,10 @@ export const users = new OpenAPIHono()
 				limit,
 			},
 			200,
-		);
+		)
 	})
 	.openapi(getUser, async (c) => {
-		const { id } = c.req.valid("param");
+		const { id } = c.req.valid("param")
 
 		// TODO: Proxy to actual user service
 		return c.json(
@@ -109,5 +109,5 @@ export const users = new OpenAPIHono()
 				createdAt: new Date().toISOString(),
 			},
 			200,
-		);
-	});
+		)
+	})

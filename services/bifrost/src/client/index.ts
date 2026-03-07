@@ -17,51 +17,51 @@
  */
 
 export type ClientOptions = {
-	baseUrl: string;
-	token?: string;
-	headers?: Record<string, string>;
-};
+	baseUrl: string
+	token?: string
+	headers?: Record<string, string>
+}
 
 type RequestOptions = {
-	query?: Record<string, string | number>;
-	body?: unknown;
-};
+	query?: Record<string, string | number>
+	body?: unknown
+}
 
 export function createClient(options: ClientOptions) {
-	const { baseUrl, token, headers: customHeaders = {} } = options;
+	const { baseUrl, token, headers: customHeaders = {} } = options
 
 	const baseHeaders: Record<string, string> = {
 		...(token ? { Authorization: `Bearer ${token}` } : {}),
 		...customHeaders,
-	};
+	}
 
 	async function request<T>(method: string, path: string, opts?: RequestOptions): Promise<T> {
-		const url = new URL(path, baseUrl);
+		const url = new URL(path, baseUrl)
 
 		if (opts?.query) {
 			for (const [key, value] of Object.entries(opts.query)) {
-				url.searchParams.set(key, String(value));
+				url.searchParams.set(key, String(value))
 			}
 		}
 
 		const headers: Record<string, string> = {
 			...baseHeaders,
 			...(opts?.body ? { "Content-Type": "application/json" } : {}),
-		};
+		}
 
 		const res = await fetch(url, {
 			method,
 			headers,
 			body: opts?.body ? JSON.stringify(opts.body) : undefined,
-		});
+		})
 
 		if (!res.ok) {
-			const error = await res.json().catch(() => ({ message: res.statusText }));
+			const error = await res.json().catch(() => ({ message: res.statusText }))
 
-			throw new ClientError(res.status, error as { message: string });
+			throw new ClientError(res.status, error as { message: string })
 		}
 
-		return res.json() as Promise<T>;
+		return res.json() as Promise<T>
 	}
 
 	return {
@@ -75,7 +75,7 @@ export function createClient(options: ClientOptions) {
 
 		delete: <T>(path: string, opts?: Pick<RequestOptions, "query">) =>
 			request<T>("DELETE", path, opts),
-	};
+	}
 }
 
 export class ClientError extends Error {
@@ -83,7 +83,7 @@ export class ClientError extends Error {
 		public status: number,
 		public body: { message: string },
 	) {
-		super(body.message);
-		this.name = "ClientError";
+		super(body.message)
+		this.name = "ClientError"
 	}
 }

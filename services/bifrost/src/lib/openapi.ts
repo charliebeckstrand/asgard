@@ -11,4 +11,4 @@ export const openApiConfig = {
 			description: "Local development",
 		},
 	],
-};
+}

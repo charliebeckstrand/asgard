@@ -12,6 +12,11 @@
 		"indentStyle": "tab",
 		"lineWidth": 100
 	},
+	"javascript": {
+		"formatter": {
+			"semicolons": "asNeeded"
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -19,6 +24,6 @@
 		}
 	},
 	"files": {
-		"includes": ["src/**/*.ts", "*.config.ts"]
+		"includes": ["services/*/src/**/*.ts", "services/*/*.config.ts"]
 	}
 }
