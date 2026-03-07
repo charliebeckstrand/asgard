@@ -95,7 +95,7 @@ describe("createMiddleware", () => {
 
 		it("allows authenticated requests through", async () => {
 			const session: Session = {
-				user: { id: "1", email: "test@sigil.dev" },
+				user: { id: "1", email: "test@example.com" },
 				expires: new Date(Date.now() + 3600 * 1000).toISOString(),
 			};
 
