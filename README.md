@@ -4,8 +4,8 @@ A microservices monorepo with three services:
 
 | Service | Language | Role | Port |
 | --- | --- | --- | --- |
-| **Heimdall** | Rust / Axum | JWT authentication & user management | `8000` |
-| **Bifrost** | TypeScript / Hono | API gateway with OpenAPI docs | `3000` |
+| **Heimdall** | Rust / Axum | JWT authentication | `8000` |
+| **Bifrost** | TypeScript / Hono | API gateway | `3000` |
 | **Syn** | TypeScript | Next.js auth SDK (route protection, session management, API proxy) | — (library) |
 
 ```
