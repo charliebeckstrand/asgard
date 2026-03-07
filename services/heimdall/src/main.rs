@@ -74,9 +74,11 @@ fn cors_layer() -> CorsLayer {
 fn require_env(name: &str) -> String {
     std::env::var(name).unwrap_or_else(|_| {
         // Use eprintln as a fallback in case tracing isn't initialized yet.
-        eprintln!("ERROR: {name} environment variable is not set. \
-                   Set it in the DigitalOcean App Platform dashboard under \
-                   Settings > heimdall > Environment Variables.");
+        eprintln!(
+            "ERROR: {name} environment variable is not set. \
+                    Set it in the DigitalOcean App Platform dashboard under \
+                    Settings > heimdall > Environment Variables."
+        );
         std::process::exit(1);
     })
 }
@@ -174,9 +176,12 @@ async fn main() {
         }
     };
 
-    if let Err(e) = axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
-        .with_graceful_shutdown(shutdown_signal())
-        .await
+    if let Err(e) = axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
     {
         tracing::error!("Server error: {e}");
 
