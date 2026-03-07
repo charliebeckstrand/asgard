@@ -1,0 +1,32 @@
+name: sigil
+
+services:
+    postgres:
+        image: postgres:16-alpine
+        environment:
+            POSTGRES_USER: sigil
+            POSTGRES_PASSWORD: sigil
+            POSTGRES_DB: sigil
+        ports:
+            - "5432:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U sigil"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+
+    sigil:
+        build: .
+        ports:
+            - "8000:8000"
+        environment:
+            DATABASE_URL: postgres://sigil:sigil@postgres:5432/sigil
+            DOTENV_PRIVATE_KEY_PRODUCTION: ${DOTENV_PRIVATE_KEY_PRODUCTION}
+        depends_on:
+            postgres:
+                condition: service_healthy
+
+volumes:
+    postgres_data:
