@@ -28,7 +28,7 @@ export function createMiddleware(config: CreateMiddlewareConfig): NextProxy {
 		if (!req.auth) {
 			if (apiPatterns.some((pattern) => pattern.test(pathname))) {
 				return NextResponse.json(
-					{ error: "Unauthorized", statusCode: 401 },
+					{ message: "Unauthorized", error: "Unauthorized", statusCode: 401 },
 					{ status: 401 },
 				);
 			}

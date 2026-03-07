@@ -122,7 +122,7 @@ describe("createMiddleware", () => {
 
 			const body = await response?.json();
 
-			expect(body).toEqual({ error: "Unauthorized", statusCode: 401 });
+			expect(body).toEqual({ message: "Unauthorized", error: "Unauthorized", statusCode: 401 });
 		});
 
 		it("allows authenticated API requests through", async () => {
