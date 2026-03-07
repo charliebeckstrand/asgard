@@ -6,6 +6,8 @@ settings:
 
 importers:
 
+  .: {}
+
   services/bifrost:
     dependencies:
       '@hono/node-server':
