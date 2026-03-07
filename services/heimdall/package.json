@@ -1,0 +1,43 @@
+{
+	"name": "heimdall",
+	"version": "0.1.0",
+	"description": "JWT authentication microservice",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"dev": "tsx watch src/index.ts",
+		"build": "tsup",
+		"start": "node dist/index.js",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"packageManager": "pnpm@10.29.3",
+	"dependencies": {
+		"@hono/node-server": "^1.19.11",
+		"@hono/swagger-ui": "^0.6.0",
+		"@hono/zod-openapi": "^1.2.2",
+		"argon2": "^0.41.1",
+		"hono": "^4.12.5",
+		"jsonwebtoken": "^9.0.2",
+		"pg": "^8.13.0",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.6",
+		"@types/jsonwebtoken": "^9.0.9",
+		"@types/node": "^25.3.3",
+		"@types/pg": "^8.11.0",
+		"tsup": "^8.5.1",
+		"tsx": "^4.21.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.18"
+	}
+}

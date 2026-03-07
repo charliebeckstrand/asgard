@@ -1,31 +1,25 @@
-# ─── Build stage ──────────────────────────────────────────────────────────────
-FROM rust:1.88-slim AS builder
+FROM node:22-alpine AS base
+RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
 
-RUN apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
-
+# --- Build stage ---
+FROM base AS build
 WORKDIR /app
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY services/heimdall/package.json ./services/heimdall/
+RUN pnpm install --frozen-lockfile --filter heimdall
+COPY services/heimdall/ ./services/heimdall/
+RUN pnpm --filter heimdall build
 
-COPY Cargo.toml Cargo.lock ./
-COPY src/ src/
-COPY migrations/ migrations/
-
-ENV CARGO_BUILD_JOBS=2
-
-RUN cargo build --release
-
-# ─── Runtime stage ────────────────────────────────────────────────────────────
-FROM debian:bookworm-slim
-
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
-
-RUN addgroup --system heimdall && adduser --system --ingroup heimdall heimdall
-
+# --- Production stage ---
+FROM base AS production
 WORKDIR /app
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY services/heimdall/package.json ./services/heimdall/
+RUN pnpm install --frozen-lockfile --prod --filter heimdall
+COPY --from=build /app/services/heimdall/dist ./services/heimdall/dist
 
-COPY --from=builder /app/target/release/heimdall /usr/local/bin/heimdall
-
-USER heimdall
-
+ENV NODE_ENV=production
+ENV PORT=8000
 EXPOSE 8000
 
-CMD ["heimdall"]
+CMD ["node", "services/heimdall/dist/index.js"]
