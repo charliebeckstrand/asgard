@@ -18,9 +18,5 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DO_API_TOKEN }}
-
-      - name: Trigger App Platform deployment
-        run: doctl apps create-deployment ${{ vars.DO_APP_ID }} --wait
+      - name: Trigger deployment
+        run: echo "Deployment is handled by DigitalOcean App Platform auto-deploy"
