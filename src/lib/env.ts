@@ -3,8 +3,8 @@ import { z } from "zod";
 const envSchema = z.object({
 	PORT: z.coerce.number().default(3000),
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-	IRONCLAD_URL: z.string().url().optional(),
-	IRONCLAD_API_KEY: z.string().optional(),
+	SIGIL_URL: z.string().url().optional(),
+	SIGIL_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
