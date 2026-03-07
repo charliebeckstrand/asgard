@@ -6,6 +6,7 @@ export default defineConfig({
 	},
 	format: ["esm"],
 	target: "node22",
+	noExternal: ["mimir"],
 	outDir: "dist",
 	clean: true,
 	dts: true,
