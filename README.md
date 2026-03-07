@@ -32,8 +32,8 @@ cp .env.example .env
 | --- | --- | --- |
 | `PORT` | Server port | `3000` |
 | `NODE_ENV` | `development`, `production`, or `test` | `development` |
-| `BIFROST_URL` | Auth service endpoint | `http://localhost:3001` |
-| `BIFROST_API_KEY` | Auth service API key | — |
+| `SIGIL_URL` | Auth service endpoint | `http://localhost:3001` |
+| `SIGIL_API_KEY` | Auth service API key | — |
 
 ### Development
 
