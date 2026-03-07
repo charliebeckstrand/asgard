@@ -4,20 +4,22 @@ RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
 # --- Build stage ---
 FROM base AS build
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-COPY . .
-RUN pnpm build
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY services/bifrost/package.json ./services/bifrost/
+RUN pnpm install --frozen-lockfile --filter bifrost
+COPY services/bifrost/ ./services/bifrost/
+RUN pnpm --filter bifrost build
 
 # --- Production stage ---
 FROM base AS production
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
-COPY --from=build /app/dist ./dist
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY services/bifrost/package.json ./services/bifrost/
+RUN pnpm install --frozen-lockfile --prod --filter bifrost
+COPY --from=build /app/services/bifrost/dist ./services/bifrost/dist
 
 ENV NODE_ENV=production
 ENV PORT=8000
 EXPOSE 8000
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "services/bifrost/dist/index.js"]
