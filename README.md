@@ -8,23 +8,6 @@ A microservices monorepo with three services:
 | **Bifrost** | TypeScript / Hono | API gateway | `3000` |
 | **Syn** | TypeScript | Auth SDK / API proxy | |
 
-```
-Next.js app
-  └─ Syn (auth SDK)
-       ├─ createAuth        → NextAuth sessions backed by Heimdall tokens
-       ├─ createMiddleware  → Route protection
-       └─ createProxyRoute  → Forwards API calls through Bifrost
-              │
-              ▼
-          Bifrost (gateway)
-              │
-              ▼
-          Heimdall (JWT issuer + user DB)
-              │
-              ▼
-          PostgreSQL
-```
-
 ## Prerequisites
 
 - Node.js 22+
