@@ -34,6 +34,9 @@ jobs:
           if [ -z "$APP_ID" ]; then
             echo "Creating new app..."
             APP_ID=$(doctl apps create --spec .do/app.yaml --format ID --no-header)
+          else
+            echo "Updating app spec..."
+            doctl apps update "$APP_ID" --spec .do/app.yaml
           fi
           echo "app_id=$APP_ID" >> "$GITHUB_OUTPUT"
 
