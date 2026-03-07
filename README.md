@@ -57,11 +57,11 @@ pnpm install && pnpm dev
 ### Bifrost
 
 | Variable | Required | Default | Description |
+| `HEIMDALL_API_KEY` | no | | API key for Heimdall requests |
 | --- | --- | --- | --- |
 | `PORT` | no | `3000` | Server port |
 | `NODE_ENV` | no | `development` | `development`, `production`, or `test` |
 | `HEIMDALL_URL` | no | | Heimdall service URL (e.g. `http://localhost:8000`) |
-| `HEIMDALL_API_KEY` | no | | API key for Heimdall requests |
 
 ### Syn
 
@@ -109,13 +109,13 @@ export const { GET, POST, PUT, PATCH, DELETE } = createProxyRoute({
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/health` | Health check |
 | `POST` | `/auth/register` | Register a new user |
 | `POST` | `/auth/login` | Login, returns JWT tokens |
 | `GET` | `/auth/me` | Get current user (Bearer token) |
 | `DELETE` | `/auth/me` | Deactivate account |
 | `POST` | `/token/refresh` | Refresh access token |
 | `POST` | `/token/verify` | Verify token validity |
+| `GET` | `/health` | Health check |
 
 See the Heimdall [README](services/heimdall/README.md) for examples and full configuration.
 
