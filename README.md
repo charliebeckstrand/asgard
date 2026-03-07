@@ -7,6 +7,7 @@ Hono + TypeScript Microservices
 | **Heimdall** | JWT authentication | `8000` |
 | **Bifrost** | API gateway | `3000` |
 | **Ratatoskr** | Event bus | `3001` |
+| **Mimir** | Database connection | |
 | **Syn** | API proxy | |
 
 ## Prerequisites
@@ -33,6 +34,7 @@ GitHub Actions runs on push to `main` and on pull requests:
 - **Bifrost**: lint, test, build (Node 22)
 - **Ratatoskr**: lint, test, build (Node 22)
 - **Syn**: lint, test, build (Node 22)
+- **Mimir**: lint, test, build (Node 22)
 - **Heimdall**: lint, test, build (Node 22 + Postgres)
 
 On push to `main`, a successful CI run triggers deployment to DigitalOcean App Platform.
