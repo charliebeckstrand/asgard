@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
 import { Algorithm, hash, verify } from '@node-rs/argon2'
 import { signToken } from '../lib/jwt.js'
 import { DetailSchema, LoginSchema, TokenResponseSchema } from '../lib/schemas.js'
+import { reportEvent } from '../lib/vidar.js'
 import { rateLimit } from '../middleware/rate-limit.js'
 import { findCredentialsByEmail } from '../services/users.js'
 
@@ -55,6 +56,10 @@ login.openapi(loginRoute, async (c) => {
 	const passwordOk = await verify(hash, password)
 
 	if (!creds || !passwordOk) {
+		const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown'
+
+		reportEvent('login_failed', ip, { email })
+
 		return c.json({ detail: 'Incorrect email or password' }, 401)
 	}
 
