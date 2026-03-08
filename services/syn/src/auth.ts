@@ -9,7 +9,7 @@ export interface CreateAuthConfig {
 	}
 }
 
-export type AuthHandler = (...args: any[]) => Promise<any>
+export type AuthHandler<TArgs extends unknown[] = [], TResult = unknown> = (...args: TArgs) => Promise<TResult>
 
 export type CreateAuthReturn = {
 	auth: AuthHandler
