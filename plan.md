@@ -1,110 +1,77 @@
-# Vidar: Security Monitoring Service - Implementation Plan
+# Frigg Simplification: The Config Oracle
 
-## Overview
-Vidar is a security monitoring microservice that detects suspicious activity (brute force, registration spam, credential stuffing), enforces bans, and optionally integrates an AI assistant for threat analysis.
+## Identity
+Frigg becomes **"The All-Mother's Oracle"** — a lightweight, DB-free config distribution and validation service. She reads environment files from disk, distributes configs to services via API, and validates the entire system's configuration for correctness and consistency.
 
-## Architecture
-- **Event ingestion**: Direct HTTP API for real-time events + Saga subscription for async events
-- **Rule engine**: Predefined rules that evaluate ingested events and trigger actions
-- **Ban enforcement**: PostgreSQL-backed IP ban list with expiration, queryable by other services
-- **AI placeholder**: Interface for plugging in an AI provider later
-- **Port**: 3002, prefix: `/sentinel`
+## Structural Changes
 
-## Files to Create
-
-### 1. Service scaffolding
-- `services/vidar/package.json`
-- `services/vidar/tsconfig.json`
-- `services/vidar/tsup.config.ts`
-- `services/vidar/.env.example`
-- `services/vidar/Dockerfile`
-
-### 2. Core source files
-- `services/vidar/src/index.ts` — server bootstrap
-- `services/vidar/src/app.ts` — OpenAPIHono app factory
-- `services/vidar/src/lib/env.ts` — Zod env validation
-- `services/vidar/src/lib/db.ts` — mimir pool wrapper
-- `services/vidar/src/lib/openapi.ts` — OpenAPI config
-- `services/vidar/src/lib/schemas.ts` — all Zod/OpenAPI schemas
-
-### 3. Middleware
-- `services/vidar/src/middleware/api-key.ts` — API key auth for Vidar endpoints
-
-### 4. Routes (all under /sentinel)
-- `services/vidar/src/routes/health.ts` — `GET /health`
-- `services/vidar/src/routes/events.ts` — `POST /events` (ingest security events)
-- `services/vidar/src/routes/check-ip.ts` — `GET /check-ip` (is IP banned?)
-- `services/vidar/src/routes/bans.ts` — `GET /bans`, `POST /bans`, `DELETE /bans/:ip`
-- `services/vidar/src/routes/threats.ts` — `GET /threats` (list detected threats)
-- `services/vidar/src/routes/rules.ts` — `GET /rules` (list rules + config)
-- `services/vidar/src/routes/analyze.ts` — `POST /analyze` (AI analysis placeholder)
-
-### 5. Services (business logic)
-- `services/vidar/src/services/events.ts` — store events, trigger rule evaluation
-- `services/vidar/src/services/bans.ts` — CRUD for bans, expiration check
-- `services/vidar/src/services/threats.ts` — threat queries
-- `services/vidar/src/services/rules.ts` — rule engine with predefined rules
-- `services/vidar/src/services/analyzer.ts` — AI analyzer interface + placeholder
-
-### 6. Database
-- `services/vidar/migrations/0001_create_tables.sql` — security_events, bans, threats, rules_config
-
-### 7. Heimdall integration
-- `services/heimdall/src/lib/vidar.ts` — client helper to report events + check bans
-- `services/heimdall/src/middleware/vidar.ts` — middleware that checks ban list before processing
-- Update `services/heimdall/src/app.ts` — add vidar middleware
-- Update `services/heimdall/src/routes/login.ts` — report failed/successful logins
-- Update `services/heimdall/src/routes/register.ts` — report registrations
-- Update `services/heimdall/src/lib/env.ts` — add VIDAR_URL env var
-
-## Predefined Rules
-1. **brute_force** — 10 failed logins from same IP in 15 min → ban 1 hour
-2. **registration_spam** — 5 registrations from same IP in 30 min → ban 24 hours
-3. **rate_limit_abuse** — 20 rate-limit hits from same IP in 10 min → ban 2 hours
-4. **credential_stuffing** — 15 failed logins across 10+ distinct accounts from same IP in 30 min → ban 24 hours
-
-## Database Schema (vidar schema)
-
-```sql
-CREATE SCHEMA IF NOT EXISTS vidar;
-
-CREATE TABLE vidar.security_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ip VARCHAR(45) NOT NULL,
-    event_type VARCHAR(100) NOT NULL,
-    details JSONB NOT NULL DEFAULT '{}',
-    service VARCHAR(100) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE vidar.bans (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ip VARCHAR(45) NOT NULL,
-    reason TEXT NOT NULL,
-    rule_id VARCHAR(100),
-    created_by VARCHAR(100) NOT NULL DEFAULT 'system',
-    expires_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE vidar.threats (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    threat_type VARCHAR(100) NOT NULL,
-    severity VARCHAR(20) NOT NULL DEFAULT 'medium',
-    ip VARCHAR(45) NOT NULL,
-    details JSONB NOT NULL DEFAULT '{}',
-    action_taken VARCHAR(100),
-    resolved BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+### New `environments/` folder (replaces `environments.json`)
+- `environments/development.json` — committed to repo
+- `environments/production.json` — gitignored (same structure, production values)
+- Keys are just service names (no `.environment` suffix since the file determines the environment):
+```json
+{
+  "$defaults": { "NODE_ENV": "development" },
+  "bifrost": { "PORT": "3000", ... },
+  "heimdall": { "PORT": "8000", ... }
+}
 ```
 
+### Files to DELETE from Frigg
+- `migrations/` folder (no more DB)
+- `src/lib/db.ts` (PostgreSQL pool)
+- `src/lib/crypto.ts` (AES encryption — not needed without DB storage)
+- `src/services/config.ts` (DB query layer)
+- `src/seed.ts` (DB seeding script)
+- `src/__tests__/crypto.test.ts`
+
+### Files to CREATE
+- `environments/development.json` — reformatted from current `environments.json`
+- `src/lib/environments.ts` — loads and caches the environment JSON file
+- `src/routes/validate.ts` — validation oracle endpoints
+- `src/__tests__/validate.test.ts` — validation tests
+
+### Files to MODIFY
+- `package.json` — remove `mimir` dependency, remove `seed` script, update description
+- `src/lib/env.ts` — remove DATABASE_URL, FRIGG_SECRET_KEY (no longer needed)
+- `src/lib/schemas.ts` — remove history/rollback/delete schemas, add validation schemas
+- `src/lib/openapi.ts` — update service description
+- `src/app.ts` — add validate route, remove config write routes
+- `src/routes/config.ts` — simplify to read-only (GET only, reads from file)
+- `src/client.ts` — namespace is just service name now
+- `src/__tests__/config.test.ts` — rewrite for new API
+- `.env.example` — update
+
+### Root-level changes
+- Delete `environments.json` (replaced by `environments/` folder)
+- Update `scripts/env-init.mjs` — read from `environments/development.json`
+- Update `.gitignore` — add `environments/production.json`
+
+## New API Endpoints
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | `/frigg/health` | No | Health check |
+| GET | `/frigg/environment/:service` | Yes | Get config for a service (merged with $defaults) |
+| GET | `/frigg/validate` | Yes | Validate ALL services' configs |
+| GET | `/frigg/validate/:service` | Yes | Validate a specific service's config |
+| GET | `/frigg/docs` | No | Swagger UI |
+
+## Validation Oracle Features
+Frigg inspects the environment config and reports:
+1. **Missing values** — empty or absent required-looking vars
+2. **Port conflicts** — duplicate PORT values across services
+3. **Invalid URLs** — URL-shaped keys with malformed values
+4. **Cross-service consistency** — e.g., bifrost's `HEIMDALL_API_KEY` matches heimdall's `HEIMDALL_API_KEY`
+5. **Service reference checks** — if a service references another service's URL, verify that service exists and the port matches
+6. Per-service and system-wide validation summaries with pass/warn/fail status
+
 ## Implementation Order
-1. Service scaffolding (package.json, tsconfig, etc.)
-2. Database migration
-3. Core lib files (env, db, openapi, schemas)
-4. Middleware (api-key)
-5. Services (bans → events → rules → threats → analyzer)
-6. Routes (health → check-ip → bans → events → threats → rules → analyze)
-7. App factory + index
-8. Heimdall integration (vidar client, middleware, route updates)
+1. Create `environments/` folder structure, migrate data from `environments.json`
+2. Delete DB-related files from Frigg
+3. Rewrite core Frigg (env.ts, environments.ts, schemas.ts, config route)
+4. Add validation oracle (validate route + service logic)
+5. Update app.ts, index.ts, client.ts, openapi.ts
+6. Rewrite tests
+7. Update root-level files (env-init.mjs, .gitignore, delete environments.json)
+8. Update Frigg's environments entry (remove DB/crypto vars from its own config)
