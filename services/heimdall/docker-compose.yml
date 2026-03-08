@@ -20,7 +20,9 @@ services:
     heimdall:
         build:
             context: ../..
-            dockerfile: services/heimdall/Dockerfile
+            dockerfile: Dockerfile
+            args:
+                SERVICE: heimdall
         ports:
             - "8000:8000"
         environment:
