@@ -13,7 +13,7 @@ serve(
 		port: env.PORT,
 	},
 	(info) => {
-		console.log(`Saga events and changelog running on http://localhost:${info.port}`)
+		console.log(`Saga running on http://localhost:${info.port}`)
 		console.log(`API docs available at http://localhost:${info.port}/events/docs`)
 		console.log(`OpenAPI spec at http://localhost:${info.port}/events/openapi.json`)
 	},
