@@ -19,7 +19,7 @@ export type AuthHandler<TArgs extends unknown[] = [], TResult = unknown> = (
 ) => Promise<TResult>
 
 export type CreateAuthReturn = {
-	auth: AuthHandler
+	auth: NextAuthResult['auth']
 	handlers: NextAuthResult['handlers']
 	signIn: NextAuthResult['signIn']
 	signOut: NextAuthResult['signOut']
