@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const envPath = resolve(root, 'environments.json')
+const envPath = resolve(root, 'environments', 'development.json')
 
 let environments
 
@@ -16,14 +16,9 @@ try {
 
 const defaults = environments.$defaults || {}
 
-for (const [namespace, data] of Object.entries(environments)) {
-	if (namespace.startsWith('$')) continue
+for (const [service, data] of Object.entries(environments)) {
+	if (service.startsWith('$')) continue
 
-	const match = namespace.match(/^(.+)\.development$/)
-
-	if (!match) continue
-
-	const service = match[1]
 	const serviceDir = resolve(root, 'services', service)
 
 	if (!existsSync(serviceDir)) continue

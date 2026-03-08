@@ -25,37 +25,39 @@ export const ConfigDataSchema = z.record(z.string(), z.string()).openapi('Config
 
 export const ConfigResponseSchema = z
 	.object({
-		namespace: z.string(),
+		service: z.string(),
 		data: ConfigDataSchema,
 	})
 	.openapi('ConfigResponse')
 
-export const PutConfigSchema = z.record(z.string(), z.string()).openapi('PutConfig')
-
-export const HistoryEntrySchema = z
+export const ServiceListResponseSchema = z
 	.object({
-		value: z.string(),
-		created_at: z.string(),
+		services: z.array(z.string()),
 	})
-	.openapi('HistoryEntry')
+	.openapi('ServiceListResponse')
 
-export const HistoryResponseSchema = z
-	.object({
-		namespace: z.string(),
-		history: z.record(z.string(), HistoryEntrySchema),
-	})
-	.openapi('HistoryResponse')
+const ValidationIssueSchema = z.object({
+	level: z.enum(['error', 'warning']),
+	message: z.string(),
+})
 
-export const RollbackResponseSchema = z
-	.object({
-		namespace: z.string(),
-		key: z.string(),
-		value: z.string(),
-	})
-	.openapi('RollbackResponse')
+const ServiceValidationSchema = z.object({
+	service: z.string(),
+	status: z.enum(['pass', 'warn', 'fail']),
+	issues: z.array(ValidationIssueSchema),
+})
 
-export const DeleteResponseSchema = z
+export const ValidateResponseSchema = z
 	.object({
-		deleted: z.number(),
+		status: z.enum(['pass', 'warn', 'fail']),
+		services: z.array(ServiceValidationSchema),
 	})
-	.openapi('DeleteResponse')
+	.openapi('ValidateResponse')
+
+export const ValidateServiceResponseSchema = z
+	.object({
+		service: z.string(),
+		status: z.enum(['pass', 'warn', 'fail']),
+		issues: z.array(ValidationIssueSchema),
+	})
+	.openapi('ValidateServiceResponse')

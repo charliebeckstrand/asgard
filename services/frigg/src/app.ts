@@ -5,6 +5,7 @@ import { cors } from 'hono/cors'
 import { openApiConfig } from './lib/openapi.js'
 import { config } from './routes/config.js'
 import { health } from './routes/health.js'
+import { validate } from './routes/validate.js'
 
 export function createApp() {
 	const app = new OpenAPIHono()
@@ -17,6 +18,7 @@ export function createApp() {
 
 	app.route('/frigg', health)
 	app.route('/frigg', config)
+	app.route('/frigg', validate)
 
 	// --- OpenAPI ---
 

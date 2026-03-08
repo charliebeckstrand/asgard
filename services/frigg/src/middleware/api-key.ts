@@ -1,8 +1,14 @@
+import { timingSafeEqual } from 'node:crypto'
 import type { MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
-import { timingSafeCompare } from '../lib/crypto.js'
 import { loadEnv } from '../lib/env.js'
 import { reportEvent } from '../lib/vidar.js'
+
+function timingSafeCompare(a: string, b: string): boolean {
+	if (a.length !== b.length) return false
+
+	return timingSafeEqual(Buffer.from(a), Buffer.from(b))
+}
 
 export function apiKeyAuth(): MiddlewareHandler {
 	return async (c, next) => {

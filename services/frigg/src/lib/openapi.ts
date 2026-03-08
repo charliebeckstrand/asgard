@@ -1,10 +1,10 @@
 export const openApiConfig = {
 	openapi: '3.0.0',
 	info: {
-		title: 'Frigg Environment Management Service',
-		version: '0.2.0',
+		title: 'Frigg — The Config Oracle',
+		version: '1.0.0',
 		description:
-			'Hosted, encrypted environment management. Centralizes secret storage with AES-256-GCM encryption at rest, namespace-based organization, and single-step rollback.',
+			'The All-Mother sees all. Frigg distributes environment configuration to services and validates the entire system for correctness — detecting port conflicts, broken cross-service references, and missing values.',
 	},
 	servers: [
 		{

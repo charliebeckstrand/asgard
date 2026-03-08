@@ -1,7 +1,7 @@
 {
 	"name": "frigg",
-	"version": "0.1.0",
-	"description": "Secrets management service",
+	"version": "1.0.0",
+	"description": "Config oracle — distributes and validates service environments",
 	"type": "module",
 	"exports": {
 		".": {
@@ -21,8 +21,7 @@
 		"lint:fix": "biome check --config-path=../.. --write .",
 		"format": "biome format --config-path=../.. --write .",
 		"test": "vitest run",
-		"test:watch": "vitest",
-		"seed": "tsx src/seed.ts"
+		"test:watch": "vitest"
 	},
 	"packageManager": "pnpm@10.29.3",
 	"dependencies": {
@@ -30,7 +29,6 @@
 		"@hono/swagger-ui": "^0.6.0",
 		"@hono/zod-openapi": "^1.2.2",
 		"hono": "^4.12.5",
-		"mimir": "workspace:*",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

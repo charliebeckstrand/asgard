@@ -1,11 +1,11 @@
-export async function loadConfig(namespace: string): Promise<void> {
+export async function loadConfig(service: string): Promise<void> {
 	const friggUrl = process.env.FRIGG_URL
 	const friggApiKey = process.env.FRIGG_API_KEY
 
 	if (!friggUrl) return
 
 	try {
-		const res = await fetch(`${friggUrl}/frigg/environment/${namespace}`, {
+		const res = await fetch(`${friggUrl}/frigg/environment/${service}`, {
 			headers: friggApiKey ? { 'X-API-Key': friggApiKey } : {},
 			signal: AbortSignal.timeout(5000),
 		})

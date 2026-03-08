@@ -2,12 +2,12 @@
 	"$defaults": {
 		"NODE_ENV": "development"
 	},
-	"bifrost.development": {
+	"bifrost": {
 		"PORT": "3000",
 		"HEIMDALL_URL": "http://localhost:8000",
 		"HEIMDALL_API_KEY": "dev-heimdall-api-key"
 	},
-	"heimdall.development": {
+	"heimdall": {
 		"PORT": "8000",
 		"DATABASE_URL": "postgres://heimdall:heimdall@localhost:5432/heimdall",
 		"CORS_ORIGINS": "http://localhost:3000",
@@ -18,12 +18,12 @@
 		"VIDAR_URL": "http://localhost:3002",
 		"VIDAR_API_KEY": "dev-vidar-api-key"
 	},
-	"saga.development": {
+	"saga": {
 		"PORT": "3001",
 		"DATABASE_URL": "postgres://user:password@localhost:5432/yggdrasil",
 		"SAGA_API_KEY": "dev-saga-api-key"
 	},
-	"vidar.development": {
+	"vidar": {
 		"PORT": "3002",
 		"DATABASE_URL": "postgres://vidar:vidar@localhost:5432/vidar",
 		"VIDAR_API_KEY": "dev-vidar-api-key",
@@ -31,13 +31,11 @@
 		"SAGA_API_KEY": "dev-saga-api-key",
 		"AI_ENABLED": "false"
 	},
-	"frigg.development": {
+	"frigg": {
 		"PORT": "3003",
-		"DATABASE_URL": "postgres://localhost:5432/frigg",
-		"FRIGG_SECRET_KEY": "0000000000000000000000000000000000000000000000000000000000000000",
 		"FRIGG_API_KEY": "frigg-dev-api-key"
 	},
-	"hermes.development": {
+	"hermes": {
 		"PORT": "3004"
 	}
 }
