@@ -31,12 +31,6 @@ pnpm lint         # Lint with Biome
 
 ## CI/CD
 
-GitHub Actions runs on push to `main` and on pull requests:
+GitHub Actions runs on push to `main` and on pull requests.
 
-- **Bifrost**: lint, test, build (Node 22)
-- **Ratatoskr**: lint, test, build (Node 22)
-- **Syn**: lint, test, build (Node 22)
-- **Mimir**: lint, test, build (Node 22)
-- **Heimdall**: lint, test, build (Node 22 + Postgres)
-
-On push to `main`, a successful CI run triggers deployment to DigitalOcean App Platform.
+A successful CI run triggers deployment to DigitalOcean App Platform.
