@@ -1,0 +1,44 @@
+{
+	"name": "frigg",
+	"version": "0.1.0",
+	"description": "Secrets and configuration management service",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./client": {
+			"types": "./dist/client.d.ts",
+			"default": "./dist/client.js"
+		}
+	},
+	"scripts": {
+		"dev": "tsx watch src/index.ts",
+		"build": "tsup",
+		"start": "node dist/index.js",
+		"lint": "biome check --config-path=../.. .",
+		"lint:fix": "biome check --config-path=../.. --write .",
+		"format": "biome format --config-path=../.. --write .",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"seed": "tsx src/seed.ts"
+	},
+	"packageManager": "pnpm@10.29.3",
+	"dependencies": {
+		"@hono/node-server": "^1.19.11",
+		"@hono/swagger-ui": "^0.6.0",
+		"@hono/zod-openapi": "^1.2.2",
+		"hono": "^4.12.5",
+		"mimir": "workspace:*",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.6",
+		"@types/node": "^25.3.3",
+		"tsup": "^8.5.1",
+		"tsx": "^4.21.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.18"
+	}
+}
