@@ -62,7 +62,7 @@ export function createAuth(config: CreateAuthConfig): CreateAuthReturn {
 				const res = await fetch(`${apiOrigin}/auth/token/refresh`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ refresh_token: token["refreshToken"] }),
+					body: JSON.stringify({ refresh_token: token.refreshToken }),
 				})
 
 				if (!res.ok) {
@@ -156,7 +156,7 @@ export function createAuth(config: CreateAuthConfig): CreateAuthReturn {
 				}
 
 				// 30s buffer prevents expiry mid-request
-				if (typeof token["expiresAt"] === "number" && Date.now() / 1000 < token["expiresAt"] - 30) {
+				if (typeof token.expiresAt === "number" && Date.now() / 1000 < token.expiresAt - 30) {
 					return token
 				}
 
@@ -165,9 +165,9 @@ export function createAuth(config: CreateAuthConfig): CreateAuthReturn {
 
 			async session({ session, token }): Promise<Session> {
 				const accessToken =
-					typeof token["accessToken"] === "string" ? token["accessToken"] : undefined
+					typeof token.accessToken === "string" ? token.accessToken : undefined
 
-				const error = token["error"] as string | undefined
+				const error = token.error as string | undefined
 
 				return {
 					...session,
