@@ -1,7 +1,7 @@
 {
 	"name": "frigg",
 	"version": "0.1.0",
-	"description": "Secrets and configuration management service",
+	"description": "Secrets management service",
 	"type": "module",
 	"exports": {
 		".": {

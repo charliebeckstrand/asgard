@@ -11,7 +11,7 @@ serve(
 		port: env.PORT,
 	},
 	(info) => {
-		console.log(`Frigg secrets service running on http://localhost:${info.port}`)
+		console.log(`Frigg secrets management service running on http://localhost:${info.port}`)
 		console.log(`API docs available at http://localhost:${info.port}/frigg/docs`)
 	},
 )

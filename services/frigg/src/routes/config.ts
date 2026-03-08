@@ -14,15 +14,15 @@ const NamespaceParam = z.object({
 const getConfigRoute = createRoute({
 	method: 'get',
 	path: '/config/{namespace}',
-	tags: ['Config'],
-	summary: 'Get config for a namespace',
+	tags: ['Secrets'],
+	summary: 'Get secrets for a namespace',
 	description: 'Returns all key-value pairs for the namespace, decrypted.',
 	security: [{ ApiKey: [] }],
 	request: { params: NamespaceParam },
 	responses: {
 		200: {
 			content: { 'application/json': { schema: ConfigResponseSchema } },
-			description: 'Config values',
+			description: 'Secret values',
 			headers: {
 				'Cache-Control': {
 					schema: { type: 'string' },
@@ -40,8 +40,8 @@ const getConfigRoute = createRoute({
 const putConfigRoute = createRoute({
 	method: 'put',
 	path: '/config/{namespace}',
-	tags: ['Config'],
-	summary: 'Set config for a namespace',
+	tags: ['Secrets'],
+	summary: 'Set secrets for a namespace',
 	description: 'Upserts key-value pairs. Values are encrypted at rest.',
 	security: [{ ApiKey: [] }],
 	request: {
@@ -54,7 +54,7 @@ const putConfigRoute = createRoute({
 	responses: {
 		200: {
 			content: { 'application/json': { schema: ConfigResponseSchema } },
-			description: 'Config updated',
+			description: 'Secrets updated',
 		},
 		401: {
 			content: { 'application/json': { schema: ErrorSchema } },
