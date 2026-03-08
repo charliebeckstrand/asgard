@@ -26,12 +26,12 @@
 	},
 	"files": {
 		"includes": ["**/*.ts"],
+		"ignore": ["node_modules/", "dist/", "coverage/", ".turbo/"],
 		"ignoreUnknown": true
 	},
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
-		"useIgnoreFile": true,
-		"root": "."
+		"useIgnoreFile": false
 	}
 }
