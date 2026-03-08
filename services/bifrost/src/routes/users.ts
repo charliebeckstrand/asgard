@@ -24,7 +24,6 @@ const UserListSchema = z
 	.openapi('UserList')
 
 // --- Routes ---
-// To guard with Ironclad: add `middleware: [auth(), requireRole("admin")]` to route config
 
 const listUsers = createRoute({
 	method: 'get',

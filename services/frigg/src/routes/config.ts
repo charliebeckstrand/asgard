@@ -176,6 +176,7 @@ config.use('/environment/*', apiKeyAuth())
 
 config.openapi(getConfigRoute, async (c) => {
 	const { namespace } = c.req.valid('param')
+
 	const ip = c.req.header('x-forwarded-for') ?? 'unknown'
 
 	const data = await getConfig(namespace)
@@ -189,7 +190,9 @@ config.openapi(getConfigRoute, async (c) => {
 
 config.openapi(putConfigRoute, async (c) => {
 	const { namespace } = c.req.valid('param')
+
 	const ip = c.req.header('x-forwarded-for') ?? 'unknown'
+
 	const body = c.req.valid('json')
 
 	await putConfig(namespace, body)
@@ -203,6 +206,7 @@ config.openapi(putConfigRoute, async (c) => {
 
 config.openapi(getHistoryRoute, async (c) => {
 	const { namespace } = c.req.valid('param')
+
 	const ip = c.req.header('x-forwarded-for') ?? 'unknown'
 
 	const history = await getHistory(namespace)
@@ -214,6 +218,7 @@ config.openapi(getHistoryRoute, async (c) => {
 
 config.openapi(rollbackRoute, async (c) => {
 	const { namespace, key } = c.req.valid('param')
+
 	const ip = c.req.header('x-forwarded-for') ?? 'unknown'
 
 	const value = await rollbackSecret(namespace, key)
@@ -232,6 +237,7 @@ config.openapi(rollbackRoute, async (c) => {
 
 config.openapi(deleteNamespaceRoute, async (c) => {
 	const { namespace } = c.req.valid('param')
+
 	const ip = c.req.header('x-forwarded-for') ?? 'unknown'
 
 	const deleted = await deleteConfig(namespace)
@@ -243,6 +249,7 @@ config.openapi(deleteNamespaceRoute, async (c) => {
 
 config.openapi(deleteKeyRoute, async (c) => {
 	const { namespace, key } = c.req.valid('param')
+
 	const ip = c.req.header('x-forwarded-for') ?? 'unknown'
 
 	const deleted = await deleteConfig(namespace, key)

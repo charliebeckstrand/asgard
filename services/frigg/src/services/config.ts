@@ -20,6 +20,7 @@ interface HistoryRow {
 
 export async function getConfig(namespace: string): Promise<Record<string, string>> {
 	const pool = getPool()
+
 	const env = loadEnv()
 
 	const { rows } = await pool.query<ConfigRow>(
@@ -38,6 +39,7 @@ export async function getConfig(namespace: string): Promise<Record<string, strin
 
 export async function putConfig(namespace: string, data: Record<string, string>): Promise<void> {
 	const pool = getPool()
+
 	const env = loadEnv()
 
 	const entries = Object.entries(data)
@@ -80,6 +82,7 @@ export async function getHistory(
 	namespace: string,
 ): Promise<Record<string, { value: string; created_at: string }>> {
 	const pool = getPool()
+
 	const env = loadEnv()
 
 	const { rows } = await pool.query<HistoryRow & { key: string }>(
@@ -157,5 +160,6 @@ export async function deleteConfig(namespace: string, key?: string): Promise<num
 	}
 
 	const { rowCount } = await pool.query('DELETE FROM configs WHERE namespace = $1', [namespace])
+
 	return rowCount ?? 0
 }

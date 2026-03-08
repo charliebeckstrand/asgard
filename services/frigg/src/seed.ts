@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { loadEnv } from './lib/env.js'
 
 const env = loadEnv()
+
 const seedPath = resolve(import.meta.dirname, '..', '..', '..', 'environments.json')
 
 let rawData: Record<string, Record<string, string>>
@@ -11,10 +12,12 @@ try {
 	rawData = JSON.parse(readFileSync(seedPath, 'utf-8'))
 } catch {
 	console.error(`Could not read seed file at ${seedPath}`)
+
 	process.exit(1)
 }
 
 const defaults = rawData.$defaults ?? {}
+
 const seedData = Object.fromEntries(
 	Object.entries(rawData)
 		.filter(([key]) => !key.startsWith('$'))
@@ -22,6 +25,7 @@ const seedData = Object.fromEntries(
 )
 
 const baseUrl = `http://localhost:${env.PORT}`
+
 const headers: Record<string, string> = { 'Content-Type': 'application/json' }
 
 if (env.FRIGG_API_KEY) {
@@ -41,6 +45,7 @@ for (const [namespace, data] of Object.entries(seedData)) {
 
 		if (getRes.ok) {
 			const body = (await getRes.json()) as { data: Record<string, string> }
+
 			existing = body.data
 		}
 
@@ -55,7 +60,9 @@ for (const [namespace, data] of Object.entries(seedData)) {
 
 		if (Object.keys(newKeys).length === 0) {
 			console.log(`  skipped ${namespace} (all ${Object.keys(data).length} keys exist)`)
+
 			skipped++
+
 			continue
 		}
 
@@ -67,18 +74,23 @@ for (const [namespace, data] of Object.entries(seedData)) {
 
 		if (res.ok) {
 			const skippedCount = Object.keys(data).length - Object.keys(newKeys).length
+
 			const msg =
 				skippedCount > 0
 					? `  seeded ${namespace} (${Object.keys(newKeys).length} new, ${skippedCount} existing)`
 					: `  seeded ${namespace} (${Object.keys(newKeys).length} keys)`
+
 			console.log(msg)
+
 			success++
 		} else {
 			console.error(`  failed ${namespace}: ${res.status} ${res.statusText}`)
+
 			failed++
 		}
 	} catch (err) {
 		console.error(`  failed ${namespace}: ${err instanceof Error ? err.message : err}`)
+
 		failed++
 	}
 }
