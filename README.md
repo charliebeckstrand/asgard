@@ -8,6 +8,7 @@ Hono + TypeScript Microservices
 | **Bifrost** | API (Gateway) | `3000` |
 | **Syn** | API (Proxy) | |
 | **Saga** | Events | `3001` |
+| **Hermes** | WebSockets | `3004` |
 | **Vidar** | Monitoring | `3002` |
 | **Frigg** | Secrets Management | `3003` |
 | **Mimir** | Database Pool | |
