@@ -43,15 +43,18 @@ export async function listThreats(options?: {
 	const pool = getPool()
 
 	const conditions: string[] = []
+
 	const params: unknown[] = []
 
 	if (options?.resolved !== undefined) {
 		params.push(options.resolved)
+
 		conditions.push(`resolved = $${params.length}`)
 	}
 
 	if (options?.ip) {
 		params.push(options.ip)
+
 		conditions.push(`ip = $${params.length}`)
 	}
 

@@ -6,6 +6,7 @@ let pool: ReturnType<typeof createPool> | null = null
 export function getPool() {
 	if (!pool) {
 		const env = loadEnv()
+
 		pool = createPool(env.DATABASE_URL, { max: 5 })
 	}
 

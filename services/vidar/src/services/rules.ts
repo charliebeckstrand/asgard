@@ -111,6 +111,7 @@ async function checkRule(
 		)
 
 		const eventCount = parseInt(rows[0].event_count, 10)
+
 		const accountCount = parseInt(rows[0].account_count, 10)
 
 		return eventCount >= rule.threshold && accountCount >= rule.distinct_accounts
