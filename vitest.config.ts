@@ -5,11 +5,6 @@ export default defineConfig({
 		globals: true,
 		environment: 'node',
 		passWithNoTests: true,
-		server: {
-			deps: {
-				inline: ['mimir'],
-			},
-		},
 	},
 	resolve: {
 		alias: {
