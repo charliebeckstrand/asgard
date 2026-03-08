@@ -10,6 +10,7 @@ Hono + TypeScript Microservices
 | **Mimir** | Database connection | |
 | **Ratatoskr** | Event bus | `3001` |
 | **Vidar** | Monitoring | `3002` |
+| **Frigg** | Secrets Management | `3003` |
 
 ## Prerequisites
 
