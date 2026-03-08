@@ -4,7 +4,7 @@ Hono + TypeScript Microservices
 
 | Service | Role | Port |
 | --- | --- | --- |
-| **Heimdall** | Access control | `8000` |
+| **Heimdall** | Authentication | `8000` |
 | **Bifrost** | API gateway | `3000` |
 | **Syn** | API proxy | |
 | **Mimir** | Database connection | |
