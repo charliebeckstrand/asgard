@@ -131,6 +131,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm test
+      - run: pnpm --filter mimir build
       - run: pnpm build
 
   heimdall:
@@ -172,4 +173,5 @@ jobs:
         env:
           DATABASE_URL: postgres://test:test@localhost:5432/test
           SECRET_KEY: ci-test-secret-key-not-used-in-production
+      - run: pnpm --filter mimir build
       - run: pnpm build
