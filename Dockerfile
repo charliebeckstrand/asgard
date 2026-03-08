@@ -20,7 +20,7 @@ COPY --from=manifests /tmp/manifests/services/ ./services/
 RUN pnpm install --frozen-lockfile --filter ${SERVICE}
 COPY tsup.config.ts ./
 COPY services/ ./services/
-RUN pnpm --filter ${SERVICE} build
+RUN pnpm --filter ${SERVICE}... build
 
 # --- Production stage ---
 FROM base AS production
