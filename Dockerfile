@@ -20,7 +20,7 @@ COPY --from=manifests /tmp/manifests/services/ ./services/
 RUN pnpm install --frozen-lockfile --filter ${SERVICE}
 COPY tsup.config.ts ./
 COPY services/ ./services/
-RUN pnpm --filter ${SERVICE} build
+RUN pnpm --filter ${SERVICE}... build
 
 # --- Production stage ---
 FROM base AS production
@@ -28,8 +28,8 @@ ARG SERVICE
 WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY --from=manifests /tmp/manifests/services/ ./services/
-RUN pnpm install --frozen-lockfile --prod --filter ${SERVICE}
-COPY --from=build /app/services/${SERVICE}/dist ./services/${SERVICE}/dist
+RUN pnpm install --frozen-lockfile --prod --filter ${SERVICE}...
+COPY --from=build /app/services/ ./services/
 
 ENV NODE_ENV=production
 ENV PORT=8000
