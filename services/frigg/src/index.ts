@@ -19,6 +19,6 @@ serve(
 	(info) => {
 		console.log(`Frigg config oracle running on http://localhost:${info.port}`)
 		console.log(`  ${serviceCount} services loaded from ${env.NODE_ENV} environment`)
-		console.log(`  API docs available at http://localhost:${info.port}/frigg/docs`)
+		console.log(`  API docs available at http://localhost:${info.port}/services/docs`)
 	},
 )

@@ -3,18 +3,20 @@ import { createApp } from '../app.js'
 import { clearCache } from '../lib/environments.js'
 
 beforeEach(() => {
+	process.env.NODE_ENV = 'development'
 	process.env.FRIGG_API_KEY = 'test-api-key'
 })
 
 afterEach(() => {
 	clearCache()
+	delete process.env.NODE_ENV
 	delete process.env.FRIGG_API_KEY
 })
 
 describe('health route', () => {
-	it('GET /frigg/health returns healthy status', async () => {
+	it('GET /services/health returns healthy status', async () => {
 		const app = createApp()
-		const res = await app.request('/frigg/health')
+		const res = await app.request('/services/health')
 
 		expect(res.status).toBe(200)
 
@@ -25,65 +27,17 @@ describe('health route', () => {
 	})
 })
 
-describe('environment routes', () => {
-	it('GET /frigg/environment/:service returns 401 without API key', async () => {
-		const app = createApp()
-		const res = await app.request('/frigg/environment/heimdall')
-
-		expect(res.status).toBe(401)
-	})
-
-	it('GET /frigg/environment/:service returns config with valid API key', async () => {
-		const app = createApp()
-		const res = await app.request('/frigg/environment/heimdall', {
-			headers: { 'X-API-Key': 'test-api-key' },
-		})
-
-		expect(res.status).toBe(200)
-
-		const body = await res.json()
-
-		expect(body.service).toBe('heimdall')
-		expect(body.data).toBeDefined()
-		expect(body.data.PORT).toBe('8000')
-	})
-
-	it('GET /frigg/environment/:service returns 404 for unknown service', async () => {
-		const app = createApp()
-		const res = await app.request('/frigg/environment/unknown', {
-			headers: { 'X-API-Key': 'test-api-key' },
-		})
-
-		expect(res.status).toBe(404)
-	})
-
-	it('GET /frigg/environment lists all services', async () => {
-		const app = createApp()
-		const res = await app.request('/frigg/environment', {
-			headers: { 'X-API-Key': 'test-api-key' },
-		})
-
-		expect(res.status).toBe(200)
-
-		const body = await res.json()
-
-		expect(body.services).toContain('heimdall')
-		expect(body.services).toContain('bifrost')
-		expect(body.services).toContain('frigg')
-	})
-})
-
 describe('validate routes', () => {
-	it('GET /frigg/validate returns 401 without API key', async () => {
+	it('GET /services/validate returns 401 without API key', async () => {
 		const app = createApp()
-		const res = await app.request('/frigg/validate')
+		const res = await app.request('/services/validate')
 
 		expect(res.status).toBe(401)
 	})
 
-	it('GET /frigg/validate returns validation results', async () => {
+	it('GET /services/validate returns validation results', async () => {
 		const app = createApp()
-		const res = await app.request('/frigg/validate', {
+		const res = await app.request('/services/validate', {
 			headers: { 'X-API-Key': 'test-api-key' },
 		})
 
@@ -102,9 +56,9 @@ describe('validate routes', () => {
 		}
 	})
 
-	it('GET /frigg/validate/:service validates a single service', async () => {
+	it('GET /services/validate/:service validates a single service', async () => {
 		const app = createApp()
-		const res = await app.request('/frigg/validate/heimdall', {
+		const res = await app.request('/services/validate/heimdall', {
 			headers: { 'X-API-Key': 'test-api-key' },
 		})
 
@@ -116,9 +70,9 @@ describe('validate routes', () => {
 		expect(['pass', 'warn', 'fail']).toContain(body.status)
 	})
 
-	it('GET /frigg/validate/:service returns 404 for unknown service', async () => {
+	it('GET /services/validate/:service returns 404 for unknown service', async () => {
 		const app = createApp()
-		const res = await app.request('/frigg/validate/unknown', {
+		const res = await app.request('/services/validate/unknown', {
 			headers: { 'X-API-Key': 'test-api-key' },
 		})
 

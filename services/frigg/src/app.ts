@@ -3,7 +3,6 @@ import { OpenAPIHono } from '@hono/zod-openapi'
 import { cors } from 'hono/cors'
 
 import { openApiConfig } from './lib/openapi.js'
-import { config } from './routes/config.js'
 import { health } from './routes/health.js'
 import { validate } from './routes/validate.js'
 
@@ -16,14 +15,13 @@ export function createApp() {
 
 	// --- Routes ---
 
-	app.route('/frigg', health)
-	app.route('/frigg', config)
-	app.route('/frigg', validate)
+	app.route('/services', health)
+	app.route('/services', validate)
 
 	// --- OpenAPI ---
 
-	app.doc('/frigg/openapi.json', openApiConfig)
-	app.get('/frigg/docs', swaggerUI({ url: '/frigg/openapi.json' }))
+	app.doc('/services/openapi.json', openApiConfig)
+	app.get('/services/docs', swaggerUI({ url: '/services/openapi.json' }))
 
 	// --- Error handling ---
 

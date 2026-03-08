@@ -21,21 +21,6 @@ export const HealthResponseSchema = z
 	})
 	.openapi('HealthResponse')
 
-export const ConfigDataSchema = z.record(z.string(), z.string()).openapi('ConfigData')
-
-export const ConfigResponseSchema = z
-	.object({
-		service: z.string(),
-		data: ConfigDataSchema,
-	})
-	.openapi('ConfigResponse')
-
-export const ServiceListResponseSchema = z
-	.object({
-		services: z.array(z.string()),
-	})
-	.openapi('ServiceListResponse')
-
 const ValidationIssueSchema = z.object({
 	level: z.enum(['error', 'warning']),
 	message: z.string(),

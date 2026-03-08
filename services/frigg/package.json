@@ -1,16 +1,12 @@
 {
 	"name": "frigg",
 	"version": "1.0.0",
-	"description": "Config oracle — distributes and validates service environments",
+	"description": "Config oracle — validates service environments",
 	"type": "module",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
-		},
-		"./client": {
-			"types": "./dist/client.d.ts",
-			"default": "./dist/client.js"
 		}
 	},
 	"scripts": {
