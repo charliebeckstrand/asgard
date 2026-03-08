@@ -22,18 +22,49 @@ if (env.FRIGG_API_KEY) {
 }
 
 let success = 0
+let skipped = 0
 let failed = 0
 
 for (const [namespace, data] of Object.entries(seedData)) {
 	try {
-		const res = await fetch(`${baseUrl}/frigg/config/${namespace}`, {
+		// Fetch existing keys so we only seed what's missing
+		const getRes = await fetch(`${baseUrl}/frigg/environment/${namespace}`, { headers })
+
+		let existing: Record<string, string> = {}
+
+		if (getRes.ok) {
+			const body = (await getRes.json()) as { data: Record<string, string> }
+			existing = body.data
+		}
+
+		// Filter to only new keys
+		const newKeys: Record<string, string> = {}
+
+		for (const [key, value] of Object.entries(data)) {
+			if (!(key in existing)) {
+				newKeys[key] = value
+			}
+		}
+
+		if (Object.keys(newKeys).length === 0) {
+			console.log(`  skipped ${namespace} (all ${Object.keys(data).length} keys exist)`)
+			skipped++
+			continue
+		}
+
+		const res = await fetch(`${baseUrl}/frigg/environment/${namespace}`, {
 			method: 'PUT',
 			headers,
-			body: JSON.stringify(data),
+			body: JSON.stringify(newKeys),
 		})
 
 		if (res.ok) {
-			console.log(`  seeded ${namespace} (${Object.keys(data).length} keys)`)
+			const skippedCount = Object.keys(data).length - Object.keys(newKeys).length
+			const msg =
+				skippedCount > 0
+					? `  seeded ${namespace} (${Object.keys(newKeys).length} new, ${skippedCount} existing)`
+					: `  seeded ${namespace} (${Object.keys(newKeys).length} keys)`
+			console.log(msg)
 			success++
 		} else {
 			console.error(`  failed ${namespace}: ${res.status} ${res.statusText}`)
@@ -45,6 +76,6 @@ for (const [namespace, data] of Object.entries(seedData)) {
 	}
 }
 
-console.log(`\nDone: ${success} seeded, ${failed} failed`)
+console.log(`\nDone: ${success} seeded, ${skipped} skipped, ${failed} failed`)
 
 if (failed > 0) process.exit(1)

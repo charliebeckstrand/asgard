@@ -1,10 +1,10 @@
 export const openApiConfig = {
 	openapi: '3.0.0',
 	info: {
-		title: 'Frigg Secrets Management Service',
-		version: '0.1.0',
+		title: 'Frigg Environment Management Service',
+		version: '0.2.0',
 		description:
-			'Hosted, encrypted secrets. Centralizes secret storage with AES-256-GCM encryption at rest and namespace-based organization.',
+			'Hosted, encrypted environment management. Centralizes secret storage with AES-256-GCM encryption at rest, namespace-based organization, and single-step rollback.',
 	},
 	servers: [
 		{

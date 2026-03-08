@@ -5,7 +5,7 @@ export async function loadConfig(namespace: string): Promise<void> {
 	if (!friggUrl) return
 
 	try {
-		const res = await fetch(`${friggUrl}/frigg/config/${namespace}`, {
+		const res = await fetch(`${friggUrl}/frigg/environment/${namespace}`, {
 			headers: friggApiKey ? { 'X-API-Key': friggApiKey } : {},
 			signal: AbortSignal.timeout(5000),
 		})

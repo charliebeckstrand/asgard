@@ -31,3 +31,31 @@ export const ConfigResponseSchema = z
 	.openapi('ConfigResponse')
 
 export const PutConfigSchema = z.record(z.string(), z.string()).openapi('PutConfig')
+
+export const HistoryEntrySchema = z
+	.object({
+		value: z.string(),
+		created_at: z.string(),
+	})
+	.openapi('HistoryEntry')
+
+export const HistoryResponseSchema = z
+	.object({
+		namespace: z.string(),
+		history: z.record(z.string(), HistoryEntrySchema),
+	})
+	.openapi('HistoryResponse')
+
+export const RollbackResponseSchema = z
+	.object({
+		namespace: z.string(),
+		key: z.string(),
+		value: z.string(),
+	})
+	.openapi('RollbackResponse')
+
+export const DeleteResponseSchema = z
+	.object({
+		deleted: z.number(),
+	})
+	.openapi('DeleteResponse')

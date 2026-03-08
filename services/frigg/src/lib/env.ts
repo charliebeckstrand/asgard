@@ -22,7 +22,7 @@ export function loadEnv(): Env {
 	if (!result.success) {
 		console.error('Invalid environment variables:', result.error.format())
 
-		process.exit(1)
+		throw new Error('Invalid environment variables')
 	}
 
 	cached = result.data

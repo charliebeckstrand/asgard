@@ -7,7 +7,13 @@ interface BanCheckResult {
 }
 
 export async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
-	const env = loadEnv()
+	let env: ReturnType<typeof loadEnv>
+
+	try {
+		env = loadEnv()
+	} catch {
+		return null
+	}
 
 	if (!env.VIDAR_URL) return null
 
@@ -37,7 +43,13 @@ export function reportEvent(
 	ip: string,
 	details: Record<string, unknown> = {},
 ): void {
-	const env = loadEnv()
+	let env: ReturnType<typeof loadEnv>
+
+	try {
+		env = loadEnv()
+	} catch {
+		return
+	}
 
 	if (!env.VIDAR_URL) return
 

@@ -5,8 +5,6 @@ import { loadEnv } from '../lib/env.js'
 import { reportEvent } from '../lib/vidar.js'
 
 export function apiKeyAuth(): MiddlewareHandler {
-	const env = loadEnv()
-
 	return async (c, next) => {
 		const apiKey = c.req.header('X-API-Key')
 		const ip = c.req.header('x-forwarded-for') ?? 'unknown'
@@ -15,6 +13,8 @@ export function apiKeyAuth(): MiddlewareHandler {
 			reportEvent('config_auth_failed', ip, { reason: 'missing_api_key' })
 			throw new HTTPException(401, { message: 'Missing API key' })
 		}
+
+		const env = loadEnv()
 
 		if (!env.FRIGG_API_KEY) {
 			throw new HTTPException(500, { message: 'FRIGG_API_KEY is not configured' })
