@@ -9,6 +9,7 @@ Hono + TypeScript Microservices
 | **Syn** | API proxy | |
 | **Mimir** | Database connection | |
 | **Ratatoskr** | Event bus | `3001` |
+| **Vidar** | Monitoring | `3002` |
 
 ## Prerequisites
 
