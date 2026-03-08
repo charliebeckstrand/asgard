@@ -14,7 +14,11 @@ try {
 	process.exit(1)
 }
 
+const defaults = environments.$defaults || {}
+
 for (const [namespace, data] of Object.entries(environments)) {
+	if (namespace.startsWith('$')) continue
+
 	const match = namespace.match(/^(.+)\.development$/)
 
 	if (!match) continue
@@ -28,7 +32,8 @@ for (const [namespace, data] of Object.entries(environments)) {
 
 	if (existsSync(dotenvPath)) continue
 
-	const content = Object.entries(data)
+	const merged = { ...defaults, ...data }
+	const content = Object.entries(merged)
 		.map(([key, value]) => `${key}=${value}`)
 		.join('\n')
 

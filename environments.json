@@ -1,15 +1,17 @@
 {
+	"$defaults": {
+		"NODE_ENV": "development"
+	},
 	"bifrost.development": {
 		"PORT": "3000",
-		"NODE_ENV": "development",
 		"HEIMDALL_URL": "http://localhost:8000",
 		"HEIMDALL_API_KEY": "dev-heimdall-api-key"
 	},
 	"heimdall.development": {
 		"PORT": "8000",
 		"DATABASE_URL": "postgres://heimdall:heimdall@localhost:5432/heimdall",
-		"SECRET_KEY": "dev-secret-key-change-in-production",
 		"CORS_ORIGINS": "http://localhost:3000",
+		"SECRET_KEY": "dev-secret-key-change-in-production",
 		"HEIMDALL_API_KEY": "dev-heimdall-api-key",
 		"ACCESS_TOKEN_EXPIRE_MINUTES": "30",
 		"REFRESH_TOKEN_EXPIRE_DAYS": "7",
@@ -18,7 +20,6 @@
 	},
 	"ratatoskr.development": {
 		"PORT": "3001",
-		"NODE_ENV": "development",
 		"DATABASE_URL": "postgres://user:password@localhost:5432/yggdrasil",
 		"RATATOSKR_API_KEY": "dev-ratatoskr-api-key"
 	},

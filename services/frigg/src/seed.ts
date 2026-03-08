@@ -5,14 +5,21 @@ import { loadEnv } from './lib/env.js'
 const env = loadEnv()
 const seedPath = resolve(import.meta.dirname, '..', '..', '..', 'environments.json')
 
-let seedData: Record<string, Record<string, string>>
+let rawData: Record<string, Record<string, string>>
 
 try {
-	seedData = JSON.parse(readFileSync(seedPath, 'utf-8'))
+	rawData = JSON.parse(readFileSync(seedPath, 'utf-8'))
 } catch {
 	console.error(`Could not read seed file at ${seedPath}`)
 	process.exit(1)
 }
+
+const defaults = rawData.$defaults ?? {}
+const seedData = Object.fromEntries(
+	Object.entries(rawData)
+		.filter(([key]) => !key.startsWith('$'))
+		.map(([key, data]) => [key, { ...defaults, ...data }]),
+)
 
 const baseUrl = `http://localhost:${env.PORT}`
 const headers: Record<string, string> = { 'Content-Type': 'application/json' }
