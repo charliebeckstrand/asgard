@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
 import { Algorithm, hash } from '@node-rs/argon2'
 import { DetailSchema, RegisterSchema, UserResponseSchema } from '../lib/schemas.js'
+import { reportEvent } from '../lib/vidar.js'
 import { rateLimit } from '../middleware/rate-limit.js'
 import { createUser } from '../services/users.js'
 
@@ -55,6 +56,9 @@ register.openapi(registerRoute, async (c) => {
 		}
 		throw err
 	}
+
+	const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown'
+	reportEvent('registration', ip, { email })
 
 	return c.json(
 		{

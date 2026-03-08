@@ -1,0 +1,61 @@
+import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
+import { loadEnv } from '../lib/env.js'
+import { AnalyzeRequestSchema, AnalyzeResponseSchema, ErrorSchema } from '../lib/schemas.js'
+import { apiKeyAuth } from '../middleware/api-key.js'
+import { getAnalyzer } from '../services/analyzer.js'
+
+const analyzeRoute = createRoute({
+	method: 'post',
+	path: '/analyze',
+	tags: ['AI Analysis'],
+	summary: 'Trigger AI threat analysis',
+	description:
+		'Run AI-powered analysis on recent security events. Requires AI_ENABLED=true and a configured AI provider.',
+	security: [{ ApiKey: [] }],
+	request: {
+		body: {
+			content: { 'application/json': { schema: AnalyzeRequestSchema } },
+			required: true,
+		},
+	},
+	responses: {
+		200: {
+			content: { 'application/json': { schema: AnalyzeResponseSchema } },
+			description: 'Analysis result',
+		},
+		401: {
+			content: { 'application/json': { schema: ErrorSchema } },
+			description: 'Unauthorized',
+		},
+		501: {
+			content: { 'application/json': { schema: ErrorSchema } },
+			description: 'AI analysis not enabled',
+		},
+	},
+})
+
+export const analyze = new OpenAPIHono()
+
+analyze.use('/analyze', apiKeyAuth())
+
+analyze.openapi(analyzeRoute, async (c) => {
+	const env = loadEnv()
+
+	if (!env.AI_ENABLED) {
+		return c.json(
+			{
+				error: 'Not Implemented',
+				message: 'AI analysis is not enabled. Set AI_ENABLED=true and configure an AI provider.',
+				statusCode: 501,
+			},
+			501,
+		)
+	}
+
+	const { ip } = c.req.valid('json')
+
+	const analyzer = getAnalyzer()
+	const result = await analyzer.analyze({ ip })
+
+	return c.json(result, 200)
+})

@@ -1,16 +1,16 @@
 import { z } from 'zod'
 
 const envSchema = z.object({
-	PORT: z.coerce.number().default(8000),
+	PORT: z.coerce.number().default(3002),
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 	DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
-	SECRET_KEY: z.string().min(1, 'SECRET_KEY is required'),
-	CORS_ORIGINS: z.string().optional(),
-	HEIMDALL_API_KEY: z.string().optional(),
-	VIDAR_URL: z.string().optional(),
 	VIDAR_API_KEY: z.string().optional(),
-	ACCESS_TOKEN_EXPIRE_MINUTES: z.coerce.number().default(30),
-	REFRESH_TOKEN_EXPIRE_DAYS: z.coerce.number().default(7),
+	RATATOSKR_URL: z.string().optional(),
+	RATATOSKR_API_KEY: z.string().optional(),
+	AI_ENABLED: z
+		.enum(['true', 'false'])
+		.default('false')
+		.transform((v) => v === 'true'),
 })
 
 export type Env = z.infer<typeof envSchema>

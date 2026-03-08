@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 
 import { loadEnv } from './lib/env.js'
 import { openApiConfig } from './lib/openapi.js'
+import { vidarBanCheck } from './middleware/vidar.js'
 import { health } from './routes/health.js'
 import { login } from './routes/login.js'
 import { me } from './routes/me.js'
@@ -34,6 +35,10 @@ export function createApp() {
 	} else {
 		app.use('*', cors())
 	}
+
+	// --- Vidar ban check ---
+
+	app.use('/auth/*', vidarBanCheck())
 
 	// --- Routes ---
 
