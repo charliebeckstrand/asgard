@@ -110,7 +110,7 @@ jobs:
       - run: pnpm build
 
   saga:
-    name: Saga (Event Bus)
+    name: Saga (Events & Changelog)
     needs: changes
     if: needs.changes.outputs.saga == 'true'
     runs-on: ubuntu-latest
