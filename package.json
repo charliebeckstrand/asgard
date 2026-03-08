@@ -12,6 +12,9 @@
     "husky": "^9.1.7"
   },
   "scripts": {
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "lint": "biome check services/",
+    "lint:fix": "biome check --write services/",
+    "format": "biome format --write services/"
   }
 }

@@ -1,11 +1,11 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
-import { defineConfig } from "tsup"
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { defineConfig } from 'tsup'
 
 function findWorkspaceRoot(from: string): string {
 	let dir = resolve(from)
 	while (dir !== dirname(dir)) {
-		if (existsSync(join(dir, "pnpm-workspace.yaml"))) return dir
+		if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir
 		dir = dirname(dir)
 	}
 	return resolve(from)
@@ -13,13 +13,13 @@ function findWorkspaceRoot(from: string): string {
 
 function getWorkspacePackageNames(): string[] {
 	const root = findWorkspaceRoot(process.cwd())
-	const servicesDir = join(root, "services")
+	const servicesDir = join(root, 'services')
 	return readdirSync(servicesDir, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory())
 		.map((entry) => {
-			const pkgPath = join(servicesDir, entry.name, "package.json")
+			const pkgPath = join(servicesDir, entry.name, 'package.json')
 			try {
-				return JSON.parse(readFileSync(pkgPath, "utf-8")).name as string
+				return JSON.parse(readFileSync(pkgPath, 'utf-8')).name as string
 			} catch {
 				return null
 			}
@@ -29,12 +29,12 @@ function getWorkspacePackageNames(): string[] {
 
 export default defineConfig({
 	entry: {
-		index: "src/index.ts",
+		index: 'src/index.ts',
 	},
-	format: ["esm"],
-	target: "node22",
+	format: ['esm'],
+	target: 'node22',
 	noExternal: getWorkspacePackageNames(),
-	outDir: "dist",
+	outDir: 'dist',
 	clean: true,
 	dts: true,
 	sourcemap: true,

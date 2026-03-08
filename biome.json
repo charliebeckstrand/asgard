@@ -25,6 +25,6 @@
 		}
 	},
 	"files": {
-		"includes": ["services/*/src/**/*.ts", "services/*/*.config.ts"]
+		"includes": ["**/*.ts"]
 	}
 }

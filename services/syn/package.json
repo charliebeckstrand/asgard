@@ -12,9 +12,9 @@
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
+    "lint": "biome check --config-path=../.. .",
+    "lint:fix": "biome check --config-path=../.. --write .",
+    "format": "biome format --config-path=../.. --write .",
     "test": "vitest run",
     "test:watch": "vitest"
   },

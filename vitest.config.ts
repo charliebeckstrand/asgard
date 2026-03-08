@@ -1,19 +1,19 @@
-import { defineConfig } from "vitest/config"
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
 	test: {
 		globals: true,
-		environment: "node",
+		environment: 'node',
 		passWithNoTests: true,
 		server: {
 			deps: {
-				inline: ["mimir"],
+				inline: ['mimir'],
 			},
 		},
 	},
 	resolve: {
 		alias: {
-			"@": "./src",
+			'@': './src',
 		},
 	},
 })
