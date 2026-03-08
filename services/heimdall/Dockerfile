@@ -18,6 +18,7 @@ FROM base AS production
 WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY services/heimdall/package.json ./services/heimdall/
+COPY services/mimir/package.json ./services/mimir/
 RUN pnpm install --frozen-lockfile --prod --filter heimdall
 COPY --from=build /app/services/heimdall/dist ./services/heimdall/dist
 

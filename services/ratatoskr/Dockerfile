@@ -18,6 +18,7 @@ FROM base AS production
 WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY services/ratatoskr/package.json ./services/ratatoskr/
+COPY services/mimir/package.json ./services/mimir/
 RUN pnpm install --frozen-lockfile --prod --filter ratatoskr
 COPY --from=build /app/services/ratatoskr/dist ./services/ratatoskr/dist
 
