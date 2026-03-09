@@ -40,7 +40,11 @@ export function createEnvLoader<T extends z.ZodRawShape>(extra?: T) {
 	return function loadEnv() {
 		if (cached) return cached
 
-		const result = schema.safeParse(process.env)
+		// Treat empty strings as undefined so optional() fields work correctly
+		// (e.g. DigitalOcean sets unresolved secrets to "" instead of leaving them unset)
+		const env = Object.fromEntries(Object.entries(process.env).filter(([_, v]) => v !== ''))
+
+		const result = schema.safeParse(env)
 
 		if (!result.success) {
 			console.error('Invalid environment variables:', result.error.format())
