@@ -47,19 +47,6 @@ const MessageSchema = z.object({ message: z.string() }).openapi('AuthMessage')
 
 // --- Routes ---
 
-const healthRoute = createRoute({
-	method: 'get',
-	path: '/health',
-	tags: ['Auth'],
-	summary: 'Auth service health check',
-	responses: {
-		200: {
-			content: { 'application/json': { schema: MessageSchema } },
-			description: 'Auth service is running',
-		},
-	},
-})
-
 const loginRoute = createRoute({
 	method: 'post',
 	path: '/login',
@@ -150,9 +137,6 @@ const registerRoute = createRoute({
 // --- Handlers ---
 
 export const authRoutes = new OpenAPIHono()
-	.openapi(healthRoute, async (c) => {
-		return c.json({ message: 'Auth service is running' }, 200)
-	})
 	.openapi(loginRoute, async (c) => {
 		const env = loadEnv()
 

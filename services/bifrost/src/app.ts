@@ -26,6 +26,7 @@ export function createApp() {
 	// --- Routes ---
 
 	app.route('/auth', authRoutes)
+	app.route('/', health)
 	app.route('/api', health)
 	app.route('/api', users)
 
