@@ -1,148 +1,148 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-  workflow_call:
+    pull_request:
+        branches: [main]
+    push:
+        branches: [main]
+    workflow_call:
 
 jobs:
-  changes:
-    name: Detect changes
-    runs-on: ubuntu-latest
-    outputs:
-      bifrost: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.bifrost == 'true' }}
-      mimir: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.mimir == 'true' }}
-      heimdall: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.heimdall == 'true' || steps.filter.outputs.mimir == 'true' }}
-      saga: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.mimir == 'true' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            shared:
-              - '**'
-              - '!services/**'
-            bifrost:
-              - 'services/bifrost/**'
-            mimir:
-              - 'services/mimir/**'
-            heimdall:
-              - 'services/heimdall/**'
-            saga:
-              - 'services/saga/**'
+    changes:
+        name: Detect changes
+        runs-on: ubuntu-latest
+        outputs:
+            bifrost: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.bifrost == 'true' }}
+            mimir: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.mimir == 'true' }}
+            heimdall: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.heimdall == 'true' || steps.filter.outputs.mimir == 'true' }}
+            saga: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.mimir == 'true' }}
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dorny/paths-filter@v3
+              id: filter
+              with:
+                  filters: |
+                      shared:
+                        - '**'
+                        - '!services/**'
+                      bifrost:
+                        - 'services/bifrost/**'
+                      mimir:
+                        - 'services/mimir/**'
+                      heimdall:
+                        - 'services/heimdall/**'
+                      saga:
+                        - 'services/saga/**'
 
-  bifrost:
-    name: Bifrost (Gateway)
-    needs: changes
-    if: needs.changes.outputs.bifrost == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/bifrost
-    steps:
-      - uses: actions/checkout@v4
+    bifrost:
+        name: Bifrost (API Gateway)
+        needs: changes
+        if: needs.changes.outputs.bifrost == 'true'
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: services/bifrost
+        steps:
+            - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
 
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm test
-      - run: pnpm build
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm lint
+            - run: pnpm test
+            - run: pnpm build
 
-  mimir:
-    name: Mimir (Database)
-    needs: changes
-    if: needs.changes.outputs.mimir == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/mimir
-    steps:
-      - uses: actions/checkout@v4
+    mimir:
+        name: Mimir (Database)
+        needs: changes
+        if: needs.changes.outputs.mimir == 'true'
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: services/mimir
+        steps:
+            - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
 
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm test
-      - run: pnpm build
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm lint
+            - run: pnpm test
+            - run: pnpm build
 
-  saga:
-    name: Saga (Events and Changelog)
-    needs: changes
-    if: needs.changes.outputs.saga == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/saga
-    steps:
-      - uses: actions/checkout@v4
+    saga:
+        name: Saga (Event Bus)
+        needs: changes
+        if: needs.changes.outputs.saga == 'true'
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: services/saga
+        steps:
+            - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
 
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm test
-      - run: pnpm build
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm lint
+            - run: pnpm test
+            - run: pnpm build
 
-  heimdall:
-    name: Heimdall (Auth)
-    needs: changes
-    if: needs.changes.outputs.heimdall == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/heimdall
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
+    heimdall:
+        name: Heimdall (Auth)
+        needs: changes
+        if: needs.changes.outputs.heimdall == 'true'
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: services/heimdall
+        services:
+            postgres:
+                image: postgres:16-alpine
+                env:
+                    POSTGRES_USER: test
+                    POSTGRES_PASSWORD: test
+                    POSTGRES_DB: test
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+        steps:
+            - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
 
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm test
-        env:
-          DATABASE_URL: postgres://test:test@localhost:5432/test
-          SECRET_KEY: ci-test-secret-key-not-used-in-production
-      - run: pnpm build
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm lint
+            - run: pnpm test
+              env:
+                  DATABASE_URL: postgres://test:test@localhost:5432/test
+                  SECRET_KEY: ci-test-secret-key-not-used-in-production
+            - run: pnpm build

@@ -1,7 +1,7 @@
 export const openApiConfig = {
 	openapi: '3.0.0',
 	info: {
-		title: 'Vidar Security Service',
+		title: 'Vidar',
 		version: '0.1.0',
 		description:
 			'Security monitoring microservice for threat detection, IP ban enforcement, and optional AI-powered analysis',
