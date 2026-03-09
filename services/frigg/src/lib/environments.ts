@@ -64,18 +64,22 @@ export function loadEnvironments(): EnvironmentData {
 		for (const [varName, config] of Object.entries(manifest.vars)) {
 			if (serviceOverrides[varName] !== undefined) {
 				resolved[varName] = serviceOverrides[varName]
+
 				continue
 			}
 
 			switch (config.type) {
 				case 'value': {
 					resolved[varName] = config.default ?? ''
+
 					break
 				}
 
 				case 'secret': {
 					const cacheKey = `${serviceName}:${varName}`
+
 					resolved[varName] = secretsCache[cacheKey] ?? ''
+
 					break
 				}
 
@@ -84,6 +88,7 @@ export function loadEnvironments(): EnvironmentData {
 
 					if (!refManifest) {
 						resolved[varName] = ''
+
 						break
 					}
 
@@ -92,6 +97,7 @@ export function loadEnvironments(): EnvironmentData {
 
 						if (refVarConfig?.type === 'secret') {
 							const cacheKey = `${config.service}:${config.key}`
+
 							resolved[varName] = secretsCache[cacheKey] ?? ''
 						} else if (refVarConfig?.type === 'value') {
 							resolved[varName] = refVarConfig.default ?? ''
@@ -110,6 +116,7 @@ export function loadEnvironments(): EnvironmentData {
 	}
 
 	cached = result
+
 	return cached
 }
 

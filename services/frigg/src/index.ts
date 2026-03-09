@@ -7,6 +7,7 @@ const env = loadEnv()
 
 // Pre-load environments at startup to fail fast if the file is missing
 const environments = loadEnvironments()
+
 const serviceCount = Object.keys(environments).length
 
 const app = createApp()

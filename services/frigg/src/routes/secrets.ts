@@ -51,10 +51,12 @@ secrets.openapi(secretsStatusRoute, (c) => {
 			if (consumer === owner) continue
 
 			const consumerConfig = allServices[consumer]
+
 			if (!consumerConfig) continue
 
 			// Find which var in the consumer's manifest references this key
 			const manifest = manifests[consumer]
+
 			if (!manifest) continue
 
 			for (const [varName, config] of Object.entries(manifest.vars)) {
@@ -67,6 +69,7 @@ secrets.openapi(secretsStatusRoute, (c) => {
 		}
 
 		const consistent = values.size <= 1
+
 		const generated = values.size > 0 && !Array.from(values).some((v) => v === '')
 
 		return {
