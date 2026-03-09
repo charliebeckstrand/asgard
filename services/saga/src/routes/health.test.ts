@@ -39,7 +39,7 @@ describe('OpenAPI', () => {
 		const spec = (await res.json()) as { openapi: string; info: { title: string } }
 
 		expect(spec.openapi).toBe('3.0.0')
-		expect(spec.info.title).toBe('Saga Event Bus')
+		expect(spec.info.title).toBe('Saga')
 	})
 
 	it('GET /events/docs returns Swagger UI HTML', async () => {

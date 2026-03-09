@@ -47,7 +47,7 @@ describe('OpenAPI', () => {
 		const spec = (await res.json()) as OpenAPISpec
 
 		expect(spec.openapi).toBe('3.0.0')
-		expect(spec.info.title).toBe('Bifrost API Gateway')
+		expect(spec.info.title).toBe('Bifrost')
 		expect(spec.paths['/api/health']).toBeDefined()
 		expect(spec.paths['/api/users']).toBeDefined()
 	})
