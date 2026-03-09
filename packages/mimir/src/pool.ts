@@ -19,7 +19,7 @@ export function createPool(databaseUrl: string, options?: PoolOptions): Pool {
 
 	return new Pool({
 		host: url.hostname,
-		port: parseInt(url.port, 10) || 5432,
+		port: Number.parseInt(url.port, 10) || 5432,
 		database: url.pathname.slice(1),
 		user: decodeURIComponent(url.username),
 		password: decodeURIComponent(url.password),

@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto'
 import type { MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { loadEnv } from '../lib/env.js'
@@ -16,7 +17,10 @@ export function apiKeyAuth(): MiddlewareHandler {
 			throw new HTTPException(500, { message: 'HUGINN_API_KEY is not configured' })
 		}
 
-		if (apiKey !== env.HUGINN_API_KEY) {
+		const a = Buffer.from(apiKey)
+		const b = Buffer.from(env.HUGINN_API_KEY)
+
+		if (a.length !== b.length || !timingSafeEqual(a, b)) {
 			throw new HTTPException(401, { message: 'Invalid API key' })
 		}
 

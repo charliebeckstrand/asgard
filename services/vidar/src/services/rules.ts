@@ -106,13 +106,13 @@ async function checkRule(
 			 FROM security_events
 			 WHERE ip = $1
 			   AND event_type = $2
-			   AND created_at > now() - interval '${rule.window_minutes} minutes'`,
-			[ip, rule.event_type],
+			   AND created_at > now() - make_interval(mins => $3::int)`,
+			[ip, rule.event_type, rule.window_minutes],
 		)
 
-		const eventCount = parseInt(rows[0].event_count, 10)
+		const eventCount = Number.parseInt(rows[0].event_count, 10)
 
-		const accountCount = parseInt(rows[0].account_count, 10)
+		const accountCount = Number.parseInt(rows[0].account_count, 10)
 
 		return eventCount >= rule.threshold && accountCount >= rule.distinct_accounts
 	}
@@ -121,9 +121,9 @@ async function checkRule(
 		`SELECT COUNT(*)::text AS count FROM security_events
 		 WHERE ip = $1
 		   AND event_type = $2
-		   AND created_at > now() - interval '${rule.window_minutes} minutes'`,
-		[ip, rule.event_type],
+		   AND created_at > now() - make_interval(mins => $3::int)`,
+		[ip, rule.event_type, rule.window_minutes],
 	)
 
-	return parseInt(rows[0].count, 10) >= rule.threshold
+	return Number.parseInt(rows[0].count, 10) >= rule.threshold
 }

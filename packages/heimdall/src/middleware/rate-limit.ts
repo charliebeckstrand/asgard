@@ -10,12 +10,26 @@ const buckets = new Map<string, BucketEntry>()
 
 const RATE = 5 // tokens per second
 const BURST = 10 // max bucket size
+const EVICT_AFTER_MS = 3_600_000 // 1 hour
+const SWEEP_INTERVAL_MS = 300_000 // 5 minutes
+
+let lastSweep = Date.now()
 
 export function rateLimit(): MiddlewareHandler {
 	return async (c, next) => {
 		const key = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown'
 
 		const now = Date.now()
+
+		if (now - lastSweep > SWEEP_INTERVAL_MS) {
+			lastSweep = now
+
+			for (const [k, v] of buckets) {
+				if (now - v.lastRefill > EVICT_AFTER_MS) {
+					buckets.delete(k)
+				}
+			}
+		}
 
 		let entry = buckets.get(key)
 

@@ -48,7 +48,7 @@ jobs:
                       vidar:
                         - 'services/vidar/**'
                       frigg:
-                        - 'services/frigg/**'
+                        - 'packages/frigg/**'
 
     norns:
         name: Norns (Lifecycle)

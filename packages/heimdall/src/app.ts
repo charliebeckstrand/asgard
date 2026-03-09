@@ -2,6 +2,7 @@ import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { createOpenApiConfig } from 'grid'
 
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { HeimdallConfig } from './config.js'
 import { configure } from './config.js'
 import { vidarBanCheck } from './middleware/vidar.js'
@@ -52,7 +53,7 @@ export function createAuthApp(
 
 	app.onError((err, c) => {
 		if ('status' in err && typeof err.status === 'number') {
-			return c.json({ detail: err.message }, err.status as 400)
+			return c.json({ detail: err.message }, err.status as ContentfulStatusCode)
 		}
 
 		console.error(`Unhandled error: ${err.message}`, err.stack)

@@ -1,4 +1,5 @@
 import type { Context } from 'hono'
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 export function errorHandler(err: Error, c: Context) {
 	if ('status' in err && typeof err.status === 'number') {
@@ -8,7 +9,7 @@ export function errorHandler(err: Error, c: Context) {
 				message: err.message,
 				statusCode: err.status,
 			},
-			err.status as 400,
+			err.status as ContentfulStatusCode,
 		)
 	}
 

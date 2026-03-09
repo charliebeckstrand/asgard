@@ -129,7 +129,7 @@ importers:
   packages/mimir:
     dependencies:
       pg:
-        specifier: ^8.13.0
+        specifier: ^8.16.0
         version: 8.20.0
     devDependencies:
       '@biomejs/biome':

@@ -40,21 +40,23 @@ export async function createBan(
 ): Promise<BanRow> {
 	const pool = getPool()
 
-	const expiresAt = options?.duration_minutes
-		? `now() + interval '${options.duration_minutes} minutes'`
-		: null
-
 	const { rows } = await pool.query<BanRow>(
 		`INSERT INTO bans (ip, reason, rule_id, created_by, expires_at)
-		 VALUES ($1, $2, $3, $4, ${expiresAt ? expiresAt : 'NULL'})
+		 VALUES ($1, $2, $3, $4, CASE WHEN $5::int IS NOT NULL THEN now() + make_interval(mins => $5::int) ELSE NULL END)
 		 ON CONFLICT (ip) DO UPDATE SET
 		   reason = EXCLUDED.reason,
 		   rule_id = EXCLUDED.rule_id,
 		   created_by = EXCLUDED.created_by,
-		   expires_at = ${expiresAt ? expiresAt : 'NULL'},
+		   expires_at = EXCLUDED.expires_at,
 		   created_at = now()
 		 RETURNING *`,
-		[ip, reason, options?.rule_id ?? null, options?.created_by ?? 'system'],
+		[
+			ip,
+			reason,
+			options?.rule_id ?? null,
+			options?.created_by ?? 'system',
+			options?.duration_minutes ?? null,
+		],
 	)
 
 	return rows[0]
