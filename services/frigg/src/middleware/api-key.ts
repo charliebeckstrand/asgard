@@ -19,7 +19,7 @@ export function apiKeyAuth(): MiddlewareHandler {
 		if (!apiKey) {
 			reportEvent('config_auth_failed', ip, { reason: 'missing_api_key' })
 
-			throw new HTTPException(401, { message: 'Missing API key' })
+			throw new HTTPException(401, { message: 'Missing X-API-Key header' })
 		}
 
 		const env = loadEnv()
