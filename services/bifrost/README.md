@@ -2,11 +2,6 @@
 
 API gateway and Backend-for-Frontend (BFF).
 
-- **Auth** — registration, login, token refresh, and session management via the `heimdall` package
-- **Session management** — cookie-based sessions wrapping JWTs with automatic token refresh
-- **IP ban enforcement** — integrates with Vidar to block banned IPs on auth routes
-- **Client generation** — generates TypeScript types from downstream OpenAPI specs via `pnpm generate:client`
-
 ## Routes
 
 | Prefix | Path | Description |
