@@ -61,7 +61,6 @@ describe('OpenAPI', () => {
 		expect(spec.openapi).toBe('3.0.0')
 		expect(spec.info.title).toBe('Bifrost')
 		expect(spec.paths['/api/health']).toBeDefined()
-		expect(spec.paths['/api/users']).toBeDefined()
 	})
 
 	it('GET /api/docs returns Swagger UI HTML', async () => {

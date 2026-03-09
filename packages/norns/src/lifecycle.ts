@@ -68,6 +68,8 @@ export function setupLifecycle({ server, name, port, onShutdown }: LifecycleOpti
 	}
 
 	for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+		process.removeAllListeners(signal)
+
 		process.once(signal, () => {
 			void shutdown(signal).catch((error) => {
 				console.error(`Failed to shut down ${name} cleanly after ${signal}`, error)

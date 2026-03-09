@@ -14,8 +14,19 @@ const healthRoute = createRoute({
 	},
 })
 
+const startTime = Date.now()
+
 export const health = new OpenAPIHono()
 
 health.openapi(healthRoute, (c) => {
-	return c.json({ status: 'ok', service: 'vidar' }, 200)
+	const uptimeSeconds = (Date.now() - startTime) / 1000
+
+	return c.json(
+		{
+			status: 'healthy' as const,
+			version: '0.1.0',
+			uptime: uptimeSeconds,
+		},
+		200,
+	)
 })

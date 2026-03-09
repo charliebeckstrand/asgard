@@ -20,10 +20,10 @@ export function bearer(): MiddlewareHandler<AuthEnv> {
 
 		const token = authorization.slice(7)
 
-		let claims: ReturnType<typeof verifyToken>
+		let claims: Awaited<ReturnType<typeof verifyToken>>
 
 		try {
-			claims = verifyToken(token)
+			claims = await verifyToken(token)
 		} catch {
 			throw new HTTPException(401, { message: 'Invalid or expired token' })
 		}

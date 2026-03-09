@@ -52,8 +52,8 @@ export async function authenticateUser(
 		throw new AuthError('account_inactive', 'Account is inactive')
 	}
 
-	const access = signToken(creds.id, 'access')
-	const refresh = signToken(creds.id, 'refresh')
+	const access = await signToken(creds.id, 'access')
+	const refresh = await signToken(creds.id, 'refresh')
 
 	return {
 		access_token: access.token,
@@ -87,10 +87,10 @@ export async function registerNewUser(
 }
 
 export async function verifyAccessToken(token: string): Promise<UserRow> {
-	let claims: ReturnType<typeof verifyToken>
+	let claims: Awaited<ReturnType<typeof verifyToken>>
 
 	try {
-		claims = verifyToken(token)
+		claims = await verifyToken(token)
 	} catch {
 		throw new AuthError('invalid_token', 'Invalid or expired token')
 	}
@@ -109,10 +109,10 @@ export async function verifyAccessToken(token: string): Promise<UserRow> {
 }
 
 export async function refreshTokenPair(refreshToken: string): Promise<TokenPair> {
-	let claims: ReturnType<typeof verifyToken>
+	let claims: Awaited<ReturnType<typeof verifyToken>>
 
 	try {
-		claims = verifyToken(refreshToken)
+		claims = await verifyToken(refreshToken)
 	} catch {
 		throw new AuthError('invalid_token', 'Invalid or expired refresh token')
 	}
@@ -127,8 +127,8 @@ export async function refreshTokenPair(refreshToken: string): Promise<TokenPair>
 		throw new AuthError('invalid_token', 'Invalid or expired refresh token')
 	}
 
-	const access = signToken(user.id, 'access')
-	const newRefresh = signToken(user.id, 'refresh')
+	const access = await signToken(user.id, 'access')
+	const newRefresh = await signToken(user.id, 'refresh')
 
 	return {
 		access_token: access.token,

@@ -28,23 +28,6 @@ export function loadManifests(servicesDir: string): ManifestData {
 }
 
 /**
- * Build a map of secret ownership: which service owns each secret.
- */
-export function getSecretOwnership(manifests: ManifestData): Record<string, string> {
-	const ownership: Record<string, string> = {}
-
-	for (const [serviceName, manifest] of Object.entries(manifests)) {
-		for (const [varName, config] of Object.entries(manifest.vars)) {
-			if (config.type === 'secret') {
-				ownership[varName] = serviceName
-			}
-		}
-	}
-
-	return ownership
-}
-
-/**
  * Build a map of secret consumers: which services use each secret.
  */
 export function getSecretConsumers(manifests: ManifestData): Record<string, string[]> {

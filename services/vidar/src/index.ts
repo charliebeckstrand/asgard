@@ -3,9 +3,18 @@ import { setupLifecycle } from 'norns'
 import { createApp } from './app.js'
 import { closePool } from './lib/db.js'
 import { loadEnv } from './lib/env.js'
+import { cleanExpiredBans } from './services/bans.js'
 
 const env = loadEnv()
 const app = createApp()
+
+const CLEANUP_INTERVAL_MS = 3_600_000 // 1 hour
+
+const cleanupTimer = setInterval(() => {
+	cleanExpiredBans().catch((err) => {
+		console.error('[vidar] Failed to clean expired bans:', err)
+	})
+}, CLEANUP_INTERVAL_MS)
 
 const server = serve(
 	{
@@ -18,4 +27,13 @@ const server = serve(
 	},
 )
 
-setupLifecycle({ server, name: 'Vidar', port: env.PORT, onShutdown: closePool })
+setupLifecycle({
+	server,
+	name: 'Vidar',
+	port: env.PORT,
+	onShutdown: async () => {
+		clearInterval(cleanupTimer)
+
+		await closePool()
+	},
+})

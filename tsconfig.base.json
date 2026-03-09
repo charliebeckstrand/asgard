@@ -15,7 +15,10 @@
 		"isolatedModules": true,
 		"verbatimModuleSyntax": true,
 		"lib": ["ES2022"],
-		"types": ["node"]
+		"types": ["node"],
+		"paths": {
+			"@/*": ["./src/*"]
+		}
 	},
 	"exclude": ["node_modules", "dist"]
 }

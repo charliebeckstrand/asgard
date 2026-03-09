@@ -6,8 +6,9 @@ export { ErrorSchema, MessageSchema } from 'grid'
 
 export const HealthResponseSchema = z
 	.object({
-		status: z.string(),
-		service: z.string(),
+		status: z.enum(['healthy', 'degraded', 'unhealthy']),
+		version: z.string(),
+		uptime: z.number(),
 	})
 	.openapi('HealthResponse')
 

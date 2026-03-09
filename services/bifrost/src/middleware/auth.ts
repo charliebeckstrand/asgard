@@ -5,7 +5,6 @@ import { HTTPException } from 'hono/http-exception'
 export type AuthUser = {
 	id: string
 	email: string
-	roles?: string[]
 }
 
 type AuthEnv = {
@@ -40,30 +39,6 @@ export function auth(): MiddlewareHandler<AuthEnv> {
 			c.set('user', { id: user.id, email: user.email })
 		} catch {
 			throw new HTTPException(401, { message: 'Invalid or expired token' })
-		}
-
-		await next()
-	}
-}
-
-/**
- * Role-based authorization middleware.
- * Use after `auth()` to restrict access to specific roles.
- */
-export function requireRole(...roles: string[]): MiddlewareHandler<AuthEnv> {
-	return async (c: Context<AuthEnv>, next) => {
-		const user = c.get('user')
-
-		if (!user) {
-			throw new HTTPException(401, { message: 'Not authenticated' })
-		}
-
-		const hasRole = roles.some((role) => user.roles?.includes(role))
-
-		if (!hasRole) {
-			throw new HTTPException(403, {
-				message: `Insufficient permissions. Required: ${roles.join(', ')}`,
-			})
 		}
 
 		await next()

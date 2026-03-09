@@ -2,7 +2,7 @@ export { createEnvLoader, getManifestPort } from './env.js'
 export { resolveEnvironments, writeEnvFiles } from './environments.js'
 export type { InitOptions } from './init.js'
 export { initEnvironments } from './init.js'
-export { getSecretConsumers, getSecretOwnership, loadManifests } from './manifests.js'
+export { getSecretConsumers, loadManifests } from './manifests.js'
 export type { GenerateSecretsOptions } from './secrets.js'
 export { generateSecrets, loadSecretsCache, saveSecretsCache } from './secrets.js'
 export type {
