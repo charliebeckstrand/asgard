@@ -15,7 +15,8 @@
   "scripts": {
     "prepare": "husky || true",
     "build": "turbo run build",
-    "dev": "turbo run dev --concurrency=15",
+    "dev": "bash scripts/dev.sh",
+    "dev:bare": "turbo run dev --concurrency=15",
     "test": "turbo run test",
     "lint": "biome check packages/ services/",
     "lint:fix": "biome check --write packages/ services/",
