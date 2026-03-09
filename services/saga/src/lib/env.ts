@@ -3,7 +3,9 @@ import { resolve } from 'node:path'
 import { z } from 'zod'
 
 function getManifestPort(): number {
-	const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'manifest.json'), 'utf-8'))
+	const manifest = JSON.parse(
+		readFileSync(resolve(import.meta.dirname, '..', 'manifest.json'), 'utf-8'),
+	)
 
 	return manifest.port
 }
