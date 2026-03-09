@@ -41,4 +41,7 @@ else
 	echo ""
 fi
 
-exec pnpm turbo run dev --concurrency=15
+pnpm turbo run dev --concurrency=15 &
+TURBO_PID=$!
+
+wait $TURBO_PID 2>/dev/null
