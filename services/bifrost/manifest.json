@@ -2,7 +2,7 @@
 	"name": "bifrost",
 	"port": 3000,
 	"vars": {
-		"DATABASE_URL": { "type": "value", "default": "postgres://heimdall:heimdall@localhost:5432/heimdall" },
+		"DATABASE_URL": { "type": "value", "default": "postgres://bifrost:bifrost@localhost:5432/bifrost" },
 		"SECRET_KEY": { "type": "secret" },
 		"SESSION_SECRET": { "type": "secret" },
 		"VIDAR_URL": { "type": "ref", "service": "vidar" },
