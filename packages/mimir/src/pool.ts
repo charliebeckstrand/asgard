@@ -1,6 +1,4 @@
-import pg from 'pg'
-
-const { Pool } = pg
+import { Pool } from 'pg'
 
 export interface PoolOptions {
 	max?: number
@@ -14,7 +12,7 @@ export interface PoolOptions {
  * Uses decomposed connection params instead of a connection string to avoid
  * SELF_SIGNED_CERT_IN_CHAIN errors on DigitalOcean managed Postgres.
  */
-export function createPool(databaseUrl: string, options?: PoolOptions): pg.Pool {
+export function createPool(databaseUrl: string, options?: PoolOptions): Pool {
 	const url = new URL(databaseUrl)
 
 	const requiresSsl = url.searchParams.has('sslmode')
@@ -32,6 +30,6 @@ export function createPool(databaseUrl: string, options?: PoolOptions): pg.Pool 
 	})
 }
 
-export async function closePool(pool: pg.Pool): Promise<void> {
+export async function closePool(pool: Pool): Promise<void> {
 	await pool.end()
 }
