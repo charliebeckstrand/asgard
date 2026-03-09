@@ -1,6 +1,6 @@
 # frigg
 
-Config oracle — generates secrets, resolves environments, and validates service configurations.
+Generates secrets, resolves environments, and validates service configurations.
 
 Reads `manifest.json` from each service, generates cryptographic secrets, resolves cross-service references, and writes `.env` files.
 
