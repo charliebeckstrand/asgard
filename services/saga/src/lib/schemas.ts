@@ -62,14 +62,14 @@ export const LogEntrySchema = z
 	})
 	.openapi('LogEntry')
 
-export const SearchResultSchema = z
+export const LogListSchema = z
 	.object({
 		data: z.array(LogEntrySchema),
 		total: z.number(),
 	})
-	.openapi('SearchResult')
+	.openapi('LogList')
 
-export const SearchQuerySchema = z.object({
+export const LogQuerySchema = z.object({
 	type: z.string().optional().openapi({ description: 'Filter by log type' }),
 	level: z
 		.enum(['debug', 'info', 'warn', 'error', 'fatal'])

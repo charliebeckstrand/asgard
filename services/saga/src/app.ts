@@ -6,8 +6,7 @@ import { HTTPException } from 'hono/http-exception'
 import { openApiConfig } from './lib/openapi.js'
 import { requestLogger } from './middleware/logger.js'
 import { health } from './routes/health.js'
-import { ingest } from './routes/ingest.js'
-import { search } from './routes/search.js'
+import { logs } from './routes/logs.js'
 
 export function createApp() {
 	const app = new OpenAPIHono()
@@ -20,8 +19,7 @@ export function createApp() {
 	// --- Routes ---
 
 	app.route('/logs', health)
-	app.route('/logs', ingest)
-	app.route('/logs', search)
+	app.route('/logs', logs)
 
 	// --- OpenAPI ---
 

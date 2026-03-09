@@ -13,9 +13,9 @@ All routes are prefixed with `/logs`.
 
 | Method | Path | Description |
 | ------ | --------------- | ----------------------- |
-| POST | `/ingest` | Ingest a single log |
-| POST | `/ingest/batch` | Ingest multiple logs |
-| GET | `/search` | Search and filter logs |
+| GET | `/` | List and filter logs |
+| POST | `/` | Create a single log |
+| POST | `/batch` | Create multiple logs |
 | GET | `/health` | Health check |
 | GET | `/docs` | Swagger UI |
 | GET | `/openapi.json` | OpenAPI spec |

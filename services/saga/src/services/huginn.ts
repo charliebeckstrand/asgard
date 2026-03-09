@@ -17,7 +17,7 @@ export async function registerHuginnSubscription(): Promise<void> {
 			},
 			body: JSON.stringify({
 				topic: 'log.*',
-				callback_url: `http://localhost:${env.PORT}/logs/ingest`,
+				callback_url: `http://localhost:${env.PORT}/logs`,
 				service: 'saga',
 			}),
 			signal: AbortSignal.timeout(5000),

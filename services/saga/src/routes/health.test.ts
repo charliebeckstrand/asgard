@@ -67,8 +67,8 @@ describe('Error handling', () => {
 })
 
 describe('Auth middleware', () => {
-	it('returns 401 for ingest without API key', async () => {
-		const res = await app.request('/logs/ingest', {
+	it('returns 401 for POST /logs without API key', async () => {
+		const res = await app.request('/logs', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ level: 'info', service: 'test', message: 'test' }),
@@ -77,8 +77,8 @@ describe('Auth middleware', () => {
 		expect(res.status).toBe(401)
 	})
 
-	it('returns 401 for search without API key', async () => {
-		const res = await app.request('/logs/search')
+	it('returns 401 for GET /logs without API key', async () => {
+		const res = await app.request('/logs')
 
 		expect(res.status).toBe(401)
 	})
