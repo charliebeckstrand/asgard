@@ -26,6 +26,7 @@ export function loadManifests(): ManifestData {
 	if (cached) return cached
 
 	const servicesDir = resolve(getServicesDir(), 'services')
+
 	const manifests: ManifestData = {}
 
 	for (const entry of readdirSync(servicesDir, { withFileTypes: true })) {
@@ -37,6 +38,7 @@ export function loadManifests(): ManifestData {
 
 		try {
 			const manifest: ServiceManifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
+
 			manifests[manifest.name || entry.name] = manifest
 		} catch {
 			// Skip malformed manifests
@@ -49,6 +51,7 @@ export function loadManifests(): ManifestData {
 
 export function getManifest(service: string): ServiceManifest | null {
 	const manifests = loadManifests()
+
 	return manifests[service] ?? null
 }
 
@@ -66,6 +69,7 @@ export function clearManifestCache(): void {
  */
 export function getSecretOwnership(): Record<string, string> {
 	const manifests = loadManifests()
+
 	const ownership: Record<string, string> = {}
 
 	for (const [serviceName, manifest] of Object.entries(manifests)) {
@@ -85,17 +89,22 @@ export function getSecretOwnership(): Record<string, string> {
  */
 export function getSecretConsumers(): Record<string, string[]> {
 	const manifests = loadManifests()
+
 	const consumers: Record<string, string[]> = {}
 
 	for (const [serviceName, manifest] of Object.entries(manifests)) {
 		for (const [varName, config] of Object.entries(manifest.vars)) {
 			if (config.type === 'secret') {
 				const list = consumers[varName] ?? []
+
 				list.push(serviceName)
+
 				consumers[varName] = list
 			} else if (config.type === 'ref' && config.key) {
 				const list = consumers[config.key] ?? []
+
 				list.push(serviceName)
+
 				consumers[config.key] = list
 			}
 		}
