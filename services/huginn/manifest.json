@@ -1,6 +1,6 @@
 {
 	"name": "huginn",
-	"port": 3003,
+	"port": 3002,
 	"vars": {
 		"DATABASE_URL": { "type": "value", "default": "postgres://user:password@localhost:5432/yggdrasil" },
 		"HUGINN_API_KEY": { "type": "secret" }

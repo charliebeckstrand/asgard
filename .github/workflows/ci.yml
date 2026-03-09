@@ -16,7 +16,7 @@ jobs:
             norns: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.norns == 'true' }}
             mimir: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.mimir == 'true' }}
             heimdall: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.heimdall == 'true' }}
-            saga: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.mimir == 'true' }}
+            saga: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.saga == 'true' }}
             huginn: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.huginn == 'true' || steps.filter.outputs.mimir == 'true' }}
             hermes: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.hermes == 'true' }}
             vidar: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.vidar == 'true' || steps.filter.outputs.mimir == 'true' }}
@@ -40,7 +40,7 @@ jobs:
                       heimdall:
                         - 'packages/heimdall/**'
                       saga:
-                        - 'services/saga/**'
+                        - 'packages/saga/**'
                       huginn:
                         - 'services/huginn/**'
                       hermes:
@@ -149,7 +149,7 @@ jobs:
             - run: pnpm turbo run build --filter=frigg...
 
     saga:
-        name: Saga (Logging)
+        name: Saga (Logging Package)
         needs: changes
         if: needs.changes.outputs.saga == 'true'
         runs-on: ubuntu-latest
@@ -165,8 +165,7 @@ jobs:
                   cache-dependency-path: pnpm-lock.yaml
 
             - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test --filter=saga
-            - run: pnpm turbo run build --filter=saga...
+            - run: pnpm turbo run lint test build --filter=saga
 
     huginn:
         name: Huginn (Event Bus)

@@ -7,16 +7,16 @@ TypeScript Microservices (Hono + Turborepo)
 | Service | Role | Port |
 | --- | --- | --- |
 | **[Bifrost](services/bifrost)** | API Gateway | `3000` |
-| **[Saga](services/saga)** | Logging | `3001` |
-| **[Hermes](services/hermes)** | WebSockets | `3002` |
-| **[Huginn](services/huginn)** | Event Bus | `3003` |
-| **[Vidar](services/vidar)** | Monitoring | `3004` |
+| **[Hermes](services/hermes)** | WebSockets | `3001` |
+| **[Huginn](services/huginn)** | Event Bus | `3002` |
+| **[Vidar](services/vidar)** | Monitoring | `3003` |
 
 ## Packages
 
 | Package | Description |
 | --- | --- |
 | **[Heimdall](packages/heimdall)** | JWT authentication and user management |
+| **[Saga](packages/saga)** | Structured log ingestion and querying |
 | **[Mimir](packages/mimir)** | Shared PostgreSQL connection pool |
 | **[Grid](packages/grid)** | Shared Hono middleware, schemas, and OpenAPI config |
 | **[Norns](packages/norns)** | Server lifecycle and graceful shutdown |

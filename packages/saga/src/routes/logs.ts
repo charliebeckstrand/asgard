@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
+import type { Pool } from 'pg'
 import {
 	BatchCreateSchema,
 	CreateLogSchema,
@@ -7,7 +8,6 @@ import {
 	LogListSchema,
 	LogQuerySchema,
 } from '../lib/schemas.js'
-import { apiKeyAuth } from '../middleware/auth.js'
 import { createBatch, createLog, queryLogs } from '../services/logs.js'
 
 const listRoute = createRoute({
@@ -73,28 +73,32 @@ const batchCreateRoute = createRoute({
 	},
 })
 
-export const logs = new OpenAPIHono()
+export function createLogsRouter(pool: Pool) {
+	const logs = new OpenAPIHono()
 
-logs.use('/', apiKeyAuth())
-logs.use('/batch', apiKeyAuth())
+	logs.openapi(listRoute, async (c) => {
+		const query = c.req.valid('query')
 
-logs.openapi(listRoute, async (c) => {
-	const query = c.req.valid('query')
-	const result = await queryLogs(query)
+		const result = await queryLogs(pool, query)
 
-	return c.json(result, 200)
-})
+		return c.json(result, 200)
+	})
 
-logs.openapi(createRoute_, async (c) => {
-	const body = c.req.valid('json')
-	const entry = await createLog(body)
+	logs.openapi(createRoute_, async (c) => {
+		const body = c.req.valid('json')
 
-	return c.json(entry, 201)
-})
+		const entry = await createLog(pool, body)
 
-logs.openapi(batchCreateRoute, async (c) => {
-	const { logs: logEntries } = c.req.valid('json')
-	const entries = await createBatch(logEntries)
+		return c.json(entry, 201)
+	})
 
-	return c.json({ data: entries, total: entries.length }, 201)
-})
+	logs.openapi(batchCreateRoute, async (c) => {
+		const { logs: logEntries } = c.req.valid('json')
+
+		const entries = await createBatch(pool, logEntries)
+
+		return c.json({ data: entries, total: entries.length }, 201)
+	})
+
+	return logs
+}

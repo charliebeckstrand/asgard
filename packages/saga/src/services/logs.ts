@@ -1,4 +1,4 @@
-import { getPool } from '../lib/db.js'
+import type { Pool } from 'pg'
 
 type LogInput = {
 	type: string
@@ -33,9 +33,9 @@ type LogList = {
 	total: number
 }
 
-export async function createLog(input: LogInput): Promise<LogEntry> {
-	const pool = getPool()
+export type { LogEntry, LogInput, LogList, QueryInput }
 
+export async function createLog(pool: Pool, input: LogInput): Promise<LogEntry> {
 	const { rows } = await pool.query<LogEntry>(
 		`INSERT INTO saga.logs (type, level, service, message, metadata)
 		 VALUES ($1, $2, $3, $4, $5)
@@ -46,9 +46,7 @@ export async function createLog(input: LogInput): Promise<LogEntry> {
 	return rows[0]
 }
 
-export async function createBatch(inputs: LogInput[]): Promise<LogEntry[]> {
-	const pool = getPool()
-
+export async function createBatch(pool: Pool, inputs: LogInput[]): Promise<LogEntry[]> {
 	const values: string[] = []
 	const params: unknown[] = []
 	let paramIndex = 1
@@ -77,9 +75,7 @@ export async function createBatch(inputs: LogInput[]): Promise<LogEntry[]> {
 	return rows
 }
 
-export async function queryLogs(input: QueryInput): Promise<LogList> {
-	const pool = getPool()
-
+export async function queryLogs(pool: Pool, input: QueryInput): Promise<LogList> {
 	const conditions: string[] = []
 	const params: unknown[] = []
 	let paramIndex = 1
