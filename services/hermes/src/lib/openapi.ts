@@ -1,16 +1,6 @@
-import { getManifestPort } from './env.js'
+import { createOpenApiConfig } from 'grid'
 
-export const openApiConfig = {
-	openapi: '3.0.0',
-	info: {
-		title: 'Hermes',
-		version: '0.1.0',
-		description: 'Stateless multi-channel messaging relay with real-time event streaming',
-	},
-	servers: [
-		{
-			url: `http://localhost:${getManifestPort()}`,
-			description: 'Local development',
-		},
-	],
-}
+export const openApiConfig = createOpenApiConfig({
+	title: 'Hermes',
+	description: 'Stateless multi-channel messaging relay with real-time event streaming',
+})

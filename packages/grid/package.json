@@ -1,8 +1,10 @@
 {
-	"name": "vidar",
+	"name": "grid",
 	"version": "0.1.0",
-	"description": "Security monitoring microservice for threat detection and IP ban enforcement",
+	"description": "Shared Hono service utilities — middleware, schemas, error handling, and OpenAPI config",
 	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -10,9 +12,8 @@
 		}
 	},
 	"scripts": {
-		"dev": "tsx watch --env-file=.env src/index.ts",
 		"build": "tsup",
-		"start": "node dist/index.js",
+		"dev": "tsup --watch",
 		"lint": "biome check --config-path=../.. .",
 		"lint:fix": "biome check --config-path=../.. --write .",
 		"format": "biome format --config-path=../.. --write .",
@@ -21,14 +22,9 @@
 	},
 	"packageManager": "pnpm@10.29.3",
 	"dependencies": {
-		"@hono/node-server": "^1.19.11",
-		"@hono/swagger-ui": "^0.6.0",
 		"@hono/zod-openapi": "^1.2.2",
 		"frigg": "workspace:*",
-		"grid": "workspace:*",
 		"hono": "^4.12.5",
-		"norns": "workspace:*",
-		"mimir": "workspace:*",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
