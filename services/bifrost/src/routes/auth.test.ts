@@ -26,9 +26,11 @@ function heimdallTokenResponse(overrides?: Partial<Record<string, unknown>>) {
 
 function getCookieFromResponse(res: Response): string | undefined {
 	const setCookie = res.headers.get('set-cookie')
+
 	if (!setCookie) return undefined
 
 	const match = setCookie.match(/bifrost_session=([^;]+)/)
+
 	return match?.[1]
 }
 
@@ -66,6 +68,7 @@ describe('Auth routes', () => {
 			expect(body.expires_in).toBe(3600)
 
 			const cookie = getCookieFromResponse(res)
+
 			expect(cookie).toBeDefined()
 		})
 
@@ -127,6 +130,7 @@ describe('Auth routes', () => {
 			expect(body.message).toBe('Logged out')
 
 			const setCookie = res.headers.get('set-cookie')
+
 			expect(setCookie).toContain('bifrost_session=')
 		})
 	})
@@ -151,6 +155,7 @@ describe('Auth routes', () => {
 			})
 
 			const cookie = getCookieFromResponse(loginRes)
+			
 			expect(cookie).toBeDefined()
 
 			// Use cookie to check session

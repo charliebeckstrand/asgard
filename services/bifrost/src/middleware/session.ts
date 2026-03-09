@@ -16,6 +16,7 @@ type SessionEnv = {
 }
 
 const COOKIE_NAME = 'bifrost_session'
+
 const REFRESH_BUFFER_SECONDS = 30
 
 /**
@@ -24,6 +25,7 @@ const REFRESH_BUFFER_SECONDS = 30
  */
 async function encodeSession(data: SessionData, secret: string): Promise<string> {
 	const payload = JSON.stringify(data)
+
 	const encoder = new TextEncoder()
 
 	const key = await crypto.subtle.importKey(
@@ -35,6 +37,7 @@ async function encodeSession(data: SessionData, secret: string): Promise<string>
 	)
 
 	const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload))
+
 	const sig = btoa(String.fromCharCode(...new Uint8Array(signature)))
 
 	return btoa(JSON.stringify({ payload, sig }))
@@ -59,6 +62,7 @@ async function decodeSession(cookie: string, secret: string): Promise<SessionDat
 		)
 
 		const sigBytes = Uint8Array.from(atob(sig), (c) => c.charCodeAt(0))
+
 		const valid = await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(payload))
 
 		if (!valid) return null
@@ -104,6 +108,7 @@ async function refreshAccessToken(
 	})()
 
 	refreshLock = attempt
+
 	void attempt.finally(() => {
 		refreshLock = null
 	})
@@ -137,6 +142,7 @@ export function session(): MiddlewareHandler<SessionEnv> {
 
 		if (!env.SESSION_SECRET) {
 			c.set('session', null)
+
 			return next()
 		}
 
@@ -144,6 +150,7 @@ export function session(): MiddlewareHandler<SessionEnv> {
 
 		if (!cookie) {
 			c.set('session', null)
+
 			return next()
 		}
 
@@ -151,7 +158,9 @@ export function session(): MiddlewareHandler<SessionEnv> {
 
 		if (!sessionData) {
 			clearSessionCookie(c)
+
 			c.set('session', null)
+
 			return next()
 		}
 
@@ -163,15 +172,19 @@ export function session(): MiddlewareHandler<SessionEnv> {
 
 			if (refreshed) {
 				sessionData = refreshed
+
 				await setSessionCookie(c, sessionData, env.SESSION_SECRET)
 			} else {
 				clearSessionCookie(c)
+
 				c.set('session', null)
+
 				return next()
 			}
 		}
 
 		c.set('session', sessionData)
+		
 		return next()
 	}
 }

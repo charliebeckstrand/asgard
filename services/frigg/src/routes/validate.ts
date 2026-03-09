@@ -53,6 +53,7 @@ function validateService(
 
 		// Extract referenced service name from key (e.g., HEIMDALL_URL -> heimdall)
 		const refName = key.replace(/_URL$/, '').toLowerCase()
+
 		const refService = allServices[refName]
 
 		if (!refService) continue
@@ -60,6 +61,7 @@ function validateService(
 		// Verify the URL port matches the referenced service's PORT
 		try {
 			const url = new URL(value)
+
 			const urlPort = url.port || (url.protocol === 'https:' ? '443' : '80')
 
 			if (refService.PORT && urlPort !== refService.PORT) {
@@ -78,6 +80,7 @@ function validateService(
 		if (!key.endsWith('_API_KEY')) continue
 
 		const refName = key.replace(/_API_KEY$/, '').toLowerCase()
+
 		const refService = allServices[refName]
 
 		if (!refService) continue
@@ -111,7 +114,9 @@ function checkPortConflicts(
 		if (!data.PORT) continue
 
 		const existing = portMap.get(data.PORT) ?? []
+
 		existing.push(name)
+		
 		portMap.set(data.PORT, existing)
 	}
 
@@ -191,10 +196,12 @@ validate.use('/validate', apiKeyAuth())
 
 validate.openapi(validateAllRoute, (c) => {
 	const allServices = loadEnvironments()
+
 	const portConflicts = checkPortConflicts(allServices)
 
 	const serviceResults = getServiceNames().map((name) => {
 		const data = allServices[name]
+
 		const issues = validateService(data, allServices)
 
 		// Merge port conflict issues
@@ -229,10 +236,12 @@ validate.openapi(validateServiceRoute, (c) => {
 	}
 
 	const allServices = loadEnvironments()
+
 	const issues = validateService(data, allServices)
 
 	// Check port conflicts for this service
 	const portConflicts = checkPortConflicts(allServices)
+
 	const conflicts = portConflicts.find((pc) => pc.service === service)
 
 	if (conflicts) {

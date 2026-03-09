@@ -5,7 +5,8 @@
 	"bifrost": {
 		"PORT": "3000",
 		"HEIMDALL_URL": "http://localhost:8000",
-		"HEIMDALL_API_KEY": "dev-heimdall-api-key"
+		"HEIMDALL_API_KEY": "dev-heimdall-api-key",
+		"SESSION_SECRET": "dev-session-secret"
 	},
 	"heimdall": {
 		"PORT": "8000",
