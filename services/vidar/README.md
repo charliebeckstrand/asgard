@@ -5,7 +5,7 @@ Security monitoring microservice for threat detection, IP ban enforcement, and r
 - **Threat tracking** — logs and queries security threats with severity levels
 - **IP bans** — check, create, and manage IP bans consumed by other services
 - **Rules engine** — configurable detection rules for automated threat analysis
-- **Event integration** — publishes security events to Saga for downstream consumers
+- **Event integration** — publishes security events to Huginn for downstream consumers
 
 ## Routes
 

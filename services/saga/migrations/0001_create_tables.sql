@@ -1,41 +1,16 @@
 CREATE SCHEMA IF NOT EXISTS saga;
 
--- Subscriptions: which services want which events
-CREATE TABLE saga.subscriptions (
+CREATE TABLE saga.logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    topic VARCHAR(255) NOT NULL,
-    callback_url TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL DEFAULT 'server',
+    level VARCHAR(10) NOT NULL CHECK (level IN ('debug', 'info', 'warn', 'error', 'fatal')),
     service VARCHAR(100) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_subscriptions_topic ON saga.subscriptions(topic) WHERE is_active = TRUE;
-
--- Events: log of all published events
-CREATE TABLE saga.events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    topic VARCHAR(255) NOT NULL,
-    payload JSONB NOT NULL DEFAULT '{}',
-    source VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_events_topic ON saga.events(topic);
-CREATE INDEX idx_events_created_at ON saga.events(created_at);
-
--- Deliveries: track delivery attempts per event per subscription
-CREATE TABLE saga.deliveries (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    event_id UUID NOT NULL REFERENCES saga.events(id),
-    subscription_id UUID NOT NULL REFERENCES saga.subscriptions(id),
-    status VARCHAR(20) NOT NULL DEFAULT 'pending',
-    attempts INTEGER NOT NULL DEFAULT 0,
-    last_attempt_at TIMESTAMPTZ,
-    response_status INTEGER,
-    error_message TEXT,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_deliveries_status ON saga.deliveries(status) WHERE status = 'pending';
+CREATE INDEX idx_logs_type ON saga.logs(type);
+CREATE INDEX idx_logs_service ON saga.logs(service);
+CREATE INDEX idx_logs_level ON saga.logs(level);
+CREATE INDEX idx_logs_created_at ON saga.logs(created_at);

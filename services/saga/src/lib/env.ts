@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { z } from 'zod'
 
-function getManifestPort(): number {
+export function getManifestPort(): number {
 	let dir = import.meta.dirname
 
 	while (!existsSync(resolve(dir, 'manifest.json'))) {
@@ -23,6 +23,8 @@ const envSchema = z.object({
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 	DATABASE_URL: z.string().optional(),
 	SAGA_API_KEY: z.string().optional(),
+	HUGINN_URL: z.string().optional(),
+	HUGINN_API_KEY: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

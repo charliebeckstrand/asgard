@@ -1,7 +1,7 @@
 {
-  "name": "saga",
+  "name": "huginn",
   "version": "0.1.0",
-  "description": "Centralized logging service for structured log ingestion and querying",
+  "description": "Event bus microservice for inter-service messaging",
   "type": "module",
   "exports": {
     ".": {

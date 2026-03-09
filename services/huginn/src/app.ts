@@ -6,8 +6,8 @@ import { HTTPException } from 'hono/http-exception'
 import { openApiConfig } from './lib/openapi.js'
 import { requestLogger } from './middleware/logger.js'
 import { health } from './routes/health.js'
-import { ingest } from './routes/ingest.js'
-import { search } from './routes/search.js'
+import { publish } from './routes/publish.js'
+import { subscriptions } from './routes/subscriptions.js'
 
 export function createApp() {
 	const app = new OpenAPIHono()
@@ -19,15 +19,15 @@ export function createApp() {
 
 	// --- Routes ---
 
-	app.route('/logs', health)
-	app.route('/logs', ingest)
-	app.route('/logs', search)
+	app.route('/events', health)
+	app.route('/events', publish)
+	app.route('/events', subscriptions)
 
 	// --- OpenAPI ---
 
-	app.doc('/logs/openapi.json', openApiConfig)
+	app.doc('/events/openapi.json', openApiConfig)
 
-	app.get('/logs/docs', swaggerUI({ url: '/logs/openapi.json' }))
+	app.get('/events/docs', swaggerUI({ url: '/events/openapi.json' }))
 
 	// --- Error handling ---
 

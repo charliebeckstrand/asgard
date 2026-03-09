@@ -1,3 +1,5 @@
+import { getManifestPort } from './env.js'
+
 export const openApiConfig = {
 	openapi: '3.0.0',
 	info: {
@@ -8,7 +10,7 @@ export const openApiConfig = {
 	},
 	servers: [
 		{
-			url: 'http://localhost:3003',
+			url: `http://localhost:${getManifestPort()}`,
 			description: 'Local development',
 		},
 	],

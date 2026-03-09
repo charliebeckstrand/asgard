@@ -17,6 +17,7 @@ jobs:
             mimir: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.mimir == 'true' }}
             heimdall: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.heimdall == 'true' || steps.filter.outputs.mimir == 'true' }}
             saga: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.mimir == 'true' }}
+            huginn: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.huginn == 'true' || steps.filter.outputs.mimir == 'true' }}
             hermes: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.hermes == 'true' }}
             vidar: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.vidar == 'true' || steps.filter.outputs.mimir == 'true' }}
             frigg: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.frigg == 'true' }}
@@ -40,6 +41,8 @@ jobs:
                         - 'services/heimdall/**'
                       saga:
                         - 'services/saga/**'
+                      huginn:
+                        - 'services/huginn/**'
                       hermes:
                         - 'services/hermes/**'
                       vidar:
@@ -146,7 +149,7 @@ jobs:
             - run: pnpm turbo run build --filter=frigg...
 
     saga:
-        name: Saga (Event Bus)
+        name: Saga (Logging)
         needs: changes
         if: needs.changes.outputs.saga == 'true'
         runs-on: ubuntu-latest
@@ -164,6 +167,26 @@ jobs:
             - run: pnpm install --frozen-lockfile
             - run: pnpm turbo run lint test --filter=saga
             - run: pnpm turbo run build --filter=saga...
+
+    huginn:
+        name: Huginn (Event Bus)
+        needs: changes
+        if: needs.changes.outputs.huginn == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
+
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm turbo run lint test --filter=huginn
+            - run: pnpm turbo run build --filter=huginn...
 
     heimdall:
         name: Heimdall (Auth)

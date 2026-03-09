@@ -17,8 +17,8 @@ type ErrorResponse = {
 const app = createApp()
 
 describe('Health route', () => {
-	it('GET /logs/health returns healthy status', async () => {
-		const res = await app.request('/logs/health')
+	it('GET /events/health returns healthy status', async () => {
+		const res = await app.request('/events/health')
 
 		expect(res.status).toBe(200)
 
@@ -31,19 +31,19 @@ describe('Health route', () => {
 })
 
 describe('OpenAPI', () => {
-	it('GET /logs/openapi.json returns the spec', async () => {
-		const res = await app.request('/logs/openapi.json')
+	it('GET /events/openapi.json returns the spec', async () => {
+		const res = await app.request('/events/openapi.json')
 
 		expect(res.status).toBe(200)
 
 		const spec = (await res.json()) as { openapi: string; info: { title: string } }
 
 		expect(spec.openapi).toBe('3.0.0')
-		expect(spec.info.title).toBe('Saga')
+		expect(spec.info.title).toBe('Huginn')
 	})
 
-	it('GET /logs/docs returns Swagger UI HTML', async () => {
-		const res = await app.request('/logs/docs')
+	it('GET /events/docs returns Swagger UI HTML', async () => {
+		const res = await app.request('/events/docs')
 
 		expect(res.status).toBe(200)
 
@@ -67,18 +67,18 @@ describe('Error handling', () => {
 })
 
 describe('Auth middleware', () => {
-	it('returns 401 for ingest without API key', async () => {
-		const res = await app.request('/logs/ingest', {
+	it('returns 401 for publish without API key', async () => {
+		const res = await app.request('/events/publish', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ level: 'info', service: 'test', message: 'test' }),
+			body: JSON.stringify({ topic: 'test', payload: {}, source: 'test' }),
 		})
 
 		expect(res.status).toBe(401)
 	})
 
-	it('returns 401 for search without API key', async () => {
-		const res = await app.request('/logs/search')
+	it('returns 401 for subscriptions without API key', async () => {
+		const res = await app.request('/events/subscriptions')
 
 		expect(res.status).toBe(401)
 	})

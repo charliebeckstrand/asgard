@@ -18,5 +18,5 @@ const server = serve({ fetch: app.fetch, port: env.PORT })
 setupLifecycle({ server, name: 'Bifrost', port: env.PORT })
 
 // With cleanup (e.g. closing a database pool)
-setupLifecycle({ server, name: 'Saga', port: env.PORT, onShutdown: closePool })
+setupLifecycle({ server, name: 'Huginn', port: env.PORT, onShutdown: closePool })
 ```

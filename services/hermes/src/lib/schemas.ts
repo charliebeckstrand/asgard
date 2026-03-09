@@ -42,7 +42,7 @@ export const BroadcastMessageSchema = z
 			.min(1)
 			.max(100)
 			.optional()
-			.openapi({ description: 'Originating service', example: 'saga' }),
+			.openapi({ description: 'Originating service', example: 'huginn' }),
 	})
 	.openapi('BroadcastMessage')
 
