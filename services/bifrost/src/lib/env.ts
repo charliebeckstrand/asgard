@@ -5,6 +5,7 @@ const envSchema = z.object({
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 	HEIMDALL_URL: z.string().url().optional(),
 	HEIMDALL_API_KEY: z.string().optional(),
+	SESSION_SECRET: z.string().min(32).optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

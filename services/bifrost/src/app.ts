@@ -5,6 +5,8 @@ import { HTTPException } from 'hono/http-exception'
 
 import { openApiConfig } from './lib/openapi.js'
 import { requestLogger } from './middleware/logger.js'
+import { session } from './middleware/session.js'
+import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
 import { users } from './routes/users.js'
 
@@ -15,9 +17,11 @@ export function createApp() {
 
 	app.use('*', cors())
 	app.use('*', requestLogger())
+	app.use('*', session())
 
 	// --- Routes ---
 
+	app.route('/auth', authRoutes)
 	app.route('/api', health)
 	app.route('/api', users)
 
