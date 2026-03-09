@@ -1,11 +1,8 @@
 # saga
 
-Structured logging and search for PostgreSQL.
+PostgreSQL logging and search for Hono services. 
 
-- **Typed entries** — structured log entries with metadata
-- **Persistent storage** — logs stored in PostgreSQL
-- **Search API** — filter logs by service, level, type, and time range
-- **Mountable routes** — Hono router factory for embedding in any service
+Store structured log entries, query by service, level, type, and time range, and mount a full OpenAPI-documented router directly into any Hono app.
 
 ## Usage
 
