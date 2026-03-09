@@ -25,6 +25,8 @@
 		"@hono/swagger-ui": "^0.6.0",
 		"@hono/zod-openapi": "^1.2.2",
 		"@node-rs/argon2": "^2.0.2",
+		"frigg": "workspace:*",
+		"grid": "workspace:*",
 		"hono": "^4.12.5",
 		"norns": "workspace:*",
 		"jsonwebtoken": "^9.0.2",

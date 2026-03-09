@@ -1,10 +1,9 @@
 import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
+import { errorHandler, notFoundHandler, requestLogger } from 'grid'
 import { cors } from 'hono/cors'
-import { HTTPException } from 'hono/http-exception'
 
 import { openApiConfig } from './lib/openapi.js'
-import { requestLogger } from './middleware/logger.js'
 import { broadcastMessage } from './routes/broadcast.js'
 import { channels } from './routes/channels.js'
 import { health } from './routes/health.js'
@@ -33,40 +32,8 @@ export function createApp() {
 
 	// --- Error handling ---
 
-	app.onError((err, c) => {
-		if (err instanceof HTTPException) {
-			return c.json(
-				{
-					error: err.name,
-					message: err.message,
-					statusCode: err.status,
-				},
-				err.status,
-			)
-		}
-
-		console.error(`Unhandled error: ${err.message}`, err.stack)
-
-		return c.json(
-			{
-				error: 'Internal Server Error',
-				message: err.message,
-				statusCode: 500,
-			},
-			500,
-		)
-	})
-
-	app.notFound((c) => {
-		return c.json(
-			{
-				error: 'Not Found',
-				message: `Route ${c.req.method} ${c.req.path} not found`,
-				statusCode: 404,
-			},
-			404,
-		)
-	})
+	app.onError(errorHandler)
+	app.notFound(notFoundHandler)
 
 	return app
 }

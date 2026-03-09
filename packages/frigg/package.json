@@ -24,6 +24,9 @@
     "test:watch": "vitest"
   },
   "packageManager": "pnpm@10.29.3",
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.4.6",
     "@types/node": "^25.3.3",

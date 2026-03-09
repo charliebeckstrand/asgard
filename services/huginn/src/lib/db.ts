@@ -1,25 +1,15 @@
-import { closePool as closeMimirPool, createPool } from 'mimir'
+import { createLazyPool } from 'mimir'
 import { loadEnv } from './env.js'
 
-let pool: ReturnType<typeof createPool> | null = null
+const { getPool, closePool } = createLazyPool(
+	() => {
+		const url = loadEnv().DATABASE_URL
 
-export function getPool() {
-	if (!pool) {
-		const env = loadEnv()
+		if (!url) throw new Error('DATABASE_URL is not configured')
 
-		if (!env.DATABASE_URL) {
-			throw new Error('DATABASE_URL is not configured')
-		}
+		return url
+	},
+	{ max: 10 },
+)
 
-		pool = createPool(env.DATABASE_URL, { max: 10 })
-	}
-
-	return pool
-}
-
-export async function closePool(): Promise<void> {
-	if (pool) {
-		await closeMimirPool(pool)
-		pool = null
-	}
-}
+export { closePool, getPool }

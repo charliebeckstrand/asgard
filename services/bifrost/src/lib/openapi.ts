@@ -1,16 +1,6 @@
-import { getManifestPort } from './env.js'
+import { createOpenApiConfig } from 'grid'
 
-export const openApiConfig = {
-	openapi: '3.0.0',
-	info: {
-		title: 'Bifrost',
-		version: '0.1.0',
-		description: 'API gateway and BFF bridging services',
-	},
-	servers: [
-		{
-			url: `http://localhost:${getManifestPort()}`,
-			description: 'Local development',
-		},
-	],
-}
+export const openApiConfig = createOpenApiConfig({
+	title: 'Bifrost',
+	description: 'API gateway and BFF bridging services',
+})
