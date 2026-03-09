@@ -1,8 +1,8 @@
 # heimdall
 
-JWT authentication — user registration, login, token management, and Vidar integration.
+JWT authentication and user management.
 
-Provides both a standalone Hono auth app and individual service functions that can be imported directly.
+Mountable Hono app or individual service functions — with optional [Vidar](services/vidar) integration.
 
 ## Usage
 
