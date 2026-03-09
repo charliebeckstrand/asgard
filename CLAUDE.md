@@ -8,27 +8,28 @@ Yggdrasil is a TypeScript microservices monorepo with Norse mythology naming. It
 
 ### Services (runtime applications)
 
-| Service | Port | Role |
-|---------|------|------|
+| Service     | Port | Role                                           |
+| ----------- | ---- | ---------------------------------------------- |
 | **bifrost** | 3000 | API Gateway / BFF — routes `/api/*`, `/auth/*` |
-| **hermes** | 3001 | WebSocket messaging service |
-| **huginn** | 3002 | Event bus |
-| **vidar** | 3003 | Security monitoring, IP ban enforcement |
+| **hermes**  | 3001 | WebSocket messaging service                    |
+| **huginn**  | 3002 | Event bus                                      |
+| **vidar**   | 3003 | Security monitoring, IP ban enforcement        |
 
 ### Packages (shared libraries)
 
-| Package | Role |
-|---------|------|
-| **frigg** | Config oracle, secrets generation, env validation (Zod) |
-| **grid** | Hono middleware, error handling, OpenAPI config |
-| **heimdall** | JWT auth, user registration, token management |
-| **mimir** | PostgreSQL connection pool (lazy-loaded) |
-| **norns** | Server lifecycle, graceful shutdown, signal handling |
-| **saga** | Structured logging, PostgreSQL log ingestion |
+| Package      | Role                                                    |
+| ------------ | ------------------------------------------------------- |
+| **frigg**    | Config oracle, secrets generation, env validation (Zod) |
+| **grid**     | Hono middleware, error handling, OpenAPI config         |
+| **heimdall** | JWT auth, user registration, token management           |
+| **mimir**    | PostgreSQL connection pool (lazy-loaded)                |
+| **norns**    | Server lifecycle, graceful shutdown, signal handling    |
+| **saga**     | Structured logging, PostgreSQL log ingestion            |
 
 ### Dependency Graph
 
 Services depend on packages via `workspace:*` protocol:
+
 - **bifrost** → frigg, grid, heimdall, mimir, norns
 - **hermes** → frigg, grid, norns
 - **huginn** → frigg, grid, mimir, norns
@@ -56,6 +57,32 @@ pnpm turbo build --filter=bifrost...    # Build service + its dependencies
 ```
 
 ## Code Style & Conventions
+
+Add a blank line between distinct statements — variable declarations, function calls, assertions, and other standalone lines.
+
+```typescript
+// Bad
+if (pool) {
+	await closePool(pool)
+
+	pool = null
+}
+
+// Good
+if (pool) {
+	await closePool(pool)
+
+	pool = null
+}
+```
+
+Exception: Lines that are visually connected (same pattern, same target) can stay grouped:
+
+```typescript
+// Good — no line break needed
+app.use('*', cors())
+app.use('*', logRequest())
+```
 
 ### Formatting (enforced by Biome)
 
@@ -112,7 +139,7 @@ vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
 
 // Mock modules
 vi.mock('heimdall', () => ({
-  configure: vi.fn(),
+	configure: vi.fn()
 }))
 
 // Test HTTP endpoints directly via Hono app
@@ -154,6 +181,7 @@ The Husky pre-commit hook runs `pnpm biome check`. All code must pass Biome lint
 ## Environment & Secrets
 
 Managed by the **Frigg** package:
+
 - `pnpm env:init` generates required secrets (DATABASE_URL, SECRET_KEY, SESSION_SECRET, etc.)
 - Frigg validates env vars at startup using Zod schemas
 - Production secrets are injected via CI/CD (DigitalOcean app spec)
