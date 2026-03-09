@@ -21,6 +21,7 @@ app.use('*', requestLogger())
 
 // Shared error handlers
 app.onError(errorHandler)
+
 app.notFound(notFoundHandler)
 
 // OpenAPI config (reads port from manifest.json)
