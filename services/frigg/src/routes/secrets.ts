@@ -1,8 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
 import { loadEnvironments } from '../lib/environments.js'
 import { getSecretConsumers, getSecretOwnership, loadManifests } from '../lib/manifests.js'
-import { ErrorSchema, SecretsStatusResponseSchema } from '../lib/schemas.js'
-import { apiKeyAuth } from '../middleware/api-key.js'
+import { SecretsStatusResponseSchema } from '../lib/schemas.js'
 
 const secretsStatusRoute = createRoute({
 	method: 'get',
@@ -11,22 +10,15 @@ const secretsStatusRoute = createRoute({
 	summary: 'Secrets health status',
 	description:
 		'Shows metadata about all managed secrets — ownership, consumers, and whether values are consistent across services. Does not expose actual secret values.',
-	security: [{ ApiKey: [] }],
 	responses: {
 		200: {
 			content: { 'application/json': { schema: SecretsStatusResponseSchema } },
 			description: 'Secrets status',
 		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
 	},
 })
 
 export const secrets = new OpenAPIHono()
-
-secrets.use('/secrets/*', apiKeyAuth())
 
 secrets.openapi(secretsStatusRoute, (c) => {
 	const ownership = getSecretOwnership()

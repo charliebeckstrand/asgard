@@ -6,7 +6,6 @@ import {
 	ValidateResponseSchema,
 	ValidateServiceResponseSchema,
 } from '../lib/schemas.js'
-import { apiKeyAuth } from '../middleware/api-key.js'
 
 interface Issue {
 	level: 'error' | 'warning'
@@ -193,15 +192,10 @@ const validateAllRoute = createRoute({
 	summary: 'Validate all service configs',
 	description:
 		'The Oracle inspects every service configuration — checking for empty values, port conflicts, invalid URLs, cross-service reference mismatches, and manifest consistency.',
-	security: [{ ApiKey: [] }],
 	responses: {
 		200: {
 			content: { 'application/json': { schema: ValidateResponseSchema } },
 			description: 'Validation results',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
 		},
 	},
 })
@@ -212,16 +206,11 @@ const validateServiceRoute = createRoute({
 	tags: ['Validation'],
 	summary: 'Validate a single service config',
 	description: 'Validates a specific service configuration against the full system context.',
-	security: [{ ApiKey: [] }],
 	request: { params: ServiceParam },
 	responses: {
 		200: {
 			content: { 'application/json': { schema: ValidateServiceResponseSchema } },
 			description: 'Validation result',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
 		},
 		404: {
 			content: { 'application/json': { schema: ErrorSchema } },
@@ -231,9 +220,6 @@ const validateServiceRoute = createRoute({
 })
 
 export const validate = new OpenAPIHono()
-
-validate.use('/validate/*', apiKeyAuth())
-validate.use('/validate', apiKeyAuth())
 
 validate.openapi(validateAllRoute, (c) => {
 	const allServices = loadEnvironments()
