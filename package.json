@@ -17,9 +17,9 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "test": "turbo run test",
-    "lint": "biome check services/",
-    "lint:fix": "biome check --write services/",
-    "format": "biome format --write services/",
+    "lint": "biome check packages/ services/",
+    "lint:fix": "biome check --write packages/ services/",
+    "format": "biome format --write packages/ services/",
     "env:init": "node scripts/generate-secrets.mjs",
     "env:rotate": "node scripts/generate-secrets.mjs --rotate"
   }

@@ -25,7 +25,7 @@
 		}
 	},
 	"files": {
-		"includes": ["**/*.ts"],
+		"includes": ["**/*.ts", "!**/dist"],
 		"ignoreUnknown": true
 	},
 	"vcs": {

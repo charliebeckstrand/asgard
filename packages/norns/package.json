@@ -1,8 +1,10 @@
 {
-  "name": "saga",
+  "name": "norns",
   "version": "0.1.0",
-  "description": "Event bus microservice for inter-service messaging",
+  "description": "Shared server lifecycle utilities — graceful shutdown and port recovery",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -10,9 +12,8 @@
     }
   },
   "scripts": {
-    "dev": "tsx watch --env-file=.env src/index.ts",
     "build": "tsup",
-    "start": "node dist/index.js",
+    "dev": "tsup --watch",
     "lint": "biome check --config-path=../.. .",
     "lint:fix": "biome check --config-path=../.. --write .",
     "format": "biome format --config-path=../.. --write .",
@@ -20,15 +21,6 @@
     "test:watch": "vitest"
   },
   "packageManager": "pnpm@10.29.3",
-  "dependencies": {
-    "@hono/node-server": "^1.19.11",
-    "@hono/swagger-ui": "^0.6.0",
-    "@hono/zod-openapi": "^1.2.2",
-    "hono": "^4.12.5",
-    "norns": "workspace:*",
-    "mimir": "workspace:*",
-    "zod": "^4.3.6"
-  },
   "devDependencies": {
     "@biomejs/biome": "^2.4.6",
     "@types/node": "^25.3.3",

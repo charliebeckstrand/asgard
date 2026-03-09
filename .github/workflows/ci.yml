@@ -13,9 +13,13 @@ jobs:
         runs-on: ubuntu-latest
         outputs:
             bifrost: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.bifrost == 'true' }}
+            norns: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.norns == 'true' }}
             mimir: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.mimir == 'true' }}
             heimdall: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.heimdall == 'true' || steps.filter.outputs.mimir == 'true' }}
             saga: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.mimir == 'true' }}
+            hermes: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.hermes == 'true' }}
+            vidar: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.vidar == 'true' || steps.filter.outputs.mimir == 'true' }}
+            frigg: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.frigg == 'true' }}
         steps:
             - uses: actions/checkout@v4
             - uses: dorny/paths-filter@v3
@@ -24,24 +28,30 @@ jobs:
                   filters: |
                       shared:
                         - '**'
+                        - '!packages/**'
                         - '!services/**'
+                      norns:
+                        - 'packages/norns/**'
+                      mimir:
+                        - 'packages/mimir/**'
                       bifrost:
                         - 'services/bifrost/**'
-                      mimir:
-                        - 'services/mimir/**'
                       heimdall:
                         - 'services/heimdall/**'
                       saga:
                         - 'services/saga/**'
+                      hermes:
+                        - 'services/hermes/**'
+                      vidar:
+                        - 'services/vidar/**'
+                      frigg:
+                        - 'services/frigg/**'
 
-    bifrost:
-        name: Bifrost (API Gateway)
+    norns:
+        name: Norns (Lifecycle)
         needs: changes
-        if: needs.changes.outputs.bifrost == 'true'
+        if: needs.changes.outputs.norns == 'true'
         runs-on: ubuntu-latest
-        defaults:
-            run:
-                working-directory: services/bifrost
         steps:
             - uses: actions/checkout@v4
 
@@ -54,18 +64,13 @@ jobs:
                   cache-dependency-path: pnpm-lock.yaml
 
             - run: pnpm install --frozen-lockfile
-            - run: pnpm lint
-            - run: pnpm test
-            - run: pnpm build
+            - run: pnpm turbo run lint test build --filter=norns
 
     mimir:
         name: Mimir (Database)
         needs: changes
         if: needs.changes.outputs.mimir == 'true'
         runs-on: ubuntu-latest
-        defaults:
-            run:
-                working-directory: services/mimir
         steps:
             - uses: actions/checkout@v4
 
@@ -78,9 +83,67 @@ jobs:
                   cache-dependency-path: pnpm-lock.yaml
 
             - run: pnpm install --frozen-lockfile
-            - run: pnpm lint
-            - run: pnpm test
-            - run: pnpm build
+            - run: pnpm turbo run lint test build --filter=mimir
+
+    bifrost:
+        name: Bifrost (API Gateway)
+        needs: changes
+        if: needs.changes.outputs.bifrost == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
+
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm turbo run lint test --filter=bifrost
+            - run: pnpm turbo run build --filter=bifrost...
+
+    hermes:
+        name: Hermes (Messaging)
+        needs: changes
+        if: needs.changes.outputs.hermes == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
+
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm turbo run lint test --filter=hermes
+            - run: pnpm turbo run build --filter=hermes...
+
+    frigg:
+        name: Frigg (Config)
+        needs: changes
+        if: needs.changes.outputs.frigg == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
+
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm turbo run lint test --filter=frigg
+            - run: pnpm turbo run build --filter=frigg...
 
     saga:
         name: Saga (Event Bus)
@@ -139,3 +202,23 @@ jobs:
                   DATABASE_URL: postgres://test:test@localhost:5432/test
                   SECRET_KEY: ci-test-secret-key-not-used-in-production
             - run: pnpm turbo run build --filter=heimdall...
+
+    vidar:
+        name: Vidar (Security)
+        needs: changes
+        if: needs.changes.outputs.vidar == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
+
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm turbo run lint test --filter=vidar
+            - run: pnpm turbo run build --filter=vidar...
