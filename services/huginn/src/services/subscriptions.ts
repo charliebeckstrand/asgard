@@ -26,7 +26,7 @@ export async function listSubscriptions(topic?: string): Promise<SubscriptionLis
 
 	let query = `SELECT id, topic, callback_url, service, is_active,
 		created_at::text as created_at, updated_at::text as updated_at
-		FROM saga.subscriptions WHERE is_active = TRUE`
+		FROM huginn.subscriptions WHERE is_active = TRUE`
 	const params: string[] = []
 
 	if (topic) {
@@ -45,7 +45,7 @@ export async function createSubscription(input: CreateInput): Promise<Subscripti
 	const pool = getPool()
 
 	const { rows } = await pool.query<Subscription>(
-		`INSERT INTO saga.subscriptions (topic, callback_url, service)
+		`INSERT INTO huginn.subscriptions (topic, callback_url, service)
 		 VALUES ($1, $2, $3)
 		 RETURNING id, topic, callback_url, service, is_active,
 		 created_at::text as created_at, updated_at::text as updated_at`,
@@ -59,7 +59,7 @@ export async function deleteSubscription(id: string): Promise<boolean> {
 	const pool = getPool()
 
 	const { rowCount } = await pool.query(
-		`UPDATE saga.subscriptions SET is_active = FALSE, updated_at = now() WHERE id = $1 AND is_active = TRUE`,
+		`UPDATE huginn.subscriptions SET is_active = FALSE, updated_at = now() WHERE id = $1 AND is_active = TRUE`,
 		[id],
 	)
 

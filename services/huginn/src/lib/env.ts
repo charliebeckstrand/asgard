@@ -21,23 +21,13 @@ export function getManifestPort(): number {
 const envSchema = z.object({
 	PORT: z.coerce.number().default(getManifestPort()),
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-	DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
-	VIDAR_API_KEY: z.string().optional(),
-	HUGINN_URL: z.string().optional(),
+	DATABASE_URL: z.string().optional(),
 	HUGINN_API_KEY: z.string().optional(),
-	AI_ENABLED: z
-		.enum(['true', 'false'])
-		.default('false')
-		.transform((v) => v === 'true'),
 })
 
 export type Env = z.infer<typeof envSchema>
 
-let cached: Env | null = null
-
 export function loadEnv(): Env {
-	if (cached) return cached
-
 	const result = envSchema.safeParse(process.env)
 
 	if (!result.success) {
@@ -46,7 +36,5 @@ export function loadEnv(): Env {
 		process.exit(1)
 	}
 
-	cached = result.data
-
-	return cached
+	return result.data
 }

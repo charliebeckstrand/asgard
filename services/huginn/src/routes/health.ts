@@ -13,7 +13,7 @@ const healthRoute = createRoute({
 	path: '/health',
 	tags: ['System'],
 	summary: 'Health check',
-	description: 'Returns the health status of the logging service',
+	description: 'Returns the health status of the event bus',
 	responses: {
 		200: {
 			content: { 'application/json': { schema: HealthResponseSchema } },

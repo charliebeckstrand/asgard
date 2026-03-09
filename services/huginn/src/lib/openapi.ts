@@ -3,9 +3,9 @@ import { getManifestPort } from './env.js'
 export const openApiConfig = {
 	openapi: '3.0.0',
 	info: {
-		title: 'Hermes',
+		title: 'Huginn',
 		version: '0.1.0',
-		description: 'Stateless multi-channel messaging relay with real-time event streaming',
+		description: 'Event bus microservice for inter-service messaging',
 	},
 	servers: [
 		{

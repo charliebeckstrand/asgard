@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { z } from 'zod'
 
-function getManifestPort(): number {
+export function getManifestPort(): number {
 	let dir = import.meta.dirname
 
 	while (!existsSync(resolve(dir, 'manifest.json'))) {

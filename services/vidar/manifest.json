@@ -1,11 +1,11 @@
 {
 	"name": "vidar",
-	"port": 3003,
+	"port": 3004,
 	"vars": {
 		"DATABASE_URL": { "type": "value", "default": "postgres://vidar:vidar@localhost:5432/vidar" },
 		"VIDAR_API_KEY": { "type": "secret" },
-		"SAGA_URL": { "type": "ref", "service": "saga" },
-		"SAGA_API_KEY": { "type": "ref", "service": "saga", "key": "SAGA_API_KEY" },
+		"HUGINN_URL": { "type": "ref", "service": "huginn" },
+		"HUGINN_API_KEY": { "type": "ref", "service": "huginn", "key": "HUGINN_API_KEY" },
 		"AI_ENABLED": { "type": "value", "default": "false" }
 	}
 }
