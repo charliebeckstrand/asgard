@@ -20,7 +20,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY --from=manifests /tmp/manifests/services/ ./services/
 COPY --from=manifests /tmp/manifests/packages/ ./packages/
 RUN pnpm install --frozen-lockfile --filter ${SERVICE}...
-COPY tsup.config.ts ./
+COPY tsup.config.ts tsconfig.base.json ./
 COPY services/ ./services/
 COPY packages/ ./packages/
 RUN pnpm --filter ${SERVICE}... build
