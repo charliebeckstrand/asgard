@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# This script runs as the POSTGRES_USER (heimdall) during container init.
+# This script runs as the POSTGRES_USER (bifrost) during container init.
 # It creates additional roles and databases needed by other services,
 # then applies the schema migrations to each database.
 
@@ -13,7 +13,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     SELECT 'CREATE DATABASE vidar OWNER vidar' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vidar')\gexec
 EOSQL
 
-# --- heimdall database tables (runs against the default heimdall db) ---
+# --- bifrost database tables (runs against the default bifrost db) ---
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'EOSQL'
     CREATE TABLE IF NOT EXISTS users (
         id              UUID        PRIMARY KEY,

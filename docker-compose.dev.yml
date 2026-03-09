@@ -5,14 +5,14 @@ services:
     ports:
       - '127.0.0.1:5432:5432'
     environment:
-      POSTGRES_USER: heimdall
-      POSTGRES_PASSWORD: heimdall
-      POSTGRES_DB: heimdall
+      POSTGRES_USER: bifrost
+      POSTGRES_PASSWORD: bifrost
+      POSTGRES_DB: bifrost
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U heimdall']
+      test: ['CMD-SHELL', 'pg_isready -U bifrost']
       interval: 5s
       timeout: 3s
       retries: 3
