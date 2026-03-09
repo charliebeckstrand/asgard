@@ -20,7 +20,7 @@ export function getManifestPort(): number {
 
 function getBaseSchema() {
 	return z.object({
-		PORT: z.coerce.number().default(getManifestPort()),
+		PORT: z.coerce.number().default(() => getManifestPort()),
 		NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 	})
 }
