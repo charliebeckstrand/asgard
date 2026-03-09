@@ -6,7 +6,6 @@ Hono + TypeScript Microservices
 | --- | --- | --- |
 | **Heimdall** | Authentication | `8000` |
 | **Bifrost** | API (Gateway) | `3000` |
-| **Syn** | API (Proxy) | |
 | **Saga** | Events | `3001` |
 | **Hermes** | WebSockets | `3004` |
 | **Vidar** | Monitoring | `3002` |

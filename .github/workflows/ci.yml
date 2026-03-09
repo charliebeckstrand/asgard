@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       bifrost: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.bifrost == 'true' }}
-      syn: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.syn == 'true' }}
       mimir: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.mimir == 'true' }}
       heimdall: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.heimdall == 'true' || steps.filter.outputs.mimir == 'true' }}
       saga: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.mimir == 'true' }}
@@ -28,8 +27,6 @@ jobs:
               - '!services/**'
             bifrost:
               - 'services/bifrost/**'
-            syn:
-              - 'services/syn/**'
             mimir:
               - 'services/mimir/**'
             heimdall:
@@ -45,30 +42,6 @@ jobs:
     defaults:
       run:
         working-directory: services/bifrost
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm test
-      - run: pnpm build
-
-  syn:
-    name: Syn (Auth SDK)
-    needs: changes
-    if: needs.changes.outputs.syn == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/syn
     steps:
       - uses: actions/checkout@v4
 
