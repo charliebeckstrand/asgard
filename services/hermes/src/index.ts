@@ -24,3 +24,36 @@ const server = serve(
 )
 
 nodeWs.injectWebSocket(server)
+
+let shuttingDown = false
+
+async function shutdown(signal: NodeJS.Signals) {
+	if (shuttingDown) return
+
+	shuttingDown = true
+
+	await new Promise<void>((resolve, reject) => {
+		server.close((error) => {
+			if (error) {
+				reject(error)
+
+				return
+			}
+
+			resolve()
+		})
+	})
+
+	console.log(`Hermes shut down after ${signal}`)
+	process.exit(0)
+}
+
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+	process.once(signal, () => {
+		void shutdown(signal).catch((error) => {
+			console.error(`Failed to shut down Hermes cleanly after ${signal}`, error)
+
+			process.exit(1)
+		})
+	})
+}
