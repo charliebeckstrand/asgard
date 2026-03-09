@@ -1,4 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
+vi.stubEnv('SECRET_KEY', 'test-secret-key')
+
+vi.mock('heimdall', () => ({
+	configure: vi.fn(),
+	vidarBanCheck: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+		await next()
+	}),
+	checkHealth: vi.fn().mockResolvedValue(true),
+	refreshTokenPair: vi.fn(),
+}))
 
 import { createApp } from '../app.js'
 

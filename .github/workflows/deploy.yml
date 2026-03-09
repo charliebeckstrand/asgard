@@ -32,6 +32,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
           HEIMDALL_API_KEY: ${{ secrets.HEIMDALL_API_KEY }}
         run: |
           python3 -c "
@@ -43,6 +44,7 @@ jobs:
           secrets_map = {
               'DATABASE_URL': os.environ.get('DATABASE_URL', ''),
               'SECRET_KEY': os.environ.get('SECRET_KEY', ''),
+              'SESSION_SECRET': os.environ.get('SESSION_SECRET', ''),
               'HEIMDALL_API_KEY': os.environ.get('HEIMDALL_API_KEY', ''),
           }
 

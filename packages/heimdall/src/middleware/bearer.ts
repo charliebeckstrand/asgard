@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
-import { verifyToken } from '../lib/jwt.js'
+import { verifyToken } from '../jwt.js'
 import type { UserRow } from '../services/users.js'
 import { findUserById } from '../services/users.js'
 

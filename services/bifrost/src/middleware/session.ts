@@ -1,3 +1,4 @@
+import { refreshTokenPair } from 'heimdall'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { HTTPException } from 'hono/http-exception'
@@ -75,32 +76,17 @@ async function decodeSession(cookie: string, secret: string): Promise<SessionDat
 
 let refreshLock: Promise<SessionData | null> | null = null
 
-async function refreshAccessToken(
-	session: SessionData,
-	heimdallUrl: string,
-): Promise<SessionData | null> {
+async function refreshAccessToken(sessionData: SessionData): Promise<SessionData | null> {
 	if (refreshLock) return refreshLock
 
 	const attempt = (async () => {
 		try {
-			const res = await fetch(`${heimdallUrl}/auth/token/refresh`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ refresh_token: session.refreshToken }),
-			})
-
-			if (!res.ok) return null
-
-			const data = (await res.json()) as {
-				access_token: string
-				refresh_token: string
-				expires_in: number
-			}
+			const tokens = await refreshTokenPair(sessionData.refreshToken)
 
 			return {
-				accessToken: data.access_token,
-				refreshToken: data.refresh_token,
-				expiresAt: Math.floor(Date.now() / 1000) + data.expires_in,
+				accessToken: tokens.access_token,
+				refreshToken: tokens.refresh_token,
+				expiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
 			}
 		} catch {
 			return null
@@ -167,8 +153,8 @@ export function session(): MiddlewareHandler<SessionEnv> {
 		// Refresh if approaching expiry (30s buffer)
 		const now = Math.floor(Date.now() / 1000)
 
-		if (sessionData.expiresAt - now < REFRESH_BUFFER_SECONDS && env.HEIMDALL_URL) {
-			const refreshed = await refreshAccessToken(sessionData, env.HEIMDALL_URL)
+		if (sessionData.expiresAt - now < REFRESH_BUFFER_SECONDS) {
+			const refreshed = await refreshAccessToken(sessionData)
 
 			if (refreshed) {
 				sessionData = refreshed

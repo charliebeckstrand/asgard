@@ -12,10 +12,10 @@ jobs:
         name: Detect changes
         runs-on: ubuntu-latest
         outputs:
-            bifrost: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.bifrost == 'true' }}
+            bifrost: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.bifrost == 'true' || steps.filter.outputs.heimdall == 'true' || steps.filter.outputs.mimir == 'true' }}
             norns: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.norns == 'true' }}
             mimir: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.mimir == 'true' }}
-            heimdall: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.heimdall == 'true' || steps.filter.outputs.mimir == 'true' }}
+            heimdall: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.heimdall == 'true' }}
             saga: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.mimir == 'true' }}
             huginn: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.huginn == 'true' || steps.filter.outputs.mimir == 'true' }}
             hermes: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.hermes == 'true' }}
@@ -38,7 +38,7 @@ jobs:
                       bifrost:
                         - 'services/bifrost/**'
                       heimdall:
-                        - 'services/heimdall/**'
+                        - 'packages/heimdall/**'
                       saga:
                         - 'services/saga/**'
                       huginn:
@@ -189,24 +189,10 @@ jobs:
             - run: pnpm turbo run build --filter=huginn...
 
     heimdall:
-        name: Heimdall (Auth)
+        name: Heimdall (Auth Package)
         needs: changes
         if: needs.changes.outputs.heimdall == 'true'
         runs-on: ubuntu-latest
-        services:
-            postgres:
-                image: postgres:16-alpine
-                env:
-                    POSTGRES_USER: test
-                    POSTGRES_PASSWORD: test
-                    POSTGRES_DB: test
-                ports:
-                    - 5432:5432
-                options: >-
-                    --health-cmd pg_isready
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
         steps:
             - uses: actions/checkout@v4
 
@@ -219,12 +205,7 @@ jobs:
                   cache-dependency-path: pnpm-lock.yaml
 
             - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint --filter=heimdall
-            - run: pnpm turbo run test --filter=heimdall
-              env:
-                  DATABASE_URL: postgres://test:test@localhost:5432/test
-                  SECRET_KEY: ci-test-secret-key-not-used-in-production
-            - run: pnpm turbo run build --filter=heimdall...
+            - run: pnpm turbo run lint test build --filter=heimdall
 
     vidar:
         name: Vidar (Security)

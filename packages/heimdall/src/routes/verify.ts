@@ -1,8 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
-import { verifyToken } from '../lib/jwt.js'
-import { DetailSchema, UserResponseSchema, VerifySchema } from '../lib/schemas.js'
 import { apiKeyAuth } from '../middleware/api-key.js'
-import { findUserById } from '../services/users.js'
+import { DetailSchema, UserResponseSchema, VerifySchema } from '../schemas.js'
+import { AuthError, verifyAccessToken } from '../services/auth.js'
 
 const verifyRoute = createRoute({
 	method: 'post',
@@ -36,32 +35,23 @@ verify.use('/token/verify', apiKeyAuth())
 verify.openapi(verifyRoute, async (c) => {
 	const { token } = c.req.valid('json')
 
-	let claims: ReturnType<typeof verifyToken>
-
 	try {
-		claims = verifyToken(token)
-	} catch {
-		return c.json({ detail: 'Invalid or expired token' }, 401)
+		const user = await verifyAccessToken(token)
+
+		return c.json(
+			{
+				id: user.id,
+				email: user.email,
+				is_active: user.is_active,
+				is_verified: user.is_verified,
+				created_at: user.created_at,
+			},
+			200,
+		)
+	} catch (err) {
+		if (err instanceof AuthError) {
+			return c.json({ detail: err.message }, 401)
+		}
+		throw err
 	}
-
-	if (claims.type !== 'access') {
-		return c.json({ detail: 'Invalid token type' }, 401)
-	}
-
-	const user = await findUserById(claims.sub)
-
-	if (!user || !user.is_active) {
-		return c.json({ detail: 'Invalid or expired token' }, 401)
-	}
-
-	return c.json(
-		{
-			id: user.id,
-			email: user.email,
-			is_active: user.is_active,
-			is_verified: user.is_verified,
-			created_at: user.created_at,
-		},
-		200,
-	)
 })

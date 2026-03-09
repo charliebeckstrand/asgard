@@ -1,9 +1,9 @@
 import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
-import { cors } from 'hono/cors'
+import { createOpenApiConfig } from 'grid'
 
-import { loadEnv } from './lib/env.js'
-import { openApiConfig } from './lib/openapi.js'
+import type { HeimdallConfig } from './config.js'
+import { configure } from './config.js'
 import { vidarBanCheck } from './middleware/vidar.js'
 import { health } from './routes/health.js'
 import { login } from './routes/login.js'
@@ -12,47 +12,41 @@ import { refresh } from './routes/refresh.js'
 import { register } from './routes/register.js'
 import { verify } from './routes/verify.js'
 
-export function createApp() {
+const openApiConfig = createOpenApiConfig({
+	title: 'Heimdall',
+	description: 'JWT authentication',
+})
+
+/**
+ * Creates a standalone Heimdall auth app.
+ *
+ * Calls `configure()` with the provided config, then mounts all auth routes
+ * under the root. Intended to be mounted at `/auth` by the consuming service.
+ */
+export function createAuthApp(
+	config: Partial<HeimdallConfig> & Pick<HeimdallConfig, 'getPool' | 'secretKey'>,
+) {
+	configure(config)
+
 	const app = new OpenAPIHono()
-	const env = loadEnv()
-
-	// --- CORS ---
-
-	const origins = env.CORS_ORIGINS?.split(',')
-		.map((s) => s.trim())
-		.filter(Boolean)
-
-	if (origins && origins.length > 0) {
-		app.use(
-			'*',
-			cors({
-				origin: origins,
-				allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-				allowHeaders: ['Authorization', 'Accept', 'Content-Type'],
-				credentials: true,
-			}),
-		)
-	} else {
-		app.use('*', cors())
-	}
 
 	// --- Vidar ban check ---
 
-	app.use('/auth/*', vidarBanCheck())
+	app.use('/*', vidarBanCheck())
 
 	// --- Routes ---
 
-	app.route('/auth', health)
-	app.route('/auth', register)
-	app.route('/auth', login)
-	app.route('/auth', refresh)
-	app.route('/auth', verify)
-	app.route('/auth', me)
+	app.route('/', health)
+	app.route('/', register)
+	app.route('/', login)
+	app.route('/', refresh)
+	app.route('/', verify)
+	app.route('/', me)
 
 	// --- OpenAPI ---
 
-	app.doc('/auth/openapi.json', openApiConfig)
-	app.get('/auth/docs', swaggerUI({ url: '/auth/openapi.json' }))
+	app.doc('/openapi.json', openApiConfig)
+	app.get('/docs', swaggerUI({ url: '/auth/openapi.json' }))
 
 	// --- Error handling ---
 

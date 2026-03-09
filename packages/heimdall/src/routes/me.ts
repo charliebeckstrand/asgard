@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
-import { DetailSchema, UserResponseSchema } from '../lib/schemas.js'
 import { type AuthEnv, bearer } from '../middleware/bearer.js'
+import { DetailSchema, UserResponseSchema } from '../schemas.js'
 import { deactivateUser } from '../services/users.js'
 
 const getMeRoute = createRoute({

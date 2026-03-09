@@ -1,6 +1,7 @@
 import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { errorHandler, notFoundHandler, requestLogger } from 'grid'
+import { vidarBanCheck } from 'heimdall'
 import { cors } from 'hono/cors'
 
 import { openApiConfig } from './lib/openapi.js'
@@ -17,6 +18,10 @@ export function createApp() {
 	app.use('*', cors())
 	app.use('*', requestLogger())
 	app.use('*', session())
+
+	// --- Vidar ban check on auth routes ---
+
+	app.use('/auth/*', vidarBanCheck())
 
 	// --- Routes ---
 

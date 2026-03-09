@@ -1,13 +1,13 @@
 import type { MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
-import { loadEnv } from '../lib/env.js'
-import { checkIpBan } from '../lib/vidar.js'
+import { getConfig } from '../config.js'
+import { checkIpBan } from '../vidar.js'
 
 export function vidarBanCheck(): MiddlewareHandler {
 	return async (c, next) => {
-		const env = loadEnv()
+		const config = getConfig()
 
-		if (!env.VIDAR_URL) {
+		if (!config.vidarUrl) {
 			await next()
 
 			return

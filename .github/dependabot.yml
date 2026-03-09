@@ -1,8 +1,8 @@
 version: 2
 
 updates:
-  - package-ecosystem: cargo
-    directory: /services/heimdall
+  - package-ecosystem: npm
+    directory: /packages/heimdall
     schedule:
       interval: weekly
       day: monday
