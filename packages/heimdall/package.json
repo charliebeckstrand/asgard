@@ -1,7 +1,7 @@
 {
 	"name": "heimdall",
 	"version": "0.1.0",
-	"description": "JWT authentication microservice",
+	"description": "JWT authentication — user registration, login, token management, and Vidar integration",
 	"type": "module",
 	"exports": {
 		".": {
@@ -10,9 +10,8 @@
 		}
 	},
 	"scripts": {
-		"dev": "tsx watch --env-file=.env src/index.ts",
 		"build": "tsup",
-		"start": "node dist/index.js",
+		"dev": "tsup --watch",
 		"lint": "biome check --config-path=../.. .",
 		"lint:fix": "biome check --config-path=../.. --write .",
 		"format": "biome format --config-path=../.. --write .",
@@ -21,22 +20,19 @@
 	},
 	"packageManager": "pnpm@10.29.3",
 	"dependencies": {
-		"@hono/node-server": "^1.19.11",
 		"@hono/swagger-ui": "^0.6.0",
 		"@hono/zod-openapi": "^1.2.2",
 		"@node-rs/argon2": "^2.0.2",
-		"frigg": "workspace:*",
 		"grid": "workspace:*",
 		"hono": "^4.12.5",
-		"norns": "workspace:*",
 		"jsonwebtoken": "^9.0.2",
-		"mimir": "workspace:*",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
 		"@types/jsonwebtoken": "^9.0.9",
 		"@types/node": "^25.3.3",
+		"@types/pg": "^8.11.0",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",

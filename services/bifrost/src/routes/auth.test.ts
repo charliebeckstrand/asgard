@@ -3,26 +3,41 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const MOCK_SECRET = 'test-secret-that-is-at-least-32-chars-long'
 
 vi.stubEnv('SESSION_SECRET', MOCK_SECRET)
-vi.stubEnv('HEIMDALL_URL', 'http://heimdall:8000')
-vi.stubEnv('HEIMDALL_API_KEY', 'test-api-key')
+vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
+vi.stubEnv('SECRET_KEY', 'test-secret-key')
 
-const mockFetch = vi.fn()
+// Use vi.hoisted so mock values are available when vi.mock is hoisted
+const { MockAuthError, mockAuthenticateUser, mockRegisterNewUser } = vi.hoisted(() => {
+	class MockAuthError extends Error {
+		code: string
+		constructor(code: string, message: string) {
+			super(message)
+			this.code = code
+			this.name = 'AuthError'
+		}
+	}
+	return {
+		MockAuthError,
+		mockAuthenticateUser: vi.fn(),
+		mockRegisterNewUser: vi.fn(),
+	}
+})
 
-vi.stubGlobal('fetch', mockFetch)
+vi.mock('heimdall', () => ({
+	configure: vi.fn(),
+	authenticateUser: (...args: unknown[]) => mockAuthenticateUser(...args),
+	registerNewUser: (...args: unknown[]) => mockRegisterNewUser(...args),
+	AuthError: MockAuthError,
+	vidarBanCheck: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+		await next()
+	}),
+	checkHealth: vi.fn().mockResolvedValue(true),
+	refreshTokenPair: vi.fn(),
+}))
 
 import { createApp } from '../app.js'
 
 const app = createApp()
-
-function heimdallTokenResponse(overrides?: Partial<Record<string, unknown>>) {
-	return {
-		access_token: 'at_test123',
-		refresh_token: 'rt_test123',
-		token_type: 'bearer',
-		expires_in: 3600,
-		...overrides,
-	}
-}
 
 function getCookieFromResponse(res: Response): string | undefined {
 	const setCookie = res.headers.get('set-cookie')
@@ -36,7 +51,8 @@ function getCookieFromResponse(res: Response): string | undefined {
 
 describe('Auth routes', () => {
 	beforeEach(() => {
-		mockFetch.mockReset()
+		mockAuthenticateUser.mockReset()
+		mockRegisterNewUser.mockReset()
 	})
 
 	afterEach(() => {
@@ -45,9 +61,12 @@ describe('Auth routes', () => {
 
 	describe('POST /auth/login', () => {
 		it('returns 200 and sets session cookie on successful login', async () => {
-			mockFetch.mockResolvedValueOnce(
-				new Response(JSON.stringify(heimdallTokenResponse()), { status: 200 }),
-			)
+			mockAuthenticateUser.mockResolvedValueOnce({
+				access_token: 'at_test123',
+				refresh_token: 'rt_test123',
+				token_type: 'bearer',
+				expires_in: 3600,
+			})
 
 			const res = await app.request('/auth/login', {
 				method: 'POST',
@@ -72,10 +91,13 @@ describe('Auth routes', () => {
 			expect(cookie).toBeDefined()
 		})
 
-		it('forwards credentials to Heimdall', async () => {
-			mockFetch.mockResolvedValueOnce(
-				new Response(JSON.stringify(heimdallTokenResponse()), { status: 200 }),
-			)
+		it('passes email and password to authenticateUser', async () => {
+			mockAuthenticateUser.mockResolvedValueOnce({
+				access_token: 'at_test123',
+				refresh_token: 'rt_test123',
+				token_type: 'bearer',
+				expires_in: 3600,
+			})
 
 			await app.request('/auth/login', {
 				method: 'POST',
@@ -83,18 +105,16 @@ describe('Auth routes', () => {
 				body: JSON.stringify({ email: 'test@example.com', password: 'secret' }),
 			})
 
-			expect(mockFetch).toHaveBeenCalledWith(
-				'http://heimdall:8000/auth/login',
-				expect.objectContaining({
-					method: 'POST',
-					body: JSON.stringify({ email: 'test@example.com', password: 'secret' }),
-				}),
+			expect(mockAuthenticateUser).toHaveBeenCalledWith(
+				'test@example.com',
+				'secret',
+				expect.any(String),
 			)
 		})
 
 		it('returns 401 on invalid credentials', async () => {
-			mockFetch.mockResolvedValueOnce(
-				new Response(JSON.stringify({ detail: 'Incorrect email or password' }), { status: 401 }),
+			mockAuthenticateUser.mockRejectedValueOnce(
+				new MockAuthError('invalid_credentials', 'Incorrect email or password'),
 			)
 
 			const res = await app.request('/auth/login', {
@@ -106,8 +126,10 @@ describe('Auth routes', () => {
 			expect(res.status).toBe(401)
 		})
 
-		it('returns 502 when Heimdall is unreachable', async () => {
-			mockFetch.mockRejectedValueOnce(new Error('Connection refused'))
+		it('returns 403 when account is inactive', async () => {
+			mockAuthenticateUser.mockRejectedValueOnce(
+				new MockAuthError('account_inactive', 'Account is inactive'),
+			)
 
 			const res = await app.request('/auth/login', {
 				method: 'POST',
@@ -115,7 +137,7 @@ describe('Auth routes', () => {
 				body: JSON.stringify({ email: 'test@example.com', password: 'password123' }),
 			})
 
-			expect(res.status).toBe(502)
+			expect(res.status).toBe(403)
 		})
 	})
 
@@ -144,9 +166,12 @@ describe('Auth routes', () => {
 
 		it('returns session info when a valid cookie exists', async () => {
 			// First login to get a cookie
-			mockFetch.mockResolvedValueOnce(
-				new Response(JSON.stringify(heimdallTokenResponse()), { status: 200 }),
-			)
+			mockAuthenticateUser.mockResolvedValueOnce({
+				access_token: 'at_test123',
+				refresh_token: 'rt_test123',
+				token_type: 'bearer',
+				expires_in: 3600,
+			})
 
 			const loginRes = await app.request('/auth/login', {
 				method: 'POST',
@@ -173,10 +198,15 @@ describe('Auth routes', () => {
 	})
 
 	describe('POST /auth/register', () => {
-		it('proxies registration to Heimdall and returns 201', async () => {
-			mockFetch.mockResolvedValueOnce(
-				new Response(JSON.stringify({ id: 'user-123', email: 'new@example.com' }), { status: 201 }),
-			)
+		it('registers a new user and returns 201', async () => {
+			mockRegisterNewUser.mockResolvedValueOnce({
+				id: 'user-123',
+				email: 'new@example.com',
+				is_active: true,
+				is_verified: false,
+				created_at: new Date().toISOString(),
+				updated_at: new Date().toISOString(),
+			})
 
 			const res = await app.request('/auth/register', {
 				method: 'POST',
@@ -193,8 +223,8 @@ describe('Auth routes', () => {
 		})
 
 		it('returns 409 when email already exists', async () => {
-			mockFetch.mockResolvedValueOnce(
-				new Response(JSON.stringify({ detail: 'Email already registered' }), { status: 409 }),
+			mockRegisterNewUser.mockRejectedValueOnce(
+				new MockAuthError('email_exists', 'Email already registered'),
 			)
 
 			const res = await app.request('/auth/register', {
@@ -204,18 +234,6 @@ describe('Auth routes', () => {
 			})
 
 			expect(res.status).toBe(409)
-		})
-
-		it('returns 502 when Heimdall is unreachable', async () => {
-			mockFetch.mockRejectedValueOnce(new Error('Connection refused'))
-
-			const res = await app.request('/auth/register', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email: 'new@example.com', password: 'password123' }),
-			})
-
-			expect(res.status).toBe(502)
 		})
 	})
 })

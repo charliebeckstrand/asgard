@@ -2,8 +2,13 @@
 	"name": "bifrost",
 	"port": 3000,
 	"vars": {
-		"HEIMDALL_URL": { "type": "ref", "service": "heimdall" },
-		"HEIMDALL_API_KEY": { "type": "ref", "service": "heimdall", "key": "HEIMDALL_API_KEY" },
-		"SESSION_SECRET": { "type": "secret" }
+		"DATABASE_URL": { "type": "value", "default": "postgres://heimdall:heimdall@localhost:5432/heimdall" },
+		"SECRET_KEY": { "type": "secret" },
+		"SESSION_SECRET": { "type": "secret" },
+		"VIDAR_URL": { "type": "ref", "service": "vidar" },
+		"VIDAR_API_KEY": { "type": "ref", "service": "vidar", "key": "VIDAR_API_KEY" },
+		"HEIMDALL_API_KEY": { "type": "secret" },
+		"ACCESS_TOKEN_EXPIRE_MINUTES": { "type": "value", "default": "30" },
+		"REFRESH_TOKEN_EXPIRE_DAYS": { "type": "value", "default": "7" }
 	}
 }

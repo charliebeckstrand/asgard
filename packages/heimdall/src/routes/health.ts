@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
-import { getPool } from '../lib/db.js'
-import { DetailSchema, HealthResponseSchema } from '../lib/schemas.js'
+import { getConfig } from '../config.js'
+import { DetailSchema, HealthResponseSchema } from '../schemas.js'
 
 const healthRoute = createRoute({
 	method: 'get',
@@ -21,7 +21,7 @@ const healthRoute = createRoute({
 })
 
 export const health = new OpenAPIHono().openapi(healthRoute, async (c) => {
-	const pool = getPool()
+	const pool = getConfig().getPool()
 
 	await pool.query('SELECT 1')
 

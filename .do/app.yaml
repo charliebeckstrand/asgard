@@ -6,42 +6,6 @@ alerts:
   - rule: DOMAIN_FAILED
 
 services:
-  - name: heimdall
-    github:
-      repo: ${GITHUB_REPO}
-      branch: main
-      deploy_on_push: false
-    dockerfile_path: Dockerfile
-    http_port: 8000
-    instance_count: 1
-    instance_size_slug: apps-s-1vcpu-0.5gb
-    routes:
-      - path: /auth
-        preserve_path_prefix: true
-    health_check:
-      http_path: /auth/health
-      initial_delay_seconds: 30
-      period_seconds: 10
-    envs:
-      - key: SERVICE
-        scope: BUILD_TIME
-        value: heimdall
-      - key: NODE_ENV
-        scope: RUN_AND_BUILD_TIME
-        value: production
-      - key: DATABASE_URL
-        scope: RUN_TIME
-        type: SECRET
-      - key: SECRET_KEY
-        scope: RUN_TIME
-        type: SECRET
-      - key: HEIMDALL_API_KEY
-        scope: RUN_TIME
-        type: SECRET
-      - key: CORS_ORIGINS
-        scope: RUN_TIME
-        value: ${APP_URL}
-
   - name: bifrost
     github:
       repo: ${GITHUB_REPO}
@@ -53,6 +17,8 @@ services:
     instance_size_slug: apps-s-1vcpu-0.5gb
     routes:
       - path: /api
+      - path: /auth
+        preserve_path_prefix: true
     health_check:
       http_path: /api/health
       initial_delay_seconds: 10
@@ -64,9 +30,15 @@ services:
       - key: NODE_ENV
         scope: RUN_AND_BUILD_TIME
         value: production
-      - key: HEIMDALL_URL
+      - key: DATABASE_URL
         scope: RUN_TIME
-        value: ${heimdall.PRIVATE_URL}
+        type: SECRET
+      - key: SECRET_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SESSION_SECRET
+        scope: RUN_TIME
+        type: SECRET
       - key: HEIMDALL_API_KEY
         scope: RUN_TIME
         type: SECRET

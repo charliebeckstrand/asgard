@@ -60,4 +60,4 @@ export const HealthResponseSchema = z
 		status: z.string(),
 		service: z.string(),
 	})
-	.openapi('HealthResponse')
+	.openapi('HeimdallHealthResponse')

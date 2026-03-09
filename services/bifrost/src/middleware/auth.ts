@@ -1,6 +1,6 @@
+import { verifyAccessToken } from 'heimdall'
 import type { Context, MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
-import { loadEnv } from '../lib/env.js'
 
 export type AuthUser = {
 	id: string
@@ -15,14 +15,12 @@ type AuthEnv = {
 }
 
 /**
- * Authentication middleware that validates requests against Heimdall.
+ * Authentication middleware that verifies Bearer tokens.
  *
  * Expects a Bearer token in the Authorization header and verifies it
- * with the Heimdall auth service. On success, sets `c.get("user")`.
+ * directly via the heimdall package. On success, sets `c.get("user")`.
  */
 export function auth(): MiddlewareHandler<AuthEnv> {
-	const env = loadEnv()
-
 	return async (c: Context<AuthEnv>, next) => {
 		const authorization = c.req.header('Authorization')
 
@@ -36,30 +34,13 @@ export function auth(): MiddlewareHandler<AuthEnv> {
 			throw new HTTPException(401, { message: 'Invalid token' })
 		}
 
-		if (!env.HEIMDALL_URL) {
-			throw new HTTPException(500, { message: 'HEIMDALL_URL is not configured' })
-		}
+		try {
+			const user = await verifyAccessToken(token)
 
-		if (!env.HEIMDALL_API_KEY) {
-			throw new HTTPException(500, { message: 'HEIMDALL_API_KEY is not configured' })
-		}
-
-		const response = await fetch(`${env.HEIMDALL_URL}/auth/token/verify`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-API-Key': env.HEIMDALL_API_KEY,
-			},
-			body: JSON.stringify({ token }),
-		})
-
-		if (!response.ok) {
+			c.set('user', { id: user.id, email: user.email })
+		} catch {
 			throw new HTTPException(401, { message: 'Invalid or expired token' })
 		}
-
-		const user = (await response.json()) as AuthUser
-
-		c.set('user', user)
 
 		await next()
 	}

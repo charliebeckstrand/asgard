@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { AuthError, authenticateUser, registerNewUser } from 'heimdall'
 import { loadEnv } from '../lib/env.js'
 import { ErrorSchema } from '../lib/schemas.js'
 import { clearSessionCookie, type SessionData, setSessionCookie } from '../middleware/session.js'
@@ -44,15 +45,6 @@ const RegisterResponseSchema = z
 
 const MessageSchema = z.object({ message: z.string() }).openapi('AuthMessage')
 
-// --- Heimdall response type ---
-
-type HeimdallTokenResponse = {
-	access_token: string
-	refresh_token: string
-	token_type: string
-	expires_in: number
-}
-
 // --- Routes ---
 
 const loginRoute = createRoute({
@@ -60,7 +52,7 @@ const loginRoute = createRoute({
 	path: '/login',
 	tags: ['Auth'],
 	summary: 'Login with email and password',
-	description: 'Authenticates against Heimdall and sets a session cookie.',
+	description: 'Authenticates credentials and sets a session cookie.',
 	request: {
 		body: {
 			content: { 'application/json': { schema: LoginRequestSchema } },
@@ -76,9 +68,9 @@ const loginRoute = createRoute({
 			content: { 'application/json': { schema: ErrorSchema } },
 			description: 'Invalid credentials',
 		},
-		502: {
+		403: {
 			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Upstream unavailable',
+			description: 'Account inactive',
 		},
 	},
 })
@@ -119,7 +111,7 @@ const registerRoute = createRoute({
 	path: '/register',
 	tags: ['Auth'],
 	summary: 'Register a new account',
-	description: 'Proxies registration to Heimdall.',
+	description: 'Creates a new user account.',
 	request: {
 		body: {
 			content: { 'application/json': { schema: RegisterRequestSchema } },
@@ -139,10 +131,6 @@ const registerRoute = createRoute({
 			content: { 'application/json': { schema: ErrorSchema } },
 			description: 'Email already registered',
 		},
-		502: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Upstream unavailable',
-		},
 	},
 })
 
@@ -151,13 +139,6 @@ const registerRoute = createRoute({
 export const authRoutes = new OpenAPIHono()
 	.openapi(loginRoute, async (c) => {
 		const env = loadEnv()
-
-		if (!env.HEIMDALL_URL) {
-			return c.json(
-				{ error: 'Bad Gateway', message: 'HEIMDALL_URL is not configured', statusCode: 502 },
-				502,
-			)
-		}
 
 		if (!env.SESSION_SECRET) {
 			return c.json(
@@ -170,42 +151,38 @@ export const authRoutes = new OpenAPIHono()
 			)
 		}
 
-		const body = c.req.valid('json')
+		const { email, password } = c.req.valid('json')
 
-		let res: Response
+		const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown'
 
 		try {
-			res = await fetch(`${env.HEIMDALL_URL}/auth/login`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
-			})
-		} catch {
-			return c.json({ error: 'Bad Gateway', message: 'Upstream unavailable', statusCode: 502 }, 502)
+			const tokens = await authenticateUser(email, password, ip)
+
+			const sessionData: SessionData = {
+				accessToken: tokens.access_token,
+				refreshToken: tokens.refresh_token,
+				expiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
+			}
+
+			await setSessionCookie(c, sessionData, env.SESSION_SECRET)
+
+			return c.json(
+				{
+					access_token: tokens.access_token,
+					token_type: 'bearer' as const,
+					expires_in: tokens.expires_in,
+				},
+				200,
+			)
+		} catch (err) {
+			if (err instanceof AuthError) {
+				if (err.code === 'account_inactive') {
+					return c.json({ error: 'Forbidden', message: err.message, statusCode: 403 }, 403)
+				}
+				return c.json({ error: 'Unauthorized', message: err.message, statusCode: 401 }, 401)
+			}
+			throw err
 		}
-
-		if (!res.ok) {
-			return c.json({ error: 'Unauthorized', message: 'Invalid credentials', statusCode: 401 }, 401)
-		}
-
-		const data = (await res.json()) as HeimdallTokenResponse
-
-		const sessionData: SessionData = {
-			accessToken: data.access_token,
-			refreshToken: data.refresh_token,
-			expiresAt: Math.floor(Date.now() / 1000) + data.expires_in,
-		}
-
-		await setSessionCookie(c, sessionData, env.SESSION_SECRET)
-
-		return c.json(
-			{
-				access_token: data.access_token,
-				token_type: 'bearer' as const,
-				expires_in: data.expires_in,
-			},
-			200,
-		)
 	})
 	.openapi(logoutRoute, async (c) => {
 		clearSessionCookie(c)
@@ -228,43 +205,18 @@ export const authRoutes = new OpenAPIHono()
 		)
 	})
 	.openapi(registerRoute, async (c) => {
-		const env = loadEnv()
+		const { email, password } = c.req.valid('json')
 
-		if (!env.HEIMDALL_URL) {
-			return c.json(
-				{ error: 'Bad Gateway', message: 'HEIMDALL_URL is not configured', statusCode: 502 },
-				502,
-			)
-		}
-
-		const body = c.req.valid('json')
-
-		let res: Response
+		const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown'
 
 		try {
-			res = await fetch(`${env.HEIMDALL_URL}/auth/register`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
-			})
-		} catch {
-			return c.json({ error: 'Bad Gateway', message: 'Upstream unavailable', statusCode: 502 }, 502)
+			const user = await registerNewUser(email, password, ip)
+
+			return c.json({ id: user.id, email: user.email }, 201)
+		} catch (err) {
+			if (err instanceof AuthError && err.code === 'email_exists') {
+				return c.json({ error: 'Conflict', message: err.message, statusCode: 409 }, 409)
+			}
+			throw err
 		}
-
-		const data = await res.json()
-
-		if (!res.ok) {
-			const status = res.status === 409 ? 409 : 400
-
-			return c.json(
-				{
-					error: status === 409 ? 'Conflict' : 'Bad Request',
-					message: (data as { detail?: string }).detail ?? 'Registration failed',
-					statusCode: status,
-				},
-				status,
-			)
-		}
-
-		return c.json(data as { id: string; email: string }, 201)
 	})

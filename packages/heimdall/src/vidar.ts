@@ -1,4 +1,4 @@
-import { loadEnv } from './env.js'
+import { getConfig } from './config.js'
 
 interface BanCheckResult {
 	banned: boolean
@@ -11,19 +11,19 @@ interface BanCheckResult {
  * Returns null if Vidar is not configured or unreachable.
  */
 export async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
-	const env = loadEnv()
+	const config = getConfig()
 
-	if (!env.VIDAR_URL) return null
+	if (!config.vidarUrl) return null
 
 	try {
-		const url = new URL('/vidar/check-ip', env.VIDAR_URL)
+		const url = new URL('/vidar/check-ip', config.vidarUrl)
 
 		url.searchParams.set('ip', ip)
 
 		const headers: Record<string, string> = {}
 
-		if (env.VIDAR_API_KEY) {
-			headers['X-API-Key'] = env.VIDAR_API_KEY
+		if (config.vidarApiKey) {
+			headers['X-API-Key'] = config.vidarApiKey
 		}
 
 		const res = await fetch(url, { headers, signal: AbortSignal.timeout(3000) })
@@ -46,17 +46,17 @@ export function reportEvent(
 	ip: string,
 	details: Record<string, unknown> = {},
 ): void {
-	const env = loadEnv()
+	const config = getConfig()
 
-	if (!env.VIDAR_URL) return
+	if (!config.vidarUrl) return
 
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' }
 
-	if (env.VIDAR_API_KEY) {
-		headers['X-API-Key'] = env.VIDAR_API_KEY
+	if (config.vidarApiKey) {
+		headers['X-API-Key'] = config.vidarApiKey
 	}
 
-	fetch(new URL('/vidar/events', env.VIDAR_URL), {
+	fetch(new URL('/vidar/events', config.vidarUrl), {
 		method: 'POST',
 		headers,
 		body: JSON.stringify({ ip, event_type: eventType, details, service: 'heimdall' }),

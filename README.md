@@ -2,14 +2,25 @@
 
 Hono + TypeScript Microservices
 
+## Services
+
 | Service | Role | Port |
 | --- | --- | --- |
-| **[Heimdall](services/heimdall)** | Auth | `8000` |
-| **[Bifrost](services/bifrost)** | API Gateway | `3000` |
+| **[Bifrost](services/bifrost)** | API Gateway + Auth | `3000` |
 | **[Saga](services/saga)** | Logging | `3001` |
 | **[Hermes](services/hermes)** | WebSockets | `3002` |
 | **[Huginn](services/huginn)** | Event Bus | `3003` |
 | **[Vidar](services/vidar)** | Monitoring | `3004` |
+
+## Packages
+
+| Package | Description |
+| --- | --- |
+| **[Frigg](packages/frigg)** | Config, secrets, and environment resolution |
+| **[Grid](packages/grid)** | Shared Hono middleware, schemas, and OpenAPI config |
+| **[Heimdall](packages/heimdall)** | JWT authentication, user management, and Vidar integration |
+| **[Mimir](packages/mimir)** | Shared PostgreSQL connection pool |
+| **[Norns](packages/norns)** | Server lifecycle and graceful shutdown |
 
 ## Prerequisites
 

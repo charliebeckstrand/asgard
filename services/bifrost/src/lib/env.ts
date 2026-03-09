@@ -2,9 +2,14 @@ import { createEnvLoader } from 'frigg'
 import { z } from 'zod'
 
 export const loadEnv = createEnvLoader({
-	HEIMDALL_URL: z.string().url().optional(),
-	HEIMDALL_API_KEY: z.string().optional(),
+	DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+	SECRET_KEY: z.string().min(1, 'SECRET_KEY is required'),
 	SESSION_SECRET: z.string().min(32).optional(),
+	VIDAR_URL: z.string().optional(),
+	VIDAR_API_KEY: z.string().optional(),
+	HEIMDALL_API_KEY: z.string().optional(),
+	ACCESS_TOKEN_EXPIRE_MINUTES: z.coerce.number().default(30),
+	REFRESH_TOKEN_EXPIRE_DAYS: z.coerce.number().default(7),
 })
 
 export type Env = ReturnType<typeof loadEnv>
