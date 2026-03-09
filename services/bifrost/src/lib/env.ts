@@ -1,11 +1,19 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { z } from 'zod'
 
 function getManifestPort(): number {
-	const manifest = JSON.parse(
-		readFileSync(resolve(import.meta.dirname, '..', 'manifest.json'), 'utf-8'),
-	)
+	let dir = import.meta.dirname
+
+	while (!existsSync(resolve(dir, 'manifest.json'))) {
+		const parent = resolve(dir, '..')
+
+		if (parent === dir) throw new Error('manifest.json not found')
+
+		dir = parent
+	}
+
+	const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf-8'))
 
 	return manifest.port
 }
