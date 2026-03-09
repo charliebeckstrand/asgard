@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 function getManifestPort(): number {
 	const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'manifest.json'), 'utf-8'))
+
 	return manifest.port
 }
 
