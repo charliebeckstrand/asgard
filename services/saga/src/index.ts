@@ -34,7 +34,11 @@ server.on('error', (error: NodeJS.ErrnoException) => {
 		console.warn(`Port ${env.PORT} is in use, attempting to free it...`)
 
 		try {
-			execSync(`lsof -ti :${env.PORT} | xargs kill -9`, { stdio: 'ignore' })
+			const cmd =
+				process.platform === 'darwin'
+					? `lsof -i :${env.PORT} | grep LISTEN | awk '{print $2}' | xargs kill -9`
+					: `fuser -k ${env.PORT}/tcp`
+			execSync(cmd, { stdio: 'ignore' })
 		} catch {
 			// Process may have already exited
 		}
