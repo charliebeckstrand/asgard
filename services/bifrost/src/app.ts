@@ -28,6 +28,8 @@ export function createApp() {
 
 	// --- Routes ---
 
+	app.get('/', (c) => c.json({}))
+
 	app.route('/auth', authRoutes)
 	app.route('/api', health)
 
