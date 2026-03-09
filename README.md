@@ -4,12 +4,12 @@ Hono + TypeScript Microservices
 
 | Service | Role | Port |
 | --- | --- | --- |
-| **Heimdall** | Auth | `8000` |
-| **Bifrost** | API Gateway | `3000` |
-| **Saga** | Event Bus | `3001` |
-| **Hermes** | WebSockets | `3002` |
-| **Vidar** | Monitoring | `3003` |
-| **Frigg** | Config Validation | `3004` |
+| **[Heimdall](services/heimdall)** | Auth | `8000` |
+| **[Bifrost](services/bifrost)** | API Gateway | `3000` |
+| **[Saga](services/saga)** | Event Bus | `3001` |
+| **[Hermes](services/hermes)** | WebSockets | `3002` |
+| **[Vidar](services/vidar)** | Monitoring | `3003` |
+| **[Frigg](services/frigg)** | Config Validation | `3004` |
 
 ## Prerequisites
 
