@@ -6,6 +6,7 @@ export type TokenType = 'access' | 'refresh'
 export interface Claims {
 	sub: string
 	type: TokenType
+	iss: string
 	exp: number
 	iat: number
 	jti: string
@@ -58,6 +59,7 @@ export async function signToken(
 	const payload: Claims = {
 		sub,
 		type,
+		iss: 'heimdall',
 		exp: now + expiresIn,
 		iat: now,
 		jti: randomUUID(),
@@ -88,9 +90,15 @@ export async function verifyToken(token: string): Promise<Claims> {
 		throw new Error('Invalid token format')
 	}
 
-	const [header, payload, signature] = parts
+	const [headerB64, payload, signature] = parts
 
-	const data = `${header}.${payload}`
+	const decodedHeader = JSON.parse(atob(headerB64.replace(/-/g, '+').replace(/_/g, '/')))
+
+	if (decodedHeader.alg !== 'HS256') {
+		throw new Error('Unsupported token algorithm')
+	}
+
+	const data = `${headerB64}.${payload}`
 
 	const key = await getKey(config.secretKey)
 
@@ -107,8 +115,18 @@ export async function verifyToken(token: string): Promise<Claims> {
 
 	const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) as Claims
 
-	if (typeof claims.exp !== 'number' || claims.exp < Math.floor(Date.now() / 1000)) {
+	const now = Math.floor(Date.now() / 1000)
+
+	if (typeof claims.exp !== 'number' || claims.exp < now) {
 		throw new Error('Token expired')
+	}
+
+	if (typeof claims.iat !== 'number' || claims.iat > now) {
+		throw new Error('Token issued in the future')
+	}
+
+	if (claims.iss !== 'heimdall') {
+		throw new Error('Invalid token issuer')
 	}
 
 	return claims

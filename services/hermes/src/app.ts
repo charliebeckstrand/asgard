@@ -1,8 +1,9 @@
 import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
-import { errorHandler, notFoundHandler, requestLogger } from 'grid'
+import { errorHandler, notFoundHandler, requestLogger, securityHeaders } from 'grid'
 import { cors } from 'hono/cors'
 
+import { loadEnv } from './lib/env.js'
 import { openApiConfig } from './lib/openapi.js'
 import { broadcastMessage } from './routes/broadcast.js'
 import { channels } from './routes/channels.js'
@@ -10,11 +11,14 @@ import { health } from './routes/health.js'
 import { sendMessage } from './routes/send.js'
 
 export function createApp() {
+	const env = loadEnv()
+
 	const app = new OpenAPIHono()
 
 	// --- Global middleware ---
 
-	app.use('*', cors())
+	app.use('*', cors({ origin: env.CORS_ORIGIN, credentials: true }))
+	app.use('*', securityHeaders())
 	app.use('*', requestLogger())
 
 	// --- Routes ---

@@ -1,6 +1,6 @@
 import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
-import { errorHandler, notFoundHandler } from 'grid'
+import { errorHandler, notFoundHandler, securityHeaders } from 'grid'
 import { cors } from 'hono/cors'
 
 import { openApiConfig } from './lib/openapi.js'
@@ -15,9 +15,10 @@ import { threats } from './routes/threats.js'
 export function createApp() {
 	const app = new OpenAPIHono()
 
-	// --- CORS ---
+	// --- Global middleware ---
 
 	app.use('*', cors())
+	app.use('*', securityHeaders())
 
 	// --- Routes ---
 

@@ -18,7 +18,7 @@ export function errorHandler(err: Error, c: Context) {
 	return c.json(
 		{
 			error: 'Internal Server Error',
-			message: err.message,
+			message: 'An unexpected error occurred',
 			statusCode: 500,
 		},
 		500,

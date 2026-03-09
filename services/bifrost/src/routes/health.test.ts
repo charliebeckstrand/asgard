@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
-vi.stubEnv('SECRET_KEY', 'test-secret-key')
+vi.stubEnv('SECRET_KEY', 'test-secret-key-that-is-at-least-32-chars')
 
 vi.mock('heimdall', () => ({
 	configure: vi.fn(),

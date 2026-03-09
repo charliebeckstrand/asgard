@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { getClientIp } from 'grid'
 import { AuthError, authenticateUser, registerNewUser } from 'heimdall'
 import { loadEnv } from '../lib/env.js'
 import { ErrorSchema } from '../lib/schemas.js'
@@ -151,7 +152,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>()
 
 		const { email, password } = c.req.valid('json')
 
-		const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown'
+		const ip = getClientIp(c)
 
 		try {
 			const tokens = await authenticateUser(email, password, ip)
@@ -205,7 +206,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>()
 	.openapi(registerRoute, async (c) => {
 		const { email, password } = c.req.valid('json')
 
-		const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown'
+		const ip = getClientIp(c)
 
 		try {
 			const user = await registerNewUser(email, password, ip)

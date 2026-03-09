@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto'
 import type { MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { getConfig } from '../config.js'
@@ -14,7 +15,10 @@ export function apiKeyAuth(): MiddlewareHandler {
 
 		const provided = c.req.header('x-api-key') ?? ''
 
-		if (provided !== config.apiKey) {
+		const a = Buffer.from(provided)
+		const b = Buffer.from(config.apiKey)
+
+		if (a.length !== b.length || !timingSafeEqual(a, b)) {
 			throw new HTTPException(401, { message: 'Invalid or missing API key' })
 		}
 

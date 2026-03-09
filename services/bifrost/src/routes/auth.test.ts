@@ -4,7 +4,7 @@ const MOCK_SECRET = 'test-secret-that-is-at-least-32-chars-long'
 
 vi.stubEnv('SESSION_SECRET', MOCK_SECRET)
 vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
-vi.stubEnv('SECRET_KEY', 'test-secret-key')
+vi.stubEnv('SECRET_KEY', 'test-secret-key-that-is-at-least-32-chars')
 
 // Use vi.hoisted so mock values are available when vi.mock is hoisted
 const { MockAuthError, mockAuthenticateUser, mockRegisterNewUser } = vi.hoisted(() => {

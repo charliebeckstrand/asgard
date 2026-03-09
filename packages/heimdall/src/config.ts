@@ -15,6 +15,10 @@ let _config: HeimdallConfig | null = null
 export function configure(
 	config: Partial<HeimdallConfig> & Pick<HeimdallConfig, 'getPool' | 'secretKey'>,
 ): void {
+	if (config.secretKey.length < 32) {
+		throw new Error('Heimdall secretKey must be at least 32 characters')
+	}
+
 	_config = {
 		accessTokenExpireMinutes: 30,
 		refreshTokenExpireDays: 7,
