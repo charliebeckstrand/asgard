@@ -184,7 +184,7 @@ export function session(): MiddlewareHandler<SessionEnv> {
 		}
 
 		c.set('session', sessionData)
-		
+
 		return next()
 	}
 }

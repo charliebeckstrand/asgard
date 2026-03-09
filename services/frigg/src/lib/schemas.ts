@@ -46,3 +46,18 @@ export const ValidateServiceResponseSchema = z
 		issues: z.array(ValidationIssueSchema),
 	})
 	.openapi('ValidateServiceResponse')
+
+const SecretInfoSchema = z.object({
+	key: z.string(),
+	owner: z.string(),
+	consumers: z.array(z.string()),
+	consistent: z.boolean(),
+	generated: z.boolean(),
+})
+
+export const SecretsStatusResponseSchema = z
+	.object({
+		status: z.enum(['healthy', 'unhealthy']),
+		secrets: z.array(SecretInfoSchema),
+	})
+	.openapi('SecretsStatusResponse')

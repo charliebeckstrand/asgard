@@ -9,3 +9,5 @@ coverage/
 .turbo/
 .vscode/
 environments/production.json
+environments/.secrets.json
+environments/overrides.json

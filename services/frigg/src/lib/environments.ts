@@ -1,39 +1,115 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { loadEnv } from './env.js'
+import { loadManifests } from './manifests.js'
 
 export type EnvironmentData = Record<string, Record<string, string>>
 
 let cached: EnvironmentData | null = null
 
-function getEnvironmentPath(): string {
-	const env = loadEnv()
-	const filename = `${env.NODE_ENV}.json`
-
-	return resolve(import.meta.dirname, '..', '..', '..', '..', 'environments', filename)
+function getSecretsPath(): string {
+	return resolve(import.meta.dirname, '..', '..', '..', '..', 'environments', '.secrets.json')
 }
 
+function getOverridesPath(): string {
+	return resolve(import.meta.dirname, '..', '..', '..', '..', 'environments', 'overrides.json')
+}
+
+function loadSecretsCache(): Record<string, string> {
+	const secretsPath = getSecretsPath()
+
+	if (!existsSync(secretsPath)) return {}
+
+	try {
+		return JSON.parse(readFileSync(secretsPath, 'utf-8'))
+	} catch {
+		return {}
+	}
+}
+
+function loadOverrides(): Record<string, Record<string, string>> {
+	const overridesPath = getOverridesPath()
+
+	if (!existsSync(overridesPath)) return {}
+
+	try {
+		return JSON.parse(readFileSync(overridesPath, 'utf-8'))
+	} catch {
+		return {}
+	}
+}
+
+/**
+ * Resolves all service configurations from manifests, secrets cache, and overrides.
+ * Returns a map of service name -> resolved environment variables.
+ */
 export function loadEnvironments(): EnvironmentData {
 	if (cached) return cached
 
-	const envPath = getEnvironmentPath()
+	const env = loadEnv()
+	const manifests = loadManifests()
+	const secretsCache = loadSecretsCache()
+	const overrides = loadOverrides()
 
-	let raw: Record<string, Record<string, string>>
+	const result: EnvironmentData = {}
 
-	try {
-		raw = JSON.parse(readFileSync(envPath, 'utf-8'))
-	} catch {
-		throw new Error(`Could not read environment file at ${envPath}`)
+	for (const [serviceName, manifest] of Object.entries(manifests)) {
+		const resolved: Record<string, string> = {
+			NODE_ENV: env.NODE_ENV,
+			PORT: String(manifest.port),
+		}
+
+		const serviceOverrides = overrides[serviceName] ?? {}
+
+		for (const [varName, config] of Object.entries(manifest.vars)) {
+			if (serviceOverrides[varName] !== undefined) {
+				resolved[varName] = serviceOverrides[varName]
+				continue
+			}
+
+			switch (config.type) {
+				case 'value': {
+					resolved[varName] = config.default ?? ''
+					break
+				}
+
+				case 'secret': {
+					const cacheKey = `${serviceName}:${varName}`
+					resolved[varName] = secretsCache[cacheKey] ?? ''
+					break
+				}
+
+				case 'ref': {
+					const refManifest = manifests[config.service ?? '']
+
+					if (!refManifest) {
+						resolved[varName] = ''
+						break
+					}
+
+					if (config.key) {
+						const refVarConfig = refManifest.vars[config.key]
+
+						if (refVarConfig?.type === 'secret') {
+							const cacheKey = `${config.service}:${config.key}`
+							resolved[varName] = secretsCache[cacheKey] ?? ''
+						} else if (refVarConfig?.type === 'value') {
+							resolved[varName] = refVarConfig.default ?? ''
+						} else {
+							resolved[varName] = ''
+						}
+					} else {
+						resolved[varName] = `http://localhost:${refManifest.port}`
+					}
+					break
+				}
+			}
+		}
+
+		result[serviceName] = resolved
 	}
 
-	const defaults = raw.$defaults ?? {}
-
-	cached = Object.fromEntries(
-		Object.entries(raw)
-			.filter(([key]) => !key.startsWith('$'))
-			.map(([key, data]) => [key, { ...defaults, ...data }]),
-	)
-
+	cached = result
 	return cached
 }
 

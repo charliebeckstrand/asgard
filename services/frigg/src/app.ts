@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 
 import { openApiConfig } from './lib/openapi.js'
 import { health } from './routes/health.js'
+import { secrets } from './routes/secrets.js'
 import { validate } from './routes/validate.js'
 
 export function createApp() {
@@ -17,6 +18,7 @@ export function createApp() {
 
 	app.route('/services', health)
 	app.route('/services', validate)
+	app.route('/services', secrets)
 
 	// --- OpenAPI ---
 

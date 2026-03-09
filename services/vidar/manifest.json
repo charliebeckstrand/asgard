@@ -1,0 +1,11 @@
+{
+	"name": "vidar",
+	"port": 3002,
+	"vars": {
+		"DATABASE_URL": { "type": "value", "default": "postgres://vidar:vidar@localhost:5432/vidar" },
+		"VIDAR_API_KEY": { "type": "secret" },
+		"SAGA_URL": { "type": "ref", "service": "saga" },
+		"SAGA_API_KEY": { "type": "ref", "service": "saga", "key": "SAGA_API_KEY" },
+		"AI_ENABLED": { "type": "value", "default": "false" }
+	}
+}

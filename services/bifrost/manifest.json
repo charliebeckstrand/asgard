@@ -1,0 +1,9 @@
+{
+	"name": "bifrost",
+	"port": 3000,
+	"vars": {
+		"HEIMDALL_URL": { "type": "ref", "service": "heimdall" },
+		"HEIMDALL_API_KEY": { "type": "ref", "service": "heimdall", "key": "HEIMDALL_API_KEY" },
+		"SESSION_SECRET": { "type": "secret" }
+	}
+}

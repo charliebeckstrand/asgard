@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { getServiceConfig, getServiceNames, loadEnvironments } from '../lib/environments.js'
+import { getManifest, loadManifests } from '../lib/manifests.js'
 import {
 	ErrorSchema,
 	ValidateResponseSchema,
@@ -13,6 +14,7 @@ interface Issue {
 }
 
 function validateService(
+	name: string,
 	data: Record<string, string>,
 	allServices: Record<string, Record<string, string>>,
 ): Issue[] {
@@ -95,6 +97,45 @@ function validateService(
 		}
 	}
 
+	// Manifest-aware checks
+	const manifest = getManifest(name)
+
+	if (manifest) {
+		// Check all declared vars are present
+		for (const varName of Object.keys(manifest.vars)) {
+			if (data[varName] === undefined) {
+				issues.push({
+					level: 'error',
+					message: `${varName} declared in manifest but missing from config`,
+				})
+			}
+		}
+
+		// Check ref targets exist
+		for (const [varName, config] of Object.entries(manifest.vars)) {
+			if (config.type !== 'ref' || !config.service) continue
+
+			const refManifest = loadManifests()[config.service]
+
+			if (!refManifest) {
+				issues.push({
+					level: 'error',
+					message: `${varName} references service '${config.service}' which has no manifest`,
+				})
+				continue
+			}
+
+			if (config.key && !refManifest.vars[config.key]) {
+				issues.push({
+					level: 'error',
+					message: `${varName} references '${config.service}.${config.key}' which is not declared in ${config.service}'s manifest`,
+				})
+			}
+		}
+	} else {
+		issues.push({ level: 'warning', message: 'No manifest.json found for this service' })
+	}
+
 	return issues
 }
 
@@ -116,7 +157,7 @@ function checkPortConflicts(
 		const existing = portMap.get(data.PORT) ?? []
 
 		existing.push(name)
-		
+
 		portMap.set(data.PORT, existing)
 	}
 
@@ -151,7 +192,7 @@ const validateAllRoute = createRoute({
 	tags: ['Validation'],
 	summary: 'Validate all service configs',
 	description:
-		'The Oracle inspects every service configuration — checking for empty values, port conflicts, invalid URLs, and cross-service reference mismatches.',
+		'The Oracle inspects every service configuration — checking for empty values, port conflicts, invalid URLs, cross-service reference mismatches, and manifest consistency.',
 	security: [{ ApiKey: [] }],
 	responses: {
 		200: {
@@ -202,7 +243,7 @@ validate.openapi(validateAllRoute, (c) => {
 	const serviceResults = getServiceNames().map((name) => {
 		const data = allServices[name]
 
-		const issues = validateService(data, allServices)
+		const issues = validateService(name, data, allServices)
 
 		// Merge port conflict issues
 		const conflicts = portConflicts.find((pc) => pc.service === name)
@@ -237,7 +278,7 @@ validate.openapi(validateServiceRoute, (c) => {
 
 	const allServices = loadEnvironments()
 
-	const issues = validateService(data, allServices)
+	const issues = validateService(service, data, allServices)
 
 	// Check port conflicts for this service
 	const portConflicts = checkPortConflicts(allServices)

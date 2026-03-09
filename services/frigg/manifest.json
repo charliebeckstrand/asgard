@@ -1,0 +1,9 @@
+{
+	"name": "frigg",
+	"port": 3003,
+	"vars": {
+		"FRIGG_API_KEY": { "type": "secret" },
+		"VIDAR_URL": { "type": "ref", "service": "vidar" },
+		"VIDAR_API_KEY": { "type": "ref", "service": "vidar", "key": "VIDAR_API_KEY" }
+	}
+}

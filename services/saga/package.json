@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "dev": "node ../../scripts/env-init.mjs && tsx watch src/index.ts",
+    "dev": "node ../../scripts/generate-secrets.mjs && tsx watch src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
     "lint": "biome check --config-path=../.. .",

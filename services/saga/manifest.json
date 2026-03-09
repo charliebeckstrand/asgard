@@ -1,0 +1,8 @@
+{
+	"name": "saga",
+	"port": 3001,
+	"vars": {
+		"DATABASE_URL": { "type": "value", "default": "postgres://user:password@localhost:5432/yggdrasil" },
+		"SAGA_API_KEY": { "type": "secret" }
+	}
+}
