@@ -116,7 +116,7 @@ function checkPortConflicts(
 		const existing = portMap.get(data.PORT) ?? []
 
 		existing.push(name)
-		
+
 		portMap.set(data.PORT, existing)
 	}
 

@@ -155,7 +155,7 @@ describe('Auth routes', () => {
 			})
 
 			const cookie = getCookieFromResponse(loginRes)
-			
+
 			expect(cookie).toBeDefined()
 
 			// Use cookie to check session
