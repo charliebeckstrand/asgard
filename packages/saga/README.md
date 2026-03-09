@@ -1,6 +1,6 @@
 # saga
 
-Structured log ingestion and querying package.
+Structured logging and search for PostgreSQL.
 
 - **Typed entries** — structured log entries with metadata
 - **Persistent storage** — logs stored in PostgreSQL
@@ -19,6 +19,7 @@ import { createLogsApp, createLog, queryLogs } from 'saga'
 import { createLogsApp } from 'saga'
 
 const logsApp = createLogsApp(pool)
+
 app.route('/', logsApp)
 ```
 
@@ -36,5 +37,6 @@ app.route('/logs', createLogsRouter(pool))
 import { createLog, createBatch, queryLogs } from 'saga'
 
 await createLog(pool, { level: 'info', service: 'bifrost', message: 'Request received', type: 'server', metadata: {} })
+
 await queryLogs(pool, { limit: 50, offset: 0, service: 'bifrost' })
 ```
