@@ -1,6 +1,6 @@
 # bifrost
 
-API gateway and Backend-for-Frontend (BFF) — the single entry point for all client traffic on port 3000.
+API gateway and Backend-for-Frontend (BFF).
 
 - **Auth** — registration, login, token refresh, and session management via the `heimdall` package
 - **Session management** — cookie-based sessions wrapping JWTs with automatic token refresh
