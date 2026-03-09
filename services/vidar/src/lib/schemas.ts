@@ -34,12 +34,12 @@ export const IngestEventSchema = z
 
 export const SecurityEventSchema = z
 	.object({
-		id: z.string().uuid(),
+		id: z.uuid(),
 		ip: z.string(),
 		event_type: z.string(),
 		details: z.record(z.string(), z.unknown()),
 		service: z.string(),
-		created_at: z.string().datetime(),
+		created_at: z.iso.datetime(),
 	})
 	.openapi('SecurityEvent')
 
@@ -49,7 +49,7 @@ export const CheckIpResponseSchema = z
 	.object({
 		banned: z.boolean(),
 		reason: z.string().optional(),
-		expires_at: z.string().datetime().optional(),
+		expires_at: z.iso.datetime().optional(),
 	})
 	.openapi('CheckIpResponse')
 
@@ -67,13 +67,13 @@ export const CreateBanSchema = z
 
 export const BanSchema = z
 	.object({
-		id: z.string().uuid(),
+		id: z.uuid(),
 		ip: z.string(),
 		reason: z.string(),
 		rule_id: z.string().nullable(),
 		created_by: z.string(),
-		expires_at: z.string().datetime().nullable(),
-		created_at: z.string().datetime(),
+		expires_at: z.iso.datetime().nullable(),
+		created_at: z.iso.datetime(),
 	})
 	.openapi('Ban')
 
@@ -88,14 +88,14 @@ export const BanListSchema = z
 
 export const ThreatSchema = z
 	.object({
-		id: z.string().uuid(),
+		id: z.uuid(),
 		threat_type: z.string(),
 		severity: z.string(),
 		ip: z.string(),
 		details: z.record(z.string(), z.unknown()),
 		action_taken: z.string().nullable(),
 		resolved: z.boolean(),
-		created_at: z.string().datetime(),
+		created_at: z.iso.datetime(),
 	})
 	.openapi('Threat')
 

@@ -155,6 +155,7 @@ export function validateService(
 					level: 'error',
 					message: `${varName} references service '${config.service}' which has no manifest`,
 				})
+
 				continue
 			}
 

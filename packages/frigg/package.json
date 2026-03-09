@@ -11,9 +11,6 @@
       "default": "./dist/index.js"
     }
   },
-  "bin": {
-    "frigg": "./dist/cli.js"
-  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

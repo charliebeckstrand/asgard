@@ -2,13 +2,18 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { AuthError, authenticateUser, registerNewUser } from 'heimdall'
 import { loadEnv } from '../lib/env.js'
 import { ErrorSchema } from '../lib/schemas.js'
-import { clearSessionCookie, type SessionData, setSessionCookie } from '../middleware/session.js'
+import {
+	clearSessionCookie,
+	type SessionData,
+	type SessionEnv,
+	setSessionCookie,
+} from '../middleware/session.js'
 
 // --- Schemas ---
 
 const LoginRequestSchema = z
 	.object({
-		email: z.string().email(),
+		email: z.email(),
 		password: z.string().min(1),
 	})
 	.openapi('LoginRequest')
@@ -30,7 +35,7 @@ const SessionResponseSchema = z
 
 const RegisterRequestSchema = z
 	.object({
-		email: z.string().email(),
+		email: z.email(),
 		password: z.string().min(8),
 		name: z.string().min(1).optional(),
 	})
@@ -136,19 +141,12 @@ const registerRoute = createRoute({
 
 // --- Handlers ---
 
-export const authRoutes = new OpenAPIHono()
+export const authRoutes = new OpenAPIHono<SessionEnv>()
 	.openapi(loginRoute, async (c) => {
 		const env = loadEnv()
 
 		if (!env.SESSION_SECRET) {
-			return c.json(
-				{
-					error: 'Internal Server Error',
-					message: 'SESSION_SECRET is not configured',
-					statusCode: 500,
-				},
-				500,
-			)
+			throw new Error('SESSION_SECRET is not configured')
 		}
 
 		const { email, password } = c.req.valid('json')
@@ -190,7 +188,7 @@ export const authRoutes = new OpenAPIHono()
 		return c.json({ message: 'Logged out' }, 200)
 	})
 	.openapi(sessionRoute, async (c) => {
-		const session = c.get('session') as SessionData | null
+		const session = c.get('session')
 
 		if (!session) {
 			return c.json({ error: 'Unauthorized', message: 'Not authenticated', statusCode: 401 }, 401)
@@ -217,6 +215,7 @@ export const authRoutes = new OpenAPIHono()
 			if (err instanceof AuthError && err.code === 'email_exists') {
 				return c.json({ error: 'Conflict', message: err.message, statusCode: 409 }, 409)
 			}
+
 			throw err
 		}
 	})

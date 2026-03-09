@@ -23,11 +23,11 @@ export const PublishEventSchema = z
 
 export const EventSchema = z
 	.object({
-		id: z.string().uuid(),
+		id: z.uuid(),
 		topic: z.string(),
 		payload: z.record(z.string(), z.unknown()),
 		source: z.string(),
-		created_at: z.string().datetime(),
+		created_at: z.iso.datetime(),
 	})
 	.openapi('Event')
 
@@ -38,7 +38,7 @@ export const CreateSubscriptionSchema = z
 			.min(1)
 			.max(255)
 			.openapi({ description: 'Event topic to subscribe to', example: 'user.registered' }),
-		callback_url: z.string().url().openapi({
+		callback_url: z.url().openapi({
 			description: 'URL to receive event callbacks',
 			example: 'http://bifrost:8000/api/webhooks/user-registered',
 		}),
@@ -52,13 +52,13 @@ export const CreateSubscriptionSchema = z
 
 export const SubscriptionSchema = z
 	.object({
-		id: z.string().uuid(),
+		id: z.uuid(),
 		topic: z.string(),
-		callback_url: z.string().url(),
+		callback_url: z.url(),
 		service: z.string(),
 		is_active: z.boolean(),
-		created_at: z.string().datetime(),
-		updated_at: z.string().datetime(),
+		created_at: z.iso.datetime(),
+		updated_at: z.iso.datetime(),
 	})
 	.openapi('Subscription')
 

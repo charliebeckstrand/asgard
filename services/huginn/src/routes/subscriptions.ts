@@ -72,7 +72,7 @@ const deleteRoute = createRoute({
 	security: [{ ApiKey: [] }],
 	request: {
 		params: z.object({
-			id: z.string().uuid().openapi({ description: 'Subscription ID' }),
+			id: z.uuid().openapi({ description: 'Subscription ID' }),
 		}),
 	},
 	responses: {

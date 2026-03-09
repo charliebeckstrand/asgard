@@ -33,6 +33,7 @@ export function createEnvLoader<T extends z.ZodRawShape>(
 ): () => BaseEnv & z.infer<z.ZodObject<T>>
 export function createEnvLoader<T extends z.ZodRawShape>(extra?: T) {
 	const baseSchema = getBaseSchema()
+
 	const schema = extra ? baseSchema.extend(extra) : baseSchema
 
 	let cached: z.infer<typeof schema> | null = null

@@ -45,6 +45,7 @@ export async function authenticateUser(
 
 	if (!creds || !passwordOk) {
 		if (ip) reportEvent('login_failed', ip, { email: normalizedEmail })
+
 		throw new AuthError('invalid_credentials', 'Incorrect email or password')
 	}
 
@@ -82,6 +83,7 @@ export async function registerNewUser(
 		if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
 			throw new AuthError('email_exists', 'Email already registered')
 		}
+
 		throw err
 	}
 }

@@ -24,5 +24,6 @@ export function configure(
 
 export function getConfig(): HeimdallConfig {
 	if (!_config) throw new Error('Heimdall not configured. Call configure() first.')
+
 	return _config
 }

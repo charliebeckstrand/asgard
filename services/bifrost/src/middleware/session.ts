@@ -10,7 +10,7 @@ export type SessionData = {
 	expiresAt: number
 }
 
-type SessionEnv = {
+export type SessionEnv = {
 	Variables: {
 		session: SessionData | null
 	}

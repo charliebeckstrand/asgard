@@ -40,13 +40,13 @@ export const BatchCreateSchema = z
 
 export const LogEntrySchema = z
 	.object({
-		id: z.string().uuid(),
+		id: z.uuid(),
 		type: z.string(),
 		level: z.string(),
 		service: z.string(),
 		message: z.string(),
 		metadata: z.record(z.string(), z.unknown()),
-		created_at: z.string().datetime(),
+		created_at: z.iso.datetime(),
 	})
 	.openapi('LogEntry')
 
@@ -64,8 +64,8 @@ export const LogQuerySchema = z.object({
 		.optional()
 		.openapi({ description: 'Filter by level' }),
 	service: z.string().optional().openapi({ description: 'Filter by service name' }),
-	from: z.string().datetime().optional().openapi({ description: 'Start of time range (ISO 8601)' }),
-	to: z.string().datetime().optional().openapi({ description: 'End of time range (ISO 8601)' }),
+	from: z.iso.datetime().optional().openapi({ description: 'Start of time range (ISO 8601)' }),
+	to: z.iso.datetime().optional().openapi({ description: 'End of time range (ISO 8601)' }),
 	limit: z.coerce
 		.number()
 		.min(1)

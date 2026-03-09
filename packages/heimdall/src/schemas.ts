@@ -8,7 +8,7 @@ export const DetailSchema = z
 
 export const RegisterSchema = z
 	.object({
-		email: z.string().email().openapi({ example: 'user@example.com' }),
+		email: z.email().openapi({ example: 'user@example.com' }),
 		password: z
 			.string()
 			.min(8, 'Password must be between 8 and 128 characters')
@@ -19,7 +19,7 @@ export const RegisterSchema = z
 
 export const LoginSchema = z
 	.object({
-		email: z.string().email().openapi({ example: 'user@example.com' }),
+		email: z.email().openapi({ example: 'user@example.com' }),
 		password: z.string().min(1).openapi({ example: 'securepassword' }),
 	})
 	.openapi('LoginRequest')
@@ -38,11 +38,11 @@ export const VerifySchema = z
 
 export const UserResponseSchema = z
 	.object({
-		id: z.string().uuid(),
-		email: z.string().email(),
+		id: z.uuid(),
+		email: z.email(),
 		is_active: z.boolean(),
 		is_verified: z.boolean(),
-		created_at: z.string().datetime(),
+		created_at: z.iso.datetime(),
 	})
 	.openapi('UserResponse')
 

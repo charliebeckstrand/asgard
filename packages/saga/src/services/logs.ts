@@ -48,13 +48,16 @@ export async function createLog(pool: Pool, input: LogInput): Promise<LogEntry> 
 
 export async function createBatch(pool: Pool, inputs: LogInput[]): Promise<LogEntry[]> {
 	const values: string[] = []
+
 	const params: unknown[] = []
+
 	let paramIndex = 1
 
 	for (const input of inputs) {
 		values.push(
 			`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4})`,
 		)
+
 		params.push(
 			input.type,
 			input.level,
@@ -62,6 +65,7 @@ export async function createBatch(pool: Pool, inputs: LogInput[]): Promise<LogEn
 			input.message,
 			JSON.stringify(input.metadata),
 		)
+
 		paramIndex += 5
 	}
 
@@ -77,31 +81,38 @@ export async function createBatch(pool: Pool, inputs: LogInput[]): Promise<LogEn
 
 export async function queryLogs(pool: Pool, input: QueryInput): Promise<LogList> {
 	const conditions: string[] = []
+
 	const params: unknown[] = []
+
 	let paramIndex = 1
 
 	if (input.type) {
 		conditions.push(`type = $${paramIndex++}`)
+
 		params.push(input.type)
 	}
 
 	if (input.level) {
 		conditions.push(`level = $${paramIndex++}`)
+
 		params.push(input.level)
 	}
 
 	if (input.service) {
 		conditions.push(`service = $${paramIndex++}`)
+
 		params.push(input.service)
 	}
 
 	if (input.from) {
 		conditions.push(`created_at >= $${paramIndex++}`)
+
 		params.push(input.from)
 	}
 
 	if (input.to) {
 		conditions.push(`created_at <= $${paramIndex++}`)
+
 		params.push(input.to)
 	}
 

@@ -47,6 +47,7 @@ export function createAuthApp(
 	// --- OpenAPI ---
 
 	app.doc('/openapi.json', openApiConfig)
+
 	app.get('/docs', swaggerUI({ url: '/auth/openapi.json' }))
 
 	// --- Error handling ---

@@ -18,6 +18,7 @@ export interface InitOptions {
 export function initEnvironments(options: InitOptions): void {
 	const servicesDir = resolve(options.rootDir, 'services')
 	const secretsCachePath = resolve(options.rootDir, '.secrets.json')
+
 	const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV ?? 'development'
 
 	const manifests = loadManifests(servicesDir)
