@@ -1,3 +1,4 @@
+import { sql } from 'mimir'
 import { getPool } from '../lib/db.js'
 import { createBan } from './bans.js'
 import { createThreat } from './threats.js'
@@ -114,14 +115,13 @@ async function checkRule(
 ): Promise<boolean> {
 	if (rule.distinct_accounts) {
 		const { rows } = await pool.query<{ event_count: string; account_count: string }>(
-			`SELECT
+			sql`SELECT
 				COUNT(*)::text AS event_count,
 				COUNT(DISTINCT details->>'email')::text AS account_count
 			 FROM vdr_security_events
-			 WHERE ip = $1
-			   AND event_type = $2
-			   AND created_at > now() - make_interval(mins => $3::int)`,
-			[ip, rule.event_type, rule.window_minutes],
+			 WHERE ip = ${ip}
+			   AND event_type = ${rule.event_type}
+			   AND created_at > now() - make_interval(mins => ${rule.window_minutes}::int)`,
 		)
 
 		const eventCount = Number.parseInt(rows[0].event_count, 10)
@@ -132,11 +132,10 @@ async function checkRule(
 	}
 
 	const { rows } = await pool.query<{ count: string }>(
-		`SELECT COUNT(*)::text AS count FROM vdr_security_events
-		 WHERE ip = $1
-		   AND event_type = $2
-		   AND created_at > now() - make_interval(mins => $3::int)`,
-		[ip, rule.event_type, rule.window_minutes],
+		sql`SELECT COUNT(*)::text AS count FROM vdr_security_events
+		 WHERE ip = ${ip}
+		   AND event_type = ${rule.event_type}
+		   AND created_at > now() - make_interval(mins => ${rule.window_minutes}::int)`,
 	)
 
 	return Number.parseInt(rows[0].count, 10) >= rule.threshold

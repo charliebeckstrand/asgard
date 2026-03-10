@@ -1,3 +1,4 @@
+import { sql } from 'mimir'
 import { getPool } from '../lib/db.js'
 
 export interface BanRow {
@@ -16,10 +17,9 @@ export async function isIpBanned(
 	const pool = getPool()
 
 	const { rows } = await pool.query<BanRow>(
-		`SELECT reason, expires_at FROM vdr_bans
-		 WHERE ip = $1 AND (expires_at IS NULL OR expires_at > now())
+		sql`SELECT reason, expires_at FROM vdr_bans
+		 WHERE ip = ${ip} AND (expires_at IS NULL OR expires_at > now())
 		 LIMIT 1`,
-		[ip],
 	)
 
 	if (rows.length === 0) {
@@ -41,8 +41,8 @@ export async function createBan(
 	const pool = getPool()
 
 	const { rows } = await pool.query<BanRow>(
-		`INSERT INTO vdr_bans (ip, reason, rule_id, created_by, expires_at)
-		 VALUES ($1, $2, $3, $4, CASE WHEN $5::int IS NOT NULL THEN now() + make_interval(mins => $5::int) ELSE NULL END)
+		sql`INSERT INTO vdr_bans (ip, reason, rule_id, created_by, expires_at)
+		 VALUES (${ip}, ${reason}, ${options?.rule_id ?? null}, ${options?.created_by ?? 'system'}, CASE WHEN ${options?.duration_minutes ?? null}::int IS NOT NULL THEN now() + make_interval(mins => ${options?.duration_minutes ?? null}::int) ELSE NULL END)
 		 ON CONFLICT (ip) DO UPDATE SET
 		   reason = EXCLUDED.reason,
 		   rule_id = EXCLUDED.rule_id,
@@ -50,13 +50,6 @@ export async function createBan(
 		   expires_at = EXCLUDED.expires_at,
 		   created_at = now()
 		 RETURNING *`,
-		[
-			ip,
-			reason,
-			options?.rule_id ?? null,
-			options?.created_by ?? 'system',
-			options?.duration_minutes ?? null,
-		],
 	)
 
 	return rows[0]
@@ -65,7 +58,7 @@ export async function createBan(
 export async function removeBan(ip: string): Promise<boolean> {
 	const pool = getPool()
 
-	const { rowCount } = await pool.query('DELETE FROM vdr_bans WHERE ip = $1', [ip])
+	const { rowCount } = await pool.query(sql`DELETE FROM vdr_bans WHERE ip = ${ip}`)
 
 	return (rowCount ?? 0) > 0
 }
@@ -74,7 +67,7 @@ export async function listActiveBans(): Promise<{ data: BanRow[]; total: number 
 	const pool = getPool()
 
 	const { rows } = await pool.query<BanRow>(
-		`SELECT * FROM vdr_bans
+		sql`SELECT * FROM vdr_bans
 		 WHERE expires_at IS NULL OR expires_at > now()
 		 ORDER BY created_at DESC`,
 	)
@@ -86,7 +79,7 @@ export async function cleanExpiredBans(): Promise<number> {
 	const pool = getPool()
 
 	const { rowCount } = await pool.query(
-		'DELETE FROM vdr_bans WHERE expires_at IS NOT NULL AND expires_at <= now()',
+		sql`DELETE FROM vdr_bans WHERE expires_at IS NOT NULL AND expires_at <= now()`,
 	)
 
 	return rowCount ?? 0

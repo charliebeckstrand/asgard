@@ -1,3 +1,4 @@
+import { sql } from 'mimir'
 import { getPool } from '../lib/db.js'
 import { evaluateRules } from './rules.js'
 
@@ -19,10 +20,9 @@ export async function ingestEvent(event: {
 	const pool = getPool()
 
 	const { rows } = await pool.query<SecurityEventRow>(
-		`INSERT INTO vdr_security_events (ip, event_type, details, service)
-		 VALUES ($1, $2, $3, $4)
+		sql`INSERT INTO vdr_security_events (ip, event_type, details, service)
+		 VALUES (${event.ip}, ${event.event_type}, ${JSON.stringify(event.details)}, ${event.service})
 		 RETURNING *`,
-		[event.ip, event.event_type, JSON.stringify(event.details), event.service],
 	)
 
 	// Evaluate rules asynchronously — don't block the response

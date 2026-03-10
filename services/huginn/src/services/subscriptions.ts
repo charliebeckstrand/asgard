@@ -1,3 +1,4 @@
+import { sql } from 'mimir'
 import { getPool } from '../lib/db.js'
 
 type CreateInput = {
@@ -24,19 +25,14 @@ type SubscriptionList = {
 export async function listSubscriptions(topic?: string): Promise<SubscriptionList> {
 	const pool = getPool()
 
-	let query = `SELECT id, topic, callback_url, service, is_active,
-		created_at::text as created_at, updated_at::text as updated_at
-		FROM huginn.subscriptions WHERE is_active = TRUE`
-	const params: string[] = []
+	const topicFilter = topic ? sql`AND topic = ${topic}` : sql.raw('')
 
-	if (topic) {
-		query += ' AND topic = $1'
-		params.push(topic)
-	}
-
-	query += ' ORDER BY created_at DESC'
-
-	const { rows } = await pool.query<Subscription>(query, params)
+	const { rows } = await pool.query<Subscription>(
+		sql`SELECT id, topic, callback_url, service, is_active,
+		 created_at::text as created_at, updated_at::text as updated_at
+		 FROM huginn.subscriptions WHERE is_active = TRUE ${topicFilter}
+		 ORDER BY created_at DESC`,
+	)
 
 	return { data: rows, total: rows.length }
 }
@@ -45,11 +41,10 @@ export async function createSubscription(input: CreateInput): Promise<Subscripti
 	const pool = getPool()
 
 	const { rows } = await pool.query<Subscription>(
-		`INSERT INTO huginn.subscriptions (topic, callback_url, service)
-		 VALUES ($1, $2, $3)
+		sql`INSERT INTO huginn.subscriptions (topic, callback_url, service)
+		 VALUES (${input.topic}, ${input.callback_url}, ${input.service})
 		 RETURNING id, topic, callback_url, service, is_active,
 		 created_at::text as created_at, updated_at::text as updated_at`,
-		[input.topic, input.callback_url, input.service],
 	)
 
 	return rows[0]
@@ -59,8 +54,7 @@ export async function deleteSubscription(id: string): Promise<boolean> {
 	const pool = getPool()
 
 	const { rowCount } = await pool.query(
-		`UPDATE huginn.subscriptions SET is_active = FALSE, updated_at = now() WHERE id = $1 AND is_active = TRUE`,
-		[id],
+		sql`UPDATE huginn.subscriptions SET is_active = FALSE, updated_at = now() WHERE id = ${id} AND is_active = TRUE`,
 	)
 
 	return (rowCount ?? 0) > 0

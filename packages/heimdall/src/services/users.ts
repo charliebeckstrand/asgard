@@ -1,3 +1,4 @@
+import { sql } from 'mimir'
 import { getConfig } from '../config.js'
 
 export interface UserRow {
@@ -23,10 +24,9 @@ export async function createUser(
 	const pool = getConfig().getPool()
 
 	const { rows } = await pool.query<UserRow>(
-		`INSERT INTO users (id, email, hashed_password)
-		 VALUES ($1, $2, $3)
+		sql`INSERT INTO users (id, email, hashed_password)
+		 VALUES (${id}, ${email}, ${hashedPassword})
 		 RETURNING id, email, is_active, is_verified, created_at, updated_at`,
-		[id, email, hashedPassword],
 	)
 
 	return rows[0]
@@ -36,8 +36,7 @@ export async function findCredentialsByEmail(email: string): Promise<Credentials
 	const pool = getConfig().getPool()
 
 	const { rows } = await pool.query<CredentialsRow>(
-		'SELECT id, hashed_password, is_active FROM users WHERE email = $1',
-		[email],
+		sql`SELECT id, hashed_password, is_active FROM users WHERE email = ${email}`,
 	)
 
 	return rows[0] ?? null
@@ -47,8 +46,7 @@ export async function findUserById(id: string): Promise<UserRow | null> {
 	const pool = getConfig().getPool()
 
 	const { rows } = await pool.query<UserRow>(
-		'SELECT id, email, is_active, is_verified, created_at, updated_at FROM users WHERE id = $1',
-		[id],
+		sql`SELECT id, email, is_active, is_verified, created_at, updated_at FROM users WHERE id = ${id}`,
 	)
 
 	return rows[0] ?? null
@@ -57,5 +55,5 @@ export async function findUserById(id: string): Promise<UserRow | null> {
 export async function deactivateUser(id: string): Promise<void> {
 	const pool = getConfig().getPool()
 
-	await pool.query('UPDATE users SET is_active = false WHERE id = $1', [id])
+	await pool.query(sql`UPDATE users SET is_active = false WHERE id = ${id}`)
 }
