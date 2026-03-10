@@ -81,6 +81,7 @@ export function getRules(): Rule[] {
 
 export async function evaluateRules(ip: string, eventType: string): Promise<void> {
 	const pool = getPool()
+
 	const knownIp = ip && ip !== 'unknown' ? ip : null
 
 	const matchingRules = PREDEFINED_RULES.filter((r) => r.enabled && r.event_type === eventType)
