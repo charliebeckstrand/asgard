@@ -5,15 +5,15 @@ export interface VarConfig {
 	key?: string
 }
 
-export interface ServiceManifest {
+export interface Manifest {
 	name: string
 	port: number
 	vars: Record<string, VarConfig>
 }
 
-export type ManifestData = Record<string, ServiceManifest>
-
 export type EnvironmentData = Record<string, Record<string, string>>
+
+export type ManifestData = Record<string, Manifest>
 
 export interface Issue {
 	level: 'error' | 'warning'

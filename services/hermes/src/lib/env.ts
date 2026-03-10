@@ -6,4 +6,4 @@ export const environment = createEnvironment({
 	HERMES_API_KEY: z.string().optional(),
 })
 
-export type Env = ReturnType<typeof environment>
+export type Environment = ReturnType<typeof environment>

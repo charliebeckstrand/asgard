@@ -12,4 +12,4 @@ export const environment = createEnvironment({
 		.transform((v) => v === 'true'),
 })
 
-export type Env = ReturnType<typeof environment>
+export type Environment = ReturnType<typeof environment>

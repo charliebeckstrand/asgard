@@ -7,4 +7,4 @@ export const environment = createEnvironment({
 	CORS_ORIGIN: z.string().default('http://localhost:3000'),
 })
 
-export type Env = ReturnType<typeof environment>
+export type Environment = ReturnType<typeof environment>

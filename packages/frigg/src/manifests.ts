@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import type { ManifestData, ServiceManifest } from './types.js'
+import type { Manifest, ManifestData } from './types.js'
 
 /**
  * Load all service manifests from a services directory.
@@ -16,7 +16,7 @@ export function loadManifests(servicesDir: string): ManifestData {
 		if (!existsSync(manifestPath)) continue
 
 		try {
-			const manifest: ServiceManifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
+			const manifest: Manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
 
 			manifests[manifest.name || entry.name] = manifest
 		} catch {

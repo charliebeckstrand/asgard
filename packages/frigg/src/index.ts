@@ -8,8 +8,8 @@ export { generateSecrets, loadSecretsCache, saveSecretsCache } from './secrets.j
 export type {
 	EnvironmentData,
 	Issue,
+	Manifest,
 	ManifestData,
-	ServiceManifest,
 	VarConfig,
 } from './types.js'
 export { checkPortConflicts, validateAll, validateService } from './validate.js'
