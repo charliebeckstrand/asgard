@@ -104,7 +104,7 @@ EOSQL
 
 # --- vidar database tables ---
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname vidar <<-'EOSQL'
-    CREATE TABLE IF NOT EXISTS security_events (
+    CREATE TABLE IF NOT EXISTS vdr_security_events (
         id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
         ip          VARCHAR(45) NOT NULL,
         event_type  VARCHAR(100) NOT NULL,
@@ -113,10 +113,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname vidar <<-'EOSQL'
         created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
-    CREATE INDEX IF NOT EXISTS ix_security_events_lookup
-        ON security_events (ip, event_type, created_at);
+    CREATE INDEX IF NOT EXISTS ix_vdr_security_events_lookup
+        ON vdr_security_events (ip, event_type, created_at);
 
-    CREATE TABLE IF NOT EXISTS bans (
+    CREATE TABLE IF NOT EXISTS vdr_bans (
         id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
         ip          VARCHAR(45) NOT NULL UNIQUE,
         reason      TEXT        NOT NULL,
@@ -126,10 +126,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname vidar <<-'EOSQL'
         created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
-    CREATE INDEX IF NOT EXISTS ix_bans_ip ON bans (ip);
-    CREATE INDEX IF NOT EXISTS ix_bans_expires_at ON bans (expires_at);
+    CREATE INDEX IF NOT EXISTS ix_vdr_bans_ip ON vdr_bans (ip);
+    CREATE INDEX IF NOT EXISTS ix_vdr_bans_expires_at ON vdr_bans (expires_at);
 
-    CREATE TABLE IF NOT EXISTS threats (
+    CREATE TABLE IF NOT EXISTS vdr_threats (
         id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
         threat_type  VARCHAR(100) NOT NULL,
         severity     VARCHAR(20)  NOT NULL DEFAULT 'medium',
@@ -140,8 +140,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname vidar <<-'EOSQL'
         created_at   TIMESTAMPTZ  NOT NULL DEFAULT now()
     );
 
-    CREATE INDEX IF NOT EXISTS ix_threats_ip ON threats (ip);
-    CREATE INDEX IF NOT EXISTS ix_threats_resolved ON threats (resolved);
+    CREATE INDEX IF NOT EXISTS ix_vdr_threats_ip ON vdr_threats (ip);
+    CREATE INDEX IF NOT EXISTS ix_vdr_threats_resolved ON vdr_threats (resolved);
 
     -- Grant vidar role access to its own tables
     GRANT ALL ON ALL TABLES IN SCHEMA public TO vidar;
