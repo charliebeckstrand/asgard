@@ -110,7 +110,7 @@ async function checkRule(ip: string, rule: Rule): Promise<boolean> {
 	const db = getDb()
 
 	if (rule.distinct_accounts) {
-		const row = await db.first<{ event_count: string; account_count: string }>(
+		const row = await db.get<{ event_count: string; account_count: string }>(
 			sql`SELECT
 				COUNT(*)::text AS event_count,
 				COUNT(DISTINCT details->>'email')::text AS account_count

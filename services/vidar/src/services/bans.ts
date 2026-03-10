@@ -16,7 +16,7 @@ export async function isIpBanned(
 ): Promise<{ banned: boolean; reason?: string; expires_at?: string }> {
 	const db = getDb()
 
-	const row = await db.one<BanRow>(
+	const row = await db.query<BanRow>(
 		sql`SELECT reason, expires_at FROM vdr_bans
 		 WHERE ip = ${ip} AND (expires_at IS NULL OR expires_at > now())
 		 LIMIT 1`,
@@ -40,7 +40,7 @@ export async function createBan(
 ): Promise<BanRow> {
 	const db = getDb()
 
-	return db.first<BanRow>(
+	return db.get<BanRow>(
 		sql`INSERT INTO vdr_bans (ip, reason, rule_id, created_by, expires_at)
 		 VALUES (${ip}, ${reason}, ${options?.rule_id ?? null}, ${options?.created_by ?? 'system'}, CASE WHEN ${options?.duration_minutes ?? null}::int IS NOT NULL THEN now() + make_interval(mins => ${options?.duration_minutes ?? null}::int) ELSE NULL END)
 		 ON CONFLICT (ip) DO UPDATE SET

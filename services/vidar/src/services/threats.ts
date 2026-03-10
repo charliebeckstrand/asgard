@@ -21,7 +21,7 @@ export async function createThreat(threat: {
 }): Promise<ThreatRow> {
 	const db = getDb()
 
-	return db.first<ThreatRow>(
+	return db.get<ThreatRow>(
 		sql`INSERT INTO vdr_threats (threat_type, severity, ip, details, action_taken)
 		 VALUES (${threat.threat_type}, ${threat.severity}, ${threat.ip}, ${sql.json(threat.details)}, ${threat.action_taken ?? null})
 		 RETURNING *`,

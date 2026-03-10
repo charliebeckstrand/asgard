@@ -39,7 +39,7 @@ export type { LogEntry, LogInput, LogList, QueryInput }
 export async function createLog(pool: Pool, input: LogInput): Promise<LogEntry> {
 	const db = createDb(pool)
 
-	return db.first<LogEntry>(
+	return db.get<LogEntry>(
 		sql`INSERT INTO saga.logs (type, level, service, message, metadata)
 		 VALUES (${input.type}, ${input.level}, ${input.service}, ${input.message}, ${sql.json(input.metadata)})
 		 RETURNING id, type, level, service, message, metadata, created_at::text as created_at`,

@@ -40,7 +40,7 @@ export async function listSubscriptions(topic?: string): Promise<SubscriptionLis
 export async function createSubscription(input: CreateInput): Promise<Subscription> {
 	const db = getDb()
 
-	return db.first<Subscription>(
+	return db.get<Subscription>(
 		sql`INSERT INTO huginn.subscriptions (topic, callback_url, service)
 		 VALUES (${input.topic}, ${input.callback_url}, ${input.service})
 		 RETURNING id, topic, callback_url, service, is_active,

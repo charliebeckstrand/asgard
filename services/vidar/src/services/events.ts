@@ -19,7 +19,7 @@ export async function ingestEvent(event: {
 }): Promise<SecurityEventRow> {
 	const db = getDb()
 
-	const row = await db.first<SecurityEventRow>(
+	const row = await db.get<SecurityEventRow>(
 		sql`INSERT INTO vdr_security_events (ip, event_type, details, service)
 		 VALUES (${event.ip}, ${event.event_type}, ${sql.json(event.details)}, ${event.service})
 		 RETURNING *`,

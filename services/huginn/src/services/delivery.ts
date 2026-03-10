@@ -27,7 +27,7 @@ const BASE_DELAY_MS = 1000
 export async function publishEvent(input: PublishInput): Promise<Event> {
 	const db = getDb()
 
-	const event = await db.first<Event>(
+	const event = await db.get<Event>(
 		sql`INSERT INTO huginn.events (topic, payload, source)
 		 VALUES (${input.topic}, ${sql.json(input.payload)}, ${input.source})
 		 RETURNING id, topic, payload, source, created_at::text as created_at`,
@@ -67,7 +67,7 @@ async function deliverEvent(event: Event): Promise<void> {
 async function deliverToSubscriber(event: Event, sub: Subscription): Promise<void> {
 	const db = getDb()
 
-	const { id: deliveryId } = await db.first<{ id: string }>(
+	const { id: deliveryId } = await db.get<{ id: string }>(
 		sql`INSERT INTO huginn.deliveries (event_id, subscription_id, status)
 		 VALUES (${event.id}, ${sub.id}, 'pending')
 		 RETURNING id`,
