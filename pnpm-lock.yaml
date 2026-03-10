@@ -189,9 +189,6 @@ importers:
       mimir:
         specifier: workspace:*
         version: link:../mimir
-      pg:
-        specifier: ^8.16.0
-        version: 8.20.0
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -202,9 +199,6 @@ importers:
       '@types/node':
         specifier: ^25.3.3
         version: 25.3.5
-      '@types/pg':
-        specifier: ^8.15.4
-        version: 8.18.0
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(postcss@8.5.8)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)

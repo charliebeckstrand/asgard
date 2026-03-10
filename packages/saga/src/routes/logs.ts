@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
-import type { Pool } from 'pg'
+import type { Db } from 'mimir'
 import {
 	BatchCreateSchema,
 	CreateLogSchema,
@@ -73,13 +73,13 @@ const batchCreateRoute = createRoute({
 	},
 })
 
-export function createLogsRouter(pool: Pool) {
+export function createLogsRouter(db: Db) {
 	const logs = new OpenAPIHono()
 
 	logs.openapi(listRoute, async (c) => {
 		const query = c.req.valid('query')
 
-		const result = await queryLogs(pool, query)
+		const result = await queryLogs(db, query)
 
 		return c.json(result, 200)
 	})
@@ -87,7 +87,7 @@ export function createLogsRouter(pool: Pool) {
 	logs.openapi(createRoute_, async (c) => {
 		const body = c.req.valid('json')
 
-		const entry = await createLog(pool, body)
+		const entry = await createLog(db, body)
 
 		return c.json(entry, 201)
 	})
@@ -95,7 +95,7 @@ export function createLogsRouter(pool: Pool) {
 	logs.openapi(batchCreateRoute, async (c) => {
 		const { logs: logEntries } = c.req.valid('json')
 
-		const entries = await createBatch(pool, logEntries)
+		const entries = await createBatch(db, logEntries)
 
 		return c.json({ data: entries, total: entries.length }, 201)
 	})

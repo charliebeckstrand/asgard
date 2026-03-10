@@ -1,13 +1,11 @@
 import { serve } from '@hono/node-server'
 import { configure } from 'heimdall'
-import { createLazyPool } from 'mimir'
 import { setupLifecycle } from 'norns'
 import { createApp } from './app.js'
+import { closePool, getPool } from './lib/db.js'
 import { loadEnv } from './lib/env.js'
 
 const env = loadEnv()
-
-const { getPool, closePool } = createLazyPool(() => env.DATABASE_URL, { max: 5 })
 
 configure({
 	getPool,

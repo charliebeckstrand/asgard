@@ -1,5 +1,4 @@
-import { createDb, type SqlFragment, sql } from 'mimir'
-import type { Pool } from 'pg'
+import { type Db, type SqlFragment, sql } from 'mimir'
 
 type LogInput = {
 	type: string
@@ -36,9 +35,7 @@ type LogList = {
 
 export type { LogEntry, LogInput, LogList, QueryInput }
 
-export async function createLog(pool: Pool, input: LogInput): Promise<LogEntry> {
-	const db = createDb(pool)
-
+export async function createLog(db: Db, input: LogInput): Promise<LogEntry> {
 	return db.get<LogEntry>(
 		sql`
 			INSERT INTO saga.logs (type, level, service, message, metadata)
@@ -48,9 +45,7 @@ export async function createLog(pool: Pool, input: LogInput): Promise<LogEntry> 
 	)
 }
 
-export async function createBatch(pool: Pool, inputs: LogInput[]): Promise<LogEntry[]> {
-	const db = createDb(pool)
-
+export async function createBatch(db: Db, inputs: LogInput[]): Promise<LogEntry[]> {
 	const rows = inputs.map((input) => [
 		input.type,
 		input.level,
@@ -68,9 +63,7 @@ export async function createBatch(pool: Pool, inputs: LogInput[]): Promise<LogEn
 	)
 }
 
-export async function queryLogs(pool: Pool, input: QueryInput): Promise<LogList> {
-	const db = createDb(pool)
-
+export async function queryLogs(db: Db, input: QueryInput): Promise<LogList> {
 	const conditions: SqlFragment[] = []
 
 	if (input.type) {

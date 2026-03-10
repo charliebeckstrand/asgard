@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
 
 import { createApp } from '../app.js'
 

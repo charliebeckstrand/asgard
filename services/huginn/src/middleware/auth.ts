@@ -4,9 +4,8 @@ import { HTTPException } from 'hono/http-exception'
 import { loadEnv } from '../lib/env.js'
 
 export function apiKeyAuth(): MiddlewareHandler {
-	const env = loadEnv()
-
 	return async (c, next) => {
+		const env = loadEnv()
 		const apiKey = c.req.header('X-API-Key')
 
 		if (!apiKey) {

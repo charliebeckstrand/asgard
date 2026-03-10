@@ -1,6 +1,10 @@
-import { createDb as createMimirDb } from 'mimir'
+import { createDb as createMimirDb, type Db } from 'mimir'
 import { getConfig } from './config.js'
 
-export function creatDb() {
-	return createMimirDb(getConfig().getPool())
+let _db: Db | null = null
+
+export function createDb(): Db {
+	if (!_db) _db = createMimirDb(getConfig().getPool())
+
+	return _db
 }
