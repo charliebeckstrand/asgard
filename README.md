@@ -19,8 +19,34 @@ TypeScript Microservices (Hono + Turborepo)
 | **[Mimir](packages/mimir)** | PostgreSQL connection pool |
 | **[Saga](packages/saga)** | PostgreSQL logging and search |
 | **[Norns](packages/norns)** | Hono server lifecycle handling |
-| **[Grid](packages/grid)** | Hono utilities, middleware, and schemas |
+| **[Grid](packages/grid)** | Hono middleware, proxy, SSE streaming, auth, and schemas |
 | **[Frigg](packages/frigg)** | Environment secrets provisioning |
+
+## Architecture
+
+Bifrost acts as the API gateway, proxying requests to downstream services:
+
+- `/events/*` -> Huginn (event bus)
+- `/vidar/*` -> Vidar (security monitoring)
+- `/auth/*`, `/api/*` -> handled directly by Bifrost
+
+All services share a common middleware stack via Grid's `createApp()`:
+
+- CORS, secure headers, request logging
+- Server-Timing headers (via `hono/timing`)
+- Compression and ETag caching
+- Trailing slash normalization
+
+### Authentication
+
+- **Browser clients**: Cookie-based sessions with CSRF protection (Bifrost)
+- **Service-to-service**: Bearer token auth (`Authorization: Bearer <key>`)
+- **WebSocket**: API key via query parameter (Hermes)
+
+### Real-time
+
+- **WebSocket**: Full-duplex messaging via Hermes
+- **SSE**: Event streaming via Huginn (`GET /events/stream`) and Vidar (`GET /vidar/stream`)
 
 ## Prerequisites
 
