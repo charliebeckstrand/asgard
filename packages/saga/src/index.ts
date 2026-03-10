@@ -1,4 +1,3 @@
-export { createLogsApp } from './app.js'
 export {
 	BatchCreateSchema,
 	CreateLogSchema,

@@ -1,4 +1,4 @@
-import { getClientIp } from 'grid'
+import { getIpAddress } from 'grid'
 import type { MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 
@@ -30,7 +30,7 @@ export function rateLimit(options?: RateLimitOptions): MiddlewareHandler {
 	let lastSweep = Date.now()
 
 	return async (c, next) => {
-		const key = getClientIp(c)
+		const key = getIpAddress(c)
 
 		const now = Date.now()
 

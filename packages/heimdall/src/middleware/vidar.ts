@@ -1,4 +1,4 @@
-import { getClientIp } from 'grid'
+import { getIpAddress } from 'grid'
 import type { MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { getConfig } from '../config.js'
@@ -14,7 +14,7 @@ export function vidarBanCheck(): MiddlewareHandler {
 			return
 		}
 
-		const ip = getClientIp(c)
+		const ip = getIpAddress(c)
 
 		const result = await checkIpBan(ip)
 

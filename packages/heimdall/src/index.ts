@@ -1,7 +1,6 @@
 // Configuration
 
 // Standalone app factory
-export { createAuthApp } from './app.js'
 export type { HeimdallConfig } from './config.js'
 export { configure, getConfig } from './config.js'
 export type { Claims, TokenType } from './jwt.js'

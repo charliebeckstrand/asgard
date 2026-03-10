@@ -8,16 +8,12 @@ Eliminates boilerplate that services would otherwise duplicate.
 
 ```typescript
 import {
-  requestLogger,
   errorHandler,
   notFoundHandler,
   createOpenApiConfig,
   ErrorSchema,
   MessageSchema,
 } from 'grid'
-
-// Request logging middleware
-app.use('*', requestLogger())
 
 // Shared error handlers
 app.onError(errorHandler)
