@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { hash, verify } from '@node-rs/argon2'
-import { getConfig } from '../config.js'
-import { signToken, verifyToken } from '../jwt.js'
-import { reportEvent } from '../vidar.js'
+import { getConfig } from './config.js'
+import { signToken, verifyToken } from './jwt.js'
 import type { UserRow } from './users.js'
 import { createUser, findCredentialsByEmail, findUserById } from './users.js'
+import { reportEvent } from './vidar.js'
 
 export interface TokenPair {
 	access_token: string

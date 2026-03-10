@@ -1,5 +1,5 @@
 import { sql } from 'mimir'
-import { createDb } from '../db.js'
+import { createDb } from './db.js'
 
 export interface UserRow {
 	id: string

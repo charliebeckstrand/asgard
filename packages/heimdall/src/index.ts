@@ -1,13 +1,4 @@
-// Configuration
-export { configure } from './config.js'
-
-// Middleware
-export type { RateLimitOptions } from './middleware/rate-limit.js'
-export { rateLimit } from './middleware/rate-limit.js'
-export { vidarBanCheck } from './middleware/vidar.js'
-
-// Auth service functions
-export type { TokenPair } from './services/auth.js'
+export type { TokenPair } from './auth.js'
 export {
 	AuthError,
 	authenticateUser,
@@ -15,7 +6,8 @@ export {
 	refreshTokenPair,
 	registerNewUser,
 	verifyAccessToken,
-} from './services/auth.js'
-
-// Vidar integration
-export { reportEvent } from './vidar.js'
+} from './auth.js'
+export { configure } from './config.js'
+export type { RateLimitOptions } from './rate-limit.js'
+export { rateLimit } from './rate-limit.js'
+export { reportEvent, vidarBanCheck } from './vidar.js'

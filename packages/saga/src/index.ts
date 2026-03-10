@@ -1,9 +1,9 @@
+export type { LogEntry, LogInput, LogList, QueryInput } from './logs.js'
+export { createBatch, createLog, queryLogs } from './logs.js'
 export {
 	BatchCreateSchema,
 	CreateLogSchema,
 	LogEntrySchema,
 	LogListSchema,
 	LogQuerySchema,
-} from './lib/schemas.js'
-export type { LogEntry, LogInput, LogList, QueryInput } from './services/logs.js'
-export { createBatch, createLog, queryLogs } from './services/logs.js'
+} from './schemas.js'
