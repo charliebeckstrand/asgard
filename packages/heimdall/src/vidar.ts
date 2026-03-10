@@ -40,6 +40,28 @@ export async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
 	}
 }
 
+export function checkBan(): MiddlewareHandler {
+	return async (c, next) => {
+		const config = getConfig()
+
+		if (!config.vidarUrl) {
+			await next()
+
+			return
+		}
+
+		const ip = getIpAddress(c)
+
+		const result = await checkIpBan(ip)
+
+		if (result?.banned) {
+			throw new HTTPException(403, { message: 'Unauthorized' })
+		}
+
+		await next()
+	}
+}
+
 /**
  * Report a security event to Vidar.
  * Fire-and-forget — does not throw on failure.
@@ -67,26 +89,4 @@ export function reportEvent(
 	}).catch(() => {
 		// Silently ignore — Vidar being down should not affect auth
 	})
-}
-
-export function checkBan(): MiddlewareHandler {
-	return async (c, next) => {
-		const config = getConfig()
-
-		if (!config.vidarUrl) {
-			await next()
-
-			return
-		}
-
-		const ip = getIpAddress(c)
-
-		const result = await checkIpBan(ip)
-
-		if (result?.banned) {
-			throw new HTTPException(403, { message: 'Unauthorized' })
-		}
-
-		await next()
-	}
 }

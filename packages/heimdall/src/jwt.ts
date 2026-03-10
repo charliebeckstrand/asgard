@@ -1,21 +1,19 @@
 import { randomUUID } from 'node:crypto'
 import type { JwtVariables } from 'hono/jwt'
 import { sign, verify } from 'hono/jwt'
+import ms from 'ms'
 import { getConfig } from './config.js'
 
 export type TokenType = 'access' | 'refresh'
 
-type JWTPayload = JwtVariables['jwtPayload']
-
-const ACCESS_TOKEN_SECONDS = 30 * 60 // 30 minutes
-const REFRESH_TOKEN_SECONDS = 7 * 24 * 60 * 60 // 7 days
+export type JWTPayload = JwtVariables['jwtPayload']
 
 export async function signToken(sub: string, type: TokenType): Promise<string> {
 	const config = getConfig()
 
 	const now = Math.floor(Date.now() / 1000)
 
-	const expiresIn = type === 'access' ? ACCESS_TOKEN_SECONDS : REFRESH_TOKEN_SECONDS
+	const expiresIn = type === 'access' ? ms('30m') / 1000 : ms('7d') / 1000
 
 	const payload: JWTPayload = {
 		sub,
