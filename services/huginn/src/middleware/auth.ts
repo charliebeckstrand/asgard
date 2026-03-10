@@ -1,4 +1,4 @@
 import { createApiKeyAuth } from 'grid'
-import { loadEnv } from '../lib/env.js'
+import { environment } from '../lib/env.js'
 
-export const apiKeyAuth = () => createApiKeyAuth(() => loadEnv().HUGINN_API_KEY)
+export const apiKeyAuth = () => createApiKeyAuth(() => environment().HUGINN_API_KEY)

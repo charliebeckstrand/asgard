@@ -1,4 +1,4 @@
 import { createApiKeyAuth } from 'grid'
-import { loadEnv } from '../lib/env.js'
+import { environment } from '../lib/env.js'
 
-export const apiKeyAuth = () => createApiKeyAuth(() => loadEnv().VIDAR_API_KEY)
+export const apiKeyAuth = () => createApiKeyAuth(() => environment().VIDAR_API_KEY)

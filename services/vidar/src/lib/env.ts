@@ -1,7 +1,7 @@
-import { createEnvLoader } from 'frigg'
+import { createEnvironment } from 'frigg'
 import { z } from 'zod'
 
-export const loadEnv = createEnvLoader({
+export const environment = createEnvironment({
 	DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 	VIDAR_API_KEY: z.string().optional(),
 	HUGINN_URL: z.string().optional(),
@@ -12,4 +12,4 @@ export const loadEnv = createEnvLoader({
 		.transform((v) => v === 'true'),
 })
 
-export type Env = ReturnType<typeof loadEnv>
+export type Env = ReturnType<typeof environment>

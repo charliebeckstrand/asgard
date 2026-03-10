@@ -2,10 +2,10 @@ import { serve } from '@hono/node-server'
 import { setupLifecycle } from 'norns'
 import { createVidarApp } from './app.js'
 import { closePool } from './lib/db.js'
-import { loadEnv } from './lib/env.js'
+import { environment } from './lib/env.js'
 import { cleanExpiredBans } from './services/bans.js'
 
-const env = loadEnv()
+const env = environment()
 const app = createVidarApp()
 
 const CLEANUP_INTERVAL_MS = 3_600_000 // 1 hour

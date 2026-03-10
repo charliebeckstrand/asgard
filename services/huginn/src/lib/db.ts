@@ -1,4 +1,4 @@
 import { createDatabase } from 'mimir'
-import { loadEnv } from './env.js'
+import { environment } from './env.js'
 
-export const { closePool, db, getPool } = createDatabase(() => loadEnv().DATABASE_URL)
+export const { closePool, db, getPool } = createDatabase(() => environment().DATABASE_URL)

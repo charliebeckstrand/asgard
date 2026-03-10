@@ -3,9 +3,9 @@ import { configure } from 'heimdall'
 import { setupLifecycle } from 'norns'
 import { createBifrostApp } from './app.js'
 import { closePool, getPool } from './lib/db.js'
-import { loadEnv } from './lib/env.js'
+import { environment } from './lib/env.js'
 
-const env = loadEnv()
+const env = environment()
 
 configure({
 	getPool,

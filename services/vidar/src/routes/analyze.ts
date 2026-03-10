@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
-import { loadEnv } from '../lib/env.js'
+import { environment } from '../lib/env.js'
 import { AnalyzeRequestSchema, AnalyzeResponseSchema, ErrorSchema } from '../lib/schemas.js'
 import { apiKeyAuth } from '../middleware/api-key.js'
 import { getAnalyzer } from '../services/analyzer.js'
@@ -39,7 +39,7 @@ export const analyze = new OpenAPIHono()
 analyze.use('/analyze', apiKeyAuth())
 
 analyze.openapi(analyzeRoute, async (c) => {
-	const env = loadEnv()
+	const env = environment()
 
 	if (!env.AI_ENABLED) {
 		return c.json(

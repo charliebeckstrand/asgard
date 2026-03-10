@@ -1,12 +1,12 @@
 import { createApp } from 'grid'
 
-import { loadEnv } from './lib/env.js'
+import { environment } from './lib/env.js'
 import { health } from './routes/health.js'
 import { publish } from './routes/publish.js'
 import { subscriptions } from './routes/subscriptions.js'
 
 export function createHuginnApp() {
-	const env = loadEnv()
+	const env = environment()
 
 	const { app, setup } = createApp({
 		basePath: '/events',

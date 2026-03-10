@@ -2,7 +2,7 @@ import { refreshTokenPair } from 'heimdall'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { HTTPException } from 'hono/http-exception'
-import { loadEnv } from '../lib/env.js'
+import { environment } from '../lib/env.js'
 
 export type SessionData = {
 	accessToken: string
@@ -124,7 +124,7 @@ export function clearSessionCookie(c: Context): void {
  */
 export function session(): MiddlewareHandler<SessionEnv> {
 	return async (c: Context<SessionEnv>, next) => {
-		const env = loadEnv()
+		const env = environment()
 
 		if (!env.SESSION_SECRET) {
 			c.set('session', null)

@@ -1,13 +1,13 @@
 import { createApp } from 'grid'
 
-import { loadEnv } from './lib/env.js'
+import { environment } from './lib/env.js'
 import { broadcastMessage } from './routes/broadcast.js'
 import { channels } from './routes/channels.js'
 import { health } from './routes/health.js'
 import { sendMessage } from './routes/send.js'
 
 export function createHermesApp() {
-	const env = loadEnv()
+	const env = environment()
 
 	const { app, setup } = createApp({
 		basePath: '/messages',

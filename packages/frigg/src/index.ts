@@ -1,4 +1,4 @@
-export { createEnvLoader, getManifestPort } from './env.js'
+export { createEnvironment, getManifestPort } from './env.js'
 export { resolveEnvironments, writeEnvFiles } from './environments.js'
 export type { InitOptions } from './init.js'
 export { initEnvironments } from './init.js'

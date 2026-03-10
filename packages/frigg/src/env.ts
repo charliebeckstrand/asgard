@@ -27,20 +27,20 @@ function getBaseSchema() {
 
 type BaseEnv = z.infer<ReturnType<typeof getBaseSchema>>
 
-export function createEnvLoader(): () => BaseEnv
+export function createEnvironment(): () => BaseEnv
 
-export function createEnvLoader<T extends z.ZodRawShape>(
+export function createEnvironment<T extends z.ZodRawShape>(
 	extra: T,
 ): () => BaseEnv & z.infer<z.ZodObject<T>>
 
-export function createEnvLoader<T extends z.ZodRawShape>(extra?: T) {
+export function createEnvironment<T extends z.ZodRawShape>(extra?: T) {
 	const baseSchema = getBaseSchema()
 
 	const schema = extra ? baseSchema.extend(extra) : baseSchema
 
 	let cached: z.infer<typeof schema> | null = null
 
-	return function loadEnv() {
+	return function environment() {
 		if (cached) return cached
 
 		// Treat empty strings as undefined so optional() fields work correctly

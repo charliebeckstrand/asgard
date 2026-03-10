@@ -1,14 +1,14 @@
 import { timingSafeCompare } from 'grid'
 import type { UpgradeWebSocket } from 'hono/ws'
 import { getSubscriberCount, removeClient, subscribe, unsubscribe } from '../lib/channels.js'
-import { loadEnv } from '../lib/env.js'
+import { environment } from '../lib/env.js'
 
 const MAX_CONNECTIONS = 5
 
 export function createWsHandler(upgradeWebSocket: UpgradeWebSocket) {
 	return upgradeWebSocket((c) => ({
 		onOpen(_event, ws) {
-			const env = loadEnv()
+			const env = environment()
 
 			if (env.HERMES_API_KEY) {
 				const apiKey = c.req.query('api_key')

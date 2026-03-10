@@ -1,7 +1,7 @@
-import { createEnvLoader } from 'frigg'
+import { createEnvironment } from 'frigg'
 import { z } from 'zod'
 
-export const loadEnv = createEnvLoader({
+export const environment = createEnvironment({
 	DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 	SECRET_KEY: z.string().min(32, 'SECRET_KEY must be at least 32 characters'),
 	SESSION_SECRET: z.string().min(32).optional(),
@@ -13,4 +13,4 @@ export const loadEnv = createEnvLoader({
 	CORS_ORIGIN: z.string().default('http://localhost:3000'),
 })
 
-export type Env = ReturnType<typeof loadEnv>
+export type Env = ReturnType<typeof environment>

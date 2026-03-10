@@ -1,13 +1,13 @@
 import { createApp } from 'grid'
 import { rateLimit, reportEvent, vidarBanCheck } from 'heimdall'
 
-import { loadEnv } from './lib/env.js'
+import { environment } from './lib/env.js'
 import { session } from './middleware/session.js'
 import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
 
 export function createBifrostApp() {
-	const env = loadEnv()
+	const env = environment()
 
 	const { app, setup } = createApp({
 		basePath: '/api',

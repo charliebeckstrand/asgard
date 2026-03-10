@@ -101,7 +101,7 @@ app.use('*', logRequest())
 
 ### Patterns
 
-- **Factory functions** for initialization: `createApp()`, `createPool()`, `createEnvLoader()`
+- **Factory functions** for initialization: `createApp()`, `createPool()`, `createEnvironment()`
 - **Middleware-driven architecture** — all services compose Hono middleware chains
 - **Schema-driven APIs** — Zod schemas paired with `@hono/zod-openapi` for every endpoint
 - **Lazy initialization** — e.g., Mimir pool connects on first use

@@ -1,9 +1,9 @@
-import { createEnvLoader } from 'frigg'
+import { createEnvironment } from 'frigg'
 import { z } from 'zod'
 
-export const loadEnv = createEnvLoader({
+export const environment = createEnvironment({
 	CORS_ORIGIN: z.string().default('http://localhost:3000'),
 	HERMES_API_KEY: z.string().optional(),
 })
 
-export type Env = ReturnType<typeof loadEnv>
+export type Env = ReturnType<typeof environment>

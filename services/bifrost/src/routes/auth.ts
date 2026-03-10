@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { getClientIp } from 'grid'
 import { AuthError, authenticateUser, registerNewUser } from 'heimdall'
-import { loadEnv } from '../lib/env.js'
+import { environment } from '../lib/env.js'
 import { ErrorSchema } from '../lib/schemas.js'
 import {
 	clearSessionCookie,
@@ -144,7 +144,7 @@ const registerRoute = createRoute({
 
 export const authRoutes = new OpenAPIHono<SessionEnv>()
 	.openapi(loginRoute, async (c) => {
-		const env = loadEnv()
+		const env = environment()
 
 		if (!env.SESSION_SECRET) {
 			throw new Error('SESSION_SECRET is not configured')
