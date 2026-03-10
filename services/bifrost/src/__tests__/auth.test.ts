@@ -33,7 +33,6 @@ vi.mock('heimdall', () => ({
 		await next()
 	}),
 	reportEvent: vi.fn(),
-	checkHealth: vi.fn().mockResolvedValue(true),
 	refreshTokenPair: vi.fn(),
 }))
 

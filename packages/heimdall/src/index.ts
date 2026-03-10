@@ -2,7 +2,6 @@ export type { TokenPair } from './auth.js'
 export {
 	AuthError,
 	authenticateUser,
-	checkHealth,
 	refreshTokenPair,
 	registerUser,
 	verifyAccessToken,
@@ -10,4 +9,5 @@ export {
 export { configure } from './config.js'
 export type { RateLimitOptions } from './rate-limit.js'
 export { rateLimit } from './rate-limit.js'
+export type { CredentialsRow, UserRepository, UserRow } from './types.js'
 export { reportEvent, vidarBanCheck } from './vidar.js'

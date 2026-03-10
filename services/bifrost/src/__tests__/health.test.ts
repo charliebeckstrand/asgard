@@ -10,8 +10,13 @@ vi.mock('heimdall', () => ({
 		await next()
 	}),
 	reportEvent: vi.fn(),
-	checkHealth: vi.fn().mockResolvedValue(true),
 	refreshTokenPair: vi.fn(),
+}))
+
+vi.mock('../lib/db.js', () => ({
+	getPool: vi.fn().mockReturnValue({
+		query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
+	}),
 }))
 
 import { createBifrostApp } from '../app.js'

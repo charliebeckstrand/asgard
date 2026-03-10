@@ -1,7 +1,7 @@
-import type { Pool } from 'pg'
+import type { UserRepository } from './types.js'
 
 export interface HeimdallConfig {
-	getPool: () => Pool
+	userRepository: UserRepository
 	secretKey: string
 	accessTokenExpireMinutes: number
 	refreshTokenExpireDays: number
@@ -13,7 +13,7 @@ export interface HeimdallConfig {
 let _config: HeimdallConfig | null = null
 
 export function configure(
-	config: Partial<HeimdallConfig> & Pick<HeimdallConfig, 'getPool' | 'secretKey'>,
+	config: Partial<HeimdallConfig> & Pick<HeimdallConfig, 'userRepository' | 'secretKey'>,
 ): void {
 	if (config.secretKey.length < 32) {
 		throw new Error('Heimdall secretKey must be at least 32 characters')

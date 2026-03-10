@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { checkHealth } from 'heimdall'
+import { getPool } from '../lib/db.js'
 
 // --- Schema ---
 
@@ -50,7 +50,15 @@ export const health = new OpenAPIHono().openapi(healthRoute, async (c) => {
 
 	const dbStart = Date.now()
 
-	const dbHealthy = await checkHealth()
+	let dbHealthy: boolean
+
+	try {
+		await getPool().query('SELECT 1')
+
+		dbHealthy = true
+	} catch {
+		dbHealthy = false
+	}
 
 	const dbLatency = Date.now() - dbStart
 

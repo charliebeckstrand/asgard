@@ -2,13 +2,14 @@ import { serve } from '@hono/node-server'
 import { configure } from 'heimdall'
 import { setupLifecycle } from 'norns'
 import { createBifrostApp } from './app.js'
-import { closePool, getPool } from './lib/db.js'
+import { closePool } from './lib/db.js'
 import { environment } from './lib/env.js'
+import { createUserRepository } from './lib/user-repository.js'
 
 const env = environment()
 
 configure({
-	getPool,
+	userRepository: createUserRepository(),
 	secretKey: env.SECRET_KEY,
 	vidarUrl: env.VIDAR_URL,
 	vidarApiKey: env.VIDAR_API_KEY,
