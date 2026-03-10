@@ -37,9 +37,10 @@ export function createBifrostApp() {
 
 	// --- Routes ---
 
-	app.route('/auth', authRoutes)
-	app.route('/api', health)
-	app.route('/api/users', usersRoutes)
+	const routes = app
+		.route('/auth', authRoutes)
+		.route('/api', health)
+		.route('/api/users', usersRoutes)
 
 	// --- Proxy to downstream services ---
 
@@ -53,5 +54,7 @@ export function createBifrostApp() {
 
 	setup()
 
-	return app
+	return routes
 }
+
+export type BifrostApp = ReturnType<typeof createBifrostApp>

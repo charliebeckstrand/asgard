@@ -18,14 +18,17 @@ export function createHuginnApp() {
 
 	// --- Routes ---
 
-	app.route('/events', health)
-	app.route('/events', publish)
-	app.route('/events', subscriptions)
-	app.route('/events', eventStream)
+	const routes = app
+		.route('/events', health)
+		.route('/events', publish)
+		.route('/events', subscriptions)
+		.route('/events', eventStream)
 
 	// --- Finalize ---
 
 	setup()
 
-	return app
+	return routes
 }
+
+export type HuginnApp = ReturnType<typeof createHuginnApp>

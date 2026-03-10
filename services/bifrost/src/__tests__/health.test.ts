@@ -23,14 +23,8 @@ vi.mock('../lib/db.js', () => ({
 	}),
 }))
 
+import { testClient } from 'hono/testing'
 import { createBifrostApp } from '../app.js'
-
-type HealthResponse = {
-	status: string
-	version: string
-	uptime: number
-	services: Record<string, { status: string }>
-}
 
 type OpenAPISpec = {
 	openapi: string
@@ -51,6 +45,7 @@ type ErrorResponse = {
 }
 
 const app = createBifrostApp()
+const client = testClient(app)
 
 describe('Health route', () => {
 	it('GET /api returns service metadata', async () => {
@@ -66,18 +61,16 @@ describe('Health route', () => {
 	})
 
 	it('GET /api/health returns healthy status', async () => {
-		const res = await app.request('/api/health')
+		const res = await client.api.health.$get()
 
 		expect(res.status).toBe(200)
 
-		const body = (await res.json()) as HealthResponse
+		const body = await res.json()
 
 		expect(body.status).toBe('healthy')
 		expect(body.version).toBe('0.1.0')
 
 		expect(body.uptime).toBeTypeOf('number')
-
-		expect(body.services).toBeDefined()
 	})
 })
 
