@@ -43,7 +43,12 @@ export async function authenticateUser(
 	const passwordOk = await verify(hashToVerify, password)
 
 	if (!creds || !passwordOk) {
-		if (ip) getConfig().onSecurityEvent?.('login_failed', ip, { email: normalizedEmail })
+		if (ip)
+			getConfig().onSecurityEvent?.({
+				type: 'login_failed',
+				ip,
+				details: { email: normalizedEmail },
+			})
 
 		throw new AuthError('invalid_credentials', 'Incorrect email or password')
 	}
@@ -68,7 +73,12 @@ export async function registerUser(email: string, password: string, ip?: string)
 	try {
 		const user = await userRepository.insertUser(randomUUID(), normalizedEmail, hashedPassword)
 
-		if (ip) getConfig().onSecurityEvent?.('registration', ip, { email: normalizedEmail })
+		if (ip)
+			getConfig().onSecurityEvent?.({
+				type: 'registration',
+				ip,
+				details: { email: normalizedEmail },
+			})
 
 		return user
 	} catch (err: unknown) {

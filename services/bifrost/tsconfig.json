@@ -1,4 +1,12 @@
 {
 	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./src/*"],
+			"vidar": ["../vidar/src/index.ts"],
+			"vidar/*": ["../vidar/src/*"]
+		}
+	},
 	"include": ["src"]
 }
