@@ -39,9 +39,9 @@ vi.mock('heimdall', () => ({
 	refreshTokenPair: vi.fn(),
 }))
 
-import { createApp } from '../app.js'
+import { createBifrostApp } from '../app.js'
 
-const app = createApp()
+const app = createBifrostApp()
 
 function getCookieFromResponse(res: Response): string | undefined {
 	const setCookie = res.headers.get('set-cookie')

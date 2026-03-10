@@ -45,6 +45,9 @@ importers:
 
   packages/grid:
     dependencies:
+      '@hono/swagger-ui':
+        specifier: ^0.6.0
+        version: 0.6.0(hono@4.12.5)
       '@hono/zod-openapi':
         specifier: ^1.2.2
         version: 1.2.2(hono@4.12.5)(zod@4.3.6)

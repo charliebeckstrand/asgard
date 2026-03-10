@@ -16,7 +16,7 @@ vi.mock('heimdall', () => ({
 	refreshTokenPair: vi.fn(),
 }))
 
-import { createApp } from '../app.js'
+import { createBifrostApp } from '../app.js'
 
 type HealthResponse = {
 	status: string
@@ -37,7 +37,7 @@ type ErrorResponse = {
 	statusCode: number
 }
 
-const app = createApp()
+const app = createBifrostApp()
 
 describe('Health route', () => {
 	it('GET /api/health returns healthy status', async () => {

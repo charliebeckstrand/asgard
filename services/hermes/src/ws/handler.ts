@@ -1,16 +1,9 @@
-import { timingSafeEqual } from 'node:crypto'
+import { timingSafeCompare } from 'grid'
 import type { UpgradeWebSocket } from 'hono/ws'
 import { getSubscriberCount, removeClient, subscribe, unsubscribe } from '../lib/channels.js'
 import { loadEnv } from '../lib/env.js'
 
 const MAX_CONNECTIONS = 5
-
-function isValidApiKey(provided: string, expected: string): boolean {
-	const a = Buffer.from(provided)
-	const b = Buffer.from(expected)
-
-	return a.length === b.length && timingSafeEqual(a, b)
-}
 
 export function createWsHandler(upgradeWebSocket: UpgradeWebSocket) {
 	return upgradeWebSocket((c) => ({
@@ -20,7 +13,7 @@ export function createWsHandler(upgradeWebSocket: UpgradeWebSocket) {
 			if (env.HERMES_API_KEY) {
 				const apiKey = c.req.query('api_key')
 
-				if (!apiKey || !isValidApiKey(apiKey, env.HERMES_API_KEY)) {
+				if (!apiKey || !timingSafeCompare(apiKey, env.HERMES_API_KEY)) {
 					ws.send(JSON.stringify({ error: 'Unauthorized' }))
 
 					ws.close(1008, 'Unauthorized')

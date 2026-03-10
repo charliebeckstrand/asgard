@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
 
-import { createApp } from '../app.js'
+import { createHuginnApp } from '../app.js'
 
 type HealthResponse = {
 	status: string
@@ -16,7 +16,7 @@ type ErrorResponse = {
 	statusCode: number
 }
 
-const app = createApp()
+const app = createHuginnApp()
 
 describe('Health route', () => {
 	it('GET /events/health returns healthy status', async () => {

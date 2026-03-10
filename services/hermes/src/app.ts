@@ -1,25 +1,20 @@
-import { swaggerUI } from '@hono/swagger-ui'
-import { OpenAPIHono } from '@hono/zod-openapi'
-import { errorHandler, notFoundHandler, requestLogger, securityHeaders } from 'grid'
-import { cors } from 'hono/cors'
+import { createApp } from 'grid'
 
 import { loadEnv } from './lib/env.js'
-import { openApiConfig } from './lib/openapi.js'
 import { broadcastMessage } from './routes/broadcast.js'
 import { channels } from './routes/channels.js'
 import { health } from './routes/health.js'
 import { sendMessage } from './routes/send.js'
 
-export function createApp() {
+export function createHermesApp() {
 	const env = loadEnv()
 
-	const app = new OpenAPIHono()
-
-	// --- Global middleware ---
-
-	app.use('*', cors({ origin: env.CORS_ORIGIN, credentials: true }))
-	app.use('*', securityHeaders())
-	app.use('*', requestLogger())
+	const { app, setup } = createApp({
+		basePath: '/messages',
+		title: 'Hermes',
+		description: 'Stateless multi-channel messaging relay with real-time event streaming',
+		cors: { origin: env.CORS_ORIGIN, credentials: true },
+	})
 
 	// --- Routes ---
 
@@ -28,16 +23,9 @@ export function createApp() {
 	app.route('/messages', broadcastMessage)
 	app.route('/messages', channels)
 
-	// --- OpenAPI ---
+	// --- Finalize ---
 
-	app.doc('/messages/openapi.json', openApiConfig)
-
-	app.get('/messages/docs', swaggerUI({ url: '/messages/openapi.json' }))
-
-	// --- Error handling ---
-
-	app.onError(errorHandler)
-	app.notFound(notFoundHandler)
+	setup()
 
 	return app
 }

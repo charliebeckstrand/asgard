@@ -2,16 +2,6 @@ import { z } from 'zod'
 
 export { ErrorSchema, MessageSchema } from 'grid'
 
-// --- Health ---
-
-export const HealthResponseSchema = z
-	.object({
-		status: z.enum(['healthy', 'degraded', 'unhealthy']),
-		version: z.string(),
-		uptime: z.number(),
-	})
-	.openapi('HealthResponse')
-
 // --- Security Events ---
 
 export const IngestEventSchema = z

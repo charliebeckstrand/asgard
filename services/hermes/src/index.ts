@@ -1,13 +1,13 @@
 import { serve } from '@hono/node-server'
 import { createNodeWebSocket } from '@hono/node-ws'
 import { setupLifecycle } from 'norns'
-import { createApp } from './app.js'
+import { createHermesApp } from './app.js'
 import { loadEnv } from './lib/env.js'
 import { createWsHandler } from './ws/handler.js'
 
 const env = loadEnv()
 
-const app = createApp()
+const app = createHermesApp()
 const nodeWs = createNodeWebSocket({ app })
 
 app.get('/messages/ws', createWsHandler(nodeWs.upgradeWebSocket))

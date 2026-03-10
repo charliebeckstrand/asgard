@@ -2,12 +2,12 @@
 
 import { serve } from '@hono/node-server'
 import { setupLifecycle } from 'norns'
-import { createApp } from './app.js'
+import { createHuginnApp } from './app.js'
 import { closePool } from './lib/db.js'
 import { loadEnv } from './lib/env.js'
 
 const env = loadEnv()
-const app = createApp()
+const app = createHuginnApp()
 
 const server = serve(
 	{

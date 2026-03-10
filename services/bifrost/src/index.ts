@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server'
 import { configure } from 'heimdall'
 import { setupLifecycle } from 'norns'
-import { createApp } from './app.js'
+import { createBifrostApp } from './app.js'
 import { closePool, getPool } from './lib/db.js'
 import { loadEnv } from './lib/env.js'
 
@@ -17,7 +17,7 @@ configure({
 	refreshTokenExpireDays: env.REFRESH_TOKEN_EXPIRE_DAYS,
 })
 
-const app = createApp()
+const app = createBifrostApp()
 
 const server = serve(
 	{

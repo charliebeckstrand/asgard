@@ -1,9 +1,5 @@
-import { swaggerUI } from '@hono/swagger-ui'
-import { OpenAPIHono } from '@hono/zod-openapi'
-import { errorHandler, notFoundHandler, requestLogger, securityHeaders } from 'grid'
-import { cors } from 'hono/cors'
+import { createApp } from 'grid'
 
-import { openApiConfig } from './lib/openapi.js'
 import { analyze } from './routes/analyze.js'
 import { bans } from './routes/bans.js'
 import { checkIp } from './routes/check-ip.js'
@@ -12,14 +8,13 @@ import { health } from './routes/health.js'
 import { rules } from './routes/rules.js'
 import { threats } from './routes/threats.js'
 
-export function createApp() {
-	const app = new OpenAPIHono()
-
-	// --- Global middleware ---
-
-	app.use('*', cors())
-	app.use('*', securityHeaders())
-	app.use('*', requestLogger())
+export function createVidarApp() {
+	const { app, setup } = createApp({
+		basePath: '/vidar',
+		title: 'Vidar',
+		description:
+			'Security monitoring microservice for threat detection, IP ban enforcement, and optional AI-powered analysis',
+	})
 
 	// --- Routes ---
 
@@ -31,16 +26,9 @@ export function createApp() {
 	app.route('/vidar', rules)
 	app.route('/vidar', analyze)
 
-	// --- OpenAPI ---
+	// --- Finalize ---
 
-	app.doc('/vidar/openapi.json', openApiConfig)
-
-	app.get('/vidar/docs', swaggerUI({ url: '/vidar/openapi.json' }))
-
-	// --- Error handling ---
-
-	app.onError(errorHandler)
-	app.notFound(notFoundHandler)
+	setup()
 
 	return app
 }

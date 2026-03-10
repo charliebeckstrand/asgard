@@ -1,4 +1,7 @@
+export { createApiKeyAuth, timingSafeCompare } from './api-key.js'
+export { createApp } from './app.js'
 export { errorHandler, notFoundHandler } from './errors.js'
+export { createHealthRoute, HealthResponseSchema } from './health.js'
 export { getClientIp, requestLogger, securityHeaders } from './middleware.js'
 export { createOpenApiConfig } from './openapi.js'
 export { ErrorSchema, MessageSchema } from './schemas.js'
