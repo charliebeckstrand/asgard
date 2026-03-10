@@ -3,8 +3,6 @@ import type { UserRepository } from './types.js'
 export interface HeimdallConfig {
 	userRepository: UserRepository
 	secretKey: string
-	accessTokenExpireMinutes: number
-	refreshTokenExpireDays: number
 	vidarUrl?: string
 	vidarApiKey?: string
 	apiKey?: string
@@ -19,11 +17,7 @@ export function configure(
 		throw new Error('Heimdall secretKey must be at least 32 characters')
 	}
 
-	_config = {
-		accessTokenExpireMinutes: 30,
-		refreshTokenExpireDays: 7,
-		...config,
-	}
+	_config = { ...config }
 }
 
 export function getConfig(): HeimdallConfig {

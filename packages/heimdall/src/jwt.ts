@@ -13,16 +13,16 @@ export interface Claims {
 	jti: string
 }
 
-export async function signToken(
-	sub: string,
-	type: TokenType,
-): Promise<{ token: string; expiresIn: number }> {
+const ACCESS_TOKEN_SECONDS = 30 * 60
+
+const REFRESH_TOKEN_SECONDS = 7 * 86400
+
+export async function signToken(sub: string, type: TokenType): Promise<string> {
 	const config = getConfig()
 
-	const expiresIn =
-		type === 'access' ? config.accessTokenExpireMinutes * 60 : config.refreshTokenExpireDays * 86400
-
 	const now = Math.floor(Date.now() / 1000)
+
+	const expiresIn = type === 'access' ? ACCESS_TOKEN_SECONDS : REFRESH_TOKEN_SECONDS
 
 	const payload: Claims = {
 		sub,
@@ -33,9 +33,7 @@ export async function signToken(
 		jti: randomUUID(),
 	}
 
-	const token = await sign(payload, config.secretKey, 'HS256')
-
-	return { token, expiresIn }
+	return sign(payload, config.secretKey, 'HS256')
 }
 
 export async function verifyToken(token: string): Promise<Claims> {
