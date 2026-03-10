@@ -1,6 +1,6 @@
 # heimdall
 
-JWT authentication primitives and guard utilities.
+JWT auth guard.
 
 Service-layer auth primitives for Bifrost and other services, with optional Vidar integration.
 
