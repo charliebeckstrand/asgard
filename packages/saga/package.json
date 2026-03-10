@@ -22,10 +22,6 @@
 	},
 	"packageManager": "pnpm@10.29.3",
 	"dependencies": {
-		"@hono/swagger-ui": "^0.6.0",
-		"@hono/zod-openapi": "^1.2.2",
-		"grid": "workspace:*",
-		"hono": "^4.12.5",
 		"mimir": "workspace:*",
 		"zod": "^4.3.6"
 	},

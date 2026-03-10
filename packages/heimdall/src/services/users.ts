@@ -55,13 +55,3 @@ export async function findUserById(id: string): Promise<UserRow | null> {
 		`,
 	)
 }
-
-export async function deactivateUser(id: string): Promise<void> {
-	const db = createDb()
-
-	await db.exec(sql`
-		UPDATE users
-		SET is_active = false
-		WHERE id = ${id}
-	`)
-}

@@ -82,12 +82,6 @@ importers:
 
   packages/heimdall:
     dependencies:
-      '@hono/swagger-ui':
-        specifier: ^0.6.0
-        version: 0.6.0(hono@4.12.5)
-      '@hono/zod-openapi':
-        specifier: ^1.2.2
-        version: 1.2.2(hono@4.12.5)(zod@4.3.6)
       '@node-rs/argon2':
         specifier: ^2.0.2
         version: 2.0.2
@@ -177,18 +171,6 @@ importers:
 
   packages/saga:
     dependencies:
-      '@hono/swagger-ui':
-        specifier: ^0.6.0
-        version: 0.6.0(hono@4.12.5)
-      '@hono/zod-openapi':
-        specifier: ^1.2.2
-        version: 1.2.2(hono@4.12.5)(zod@4.3.6)
-      grid:
-        specifier: workspace:*
-        version: link:../grid
-      hono:
-        specifier: ^4.12.5
-        version: 4.12.5
       mimir:
         specifier: workspace:*
         version: link:../mimir
