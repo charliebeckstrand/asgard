@@ -30,7 +30,7 @@ Bifrost acts as the API gateway, proxying requests to downstream services:
 - `/vidar/*` -> Vidar (security monitoring)
 - `/auth/*`, `/api/*` -> handled directly by Bifrost
 
-All services share a common middleware stack via Hono `createApp()`:
+All services share a common middleware stack via `createApp()`:
 
 - CORS, secure headers, request logging
 - Server-Timing headers (via `hono/timing`)
