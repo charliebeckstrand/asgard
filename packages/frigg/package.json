@@ -4,10 +4,10 @@
 	"description": "Config oracle — generates secrets, resolves environments, and validates service configurations",
 	"type": "module",
 	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"types": "./src/index.ts",
 	"exports": {
 		".": {
-			"types": "./dist/index.d.ts",
+			"types": "./src/index.ts",
 			"default": "./dist/index.js"
 		}
 	},
