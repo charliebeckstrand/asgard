@@ -66,7 +66,6 @@ describe('Auth routes', () => {
 				access_token: 'at_test123',
 				refresh_token: 'rt_test123',
 				token_type: 'bearer',
-				expires_in: 3600,
 			})
 
 			const res = await app.request('/auth/login', {
@@ -80,12 +79,10 @@ describe('Auth routes', () => {
 			const body = (await res.json()) as {
 				access_token: string
 				token_type: string
-				expires_in: number
 			}
 
 			expect(body.access_token).toBe('at_test123')
 			expect(body.token_type).toBe('bearer')
-			expect(body.expires_in).toBe(3600)
 
 			const cookie = getCookieFromResponse(res)
 
@@ -97,7 +94,6 @@ describe('Auth routes', () => {
 				access_token: 'at_test123',
 				refresh_token: 'rt_test123',
 				token_type: 'bearer',
-				expires_in: 3600,
 			})
 
 			await app.request('/auth/login', {
@@ -171,7 +167,6 @@ describe('Auth routes', () => {
 				access_token: 'at_test123',
 				refresh_token: 'rt_test123',
 				token_type: 'bearer',
-				expires_in: 3600,
 			})
 
 			const loginRes = await app.request('/auth/login', {

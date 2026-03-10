@@ -23,7 +23,6 @@ const LoginResponseSchema = z
 	.object({
 		access_token: z.string(),
 		token_type: z.literal('bearer'),
-		expires_in: z.number(),
 	})
 	.openapi('LoginResponse')
 
@@ -160,7 +159,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>()
 			const sessionData: SessionData = {
 				accessToken: tokens.access_token,
 				refreshToken: tokens.refresh_token,
-				expiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
+				expiresAt: Math.floor(Date.now() / 1000) + 30 * 60,
 			}
 
 			await setSessionCookie(c, sessionData, env.SESSION_SECRET)
@@ -169,7 +168,6 @@ export const authRoutes = new OpenAPIHono<SessionEnv>()
 				{
 					access_token: tokens.access_token,
 					token_type: 'bearer' as const,
-					expires_in: tokens.expires_in,
 				},
 				200,
 			)

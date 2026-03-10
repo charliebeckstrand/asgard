@@ -8,8 +8,6 @@ export const environment = createEnvironment({
 	VIDAR_URL: z.string().optional(),
 	VIDAR_API_KEY: z.string().optional(),
 	HEIMDALL_API_KEY: z.string().optional(),
-	ACCESS_TOKEN_EXPIRE_MINUTES: z.coerce.number().default(30),
-	REFRESH_TOKEN_EXPIRE_DAYS: z.coerce.number().default(7),
 	CORS_ORIGIN: z.string().default('http://localhost:3000'),
 })
 

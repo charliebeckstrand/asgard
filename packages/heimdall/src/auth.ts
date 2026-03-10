@@ -9,7 +9,6 @@ export interface TokenPair {
 	access_token: string
 	refresh_token: string
 	token_type: 'bearer'
-	expires_in: number
 }
 
 export class AuthError extends Error {
@@ -54,15 +53,10 @@ export async function authenticateUser(
 		throw new AuthError('account_inactive', 'Account is inactive')
 	}
 
-	const access = await signToken(creds.id, 'access')
-	const refresh = await signToken(creds.id, 'refresh')
+	const access_token = await signToken(creds.id, 'access')
+	const refresh_token = await signToken(creds.id, 'refresh')
 
-	return {
-		access_token: access.token,
-		refresh_token: refresh.token,
-		token_type: 'bearer',
-		expires_in: access.expiresIn,
-	}
+	return { access_token, refresh_token, token_type: 'bearer' }
 }
 
 export async function registerUser(email: string, password: string, ip?: string): Promise<UserRow> {
@@ -132,13 +126,8 @@ export async function refreshTokenPair(refreshToken: string): Promise<TokenPair>
 		throw new AuthError('invalid_token', 'Invalid or expired refresh token')
 	}
 
-	const access = await signToken(user.id, 'access')
-	const newRefresh = await signToken(user.id, 'refresh')
+	const access_token = await signToken(user.id, 'access')
+	const refresh_token = await signToken(user.id, 'refresh')
 
-	return {
-		access_token: access.token,
-		refresh_token: newRefresh.token,
-		token_type: 'bearer',
-		expires_in: access.expiresIn,
-	}
+	return { access_token, refresh_token, token_type: 'bearer' }
 }

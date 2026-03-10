@@ -86,7 +86,7 @@ async function refreshAccessToken(sessionData: SessionData): Promise<SessionData
 			return {
 				accessToken: tokens.access_token,
 				refreshToken: tokens.refresh_token,
-				expiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
+				expiresAt: Math.floor(Date.now() / 1000) + 30 * 60,
 			}
 		} catch {
 			return null

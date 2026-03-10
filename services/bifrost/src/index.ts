@@ -14,8 +14,6 @@ configure({
 	vidarUrl: env.VIDAR_URL,
 	vidarApiKey: env.VIDAR_API_KEY,
 	apiKey: env.HEIMDALL_API_KEY,
-	accessTokenExpireMinutes: env.ACCESS_TOKEN_EXPIRE_MINUTES,
-	refreshTokenExpireDays: env.REFRESH_TOKEN_EXPIRE_DAYS,
 })
 
 const app = createBifrostApp()
