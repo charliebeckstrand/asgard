@@ -2,8 +2,6 @@
 
 Hono server startup and shutdown. 
 
-Recovers from occupied ports and handles graceful shutdown on `SIGINT`/`SIGTERM`.
-
 ## Usage
 
 ```typescript
