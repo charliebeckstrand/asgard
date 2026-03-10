@@ -16,7 +16,7 @@ interface CreateAppOptions {
 export function createApp(options: CreateAppOptions) {
 	const app = new OpenAPIHono()
 
-	app.use('*', options.cors ? cors(options.cors) : cors())
+	app.use('*', cors(options.cors ?? undefined))
 	app.use('*', secureHeaders())
 	app.use('*', logger())
 
@@ -26,9 +26,17 @@ export function createApp(options: CreateAppOptions) {
 	})
 
 	const setup = () => {
-		app.doc(`${options.basePath}/openapi.json`, openApiConfig)
+		app.get('/', (c) =>
+			c.json({
+				service: options.title.toLowerCase(),
+				openApi: `${options.basePath}/openapi.json`,
+				docs: `${options.basePath}/docs`,
+			}),
+		)
 
 		app.get(`${options.basePath}/docs`, swaggerUI({ url: `${options.basePath}/openapi.json` }))
+
+		app.doc(`${options.basePath}/openapi.json`, openApiConfig)
 
 		app.onError(errorHandler)
 

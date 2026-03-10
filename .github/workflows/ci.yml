@@ -89,7 +89,7 @@ jobs:
             - run: pnpm turbo run lint test build --filter=mimir
 
     bifrost:
-        name: Bifrost (API Gateway)
+        name: Bifrost (API)
         needs: changes
         if: needs.changes.outputs.bifrost == 'true'
         runs-on: ubuntu-latest
@@ -129,7 +129,7 @@ jobs:
             - run: pnpm turbo run build --filter=hermes...
 
     frigg:
-        name: Frigg (Config)
+        name: Frigg (Environment)
         needs: changes
         if: needs.changes.outputs.frigg == 'true'
         runs-on: ubuntu-latest
@@ -149,7 +149,7 @@ jobs:
             - run: pnpm turbo run build --filter=frigg...
 
     saga:
-        name: Saga (Logging Package)
+        name: Saga (Logging)
         needs: changes
         if: needs.changes.outputs.saga == 'true'
         runs-on: ubuntu-latest
@@ -188,7 +188,7 @@ jobs:
             - run: pnpm turbo run build --filter=huginn...
 
     heimdall:
-        name: Heimdall (Auth Package)
+        name: Heimdall (Auth)
         needs: changes
         if: needs.changes.outputs.heimdall == 'true'
         runs-on: ubuntu-latest

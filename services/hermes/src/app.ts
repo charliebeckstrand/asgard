@@ -12,7 +12,7 @@ export function createHermesApp() {
 	const { app, setup } = createApp({
 		basePath: '/messages',
 		title: 'Hermes',
-		description: 'Stateless multi-channel messaging relay with real-time event streaming',
+		description: '',
 		cors: { origin: env.CORS_ORIGIN, credentials: true },
 	})
 

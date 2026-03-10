@@ -1,7 +1,7 @@
 /**
  * Type-safe client for consuming Bifrost API endpoints.
  *
- * Usage in Yggdrasil or other consuming apps:
+ * Usage:
  *
  * ```ts
  * import { createClient } from "bifrost/client";

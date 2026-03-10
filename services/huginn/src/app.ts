@@ -11,7 +11,7 @@ export function createHuginnApp() {
 	const { app, setup } = createApp({
 		basePath: '/events',
 		title: 'Huginn',
-		description: 'Event bus microservice for inter-service messaging',
+		description: '',
 		cors: { origin: env.CORS_ORIGIN, credentials: true },
 	})
 

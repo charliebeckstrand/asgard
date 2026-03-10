@@ -12,8 +12,7 @@ export function createVidarApp() {
 	const { app, setup } = createApp({
 		basePath: '/vidar',
 		title: 'Vidar',
-		description:
-			'Security monitoring microservice for threat detection, IP ban enforcement, and optional AI-powered analysis',
+		description: '',
 	})
 
 	// --- Routes ---

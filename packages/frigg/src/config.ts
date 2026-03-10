@@ -25,13 +25,13 @@ function getBaseSchema() {
 	})
 }
 
-type BaseEnv = z.infer<ReturnType<typeof getBaseSchema>>
+type BaseEnvironment = z.infer<ReturnType<typeof getBaseSchema>>
 
-export function createEnvironment(): () => BaseEnv
+export function createEnvironment(): () => BaseEnvironment
 
 export function createEnvironment<T extends z.ZodRawShape>(
 	extra: T,
-): () => BaseEnv & z.infer<z.ZodObject<T>>
+): () => BaseEnvironment & z.infer<z.ZodObject<T>>
 
 export function createEnvironment<T extends z.ZodRawShape>(extra?: T) {
 	const baseSchema = getBaseSchema()

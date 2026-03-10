@@ -12,11 +12,9 @@ export function createBifrostApp() {
 	const { app, setup } = createApp({
 		basePath: '/api',
 		title: 'Bifrost',
-		description: 'API gateway and BFF bridging services',
+		description: '',
 		cors: { origin: env.CORS_ORIGIN, credentials: true },
 	})
-
-	// --- Service-specific middleware ---
 
 	app.use('*', session())
 
@@ -34,8 +32,6 @@ export function createBifrostApp() {
 	)
 
 	// --- Routes ---
-
-	app.get('/', (c) => c.json({}))
 
 	app.route('/auth', authRoutes)
 	app.route('/api', health)
