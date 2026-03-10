@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest'
 import { sql } from '../sql.js'
 
 describe('sql tagged template', () => {

@@ -1,5 +1,3 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 const MOCK_SECRET = 'test-secret-that-is-at-least-32-chars-long'
 
 vi.stubEnv('SESSION_SECRET', MOCK_SECRET)

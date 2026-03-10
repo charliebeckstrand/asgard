@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { EnvironmentData, ManifestData } from '../pipeline.js'
 import {
 	checkPortConflicts,
@@ -11,10 +10,6 @@ import {
 	validateService,
 	writeEnvFiles,
 } from '../pipeline.js'
-
-// ---------------------------------------------------------------------------
-// Shared fixtures
-// ---------------------------------------------------------------------------
 
 const manifests: ManifestData = {
 	heimdall: {
@@ -42,10 +37,6 @@ const secretsCache: Record<string, string> = {
 	'heimdall:HEIMDALL_API_KEY': 'api-key-value',
 	'bifrost:SESSION_SECRET': 'session-secret-value',
 }
-
-// ---------------------------------------------------------------------------
-// resolveEnvironments
-// ---------------------------------------------------------------------------
 
 describe('resolveEnvironments', () => {
 	it('resolves NODE_ENV and PORT for each service', () => {
@@ -112,10 +103,6 @@ describe('resolveEnvironments', () => {
 	})
 })
 
-// ---------------------------------------------------------------------------
-// writeEnvFiles
-// ---------------------------------------------------------------------------
-
 describe('writeEnvFiles', () => {
 	let servicesDir: string
 
@@ -161,10 +148,6 @@ describe('writeEnvFiles', () => {
 		expect(content).toContain('HEIMDALL_API_KEY=api-key-value')
 	})
 })
-
-// ---------------------------------------------------------------------------
-// generateSecrets
-// ---------------------------------------------------------------------------
 
 describe('generateSecrets', () => {
 	it('generates secrets for vars with type secret', () => {
@@ -226,10 +209,6 @@ describe('generateSecrets', () => {
 		expect(result['bifrost:SESSION_SECRET']).toBe('old-3')
 	})
 })
-
-// ---------------------------------------------------------------------------
-// validateService
-// ---------------------------------------------------------------------------
 
 const validateManifests: ManifestData = {
 	heimdall: {
@@ -329,10 +308,6 @@ describe('validateService', () => {
 	})
 })
 
-// ---------------------------------------------------------------------------
-// checkPortConflicts
-// ---------------------------------------------------------------------------
-
 describe('checkPortConflicts', () => {
 	it('detects port conflicts', () => {
 		const allServices: EnvironmentData = {
@@ -356,10 +331,6 @@ describe('checkPortConflicts', () => {
 		expect(checkPortConflicts(allServices)).toHaveLength(0)
 	})
 })
-
-// ---------------------------------------------------------------------------
-// validateAll
-// ---------------------------------------------------------------------------
 
 describe('validateAll', () => {
 	it('returns results for all services', () => {

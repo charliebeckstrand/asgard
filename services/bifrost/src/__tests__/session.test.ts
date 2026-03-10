@@ -1,10 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
-
 vi.mock('heimdall', () => ({
 	refreshTokenPair: vi.fn(),
 }))
 
-import { _decodeSession, _encodeSession, type SessionData } from './session.js'
+import { _decodeSession, _encodeSession, type SessionData } from '../middleware/session.js'
 
 const SECRET = 'test-secret-that-is-at-least-32-chars-long'
 

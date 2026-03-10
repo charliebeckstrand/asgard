@@ -1,4 +1,4 @@
-import { describe, expect, it, type Mock, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { createDb, NoRowsError } from '../db.js'
 import { sql } from '../sql.js'
 
