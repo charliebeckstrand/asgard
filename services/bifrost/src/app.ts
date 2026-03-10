@@ -1,5 +1,6 @@
 import { createApp } from 'grid'
-import { checkBan, rateLimit, reportEvent } from 'heimdall'
+import { rateLimit } from 'heimdall'
+import { checkBan, reportEvent } from 'vidar/client'
 
 import { environment } from './lib/env.js'
 import { session } from './middleware/session.js'

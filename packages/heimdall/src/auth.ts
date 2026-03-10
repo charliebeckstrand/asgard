@@ -3,7 +3,6 @@ import { hash, verify } from '@node-rs/argon2'
 import { getConfig } from './config.js'
 import { signToken, verifyToken } from './jwt.js'
 import type { UserRow } from './types.js'
-import { reportEvent } from './vidar.js'
 
 export interface TokenPair {
 	access_token: string
@@ -44,7 +43,7 @@ export async function authenticateUser(
 	const passwordOk = await verify(hashToVerify, password)
 
 	if (!creds || !passwordOk) {
-		if (ip) reportEvent('login_failed', ip, { email: normalizedEmail })
+		if (ip) getConfig().onSecurityEvent?.('login_failed', ip, { email: normalizedEmail })
 
 		throw new AuthError('invalid_credentials', 'Incorrect email or password')
 	}
@@ -69,7 +68,7 @@ export async function registerUser(email: string, password: string, ip?: string)
 	try {
 		const user = await userRepository.insertUser(randomUUID(), normalizedEmail, hashedPassword)
 
-		if (ip) reportEvent('registration', ip, { email: normalizedEmail })
+		if (ip) getConfig().onSecurityEvent?.('registration', ip, { email: normalizedEmail })
 
 		return user
 	} catch (err: unknown) {

@@ -3,9 +3,8 @@ import type { UserRepository } from './types.js'
 export interface HeimdallConfig {
 	userRepository: UserRepository
 	secretKey: string
-	vidarUrl?: string
-	vidarApiKey?: string
 	apiKey?: string
+	onSecurityEvent?: (eventType: string, ip: string, details?: Record<string, unknown>) => void
 }
 
 let _config: HeimdallConfig | null = null

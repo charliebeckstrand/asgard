@@ -226,6 +226,9 @@ importers:
       norns:
         specifier: workspace:*
         version: link:../../packages/norns
+      vidar:
+        specifier: workspace:*
+        version: link:../vidar
       zod:
         specifier: ^4.3.6
         version: 4.3.6

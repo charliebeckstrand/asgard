@@ -26,14 +26,18 @@ vi.mock('heimdall', () => ({
 	authenticateUser: (...args: unknown[]) => mockAuthenticateUser(...args),
 	registerUser: (...args: unknown[]) => mockRegisterUser(...args),
 	AuthError: MockAuthError,
-	checkBan: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
-		await next()
-	}),
 	rateLimit: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
 		await next()
 	}),
-	reportEvent: vi.fn(),
 	refreshTokenPair: vi.fn(),
+}))
+
+vi.mock('vidar/client', () => ({
+	configure: vi.fn(),
+	checkBan: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+		await next()
+	}),
+	reportEvent: vi.fn(),
 }))
 
 import { createBifrostApp } from '../app.js'
