@@ -17,12 +17,12 @@ function createMockClient(queryResult: { rows: unknown[]; rowCount?: number }) {
 }
 
 describe('createDb', () => {
-	describe('one', () => {
+	describe('query', () => {
 		it('returns the first row', async () => {
 			const pool = createMockPool({ rows: [{ id: 1, name: 'Alice' }] })
 			const db = createDb(pool)
 
-			const result = await db.one<{ id: number; name: string }>(
+			const result = await db.query<{ id: number; name: string }>(
 				sql`SELECT * FROM users WHERE id = ${1}`,
 			)
 
@@ -33,20 +33,18 @@ describe('createDb', () => {
 			const pool = createMockPool({ rows: [] })
 			const db = createDb(pool)
 
-			const result = await db.one(sql`SELECT * FROM users WHERE id = ${999}`)
+			const result = await db.query(sql`SELECT * FROM users WHERE id = ${999}`)
 
 			expect(result).toBeNull()
 		})
 	})
 
-	describe('first', () => {
+	describe('get', () => {
 		it('returns the first row', async () => {
 			const pool = createMockPool({ rows: [{ id: 1 }] })
 			const db = createDb(pool)
 
-			const result = await db.first<{ id: number }>(
-				sql`INSERT INTO t (v) VALUES (${1}) RETURNING id`,
-			)
+			const result = await db.get<{ id: number }>(sql`INSERT INTO t (v) VALUES (${1}) RETURNING id`)
 
 			expect(result).toEqual({ id: 1 })
 		})
@@ -55,7 +53,7 @@ describe('createDb', () => {
 			const pool = createMockPool({ rows: [] })
 			const db = createDb(pool)
 
-			await expect(db.first(sql`SELECT * FROM t WHERE id = ${999}`)).rejects.toThrow(NoRowsError)
+			await expect(db.get(sql`SELECT * FROM t WHERE id = ${999}`)).rejects.toThrow(NoRowsError)
 		})
 	})
 
@@ -130,7 +128,7 @@ describe('createDb', () => {
 			const db = createDb(pool)
 
 			const result = await db.tx(async (tx) => {
-				return tx.first<{ id: number }>(sql`INSERT INTO t (v) VALUES (${1}) RETURNING id`)
+				return tx.get<{ id: number }>(sql`INSERT INTO t (v) VALUES (${1}) RETURNING id`)
 			})
 
 			expect(result).toEqual({ id: 1 })

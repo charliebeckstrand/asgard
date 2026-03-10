@@ -10,8 +10,8 @@ export class NoRowsError extends Error {
 }
 
 export interface Queryable {
-	one<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null>
-	first<T extends QueryResultRow>(fragment: SqlFragment): Promise<T>
+	query<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null>
+	get<T extends QueryResultRow>(fragment: SqlFragment): Promise<T>
 	many<T extends QueryResultRow>(fragment: SqlFragment): Promise<T[]>
 	exec(fragment: SqlFragment): Promise<number>
 	val<T>(fragment: SqlFragment): Promise<T>
@@ -24,13 +24,13 @@ export interface Db extends Queryable {
 
 function createQueryable(executor: { query: Pool['query'] | PoolClient['query'] }): Queryable {
 	return {
-		async one<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null> {
+		async query<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null> {
 			const { rows } = await executor.query<T>(fragment as never)
 
 			return rows[0] ?? null
 		},
 
-		async first<T extends QueryResultRow>(fragment: SqlFragment): Promise<T> {
+		async get<T extends QueryResultRow>(fragment: SqlFragment): Promise<T> {
 			const { rows } = await executor.query<T>(fragment as never)
 
 			if (rows.length === 0) {
