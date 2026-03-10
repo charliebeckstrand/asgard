@@ -123,7 +123,7 @@ async function checkRule(
 			`SELECT
 				COUNT(*)::text AS event_count,
 				COUNT(DISTINCT details->>'email')::text AS account_count
-			 FROM security_events
+			 FROM vdr_security_events
 			 WHERE ip = $1
 			   AND event_type = $2
 			   AND created_at > now() - make_interval(mins => $3::int)`,
@@ -138,7 +138,7 @@ async function checkRule(
 	}
 
 	const { rows } = await pool.query<{ count: string }>(
-		`SELECT COUNT(*)::text AS count FROM security_events
+		`SELECT COUNT(*)::text AS count FROM vdr_security_events
 		 WHERE ip = $1
 		   AND event_type = $2
 		   AND created_at > now() - make_interval(mins => $3::int)`,

@@ -1,7 +1,7 @@
 import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { errorHandler, notFoundHandler, requestLogger, securityHeaders } from 'grid'
-import { vidarBanCheck } from 'heimdall'
+import { rateLimit, reportEvent, vidarBanCheck } from 'heimdall'
 import { cors } from 'hono/cors'
 
 import { loadEnv } from './lib/env.js'
@@ -22,9 +22,18 @@ export function createApp() {
 	app.use('*', requestLogger())
 	app.use('*', session())
 
-	// --- Vidar ban check on auth routes ---
+	// --- Vidar ban check + rate limiting on auth routes ---
 
 	app.use('/auth/*', vidarBanCheck())
+
+	app.use(
+		'/auth/*',
+		rateLimit({
+			rate: 2,
+			burst: 5,
+			onLimit: (ip) => reportEvent('rate_limited', ip, { route: '/auth' }),
+		}),
+	)
 
 	// --- Routes ---
 

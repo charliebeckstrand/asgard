@@ -1,4 +1,4 @@
-CREATE TABLE security_events (
+CREATE TABLE vdr_security_events (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     ip          VARCHAR(45) NOT NULL,
     event_type  VARCHAR(100) NOT NULL,
@@ -7,10 +7,10 @@ CREATE TABLE security_events (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_security_events_lookup
-    ON security_events (ip, event_type, created_at);
+CREATE INDEX ix_vdr_security_events_lookup
+    ON vdr_security_events (ip, event_type, created_at);
 
-CREATE TABLE bans (
+CREATE TABLE vdr_bans (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     ip          VARCHAR(45) NOT NULL UNIQUE,
     reason      TEXT        NOT NULL,
@@ -20,10 +20,10 @@ CREATE TABLE bans (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_bans_ip ON bans (ip);
-CREATE INDEX ix_bans_expires_at ON bans (expires_at);
+CREATE INDEX ix_vdr_bans_ip ON vdr_bans (ip);
+CREATE INDEX ix_vdr_bans_expires_at ON vdr_bans (expires_at);
 
-CREATE TABLE threats (
+CREATE TABLE vdr_threats (
     id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     threat_type  VARCHAR(100) NOT NULL,
     severity     VARCHAR(20)  NOT NULL DEFAULT 'medium',
@@ -34,5 +34,5 @@ CREATE TABLE threats (
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_threats_ip ON threats (ip);
-CREATE INDEX ix_threats_resolved ON threats (resolved);
+CREATE INDEX ix_vdr_threats_ip ON vdr_threats (ip);
+CREATE INDEX ix_vdr_threats_resolved ON vdr_threats (resolved);

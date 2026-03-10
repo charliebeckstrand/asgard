@@ -7,16 +7,27 @@ interface BucketEntry {
 	lastRefill: number
 }
 
-const buckets = new Map<string, BucketEntry>()
+export interface RateLimitOptions {
+	/** Tokens refilled per second (default: 5) */
+	rate?: number
+	/** Maximum bucket size / burst capacity (default: 10) */
+	burst?: number
+	/** Called when a request is rate-limited */
+	onLimit?: (ip: string) => void
+}
 
-const RATE = 5 // tokens per second
-const BURST = 10 // max bucket size
 const EVICT_AFTER_MS = 3_600_000 // 1 hour
 const SWEEP_INTERVAL_MS = 300_000 // 5 minutes
 
-let lastSweep = Date.now()
+export function rateLimit(options?: RateLimitOptions): MiddlewareHandler {
+	const rate = options?.rate ?? 5
+	const burst = options?.burst ?? 10
+	const onLimit = options?.onLimit
 
-export function rateLimit(): MiddlewareHandler {
+	const buckets = new Map<string, BucketEntry>()
+
+	let lastSweep = Date.now()
+
 	return async (c, next) => {
 		const key = getClientIp(c)
 
@@ -35,18 +46,20 @@ export function rateLimit(): MiddlewareHandler {
 		let entry = buckets.get(key)
 
 		if (!entry) {
-			entry = { tokens: BURST, lastRefill: now }
+			entry = { tokens: burst, lastRefill: now }
 
 			buckets.set(key, entry)
 		}
 
 		const elapsed = (now - entry.lastRefill) / 1000
 
-		entry.tokens = Math.min(BURST, entry.tokens + elapsed * RATE)
+		entry.tokens = Math.min(burst, entry.tokens + elapsed * rate)
 
 		entry.lastRefill = now
 
 		if (entry.tokens < 1) {
+			onLimit?.(key)
+
 			throw new HTTPException(429, { message: 'Too many requests' })
 		}
 

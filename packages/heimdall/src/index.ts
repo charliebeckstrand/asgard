@@ -11,6 +11,7 @@ export { signToken, verifyToken } from './jwt.js'
 export { apiKeyAuth } from './middleware/api-key.js'
 export type { AuthEnv } from './middleware/bearer.js'
 export { bearer } from './middleware/bearer.js'
+export type { RateLimitOptions } from './middleware/rate-limit.js'
 export { rateLimit } from './middleware/rate-limit.js'
 export { vidarBanCheck } from './middleware/vidar.js'
 // Schemas

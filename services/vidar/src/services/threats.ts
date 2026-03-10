@@ -21,7 +21,7 @@ export async function createThreat(threat: {
 	const pool = getPool()
 
 	const { rows } = await pool.query<ThreatRow>(
-		`INSERT INTO threats (threat_type, severity, ip, details, action_taken)
+		`INSERT INTO vdr_threats (threat_type, severity, ip, details, action_taken)
 		 VALUES ($1, $2, $3, $4, $5)
 		 RETURNING *`,
 		[
@@ -61,7 +61,7 @@ export async function listThreats(options?: {
 	const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
 	const { rows } = await pool.query<ThreatRow>(
-		`SELECT * FROM threats ${where} ORDER BY created_at DESC LIMIT 100`,
+		`SELECT * FROM vdr_threats ${where} ORDER BY created_at DESC LIMIT 100`,
 		params,
 	)
 

@@ -8,6 +8,10 @@ vi.mock('heimdall', () => ({
 	vidarBanCheck: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
 		await next()
 	}),
+	rateLimit: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+		await next()
+	}),
+	reportEvent: vi.fn(),
 	checkHealth: vi.fn().mockResolvedValue(true),
 	refreshTokenPair: vi.fn(),
 }))

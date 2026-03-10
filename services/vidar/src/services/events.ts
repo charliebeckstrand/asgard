@@ -19,7 +19,7 @@ export async function ingestEvent(event: {
 	const pool = getPool()
 
 	const { rows } = await pool.query<SecurityEventRow>(
-		`INSERT INTO security_events (ip, event_type, details, service)
+		`INSERT INTO vdr_security_events (ip, event_type, details, service)
 		 VALUES ($1, $2, $3, $4)
 		 RETURNING *`,
 		[event.ip, event.event_type, JSON.stringify(event.details), event.service],
