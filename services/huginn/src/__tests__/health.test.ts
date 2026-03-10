@@ -14,9 +14,27 @@ type ErrorResponse = {
 	statusCode: number
 }
 
+type ServiceInfoResponse = {
+	service: string
+	openApi: string
+	docs: string
+}
+
 const app = createHuginnApp()
 
 describe('Health route', () => {
+	it('GET /events returns service metadata', async () => {
+		const res = await app.request('/events')
+
+		expect(res.status).toBe(200)
+
+		const body = (await res.json()) as ServiceInfoResponse
+
+		expect(body.service).toBe('huginn')
+		expect(body.openApi).toBe('/events/openapi.json')
+		expect(body.docs).toBe('/events/docs')
+	})
+
 	it('GET /events/health returns healthy status', async () => {
 		const res = await app.request('/events/health')
 

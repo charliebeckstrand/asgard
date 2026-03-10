@@ -26,7 +26,7 @@ export function createApp(options: CreateAppOptions) {
 	})
 
 	const setup = () => {
-		app.get('/', (c) =>
+		app.get(options.basePath, (c) =>
 			c.json({
 				service: options.title.toLowerCase(),
 				openApi: `${options.basePath}/openapi.json`,

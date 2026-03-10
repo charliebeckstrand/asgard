@@ -85,9 +85,7 @@ describe('Auth routes', () => {
 			}
 
 			expect(body.access_token).toBe('at_test123')
-
 			expect(body.token_type).toBe('bearer')
-
 			expect(body.expires_in).toBe(3600)
 
 			const cookie = getCookieFromResponse(res)
@@ -224,7 +222,6 @@ describe('Auth routes', () => {
 			const body = (await res.json()) as { id: string; email: string }
 
 			expect(body.id).toBe('user-123')
-
 			expect(body.email).toBe('new@example.com')
 		})
 

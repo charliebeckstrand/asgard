@@ -191,7 +191,6 @@ describe('createDb', () => {
 			const calls = (client.query as Mock).mock.calls
 
 			expect(calls[0][0]).toBe('BEGIN')
-
 			expect(calls[calls.length - 1][0]).toBe('COMMIT')
 
 			expect(client.release).toHaveBeenCalled()
@@ -215,7 +214,6 @@ describe('createDb', () => {
 			const calls = (client.query as Mock).mock.calls
 
 			expect(calls[0][0]).toBe('BEGIN')
-
 			expect(calls[calls.length - 1][0]).toBe('ROLLBACK')
 
 			expect(client.release).toHaveBeenCalled()

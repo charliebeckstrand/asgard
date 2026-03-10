@@ -44,7 +44,6 @@ describe('resolveEnvironments', () => {
 
 		expect(result.heimdall.NODE_ENV).toBe('production')
 		expect(result.heimdall.PORT).toBe('3001')
-
 		expect(result.bifrost.NODE_ENV).toBe('production')
 		expect(result.bifrost.PORT).toBe('3000')
 	})
@@ -123,7 +122,6 @@ describe('writeEnvFiles', () => {
 		writeEnvFiles(environments, servicesDir)
 
 		expect(existsSync(join(servicesDir, 'heimdall', '.env'))).toBe(true)
-
 		expect(existsSync(join(servicesDir, 'bifrost', '.env'))).toBe(true)
 	})
 
@@ -133,7 +131,6 @@ describe('writeEnvFiles', () => {
 		writeEnvFiles(environments, servicesDir, ['bifrost'])
 
 		expect(existsSync(join(servicesDir, 'bifrost', '.env'))).toBe(true)
-
 		expect(existsSync(join(servicesDir, 'heimdall', '.env'))).toBe(false)
 	})
 
@@ -157,7 +154,6 @@ describe('generateSecrets', () => {
 		expect(result['heimdall:SECRET_KEY']).toHaveLength(64) // 32 bytes hex
 
 		expect(result['heimdall:HEIMDALL_API_KEY']).toBeDefined()
-
 		expect(result['bifrost:SESSION_SECRET']).toBeDefined()
 	})
 
@@ -190,7 +186,6 @@ describe('generateSecrets', () => {
 
 		expect(result['heimdall:SECRET_KEY']).not.toBe('old-1')
 		expect(result['heimdall:HEIMDALL_API_KEY']).not.toBe('old-2')
-
 		expect(result['bifrost:SESSION_SECRET']).not.toBe('old-3')
 	})
 
@@ -205,7 +200,6 @@ describe('generateSecrets', () => {
 
 		expect(result['heimdall:SECRET_KEY']).not.toBe('old-1')
 		expect(result['heimdall:HEIMDALL_API_KEY']).toBe('old-2')
-
 		expect(result['bifrost:SESSION_SECRET']).toBe('old-3')
 	})
 })
