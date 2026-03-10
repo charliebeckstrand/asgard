@@ -11,7 +11,7 @@ const analyzeRoute = createRoute({
 	summary: 'Trigger AI threat analysis',
 	description:
 		'Run AI-powered analysis on recent security events. Requires AI_ENABLED=true and a configured AI provider.',
-	security: [{ ApiKey: [] }],
+	security: [{ Bearer: [] }],
 	request: {
 		body: {
 			content: { 'application/json': { schema: AnalyzeRequestSchema } },
@@ -34,11 +34,11 @@ const analyzeRoute = createRoute({
 	},
 })
 
-export const analyze = new OpenAPIHono()
+const app = new OpenAPIHono()
 
-analyze.use('/analyze', apiKeyAuth())
+app.use('/analyze', apiKeyAuth())
 
-analyze.openapi(analyzeRoute, async (c) => {
+export const analyze = app.openapi(analyzeRoute, async (c) => {
 	const env = environment()
 
 	if (!env.AI_ENABLED) {

@@ -10,7 +10,7 @@ const publishRoute = createRoute({
 	tags: ['Events'],
 	summary: 'Publish an event',
 	description: 'Publish an event to a topic. Subscribers will be notified via their callback URLs.',
-	security: [{ ApiKey: [] }],
+	security: [{ Bearer: [] }],
 	request: {
 		body: {
 			content: { 'application/json': { schema: PublishEventSchema } },

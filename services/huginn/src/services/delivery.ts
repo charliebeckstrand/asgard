@@ -1,5 +1,6 @@
 import { sql } from 'mimir'
 import { db } from '../lib/db.js'
+import { emitEvent } from '../lib/emitter.js'
 
 type PublishInput = {
 	topic: string
@@ -32,6 +33,8 @@ export async function publishEvent(input: PublishInput): Promise<Event> {
 			RETURNING id, topic, payload, source, created_at::text as created_at
 		`,
 	)
+
+	emitEvent(event)
 
 	deliverEvent(event).catch((err) => {
 		console.error(`Failed to deliver event ${event.id}:`, err)

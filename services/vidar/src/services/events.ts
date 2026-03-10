@@ -1,5 +1,6 @@
 import { sql } from 'mimir'
 import { db } from '../lib/db.js'
+import { emitEvent } from '../lib/emitter.js'
 import { evaluateRules } from './rules.js'
 
 export interface SecurityEventRow {
@@ -24,6 +25,8 @@ export async function ingestEvent(event: {
 			RETURNING *
 		`,
 	)
+
+	emitEvent(row)
 
 	// Evaluate rules asynchronously — don't block the response
 	evaluateRules(event.ip, event.event_type).catch((err) => {

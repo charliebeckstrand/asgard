@@ -9,7 +9,7 @@ const listThreatsRoute = createRoute({
 	tags: ['Threats'],
 	summary: 'List detected threats',
 	description: 'Returns detected threat incidents, optionally filtered by resolution status or IP.',
-	security: [{ ApiKey: [] }],
+	security: [{ Bearer: [] }],
 	request: {
 		query: z.object({
 			resolved: z
@@ -31,11 +31,11 @@ const listThreatsRoute = createRoute({
 	},
 })
 
-export const threats = new OpenAPIHono()
+const app = new OpenAPIHono()
 
-threats.use('/threats', apiKeyAuth())
+app.use('/threats', apiKeyAuth())
 
-threats.openapi(listThreatsRoute, async (c) => {
+export const threats = app.openapi(listThreatsRoute, async (c) => {
 	const { resolved, ip } = c.req.valid('query')
 
 	const result = await listThreats({

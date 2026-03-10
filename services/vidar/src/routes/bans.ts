@@ -15,7 +15,7 @@ const listBansRoute = createRoute({
 	tags: ['Bans'],
 	summary: 'List active bans',
 	description: 'Returns all currently active IP bans (excludes expired bans).',
-	security: [{ ApiKey: [] }],
+	security: [{ Bearer: [] }],
 	responses: {
 		200: {
 			content: { 'application/json': { schema: BanListSchema } },
@@ -34,7 +34,7 @@ const createBanRoute = createRoute({
 	tags: ['Bans'],
 	summary: 'Manually ban an IP',
 	description: 'Create a manual IP ban. Optionally specify a duration; omit for a permanent ban.',
-	security: [{ ApiKey: [] }],
+	security: [{ Bearer: [] }],
 	request: {
 		body: {
 			content: { 'application/json': { schema: CreateBanSchema } },
@@ -59,7 +59,7 @@ const removeBanRoute = createRoute({
 	tags: ['Bans'],
 	summary: 'Unban an IP',
 	description: 'Remove the ban for a specific IP address.',
-	security: [{ ApiKey: [] }],
+	security: [{ Bearer: [] }],
 	request: {
 		params: z.object({
 			ip: z.string().min(1).openapi({ description: 'IP address to unban' }),
@@ -81,39 +81,38 @@ const removeBanRoute = createRoute({
 	},
 })
 
-export const bans = new OpenAPIHono()
+const app = new OpenAPIHono()
 
-bans.use('/bans', apiKeyAuth())
-bans.use('/bans/*', apiKeyAuth())
+app.use('/bans', apiKeyAuth())
+app.use('/bans/*', apiKeyAuth())
 
-bans.openapi(listBansRoute, async (c) => {
-	const result = await listActiveBans()
+export const bans = app
+	.openapi(listBansRoute, async (c) => {
+		const result = await listActiveBans()
 
-	return c.json(result, 200)
-})
-
-bans.openapi(createBanRoute, async (c) => {
-	const { ip, reason, duration_minutes } = c.req.valid('json')
-
-	const ban = await createBan(ip, reason, {
-		created_by: 'manual',
-		duration_minutes,
+		return c.json(result, 200)
 	})
+	.openapi(createBanRoute, async (c) => {
+		const { ip, reason, duration_minutes } = c.req.valid('json')
 
-	return c.json(ban, 201)
-})
+		const ban = await createBan(ip, reason, {
+			created_by: 'manual',
+			duration_minutes,
+		})
 
-bans.openapi(removeBanRoute, async (c) => {
-	const { ip } = c.req.valid('param')
+		return c.json(ban, 201)
+	})
+	.openapi(removeBanRoute, async (c) => {
+		const { ip } = c.req.valid('param')
 
-	const removed = await removeBan(ip)
+		const removed = await removeBan(ip)
 
-	if (!removed) {
-		return c.json(
-			{ error: 'Not Found', message: `No active ban found for IP ${ip}`, statusCode: 404 },
-			404,
-		)
-	}
+		if (!removed) {
+			return c.json(
+				{ error: 'Not Found', message: `No active ban found for IP ${ip}`, statusCode: 404 },
+				404,
+			)
+		}
 
-	return c.json({ message: `Ban removed for IP ${ip}` }, 200)
-})
+		return c.json({ message: `Ban removed for IP ${ip}` }, 200)
+	})

@@ -10,7 +10,7 @@ const checkIpRoute = createRoute({
 	summary: 'Check if an IP is banned',
 	description:
 		'Returns ban status for a given IP address. Used by other services before processing requests.',
-	security: [{ ApiKey: [] }],
+	security: [{ Bearer: [] }],
 	request: {
 		query: z.object({
 			ip: z
@@ -31,11 +31,11 @@ const checkIpRoute = createRoute({
 	},
 })
 
-export const checkIp = new OpenAPIHono()
+const app = new OpenAPIHono()
 
-checkIp.use('/check-ip', apiKeyAuth())
+app.use('/check-ip', apiKeyAuth())
 
-checkIp.openapi(checkIpRoute, async (c) => {
+export const checkIp = app.openapi(checkIpRoute, async (c) => {
 	const { ip } = c.req.valid('query')
 
 	const result = await isIpBanned(ip)

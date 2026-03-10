@@ -42,6 +42,8 @@ vi.mock('vidar/client', () => ({
 
 import { createBifrostApp } from '../app.js'
 
+const ORIGIN = 'http://localhost:3000'
+
 const app = createBifrostApp()
 
 function getCookieFromResponse(res: Response): string | undefined {
@@ -74,7 +76,7 @@ describe('Auth routes', () => {
 
 			const res = await app.request('/auth/login', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
 				body: JSON.stringify({ email: 'test@example.com', password: 'password123' }),
 			})
 
@@ -102,7 +104,7 @@ describe('Auth routes', () => {
 
 			await app.request('/auth/login', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
 				body: JSON.stringify({ email: 'test@example.com', password: 'secret' }),
 			})
 
@@ -120,7 +122,7 @@ describe('Auth routes', () => {
 
 			const res = await app.request('/auth/login', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
 				body: JSON.stringify({ email: 'test@example.com', password: 'wrong' }),
 			})
 
@@ -134,7 +136,7 @@ describe('Auth routes', () => {
 
 			const res = await app.request('/auth/login', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
 				body: JSON.stringify({ email: 'test@example.com', password: 'password123' }),
 			})
 
@@ -144,7 +146,10 @@ describe('Auth routes', () => {
 
 	describe('POST /auth/logout', () => {
 		it('clears the session cookie', async () => {
-			const res = await app.request('/auth/logout', { method: 'POST' })
+			const res = await app.request('/auth/logout', {
+				method: 'POST',
+				headers: { Origin: ORIGIN },
+			})
 
 			expect(res.status).toBe(200)
 
@@ -175,7 +180,7 @@ describe('Auth routes', () => {
 
 			const loginRes = await app.request('/auth/login', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
 				body: JSON.stringify({ email: 'test@example.com', password: 'password123' }),
 			})
 
@@ -211,7 +216,7 @@ describe('Auth routes', () => {
 
 			const res = await app.request('/auth/register', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
 				body: JSON.stringify({ email: 'new@example.com', password: 'password123' }),
 			})
 
@@ -230,7 +235,7 @@ describe('Auth routes', () => {
 
 			const res = await app.request('/auth/register', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
 				body: JSON.stringify({ email: 'existing@example.com', password: 'password123' }),
 			})
 
@@ -240,7 +245,7 @@ describe('Auth routes', () => {
 		it('requires an active session for POST /api/users', async () => {
 			const res = await app.request('/api/users', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
 				body: JSON.stringify({ email: 'guarded@example.com', password: 'password123' }),
 			})
 

@@ -1,12 +1,7 @@
 vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
 
+import { testClient } from 'hono/testing'
 import { createHuginnApp } from '../app.js'
-
-type HealthResponse = {
-	status: string
-	version: string
-	uptime: number
-}
 
 type ErrorResponse = {
 	error: string
@@ -21,6 +16,7 @@ type ServiceInfoResponse = {
 }
 
 const app = createHuginnApp()
+const client = testClient(app)
 
 describe('Health route', () => {
 	it('GET /events returns service metadata', async () => {
@@ -36,11 +32,11 @@ describe('Health route', () => {
 	})
 
 	it('GET /events/health returns healthy status', async () => {
-		const res = await app.request('/events/health')
+		const res = await client.events.health.$get()
 
 		expect(res.status).toBe(200)
 
-		const body = (await res.json()) as HealthResponse
+		const body = await res.json()
 
 		expect(body.status).toBe('healthy')
 		expect(body.version).toBe('0.1.0')
@@ -85,18 +81,16 @@ describe('Error handling', () => {
 })
 
 describe('Auth middleware', () => {
-	it('returns 401 for publish without API key', async () => {
-		const res = await app.request('/events/publish', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ topic: 'test', payload: {}, source: 'test' }),
+	it('returns 401 for publish without bearer token', async () => {
+		const res = await client.events.publish.$post({
+			json: { topic: 'test', payload: {}, source: 'test' },
 		})
 
 		expect(res.status).toBe(401)
 	})
 
-	it('returns 401 for subscriptions without API key', async () => {
-		const res = await app.request('/events/subscriptions')
+	it('returns 401 for subscriptions without bearer token', async () => {
+		const res = await client.events.subscriptions.$get()
 
 		expect(res.status).toBe(401)
 	})

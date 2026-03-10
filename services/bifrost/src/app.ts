@@ -1,5 +1,6 @@
-import { createApp } from 'grid'
+import { createApp, createProxy } from 'grid'
 import { rateLimit } from 'heimdall'
+import { csrf } from 'hono/csrf'
 import { checkBan, reportEvent } from 'vidar/client'
 
 import { environment } from './lib/env.js'
@@ -19,6 +20,7 @@ export function createBifrostApp() {
 	})
 
 	app.use('*', session())
+	app.use('*', csrf({ origin: env.CORS_ORIGIN }))
 
 	// --- Vidar ban check + rate limiting on auth routes ---
 
@@ -35,13 +37,24 @@ export function createBifrostApp() {
 
 	// --- Routes ---
 
-	app.route('/auth', authRoutes)
-	app.route('/api', health)
-	app.route('/api/users', usersRoutes)
+	const routes = app
+		.route('/auth', authRoutes)
+		.route('/api', health)
+		.route('/api/users', usersRoutes)
+
+	// --- Proxy to downstream services ---
+
+	app.all('/events/*', createProxy(env.HUGINN_URL))
+
+	if (env.VIDAR_URL) {
+		app.all('/vidar/*', createProxy(env.VIDAR_URL))
+	}
 
 	// --- Finalize ---
 
 	setup()
 
-	return app
+	return routes
 }
+
+export type BifrostApp = ReturnType<typeof createBifrostApp>

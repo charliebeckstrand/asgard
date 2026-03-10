@@ -20,7 +20,7 @@ const listRoute = createRoute({
 	tags: ['Subscriptions'],
 	summary: 'List subscriptions',
 	description: 'List all event subscriptions',
-	security: [{ ApiKey: [] }],
+	security: [{ Bearer: [] }],
 	request: {
 		query: z.object({
 			topic: z.string().optional().openapi({ description: 'Filter by topic' }),
@@ -44,7 +44,7 @@ const createRoute_ = createRoute({
 	tags: ['Subscriptions'],
 	summary: 'Create subscription',
 	description: 'Register a new event subscription',
-	security: [{ ApiKey: [] }],
+	security: [{ Bearer: [] }],
 	request: {
 		body: {
 			content: { 'application/json': { schema: CreateSubscriptionSchema } },
@@ -69,7 +69,7 @@ const deleteRoute = createRoute({
 	tags: ['Subscriptions'],
 	summary: 'Delete subscription',
 	description: 'Remove an event subscription',
-	security: [{ ApiKey: [] }],
+	security: [{ Bearer: [] }],
 	request: {
 		params: z.object({
 			id: z.uuid().openapi({ description: 'Subscription ID' }),

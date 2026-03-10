@@ -1,4 +1,4 @@
-import { createApiKeyAuth } from 'grid'
+import { createBearerAuth } from 'grid'
 import { environment } from '../lib/env.js'
 
-export const apiKeyAuth = () => createApiKeyAuth(() => environment().VIDAR_API_KEY)
+export const apiKeyAuth = () => createBearerAuth(() => environment().VIDAR_API_KEY)

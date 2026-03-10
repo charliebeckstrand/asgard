@@ -1,6 +1,8 @@
 import { getIpAddress } from 'grid'
 import type { MiddlewareHandler } from 'hono'
+import { hc } from 'hono/client'
 import { HTTPException } from 'hono/http-exception'
+import type { VidarApp } from './app.js'
 
 export interface VidarClientConfig {
 	vidarUrl?: string
@@ -8,9 +10,18 @@ export interface VidarClientConfig {
 }
 
 let _config: VidarClientConfig = {}
+let _client: ReturnType<typeof hc<VidarApp>> | null = null
 
 export function configure(config: VidarClientConfig): void {
 	_config = { ...config }
+
+	if (config.vidarUrl) {
+		_client = hc<VidarApp>(config.vidarUrl, {
+			headers: config.vidarApiKey ? { Authorization: `Bearer ${config.vidarApiKey}` } : undefined,
+		})
+	} else {
+		_client = null
+	}
 }
 
 export function getConfig(): VidarClientConfig {
@@ -28,20 +39,13 @@ export interface BanCheckResult {
  * Returns null if Vidar is not configured or unreachable.
  */
 export async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
-	if (!_config.vidarUrl) return null
+	if (!_client) return null
 
 	try {
-		const url = new URL('/vidar/check-ip', _config.vidarUrl)
-
-		url.searchParams.set('ip', ip)
-
-		const headers: Record<string, string> = {}
-
-		if (_config.vidarApiKey) {
-			headers['X-API-Key'] = _config.vidarApiKey
-		}
-
-		const res = await fetch(url, { headers, signal: AbortSignal.timeout(3000) })
+		const res = await _client.vidar['check-ip'].$get(
+			{ query: { ip } },
+			{ init: { signal: AbortSignal.timeout(3000) } },
+		)
 
 		if (!res.ok) return null
 
@@ -54,7 +58,7 @@ export async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
 
 export function checkBan(): MiddlewareHandler {
 	return async (c, next) => {
-		if (!_config.vidarUrl) {
+		if (!_client) {
 			await next()
 
 			return
@@ -82,20 +86,14 @@ export function reportEvent(
 	details: Record<string, unknown> = {},
 	service = 'unknown',
 ): void {
-	if (!_config.vidarUrl) return
+	if (!_client) return
 
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-
-	if (_config.vidarApiKey) {
-		headers['X-API-Key'] = _config.vidarApiKey
-	}
-
-	fetch(new URL('/vidar/events', _config.vidarUrl), {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ ip, event_type: eventType, details, service }),
-		signal: AbortSignal.timeout(5000),
-	}).catch(() => {
-		// Silently ignore — Vidar being down should not affect callers
-	})
+	_client.vidar.events
+		.$post(
+			{ json: { ip, event_type: eventType, details, service } },
+			{ init: { signal: AbortSignal.timeout(5000) } },
+		)
+		.catch(() => {
+			// Silently ignore — Vidar being down should not affect callers
+		})
 }
