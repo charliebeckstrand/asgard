@@ -19,7 +19,7 @@ export function vidarBanCheck(): MiddlewareHandler {
 		const result = await checkIpBan(ip)
 
 		if (result?.banned) {
-			throw new HTTPException(403, { message: `Access denied: ${result.reason}` })
+			throw new HTTPException(403, { message: 'Access denied' })
 		}
 
 		await next()
