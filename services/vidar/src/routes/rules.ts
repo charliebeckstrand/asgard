@@ -22,11 +22,11 @@ const listRulesRoute = createRoute({
 	},
 })
 
-export const rules = new OpenAPIHono()
+const app = new OpenAPIHono()
 
-rules.use('/rules', apiKeyAuth())
+app.use('/rules', apiKeyAuth())
 
-rules.openapi(listRulesRoute, (c) => {
+export const rules = app.openapi(listRulesRoute, (c) => {
 	const allRules = getRules()
 
 	return c.json({ data: allRules }, 200)

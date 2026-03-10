@@ -1,6 +1,8 @@
 import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
+import { compress } from 'hono/compress'
 import { cors } from 'hono/cors'
+import { etag } from 'hono/etag'
 import { logger } from 'hono/logger'
 import { secureHeaders } from 'hono/secure-headers'
 import { errorHandler, notFoundHandler } from './errors.js'
@@ -19,6 +21,8 @@ export function createApp(options: CreateAppOptions) {
 	app.use('*', cors(options.cors ?? undefined))
 	app.use('*', secureHeaders())
 	app.use('*', logger())
+	app.use('*', compress())
+	app.use('*', etag())
 
 	const openApiConfig = createOpenApiConfig({
 		title: options.title,

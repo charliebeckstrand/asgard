@@ -29,11 +29,11 @@ const ingestRoute = createRoute({
 	},
 })
 
-export const events = new OpenAPIHono()
+const app = new OpenAPIHono()
 
-events.use('/events', apiKeyAuth())
+app.use('/events', apiKeyAuth())
 
-events.openapi(ingestRoute, async (c) => {
+export const events = app.openapi(ingestRoute, async (c) => {
 	const body = c.req.valid('json')
 
 	const event = await ingestEvent(body)

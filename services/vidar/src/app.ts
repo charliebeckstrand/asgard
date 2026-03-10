@@ -17,17 +17,20 @@ export function createVidarApp() {
 
 	// --- Routes ---
 
-	app.route('/vidar', health)
-	app.route('/vidar', events)
-	app.route('/vidar', checkIp)
-	app.route('/vidar', bans)
-	app.route('/vidar', threats)
-	app.route('/vidar', rules)
-	app.route('/vidar', analyze)
+	const routes = app
+		.route('/vidar', health)
+		.route('/vidar', events)
+		.route('/vidar', checkIp)
+		.route('/vidar', bans)
+		.route('/vidar', threats)
+		.route('/vidar', rules)
+		.route('/vidar', analyze)
 
 	// --- Finalize ---
 
 	setup()
 
-	return app
+	return routes
 }
+
+export type VidarApp = ReturnType<typeof createVidarApp>
