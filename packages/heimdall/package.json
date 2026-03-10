@@ -25,6 +25,7 @@
 		"@node-rs/argon2": "^2.0.2",
 		"grid": "workspace:*",
 		"hono": "^4.12.5",
+		"mimir": "workspace:*",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

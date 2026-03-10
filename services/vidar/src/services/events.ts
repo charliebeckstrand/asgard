@@ -1,4 +1,5 @@
-import { getPool } from '../lib/db.js'
+import { sql } from 'mimir'
+import { getDb } from '../lib/db.js'
 import { evaluateRules } from './rules.js'
 
 export interface SecurityEventRow {
@@ -16,13 +17,12 @@ export async function ingestEvent(event: {
 	details: Record<string, unknown>
 	service: string
 }): Promise<SecurityEventRow> {
-	const pool = getPool()
+	const db = getDb()
 
-	const { rows } = await pool.query<SecurityEventRow>(
-		`INSERT INTO vdr_security_events (ip, event_type, details, service)
-		 VALUES ($1, $2, $3, $4)
+	const row = await db.first<SecurityEventRow>(
+		sql`INSERT INTO vdr_security_events (ip, event_type, details, service)
+		 VALUES (${event.ip}, ${event.event_type}, ${sql.json(event.details)}, ${event.service})
 		 RETURNING *`,
-		[event.ip, event.event_type, JSON.stringify(event.details), event.service],
 	)
 
 	// Evaluate rules asynchronously — don't block the response
@@ -30,5 +30,5 @@ export async function ingestEvent(event: {
 		console.error(`[vidar] Rule evaluation failed for IP ${event.ip}:`, err)
 	})
 
-	return rows[0]
+	return row
 }

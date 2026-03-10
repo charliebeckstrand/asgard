@@ -1,4 +1,4 @@
-import { createLazyPool } from 'mimir'
+import { createDb, createLazyPool } from 'mimir'
 import { loadEnv } from './env.js'
 
 const { getPool, closePool } = createLazyPool(
@@ -12,4 +12,6 @@ const { getPool, closePool } = createLazyPool(
 	{ max: 10 },
 )
 
-export { closePool, getPool }
+const getDb = () => createDb(getPool())
+
+export { closePool, getDb, getPool }
