@@ -1,5 +1,5 @@
 import { resolve } from 'node:path'
-import { initEnvironments } from './init.js'
+import { initEnvironments } from './pipeline.js'
 
 const args = process.argv.slice(2)
 
