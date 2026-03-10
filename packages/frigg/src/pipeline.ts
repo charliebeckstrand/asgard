@@ -41,16 +41,14 @@ export function loadManifests(servicesDir: string): ManifestData {
 	for (const entry of readdirSync(servicesDir, { withFileTypes: true })) {
 		if (!entry.isDirectory()) continue
 
-		const manifestPath = resolve(servicesDir, entry.name, 'manifest.json')
-
-		if (!existsSync(manifestPath)) continue
-
 		try {
-			const manifest: Manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
+			const manifest: Manifest = JSON.parse(
+				readFileSync(resolve(servicesDir, entry.name, 'manifest.json'), 'utf-8'),
+			)
 
 			manifests[manifest.name || entry.name] = manifest
 		} catch {
-			// Skip malformed manifests
+			// Skip missing or malformed manifests
 		}
 	}
 
@@ -362,20 +360,15 @@ export function validateService(
 		issues.push({ level: 'warning', message: 'No PORT configured' })
 	}
 
-	// Validate URL-shaped keys
+	// Validate URL-shaped keys and check cross-service references
 	for (const [key, value] of Object.entries(data)) {
 		if (!key.endsWith('_URL')) continue
 
-		try {
-			new URL(value)
-		} catch {
+		if (!URL.canParse(value)) {
 			issues.push({ level: 'error', message: `${key} '${value}' is not a valid URL` })
-		}
-	}
 
-	// Check cross-service references
-	for (const [key, value] of Object.entries(data)) {
-		if (!key.endsWith('_URL')) continue
+			continue
+		}
 
 		const refName = key.replace(/_URL$/, '').toLowerCase()
 
@@ -383,19 +376,15 @@ export function validateService(
 
 		if (!refService) continue
 
-		try {
-			const url = new URL(value)
+		const url = new URL(value)
 
-			const urlPort = url.port || (url.protocol === 'https:' ? '443' : '80')
+		const urlPort = url.port || (url.protocol === 'https:' ? '443' : '80')
 
-			if (refService.PORT && urlPort !== refService.PORT) {
-				issues.push({
-					level: 'error',
-					message: `${key} port :${urlPort} does not match ${refName}'s PORT ${refService.PORT}`,
-				})
-			}
-		} catch {
-			// Already reported as invalid URL above
+		if (refService.PORT && urlPort !== refService.PORT) {
+			issues.push({
+				level: 'error',
+				message: `${key} port :${urlPort} does not match ${refName}'s PORT ${refService.PORT}`,
+			})
 		}
 	}
 
