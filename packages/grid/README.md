@@ -1,4 +1,4 @@
-# Grid
+# grid
 
 Shared Hono middleware, authentication, proxy, SSE streaming, error handling, and schemas.
 
