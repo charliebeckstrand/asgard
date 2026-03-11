@@ -1,4 +1,4 @@
-# grid
+# Grid
 
 Shared Hono middleware, authentication, proxy, SSE streaming, error handling, and schemas.
 
@@ -84,18 +84,16 @@ app.get(
 )
 ```
 
-## Other exports
+## Exports
 
-```typescript
-import {
-  errorHandler,
-  notFoundHandler,
-  createOpenApiConfig,
-  createHealthRoute,
-  getIpAddress,
-  timingSafeCompare,
-  ErrorSchema,
-  MessageSchema,
-  HealthResponseSchema,
-} from 'grid'
-```
+| Export | Type | Description |
+| --- | --- | --- |
+| `errorHandler` | Middleware | Catches errors and returns JSON responses with status code; falls back to 500 for unhandled exceptions |
+| `notFoundHandler` | Middleware | Returns a 404 JSON response with the requested method and path |
+| `createOpenApiConfig` | Factory function | Creates an OpenAPI 3.0.0 config object from a `title` and `description` |
+| `createHealthRoute` | Factory function | Creates a `GET /health` endpoint with status, version, uptime, and optional custom check |
+| `getIpAddress` | Utility function | Extracts the client IP address from a Hono context; returns `'unknown'` as fallback |
+| `timingSafeCompare` | Utility function | Constant-time string comparison using `crypto.timingSafeEqual` to prevent timing attacks |
+| `ErrorSchema` | Zod schema | Defines `error`, `message`, and `statusCode` fields for error responses |
+| `MessageSchema` | Zod schema | Defines a single `message` string field for simple responses |
+| `HealthResponseSchema` | Zod schema | Defines `status` (`'healthy'` \| `'degraded'` \| `'unhealthy'`), `version`, and `uptime` fields |
