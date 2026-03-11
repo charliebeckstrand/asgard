@@ -6,8 +6,8 @@ Reads `manifest.json` from each service, generates cryptographic secrets, resolv
 ## Usage
 
 ```bash
-pnpm env:init          # Generate secrets and write .env files
-pnpm env:rotate        # Rotate all secrets
+pnpm env:init   # Generate secrets and write .env files
+pnpm env:rotate # Rotate all secrets
 ```
 
 ```typescript
