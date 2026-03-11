@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { createBan, listActiveBans, removeBan } from '../handlers/bans.js'
 import {
 	BanListSchema,
 	BanSchema,
@@ -7,7 +8,6 @@ import {
 	MessageSchema,
 } from '../lib/schemas.js'
 import { apiKeyAuth } from '../middleware/api-key.js'
-import { createBan, listActiveBans, removeBan } from '../services/bans.js'
 
 const listBansRoute = createRoute({
 	method: 'get',

@@ -117,7 +117,7 @@ app.use('*', logRequest())
 │   ├── middleware/        # Middleware (services)
 │   ├── routes/           # Route handlers (services)
 │   ├── lib/              # Utilities, schemas, env config
-│   └── services/         # Business logic
+│   └── handlers/         # Business logic
 ├── tsconfig.json         # Extends ../../tsconfig.base.json
 ├── tsup.config.ts        # Build config (ESM, node22, dist/)
 └── package.json

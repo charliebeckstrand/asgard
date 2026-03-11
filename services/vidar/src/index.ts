@@ -1,9 +1,9 @@
 import { serve } from '@hono/node-server'
 import { setupLifecycle } from 'norns'
 import { createVidarApp } from './app.js'
+import { cleanExpiredBans } from './handlers/bans.js'
 import { closePool } from './lib/db.js'
 import { environment } from './lib/env.js'
-import { cleanExpiredBans } from './services/bans.js'
 
 const env = environment()
 const app = createVidarApp()

@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
+import { ingestEvent } from '../handlers/events.js'
 import { ErrorSchema, IngestEventSchema, SecurityEventSchema } from '../lib/schemas.js'
 import { apiKeyAuth } from '../middleware/api-key.js'
-import { ingestEvent } from '../services/events.js'
 
 const ingestRoute = createRoute({
 	method: 'post',
