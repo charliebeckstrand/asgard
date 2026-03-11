@@ -9,7 +9,7 @@ import {
 	SubscriptionListSchema,
 	SubscriptionSchema,
 } from '../lib/schemas.js'
-import { getHuginnClient, huginnBreaker } from '../lib/upstream.js'
+import { forwardToService, gatewayError, getHuginnClient, huginnBreaker } from '../lib/upstream.js'
 
 const publishRoute = createRoute({
 	method: 'post',
@@ -109,18 +109,6 @@ const deleteSubscriptionRoute = createRoute({
 	},
 })
 
-async function forwardToHuginn<T>(fn: () => Promise<Response>): Promise<T> {
-	const res = await huginnBreaker.execute(() =>
-		fn().then((r) => {
-			if (!r.ok && r.status >= 500) throw new Error(`Huginn returned ${r.status}`)
-
-			return r
-		}),
-	)
-
-	return (await res.json()) as T
-}
-
 export const events = new OpenAPIHono()
 	.openapi(publishRoute, async (c) => {
 		const body = c.req.valid('json')
@@ -128,7 +116,7 @@ export const events = new OpenAPIHono()
 		try {
 			const client = getHuginnClient()
 
-			const data = await forwardToHuginn(() =>
+			const data = await forwardToService(huginnBreaker, 'Huginn', () =>
 				client.events.publish.$post(
 					{ json: body },
 					{ init: { signal: AbortSignal.timeout(10_000) } },
@@ -137,14 +125,7 @@ export const events = new OpenAPIHono()
 
 			return c.json(data, 202)
 		} catch (error) {
-			return c.json(
-				{
-					error: 'Bad Gateway',
-					message: error instanceof Error ? error.message : 'Huginn is unavailable',
-					statusCode: 502,
-				},
-				502,
-			)
+			return c.json(gatewayError('Huginn', error), 502)
 		}
 	})
 	.openapi(listSubscriptionsRoute, async (c) => {
@@ -153,7 +134,7 @@ export const events = new OpenAPIHono()
 		try {
 			const client = getHuginnClient()
 
-			const data = await forwardToHuginn(() =>
+			const data = await forwardToService(huginnBreaker, 'Huginn', () =>
 				client.events.subscriptions.$get(
 					{ query: { topic } },
 					{ init: { signal: AbortSignal.timeout(10_000) } },
@@ -162,14 +143,7 @@ export const events = new OpenAPIHono()
 
 			return c.json(data, 200)
 		} catch (error) {
-			return c.json(
-				{
-					error: 'Bad Gateway',
-					message: error instanceof Error ? error.message : 'Huginn is unavailable',
-					statusCode: 502,
-				},
-				502,
-			)
+			return c.json(gatewayError('Huginn', error), 502)
 		}
 	})
 	.openapi(createSubscriptionRoute, async (c) => {
@@ -178,7 +152,7 @@ export const events = new OpenAPIHono()
 		try {
 			const client = getHuginnClient()
 
-			const data = await forwardToHuginn(() =>
+			const data = await forwardToService(huginnBreaker, 'Huginn', () =>
 				client.events.subscriptions.$post(
 					{ json: body },
 					{ init: { signal: AbortSignal.timeout(10_000) } },
@@ -187,14 +161,7 @@ export const events = new OpenAPIHono()
 
 			return c.json(data, 201)
 		} catch (error) {
-			return c.json(
-				{
-					error: 'Bad Gateway',
-					message: error instanceof Error ? error.message : 'Huginn is unavailable',
-					statusCode: 502,
-				},
-				502,
-			)
+			return c.json(gatewayError('Huginn', error), 502)
 		}
 	})
 	.openapi(deleteSubscriptionRoute, async (c) => {
@@ -229,13 +196,6 @@ export const events = new OpenAPIHono()
 
 			return c.json(data as { message: string }, 200)
 		} catch (error) {
-			return c.json(
-				{
-					error: 'Bad Gateway',
-					message: error instanceof Error ? error.message : 'Huginn is unavailable',
-					statusCode: 502,
-				},
-				502,
-			)
+			return c.json(gatewayError('Huginn', error), 502)
 		}
 	})

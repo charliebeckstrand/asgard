@@ -6,5 +6,14 @@ export { createHealthRoute, HealthResponseSchema } from './health.js'
 export { getIpAddress } from './middleware.js'
 export { createOpenApiConfig } from './openapi.js'
 export { createProxy } from './proxy.js'
-export { ErrorSchema, MessageSchema } from './schemas.js'
+export {
+	BanListSchema,
+	BanSchema,
+	CheckIpResponseSchema,
+	CreateBanSchema,
+	ErrorSchema,
+	IngestEventSchema,
+	MessageSchema,
+	SecurityEventSchema,
+} from './schemas.js'
 export { createSSEStream } from './stream.js'

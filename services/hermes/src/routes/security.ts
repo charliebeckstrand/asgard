@@ -10,7 +10,7 @@ import {
 	MessageSchema,
 	SecurityEventSchema,
 } from '../lib/schemas.js'
-import { getVidarClient, vidarBreaker } from '../lib/upstream.js'
+import { forwardToService, gatewayError, getVidarClient, vidarBreaker } from '../lib/upstream.js'
 
 const checkIpRoute = createRoute({
 	method: 'get',
@@ -131,18 +131,6 @@ const ingestEventRoute = createRoute({
 	},
 })
 
-async function forwardToVidar<T>(fn: () => Promise<Response>): Promise<T> {
-	const res = await vidarBreaker.execute(() =>
-		fn().then((r) => {
-			if (!r.ok && r.status >= 500) throw new Error(`Vidar returned ${r.status}`)
-
-			return r
-		}),
-	)
-
-	return (await res.json()) as T
-}
-
 export const security = new OpenAPIHono()
 	.openapi(checkIpRoute, async (c) => {
 		const { ip } = c.req.valid('query')
@@ -150,7 +138,7 @@ export const security = new OpenAPIHono()
 		try {
 			const client = getVidarClient()
 
-			const data = await forwardToVidar(() =>
+			const data = await forwardToService(vidarBreaker, 'Vidar', () =>
 				client.vidar['check-ip'].$get(
 					{ query: { ip } },
 					{ init: { signal: AbortSignal.timeout(5_000) } },
@@ -159,34 +147,20 @@ export const security = new OpenAPIHono()
 
 			return c.json(data, 200)
 		} catch (error) {
-			return c.json(
-				{
-					error: 'Bad Gateway',
-					message: error instanceof Error ? error.message : 'Vidar is unavailable',
-					statusCode: 502,
-				},
-				502,
-			)
+			return c.json(gatewayError('Vidar', error), 502)
 		}
 	})
 	.openapi(listBansRoute, async (c) => {
 		try {
 			const client = getVidarClient()
 
-			const data = await forwardToVidar(() =>
+			const data = await forwardToService(vidarBreaker, 'Vidar', () =>
 				client.vidar.bans.$get({}, { init: { signal: AbortSignal.timeout(10_000) } }),
 			)
 
 			return c.json(data, 200)
 		} catch (error) {
-			return c.json(
-				{
-					error: 'Bad Gateway',
-					message: error instanceof Error ? error.message : 'Vidar is unavailable',
-					statusCode: 502,
-				},
-				502,
-			)
+			return c.json(gatewayError('Vidar', error), 502)
 		}
 	})
 	.openapi(createBanRoute, async (c) => {
@@ -195,20 +169,13 @@ export const security = new OpenAPIHono()
 		try {
 			const client = getVidarClient()
 
-			const data = await forwardToVidar(() =>
+			const data = await forwardToService(vidarBreaker, 'Vidar', () =>
 				client.vidar.bans.$post({ json: body }, { init: { signal: AbortSignal.timeout(10_000) } }),
 			)
 
 			return c.json(data, 201)
 		} catch (error) {
-			return c.json(
-				{
-					error: 'Bad Gateway',
-					message: error instanceof Error ? error.message : 'Vidar is unavailable',
-					statusCode: 502,
-				},
-				502,
-			)
+			return c.json(gatewayError('Vidar', error), 502)
 		}
 	})
 	.openapi(removeBanRoute, async (c) => {
@@ -243,14 +210,7 @@ export const security = new OpenAPIHono()
 
 			return c.json(data as { message: string }, 200)
 		} catch (error) {
-			return c.json(
-				{
-					error: 'Bad Gateway',
-					message: error instanceof Error ? error.message : 'Vidar is unavailable',
-					statusCode: 502,
-				},
-				502,
-			)
+			return c.json(gatewayError('Vidar', error), 502)
 		}
 	})
 	.openapi(ingestEventRoute, async (c) => {
@@ -259,7 +219,7 @@ export const security = new OpenAPIHono()
 		try {
 			const client = getVidarClient()
 
-			const data = await forwardToVidar(() =>
+			const data = await forwardToService(vidarBreaker, 'Vidar', () =>
 				client.vidar.events.$post(
 					{ json: body },
 					{ init: { signal: AbortSignal.timeout(10_000) } },
@@ -268,13 +228,6 @@ export const security = new OpenAPIHono()
 
 			return c.json(data, 201)
 		} catch (error) {
-			return c.json(
-				{
-					error: 'Bad Gateway',
-					message: error instanceof Error ? error.message : 'Vidar is unavailable',
-					statusCode: 502,
-				},
-				502,
-			)
+			return c.json(gatewayError('Vidar', error), 502)
 		}
 	})

@@ -43,3 +43,27 @@ export function resetClients(): void {
 	huginnBreaker.reset()
 	vidarBreaker.reset()
 }
+
+export async function forwardToService<T>(
+	breaker: CircuitBreaker,
+	serviceName: string,
+	fn: () => Promise<Response>,
+): Promise<T> {
+	const res = await breaker.execute(() =>
+		fn().then((r) => {
+			if (!r.ok && r.status >= 500) throw new Error(`${serviceName} returned ${r.status}`)
+
+			return r
+		}),
+	)
+
+	return (await res.json()) as T
+}
+
+export function gatewayError(serviceName: string, error: unknown) {
+	return {
+		error: 'Bad Gateway',
+		message: error instanceof Error ? error.message : `${serviceName} is unavailable`,
+		statusCode: 502,
+	} as const
+}
