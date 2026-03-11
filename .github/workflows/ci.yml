@@ -109,7 +109,7 @@ jobs:
             - run: pnpm turbo run build --filter=bifrost...
 
     hermes:
-        name: Hermes (RPC Gateway)
+        name: Hermes (RPC)
         needs: changes
         if: needs.changes.outputs.hermes == 'true'
         runs-on: ubuntu-latest
@@ -148,7 +148,7 @@ jobs:
             - run: pnpm turbo run lint test build --filter=saga
 
     huginn:
-        name: Huginn (Event Bus)
+        name: Huginn (Events)
         needs: changes
         if: needs.changes.outputs.huginn == 'true'
         runs-on: ubuntu-latest

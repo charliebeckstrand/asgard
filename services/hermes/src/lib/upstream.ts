@@ -1,7 +1,7 @@
 import { hc } from 'hono/client'
-
 import type { HuginnApp } from 'huginn'
 import type { VidarApp } from 'vidar'
+import type { ZodType } from 'zod'
 
 import { type CircuitBreaker, createCircuitBreaker } from './circuit-breaker.js'
 import { environment } from './env.js'
@@ -47,6 +47,7 @@ export function resetClients(): void {
 export async function forwardToService<T>(
 	breaker: CircuitBreaker,
 	serviceName: string,
+	schema: ZodType<T>,
 	fn: () => Promise<Response>,
 ): Promise<T> {
 	const res = await breaker.execute(() =>
@@ -57,7 +58,7 @@ export async function forwardToService<T>(
 		}),
 	)
 
-	return (await res.json()) as T
+	return schema.parse(await res.json())
 }
 
 export function gatewayError(serviceName: string, error: unknown) {

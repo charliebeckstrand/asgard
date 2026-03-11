@@ -10,29 +10,23 @@ export interface VidarClientConfig {
 	vidarApiKey?: string
 }
 
+export interface BanCheckResult {
+	banned: boolean
+	reason?: string
+	expires_at?: string
+}
+
 let _config: VidarClientConfig = {}
 let _client: ReturnType<typeof hc<VidarApp>> | null = null
 
 export function configure(config: VidarClientConfig): void {
 	_config = { ...config }
 
-	if (config.vidarUrl) {
-		_client = hc<VidarApp>(config.vidarUrl, {
-			headers: config.vidarApiKey ? { Authorization: `Bearer ${config.vidarApiKey}` } : undefined,
-		})
-	} else {
-		_client = null
-	}
-}
-
-export function getConfig(): VidarClientConfig {
-	return _config
-}
-
-export interface BanCheckResult {
-	banned: boolean
-	reason?: string
-	expires_at?: string
+	_client = config.vidarUrl
+		? hc<VidarApp>(config.vidarUrl, {
+				headers: config.vidarApiKey ? { Authorization: `Bearer ${config.vidarApiKey}` } : undefined,
+			})
+		: null
 }
 
 /**
@@ -59,12 +53,6 @@ export async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
 
 export function checkBan(): MiddlewareHandler {
 	return async (c, next) => {
-		if (!_client) {
-			await next()
-
-			return
-		}
-
 		const ip = getIpAddress(c)
 
 		const result = await checkIpBan(ip)

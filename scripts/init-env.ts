@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 interface VarConfig {
 	type: 'value' | 'secret' | 'ref'
@@ -17,7 +18,9 @@ interface Manifest {
 
 type Manifests = Record<string, Manifest>
 
-const rootDir = resolve(import.meta.dirname, '..')
+const scriptDir = dirname(fileURLToPath(import.meta.url))
+
+const rootDir = resolve(scriptDir, '..')
 const servicesDir = resolve(rootDir, 'services')
 const secretsPath = resolve(rootDir, '.secrets.json')
 

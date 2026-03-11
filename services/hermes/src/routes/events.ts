@@ -116,7 +116,7 @@ export const events = new OpenAPIHono()
 		try {
 			const client = getHuginnClient()
 
-			const data = await forwardToService(huginnBreaker, 'Huginn', () =>
+			const data = await forwardToService(huginnBreaker, 'Huginn', EventSchema, () =>
 				client.events.publish.$post(
 					{ json: body },
 					{ init: { signal: AbortSignal.timeout(10_000) } },
@@ -134,7 +134,7 @@ export const events = new OpenAPIHono()
 		try {
 			const client = getHuginnClient()
 
-			const data = await forwardToService(huginnBreaker, 'Huginn', () =>
+			const data = await forwardToService(huginnBreaker, 'Huginn', SubscriptionListSchema, () =>
 				client.events.subscriptions.$get(
 					{ query: { topic } },
 					{ init: { signal: AbortSignal.timeout(10_000) } },
@@ -152,7 +152,7 @@ export const events = new OpenAPIHono()
 		try {
 			const client = getHuginnClient()
 
-			const data = await forwardToService(huginnBreaker, 'Huginn', () =>
+			const data = await forwardToService(huginnBreaker, 'Huginn', SubscriptionSchema, () =>
 				client.events.subscriptions.$post(
 					{ json: body },
 					{ init: { signal: AbortSignal.timeout(10_000) } },

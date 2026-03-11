@@ -138,7 +138,7 @@ export const security = new OpenAPIHono()
 		try {
 			const client = getVidarClient()
 
-			const data = await forwardToService(vidarBreaker, 'Vidar', () =>
+			const data = await forwardToService(vidarBreaker, 'Vidar', CheckIpResponseSchema, () =>
 				client.vidar['check-ip'].$get(
 					{ query: { ip } },
 					{ init: { signal: AbortSignal.timeout(5_000) } },
@@ -154,7 +154,7 @@ export const security = new OpenAPIHono()
 		try {
 			const client = getVidarClient()
 
-			const data = await forwardToService(vidarBreaker, 'Vidar', () =>
+			const data = await forwardToService(vidarBreaker, 'Vidar', BanListSchema, () =>
 				client.vidar.bans.$get({}, { init: { signal: AbortSignal.timeout(10_000) } }),
 			)
 
@@ -169,7 +169,7 @@ export const security = new OpenAPIHono()
 		try {
 			const client = getVidarClient()
 
-			const data = await forwardToService(vidarBreaker, 'Vidar', () =>
+			const data = await forwardToService(vidarBreaker, 'Vidar', BanSchema, () =>
 				client.vidar.bans.$post({ json: body }, { init: { signal: AbortSignal.timeout(10_000) } }),
 			)
 
@@ -219,7 +219,7 @@ export const security = new OpenAPIHono()
 		try {
 			const client = getVidarClient()
 
-			const data = await forwardToService(vidarBreaker, 'Vidar', () =>
+			const data = await forwardToService(vidarBreaker, 'Vidar', SecurityEventSchema, () =>
 				client.vidar.events.$post(
 					{ json: body },
 					{ init: { signal: AbortSignal.timeout(10_000) } },
