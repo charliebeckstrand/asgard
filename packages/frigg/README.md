@@ -1,7 +1,7 @@
 # frigg
 
 
-Reads `manifest.json` from each service, generates cryptographic secrets, resolves cross-service references, and writes `.env` files.
+Reads `manifest.json` from each service, to generate cryptographic secrets and and write `.env` files.
 
 ## Usage
 
