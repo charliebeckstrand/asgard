@@ -1,4 +1,4 @@
-import { getManifestPort } from 'frigg'
+import { getManifestPort } from './environment.js'
 
 function resolvePort(): number {
 	if (process.env.PORT) return Number(process.env.PORT)

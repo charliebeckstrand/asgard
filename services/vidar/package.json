@@ -14,7 +14,7 @@
 		}
 	},
 	"scripts": {
-		"env:init": "node ../../packages/frigg/dist/cli.js --services=vidar",
+		"env:init": "tsx ../../scripts/env-init.ts --services=vidar",
 		"dev": "tsx watch --env-file=.env src/index.ts",
 		"build": "tsup",
 		"start": "node dist/index.js",
@@ -29,7 +29,6 @@
 		"@hono/node-server": "^1.19.11",
 		"@hono/swagger-ui": "^0.6.0",
 		"@hono/zod-openapi": "^1.2.2",
-		"frigg": "workspace:*",
 		"grid": "workspace:*",
 		"hono": "^4.12.5",
 		"norns": "workspace:*",

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Yggdrasil is a TypeScript microservices monorepo with Norse mythology naming. It contains 4 services and 6 shared packages, built on Hono, PostgreSQL, and Node.js 22.
+Yggdrasil is a TypeScript microservices monorepo with Norse mythology naming. It contains 4 services and 5 shared packages, built on Hono, PostgreSQL, and Node.js 22.
 
 ## Architecture
 
@@ -19,8 +19,7 @@ Yggdrasil is a TypeScript microservices monorepo with Norse mythology naming. It
 
 | Package      | Role                                                    |
 | ------------ | ------------------------------------------------------- |
-| **frigg**    | Config oracle, secrets generation, env validation (Zod) |
-| **grid**     | Hono middleware, error handling, OpenAPI config         |
+| **grid**     | Hono middleware, error handling, env validation, OpenAPI config |
 | **heimdall** | JWT auth, user registration, token management           |
 | **mimir**    | PostgreSQL connection pool (lazy-loaded)                |
 | **norns**    | Server lifecycle, graceful shutdown, signal handling    |
@@ -30,10 +29,10 @@ Yggdrasil is a TypeScript microservices monorepo with Norse mythology naming. It
 
 Services depend on packages via `workspace:*` protocol:
 
-- **bifrost** → frigg, grid, heimdall, mimir, norns
-- **hermes** → frigg, grid, norns
-- **huginn** → frigg, grid, mimir, norns
-- **vidar** → frigg, grid, mimir, norns
+- **bifrost** → grid, heimdall, mimir, norns
+- **hermes** → grid, norns
+- **huginn** → grid, mimir, norns
+- **vidar** → grid, mimir, norns
 
 ## Commands
 
@@ -44,7 +43,7 @@ pnpm test           # Run all tests
 pnpm lint           # Lint with Biome
 pnpm lint:fix       # Auto-fix lint issues
 pnpm format         # Format code with Biome
-pnpm env:init       # Initialize environment secrets via Frigg CLI
+pnpm env:init       # Initialize environment secrets
 pnpm env:rotate     # Rotate all secrets
 ```
 
@@ -180,8 +179,6 @@ The Husky pre-commit hook runs `pnpm biome check`. All code must pass Biome lint
 
 ## Environment & Secrets
 
-Managed by the **Frigg** package:
-
-- `pnpm env:init` generates required secrets (DATABASE_URL, SECRET_KEY, SESSION_SECRET, etc.)
-- Frigg validates env vars at startup using Zod schemas
+- `pnpm env:init` generates required secrets (DATABASE_URL, SECRET_KEY, SESSION_SECRET, etc.) via `scripts/env-init.ts`
+- The **grid** package validates env vars at startup using Zod schemas (`createEnvironment()`)
 - Production secrets are injected via CI/CD (DigitalOcean app spec)

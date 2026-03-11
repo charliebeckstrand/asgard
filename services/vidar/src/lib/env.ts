@@ -1,4 +1,4 @@
-import { createEnvironment } from 'frigg'
+import { createEnvironment } from 'grid'
 import { z } from 'zod'
 
 export const environment = createEnvironment({

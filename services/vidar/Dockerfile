@@ -8,13 +8,11 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY services/vidar/package.json ./services/vidar/
 COPY packages/mimir/package.json ./packages/mimir/
 COPY packages/norns/package.json ./packages/norns/
-COPY packages/frigg/package.json ./packages/frigg/
 COPY packages/grid/package.json ./packages/grid/
 RUN pnpm install --frozen-lockfile --filter vidar...
 COPY tsup.config.ts tsconfig.base.json ./
 COPY packages/mimir/ ./packages/mimir/
 COPY packages/norns/ ./packages/norns/
-COPY packages/frigg/ ./packages/frigg/
 COPY packages/grid/ ./packages/grid/
 COPY services/vidar/ ./services/vidar/
 RUN pnpm --filter vidar... build
@@ -26,14 +24,12 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY services/vidar/package.json ./services/vidar/
 COPY packages/mimir/package.json ./packages/mimir/
 COPY packages/norns/package.json ./packages/norns/
-COPY packages/frigg/package.json ./packages/frigg/
 COPY packages/grid/package.json ./packages/grid/
 RUN pnpm install --frozen-lockfile --prod --filter vidar...
 COPY --from=build /app/services/vidar/dist ./services/vidar/dist
 COPY --from=build /app/services/vidar/manifest.json ./services/vidar/manifest.json
 COPY --from=build /app/packages/mimir/dist ./packages/mimir/dist
 COPY --from=build /app/packages/norns/dist ./packages/norns/dist
-COPY --from=build /app/packages/frigg/dist ./packages/frigg/dist
 COPY --from=build /app/packages/grid/dist ./packages/grid/dist
 
 ENV NODE_ENV=production

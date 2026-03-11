@@ -1,5 +1,6 @@
 export { createBearerAuth, timingSafeCompare } from './api-key.js'
 export { createApp } from './app.js'
+export { createEnvironment, getManifestPort } from './environment.js'
 export { errorHandler, notFoundHandler } from './errors.js'
 export { createHealthRoute, HealthResponseSchema } from './health.js'
 export { getIpAddress } from './middleware.js'

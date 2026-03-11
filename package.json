@@ -21,7 +21,7 @@
 		"lint": "biome check packages/ services/",
 		"lint:fix": "biome check --write packages/ services/",
 		"format": "biome format --write packages/ services/",
-		"env:init": "node packages/frigg/dist/cli.js",
-		"env:rotate": "node packages/frigg/dist/cli.js --rotate"
+		"env:init": "tsx scripts/env-init.ts",
+		"env:rotate": "tsx scripts/env-init.ts --rotate"
 	}
 }

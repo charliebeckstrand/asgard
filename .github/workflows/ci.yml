@@ -20,7 +20,6 @@ jobs:
             huginn: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.huginn == 'true' || steps.filter.outputs.mimir == 'true' }}
             hermes: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.hermes == 'true' }}
             vidar: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.vidar == 'true' || steps.filter.outputs.mimir == 'true' }}
-            frigg: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.frigg == 'true' }}
         steps:
             - uses: actions/checkout@v6
               with:
@@ -50,8 +49,6 @@ jobs:
                         - 'services/hermes/**'
                       vidar:
                         - 'services/vidar/**'
-                      frigg:
-                        - 'packages/frigg/**'
 
     norns:
         name: Norns (Lifecycle)
@@ -130,26 +127,6 @@ jobs:
             - run: pnpm install --frozen-lockfile
             - run: pnpm turbo run lint test --filter=hermes
             - run: pnpm turbo run build --filter=hermes...
-
-    frigg:
-        name: Frigg (Environment)
-        needs: changes
-        if: needs.changes.outputs.frigg == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v6
-
-            - uses: pnpm/action-setup@v4
-
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test --filter=frigg
-            - run: pnpm turbo run build --filter=frigg...
 
     saga:
         name: Saga (Logging)
