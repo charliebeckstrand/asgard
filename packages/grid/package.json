@@ -9,6 +9,18 @@
 		".": {
 			"types": "./src/index.ts",
 			"default": "./dist/index.js"
+		},
+		"./schemas": {
+			"types": "./src/entry-schemas.ts",
+			"default": "./dist/schemas.js"
+		},
+		"./middleware": {
+			"types": "./src/entry-middleware.ts",
+			"default": "./dist/middleware.js"
+		},
+		"./environment": {
+			"types": "./src/entry-environment.ts",
+			"default": "./dist/environment.js"
 		}
 	},
 	"scripts": {

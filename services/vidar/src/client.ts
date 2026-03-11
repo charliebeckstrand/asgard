@@ -1,4 +1,4 @@
-import { getIpAddress } from 'grid'
+import { getIpAddress } from 'grid/middleware'
 import type { MiddlewareHandler } from 'hono'
 import { hc } from 'hono/client'
 import { HTTPException } from 'hono/http-exception'

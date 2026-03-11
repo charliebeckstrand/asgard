@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export { ErrorSchema, MessageSchema } from 'grid'
+export { ErrorSchema, MessageSchema } from 'grid/schemas'
 
 export const PublishEventSchema = z
 	.object({

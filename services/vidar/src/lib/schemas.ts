@@ -9,7 +9,7 @@ export {
 	IngestEventSchema,
 	MessageSchema,
 	SecurityEventSchema,
-} from 'grid'
+} from 'grid/schemas'
 
 // --- Threats ---
 
