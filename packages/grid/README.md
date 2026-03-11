@@ -1,6 +1,6 @@
 # grid
 
-Shared Hono middleware, authentication, proxy, SSE streaming, error handling, and schemas.
+Shared middleware, proxy, error handling, and schemas.
 
 ## createApp
 
