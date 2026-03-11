@@ -179,6 +179,6 @@ The Husky pre-commit hook runs `pnpm biome check`. All code must pass Biome lint
 
 ## Environment & Secrets
 
-- `pnpm env:init` generates required secrets (DATABASE_URL, SECRET_KEY, SESSION_SECRET, etc.) via `scripts/env-init.ts`
+- `pnpm env:init` generates required secrets (DATABASE_URL, SECRET_KEY, SESSION_SECRET, etc.) via `scripts/init-env.ts`
 - The **grid** package validates env vars at startup using Zod schemas (`createEnvironment()`)
 - Production secrets are injected via CI/CD (DigitalOcean app spec)
