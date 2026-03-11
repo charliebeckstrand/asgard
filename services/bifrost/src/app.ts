@@ -1,8 +1,8 @@
-import { createApp, createProxy } from 'grid'
+import { createApp } from 'grid'
 import { csrf } from 'hono/csrf'
-import { createVidar } from 'vidar/client'
 
 import { environment } from './lib/env.js'
+import { createHermesGuard } from './middleware/hermes.js'
 import { session } from './middleware/session.js'
 import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
@@ -21,9 +21,9 @@ export function createBifrostApp() {
 	app.use('*', session())
 	app.use('*', csrf({ origin: env.CORS_ORIGIN }))
 
-	// --- Vidar ban check + rate limiting on auth routes ---
+	// --- Ban check + rate limiting on auth routes via Hermes RPC ---
 
-	app.use('/auth/*', createVidar({ rate: 2, burst: 5, route: '/auth' }))
+	app.use('/auth/*', createHermesGuard({ rate: 2, burst: 5, route: '/auth' }))
 
 	// --- Routes ---
 
@@ -31,15 +31,6 @@ export function createBifrostApp() {
 		.route('/auth', authRoutes)
 		.route('/api', health)
 		.route('/api/users', usersRoutes)
-
-	// --- Proxy to downstream services ---
-	// TODO: Migrate to typed Hermes RPC client (hermes/client) for type-safe inter-service calls
-
-	app.all('/events/*', createProxy(env.HUGINN_URL))
-
-	if (env.VIDAR_URL) {
-		app.all('/vidar/*', createProxy(env.VIDAR_URL))
-	}
 
 	// --- Finalize ---
 

@@ -6,12 +6,16 @@ vi.mock('heimdall', () => ({
 	refreshTokenPair: vi.fn(),
 }))
 
-vi.mock('vidar/client', () => ({
-	configure: vi.fn(),
-	createVidar: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+vi.mock('hermes/client', () => ({
+	createHermesClient: vi.fn().mockReturnValue({}),
+}))
+
+vi.mock('../middleware/hermes.js', () => ({
+	configureHermes: vi.fn(),
+	reportEvent: vi.fn(),
+	createHermesGuard: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
 		await next()
 	}),
-	reportEvent: vi.fn(),
 }))
 
 vi.mock('../lib/db.js', () => ({

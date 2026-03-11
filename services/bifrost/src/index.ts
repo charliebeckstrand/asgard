@@ -1,18 +1,16 @@
 import { serve } from '@hono/node-server'
 import { configure } from 'heimdall'
 import { setupLifecycle } from 'norns'
-import { configure as configureVidar, reportEvent } from 'vidar/client'
+
 import { createBifrostApp } from './app.js'
 import { closePool } from './lib/db.js'
 import { environment } from './lib/env.js'
 import { createUserRepository } from './lib/user-repository.js'
+import { configureHermes, reportEvent } from './middleware/hermes.js'
 
 const env = environment()
 
-configureVidar({
-	vidarUrl: env.VIDAR_URL,
-	vidarApiKey: env.VIDAR_API_KEY,
-})
+configureHermes(env.HERMES_URL)
 
 configure({
 	userRepository: createUserRepository(),
