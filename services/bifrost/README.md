@@ -28,5 +28,4 @@ Bifrost proxies requests to downstream services via Grid's `createProxy()`:
 
 - **CSRF protection**: `hono/csrf` validates `Origin` header on mutating requests (POST/PUT/DELETE/PATCH)
 - **Session cookies**: `SameSite: Lax`, encrypted with `SESSION_SECRET`
-- **Rate limiting**: Configurable per-route rate limits on `/auth/*` via Heimdall
 - **Ban enforcement**: Vidar IP ban checks on `/auth/*` routes
