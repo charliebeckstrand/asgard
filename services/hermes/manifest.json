@@ -2,7 +2,7 @@
 	"name": "hermes",
 	"port": 3001,
 	"vars": {
-		"HUGINN_URL": "http://localhost:3002",
-		"VIDAR_URL": "http://localhost:3003"
+		"HUGINN_URL": { "type": "value", "default": "http://localhost:3002" },
+		"VIDAR_URL": { "type": "value", "default": "http://localhost:3003" }
 	}
 }
