@@ -20,7 +20,7 @@ TypeScript Microservices (Hono + Turborepo)
 | **[Mimir](packages/mimir)** | PostgreSQL connection pool |
 | **[Saga](packages/saga)** | PostgreSQL logging and search |
 | **[Frigg](packages/frigg)** | Environment secrets provisioning |
-| **[Grid](packages/grid)** | Hono middleware, proxy, SSE streaming, auth, and schemas |
+| **[Grid](packages/grid)** | Shared middleware, proxy, error handling, and schemas |
 
 ## Prerequisites
 
