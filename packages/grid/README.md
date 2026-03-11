@@ -18,18 +18,8 @@ const { app, setup } = createApp({
 
 // Register routes...
 
-setup() // Finalizes OpenAPI docs, error handlers, etc.
+setup()
 ```
-
-### Middleware stack (applied automatically)
-
-1. Trailing slash normalization (`hono/trailing-slash`)
-2. CORS (`hono/cors`)
-3. Secure headers (`hono/secure-headers`)
-4. Request logging (`hono/logger`)
-5. Server-Timing headers (`hono/timing`)
-6. Compression (`hono/compress`)
-7. ETag caching (`hono/etag`)
 
 ## createBearerAuth
 
