@@ -3,7 +3,7 @@ import { createHermesApp } from '@/app'
 const mockBanListResponse = {
 	data: [
 		{
-			id: '789',
+			id: '550e8400-e29b-41d4-a716-446655440000',
 			ip: '10.0.0.1',
 			reason: 'Manual ban',
 			rule_id: null,
@@ -16,7 +16,7 @@ const mockBanListResponse = {
 }
 
 const mockSecurityEvent = {
-	id: 'evt-1',
+	id: '550e8400-e29b-41d4-a716-446655440001',
 	ip: '192.168.1.100',
 	event_type: 'login_failed',
 	details: {},
