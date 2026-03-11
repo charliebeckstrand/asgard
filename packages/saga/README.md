@@ -11,7 +11,7 @@ import { createBatch, createLog, queryLogs } from 'saga'
 ### Use service functions directly
 
 ```ts
-import { createBatch, createLog, queryLogs } from 'saga'
+import { createLog, queryLogs } from 'saga'
 
 await createLog(db, {
 	type: 'server',
@@ -20,16 +20,6 @@ await createLog(db, {
 	message: 'Request received',
 	metadata: {},
 })
-
-await createBatch(db, [
-	{
-		type: 'server',
-		level: 'info',
-		service: 'bifrost',
-		message: 'Request received',
-		metadata: {},
-	},
-])
 
 const logs = await queryLogs(db, {
 	limit: 50,
@@ -41,7 +31,7 @@ const logs = await queryLogs(db, {
 ### Use exported schemas in your own routes
 
 ```ts
-import { CreateLogSchema, LogListSchema, LogQuerySchema } from 'saga'
+import { CreateLogSchema, LogQuerySchema } from 'saga'
 
 // Reuse Saga schemas when defining your service's own HTTP routes.
 ```
