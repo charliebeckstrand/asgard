@@ -1,7 +1,5 @@
 # norns
 
-Hono server startup and shutdown. 
-
 ## Usage
 
 ```typescript
