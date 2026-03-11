@@ -1,4 +1,4 @@
-import { createEnvironment } from 'grid'
+import { createEnvironment } from 'grid/environment'
 import { z } from 'zod'
 
 export const environment = createEnvironment({

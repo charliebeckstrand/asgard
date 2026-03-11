@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { getIpAddress } from 'grid'
+import { getIpAddress } from 'grid/middleware'
 import { AuthError, registerUser } from 'heimdall'
 import { ErrorSchema } from '../lib/schemas.js'
 import { requireSession, type SessionEnv } from '../middleware/session.js'
