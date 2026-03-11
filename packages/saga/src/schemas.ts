@@ -1,11 +1,19 @@
+import {
+	createListSchema,
+	IdSchema,
+	LogLevelSchema,
+	MetadataSchema,
+	ServiceNameSchema,
+	TimestampSchema,
+} from 'skuld'
 import { z } from 'zod'
 
 export const CreateLogSchema = z.object({
 	type: z.string().max(50).default('server'),
-	level: z.enum(['debug', 'info', 'warn', 'error', 'fatal']),
-	service: z.string().min(1).max(100),
+	level: LogLevelSchema,
+	service: ServiceNameSchema,
 	message: z.string().min(1),
-	metadata: z.record(z.string(), z.unknown()).default({}),
+	metadata: MetadataSchema,
 })
 
 export const BatchCreateSchema = z.object({
@@ -13,23 +21,20 @@ export const BatchCreateSchema = z.object({
 })
 
 export const LogEntrySchema = z.object({
-	id: z.uuid(),
+	id: IdSchema,
 	type: z.string(),
 	level: z.string(),
 	service: z.string(),
 	message: z.string(),
 	metadata: z.record(z.string(), z.unknown()),
-	created_at: z.iso.datetime(),
+	created_at: TimestampSchema,
 })
 
-export const LogListSchema = z.object({
-	data: z.array(LogEntrySchema),
-	total: z.number(),
-})
+export const LogListSchema = createListSchema(LogEntrySchema, 'LogList')
 
 export const LogQuerySchema = z.object({
 	type: z.string().optional(),
-	level: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).optional(),
+	level: LogLevelSchema.optional(),
 	service: z.string().optional(),
 	from: z.iso.datetime().optional(),
 	to: z.iso.datetime().optional(),

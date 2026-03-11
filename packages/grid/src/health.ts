@@ -1,8 +1,9 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { HealthStatusSchema } from 'skuld'
 
 export const HealthResponseSchema = z
 	.object({
-		status: z.enum(['healthy', 'degraded', 'unhealthy']),
+		status: HealthStatusSchema,
 		version: z.string(),
 		uptime: z.number(),
 	})

@@ -29,6 +29,9 @@ importers:
       hono:
         specifier: ^4.12.5
         version: 4.12.5
+      skuld:
+        specifier: workspace:*
+        version: link:../skuld
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -118,6 +121,9 @@ importers:
       pg:
         specifier: ^8.16.0
         version: 8.20.0
+      skuld:
+        specifier: workspace:*
+        version: link:../skuld
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -201,6 +207,9 @@ importers:
       saga:
         specifier: workspace:*
         version: link:../../packages/saga
+      skuld:
+        specifier: workspace:*
+        version: link:../../packages/skuld
       vidar:
         specifier: workspace:*
         version: link:../vidar
@@ -253,6 +262,9 @@ importers:
       norns:
         specifier: workspace:*
         version: link:../../packages/norns
+      skuld:
+        specifier: workspace:*
+        version: link:../../packages/skuld
       vidar:
         specifier: workspace:*
         version: link:../vidar
@@ -302,6 +314,9 @@ importers:
       saga:
         specifier: workspace:*
         version: link:../../packages/saga
+      skuld:
+        specifier: workspace:*
+        version: link:../../packages/skuld
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -348,6 +363,9 @@ importers:
       saga:
         specifier: workspace:*
         version: link:../../packages/saga
+      skuld:
+        specifier: workspace:*
+        version: link:../../packages/skuld
       zod:
         specifier: ^4.3.6
         version: 4.3.6

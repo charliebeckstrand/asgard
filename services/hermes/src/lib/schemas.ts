@@ -1,3 +1,13 @@
+import {
+	CallbackUrlSchema,
+	CircuitBreakerStateSchema,
+	createListSchema,
+	HealthStatusSchema,
+	PayloadSchema,
+	ServiceNameSchema,
+	ServiceReachabilitySchema,
+	TopicSchema,
+} from 'skuld'
 import { z } from 'zod'
 
 export {
@@ -13,20 +23,9 @@ export {
 
 export const PublishEventSchema = z
 	.object({
-		topic: z
-			.string()
-			.min(1)
-			.max(255)
-			.openapi({ description: 'Event topic', example: 'user.registered' }),
-		payload: z
-			.record(z.string(), z.unknown())
-			.default({})
-			.openapi({ description: 'Event payload data' }),
-		source: z
-			.string()
-			.min(1)
-			.max(100)
-			.openapi({ description: 'Service that published the event', example: 'heimdall' }),
+		topic: TopicSchema,
+		payload: PayloadSchema,
+		source: ServiceNameSchema,
 	})
 	.openapi('PublishEvent')
 
@@ -42,20 +41,9 @@ export const EventSchema = z
 
 export const CreateSubscriptionSchema = z
 	.object({
-		topic: z
-			.string()
-			.min(1)
-			.max(255)
-			.openapi({ description: 'Event topic to subscribe to', example: 'user.registered' }),
-		callback_url: z.string().url().openapi({
-			description: 'URL to receive event callbacks',
-			example: 'http://localhost:3000/api/webhooks/user-registered',
-		}),
-		service: z
-			.string()
-			.min(1)
-			.max(100)
-			.openapi({ description: 'Name of the subscribing service', example: 'bifrost' }),
+		topic: TopicSchema,
+		callback_url: CallbackUrlSchema,
+		service: ServiceNameSchema,
 	})
 	.openapi('CreateSubscription')
 
@@ -71,30 +59,25 @@ export const SubscriptionSchema = z
 	})
 	.openapi('Subscription')
 
-export const SubscriptionListSchema = z
-	.object({
-		data: z.array(SubscriptionSchema),
-		total: z.number(),
-	})
-	.openapi('SubscriptionList')
+export const SubscriptionListSchema = createListSchema(SubscriptionSchema, 'SubscriptionList')
 
 export const ServiceStatusSchema = z
 	.object({
-		status: z.enum(['healthy', 'degraded', 'unreachable']),
+		status: ServiceReachabilitySchema,
 		latency: z.number().optional(),
 	})
 	.openapi('ServiceStatus')
 
 export const CircuitBreakerStatusSchema = z
 	.object({
-		state: z.enum(['closed', 'open', 'half-open']),
+		state: CircuitBreakerStateSchema,
 		failures: z.number(),
 	})
 	.openapi('CircuitBreakerStatus')
 
 export const AggregateHealthSchema = z
 	.object({
-		status: z.enum(['healthy', 'degraded', 'unhealthy']),
+		status: HealthStatusSchema,
 		version: z.string(),
 		uptime: z.number(),
 		services: z.object({

@@ -1,13 +1,14 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { getIpAddress } from 'grid/middleware'
 import { AuthError, registerUser } from 'heimdall'
+import { EmailSchema, PasswordSchema } from 'skuld'
 import { ErrorSchema } from '../lib/schemas.js'
 import { requireSession, type SessionEnv } from '../middleware/session.js'
 
 const CreateUserRequestSchema = z
 	.object({
-		email: z.email(),
-		password: z.string().min(8),
+		email: EmailSchema,
+		password: PasswordSchema,
 		name: z.string().min(1).optional(),
 	})
 	.openapi('CreateUserRequest')

@@ -1,3 +1,4 @@
+import { createListSchema, IdSchema, IpAddressSchema, TimestampSchema } from 'skuld'
 import { z } from 'zod'
 
 export {
@@ -13,23 +14,18 @@ export {
 
 export const ThreatSchema = z
 	.object({
-		id: z.uuid(),
+		id: IdSchema,
 		threat_type: z.string(),
 		severity: z.string(),
 		ip: z.string(),
 		details: z.record(z.string(), z.unknown()),
 		action_taken: z.string().nullable(),
 		resolved: z.boolean(),
-		created_at: z.iso.datetime(),
+		created_at: TimestampSchema,
 	})
 	.openapi('Threat')
 
-export const ThreatListSchema = z
-	.object({
-		data: z.array(ThreatSchema),
-		total: z.number(),
-	})
-	.openapi('ThreatList')
+export const ThreatListSchema = createListSchema(ThreatSchema, 'ThreatList')
 
 export const RuleSchema = z
 	.object({
@@ -52,11 +48,7 @@ export const RuleListSchema = z
 
 export const AnalyzeRequestSchema = z
 	.object({
-		ip: z
-			.string()
-			.min(1)
-			.optional()
-			.openapi({ description: 'IP address to analyze. Omit to analyze all recent activity.' }),
+		ip: IpAddressSchema.optional(),
 	})
 	.openapi('AnalyzeRequest')
 

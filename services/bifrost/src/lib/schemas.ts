@@ -1,1 +1,1 @@
-export { ErrorSchema, MessageSchema } from 'grid/schemas'
+export { ErrorSchema, MessageSchema } from 'skuld'

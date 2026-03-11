@@ -1,45 +1,34 @@
 import { z } from '@hono/zod-openapi'
+import {
+	createListSchema,
+	DetailsSchema,
+	EventTypeSchema,
+	IdSchema,
+	IpAddressSchema,
+	OptionalTimestampSchema,
+	ServiceNameSchema,
+	TimestampSchema,
+} from 'skuld'
 
-export const ErrorSchema = z
-	.object({
-		error: z.string(),
-		message: z.string(),
-		statusCode: z.number(),
-	})
-	.openapi('Error')
-
-export const MessageSchema = z
-	.object({
-		message: z.string(),
-	})
-	.openapi('Message')
+export { ErrorSchema, MessageSchema } from 'skuld'
 
 export const IngestEventSchema = z
 	.object({
-		ip: z.string().min(1).openapi({ description: 'Source IP address', example: '192.168.1.100' }),
-		event_type: z
-			.string()
-			.min(1)
-			.openapi({ description: 'Type of security event', example: 'login_failed' }),
-		details: z
-			.record(z.string(), z.unknown())
-			.default({})
-			.openapi({ description: 'Additional event details' }),
-		service: z
-			.string()
-			.min(1)
-			.openapi({ description: 'Service that generated the event', example: 'heimdall' }),
+		ip: IpAddressSchema,
+		event_type: EventTypeSchema,
+		details: DetailsSchema,
+		service: ServiceNameSchema,
 	})
 	.openapi('IngestEvent')
 
 export const SecurityEventSchema = z
 	.object({
-		id: z.uuid(),
+		id: IdSchema,
 		ip: z.string(),
 		event_type: z.string(),
 		details: z.record(z.string(), z.unknown()),
 		service: z.string(),
-		created_at: z.iso.datetime(),
+		created_at: TimestampSchema,
 	})
 	.openapi('SecurityEvent')
 
@@ -47,13 +36,13 @@ export const CheckIpResponseSchema = z
 	.object({
 		banned: z.boolean(),
 		reason: z.string().optional(),
-		expires_at: z.iso.datetime().optional(),
+		expires_at: OptionalTimestampSchema,
 	})
 	.openapi('CheckIpResponse')
 
 export const CreateBanSchema = z
 	.object({
-		ip: z.string().min(1).openapi({ description: 'IP address to ban', example: '10.0.0.1' }),
+		ip: IpAddressSchema,
 		reason: z.string().min(1).openapi({ description: 'Reason for the ban', example: 'Manual ban' }),
 		duration_minutes: z.coerce
 			.number()
@@ -65,19 +54,14 @@ export const CreateBanSchema = z
 
 export const BanSchema = z
 	.object({
-		id: z.uuid(),
+		id: IdSchema,
 		ip: z.string(),
 		reason: z.string(),
 		rule_id: z.string().nullable(),
 		created_by: z.string(),
 		expires_at: z.iso.datetime().nullable(),
-		created_at: z.iso.datetime(),
+		created_at: TimestampSchema,
 	})
 	.openapi('Ban')
 
-export const BanListSchema = z
-	.object({
-		data: z.array(BanSchema),
-		total: z.number(),
-	})
-	.openapi('BanList')
+export const BanListSchema = createListSchema(BanSchema, 'BanList')

@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { getIpAddress } from 'grid/middleware'
 import { AuthError, authenticateUser, registerUser } from 'heimdall'
+import { EmailSchema, LoginPasswordSchema, PasswordSchema } from 'skuld'
 import { environment } from '../lib/env.js'
 import { ErrorSchema } from '../lib/schemas.js'
 import {
@@ -12,8 +13,8 @@ import {
 
 const LoginRequestSchema = z
 	.object({
-		email: z.email(),
-		password: z.string().min(1),
+		email: EmailSchema,
+		password: LoginPasswordSchema,
 	})
 	.openapi('LoginRequest')
 
@@ -33,8 +34,8 @@ const SessionResponseSchema = z
 
 const RegisterRequestSchema = z
 	.object({
-		email: z.email(),
-		password: z.string().min(8),
+		email: EmailSchema,
+		password: PasswordSchema,
 		name: z.string().min(1).optional(),
 	})
 	.openapi('RegisterRequest')
