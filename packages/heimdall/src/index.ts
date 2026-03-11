@@ -8,6 +8,4 @@ export {
 } from './auth.js'
 export type { Config } from './config.js'
 export { configure, getConfig } from './config.js'
-export type { RateLimitOptions } from './rate-limit.js'
-export { rateLimit } from './rate-limit.js'
 export type { CredentialsRow, UserRepository, UserRow } from './types.js'

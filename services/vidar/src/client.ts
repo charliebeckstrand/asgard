@@ -3,6 +3,7 @@ import type { MiddlewareHandler } from 'hono'
 import { hc } from 'hono/client'
 import { HTTPException } from 'hono/http-exception'
 import type { VidarApp } from './app.js'
+import { createTokenBucket } from './rate-limit.js'
 
 export interface VidarClientConfig {
 	vidarUrl?: string
@@ -96,4 +97,44 @@ export function reportEvent(
 		.catch(() => {
 			// Silently ignore — Vidar being down should not affect callers
 		})
+}
+
+export interface CreateVidarOptions {
+	/** Tokens refilled per second (default: 5) */
+	rate?: number
+	/** Maximum bucket size / burst capacity (default: 10) */
+	burst?: number
+	/** Route label included in reported events (e.g., '/auth') */
+	route?: string
+	/** Service name included in reported events (default: 'unknown') */
+	service?: string
+}
+
+/**
+ * Create a unified Vidar middleware that performs ban checking and rate limiting.
+ * Ban check fails open when Vidar is unreachable. Rate limiting is always enforced locally.
+ */
+export function createVidar(options?: CreateVidarOptions): MiddlewareHandler {
+	const bucket = createTokenBucket({ rate: options?.rate, burst: options?.burst })
+
+	const route = options?.route
+	const service = options?.service ?? 'unknown'
+
+	return async (c, next) => {
+		const ip = getIpAddress(c)
+
+		const result = await checkIpBan(ip)
+
+		if (result?.banned) {
+			throw new HTTPException(403, { message: 'Unauthorized' })
+		}
+
+		if (!bucket.consume(ip)) {
+			reportEvent('rate_limited', ip, route ? { route } : {}, service)
+
+			throw new HTTPException(429, { message: 'Too many requests' })
+		}
+
+		await next()
+	}
 }

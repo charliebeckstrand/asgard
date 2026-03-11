@@ -1,7 +1,6 @@
 import { createApp, createProxy } from 'grid'
-import { rateLimit } from 'heimdall'
 import { csrf } from 'hono/csrf'
-import { checkBan, reportEvent } from 'vidar/client'
+import { createVidar } from 'vidar/client'
 
 import { environment } from './lib/env.js'
 import { session } from './middleware/session.js'
@@ -24,16 +23,7 @@ export function createBifrostApp() {
 
 	// --- Vidar ban check + rate limiting on auth routes ---
 
-	app.use('/auth/*', checkBan())
-
-	app.use(
-		'/auth/*',
-		rateLimit({
-			rate: 2,
-			burst: 5,
-			onLimit: (ip) => reportEvent('rate_limited', ip, { route: '/auth' }),
-		}),
-	)
+	app.use('/auth/*', createVidar({ rate: 2, burst: 5, route: '/auth' }))
 
 	// --- Routes ---
 

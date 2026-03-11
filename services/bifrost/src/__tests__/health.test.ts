@@ -3,15 +3,12 @@ vi.stubEnv('SECRET_KEY', 'test-secret-key-that-is-at-least-32-chars')
 
 vi.mock('heimdall', () => ({
 	configure: vi.fn(),
-	rateLimit: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
-		await next()
-	}),
 	refreshTokenPair: vi.fn(),
 }))
 
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
-	checkBan: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+	createVidar: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
 		await next()
 	}),
 	reportEvent: vi.fn(),

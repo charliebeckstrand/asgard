@@ -26,15 +26,12 @@ vi.mock('heimdall', () => ({
 	authenticateUser: (...args: unknown[]) => mockAuthenticateUser(...args),
 	registerUser: (...args: unknown[]) => mockRegisterUser(...args),
 	AuthError: MockAuthError,
-	rateLimit: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
-		await next()
-	}),
 	refreshTokenPair: vi.fn(),
 }))
 
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
-	checkBan: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+	createVidar: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
 		await next()
 	}),
 	reportEvent: vi.fn(),
