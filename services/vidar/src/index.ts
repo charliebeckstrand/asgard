@@ -32,7 +32,6 @@ const server = serve(
 setupLifecycle({
 	server,
 	name: 'Vidar',
-	port: env.PORT,
 	onShutdown: async () => {
 		clearInterval(cleanupTimer)
 

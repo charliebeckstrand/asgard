@@ -22,7 +22,7 @@ Yggdrasil is a TypeScript microservices monorepo with Norse mythology naming. It
 | **grid**     | Hono middleware, error handling, env validation, OpenAPI config |
 | **heimdall** | JWT auth, user registration, token management           |
 | **mimir**    | PostgreSQL connection pool (lazy-loaded)                |
-| **norns**    | Server lifecycle, graceful shutdown, signal handling    |
+| **norns**    | Graceful shutdown, signal handling                      |
 | **saga**     | Structured logging, PostgreSQL log ingestion            |
 
 ### Dependency Graph
