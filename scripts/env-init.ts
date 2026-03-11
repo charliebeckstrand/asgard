@@ -77,7 +77,7 @@ try {
 let secrets: Record<string, string>
 
 if (rotate === true) {
-	console.log('  rotating all secrets')
+	console.log('rotating all secrets')
 
 	secrets = {}
 } else {
@@ -90,7 +90,7 @@ if (Array.isArray(rotate)) {
 			if (cacheKey.endsWith(`:${keyName}`)) {
 				delete secrets[cacheKey]
 
-				console.log(`  rotating ${cacheKey}`)
+				console.log(`rotating ${cacheKey}`)
 			}
 		}
 	}
@@ -105,7 +105,7 @@ for (const [serviceName, manifest] of Object.entries(manifests)) {
 		if (!secrets[cacheKey]) {
 			secrets[cacheKey] = randomBytes(32).toString('hex')
 
-			console.log(`  generated ${cacheKey}`)
+			console.log(`generated ${cacheKey}`)
 		}
 	}
 }
@@ -130,7 +130,7 @@ for (const [serviceName, manifest] of Object.entries(manifests)) {
 
 			if (!refManifest) {
 				console.error(
-					`  warning: ${serviceName}.${varName} references unknown service '${config.service}'`,
+					`warning: ${serviceName}.${varName} references unknown service '${config.service}'`,
 				)
 
 				resolved[varName] = ''
@@ -141,7 +141,7 @@ for (const [serviceName, manifest] of Object.entries(manifests)) {
 
 				if (!refVar) {
 					console.error(
-						`  warning: ${serviceName}.${varName} references '${config.service}.${config.key}' which does not exist`,
+						`warning: ${serviceName}.${varName} references '${config.service}.${config.key}' which does not exist`,
 					)
 
 					resolved[varName] = ''
@@ -151,7 +151,7 @@ for (const [serviceName, manifest] of Object.entries(manifests)) {
 					resolved[varName] = refVar.default ?? ''
 				} else {
 					console.error(
-						`  warning: ${serviceName}.${varName} references '${config.service}.${config.key}' which is itself a ref`,
+						`warning: ${serviceName}.${varName} references '${config.service}.${config.key}' which is itself a ref`,
 					)
 
 					resolved[varName] = ''
@@ -178,11 +178,11 @@ for (const [serviceName, vars] of Object.entries(environments)) {
 
 	writeFileSync(resolve(serviceDir, '.env'), `${content}\n`)
 
-	console.log(`  wrote ${serviceName}/.env`)
+	console.log(`wrote ${serviceName}/.env`)
 }
 
 // --- Save secrets cache ---
 
 writeFileSync(secretsPath, `${JSON.stringify(secrets, null, '\t')}\n`)
 
-console.log('  saved secrets cache')
+console.log('saved secrets cache')
