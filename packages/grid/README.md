@@ -56,7 +56,9 @@ app.all('/events/*', createProxy('http://localhost:3002'))
 app.all('/vidar/*', createProxy('http://localhost:3003', { timeout: 10_000 }))
 ```
 
-Preserves method, headers, and body. Adds `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` headers. Strips hop-by-hop headers.
+Preserves method, headers, and body. 
+Adds `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` headers. 
+Strips hop-by-hop headers.
 
 ## createSSEStream
 
