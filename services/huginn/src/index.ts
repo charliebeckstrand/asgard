@@ -1,5 +1,7 @@
 // TODO: Add huginn service to .do/app.yaml and secrets to .github/workflows/deploy.yml when ready to deploy
 
+export type { HuginnApp } from './app.js'
+
 import { serve } from '@hono/node-server'
 import { setupLifecycle } from 'norns'
 import { createHuginnApp } from './app.js'
