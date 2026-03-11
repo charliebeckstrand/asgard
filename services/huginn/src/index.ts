@@ -23,4 +23,4 @@ const server = serve(
 	},
 )
 
-setupLifecycle({ server, name: 'Huginn', port: env.PORT, onShutdown: closePool })
+setupLifecycle({ server, name: 'Huginn', onShutdown: closePool })

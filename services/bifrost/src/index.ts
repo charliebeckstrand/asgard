@@ -34,4 +34,4 @@ const server = serve(
 	},
 )
 
-setupLifecycle({ server, name: 'Bifrost', port: env.PORT, onShutdown: closePool })
+setupLifecycle({ server, name: 'Bifrost', onShutdown: closePool })

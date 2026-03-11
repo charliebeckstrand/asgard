@@ -1,7 +1,7 @@
 {
 	"name": "norns",
 	"version": "0.1.0",
-	"description": "Shared server lifecycle utilities — graceful shutdown and port recovery",
+	"description": "Shared server lifecycle utilities — graceful shutdown",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./src/index.ts",

@@ -18,4 +18,4 @@ const server = serve(
 	},
 )
 
-setupLifecycle({ server, name: 'Hermes', port: env.PORT })
+setupLifecycle({ server, name: 'Hermes' })

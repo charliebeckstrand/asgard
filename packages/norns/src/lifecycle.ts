@@ -1,46 +1,12 @@
-import { execSync } from 'node:child_process'
 import type { Server } from 'node:net'
 
 export interface LifecycleOptions {
 	server: Server
 	name: string
-	port: number
 	onShutdown?: () => Promise<void>
 }
 
-export function setupLifecycle({ server, name, port, onShutdown }: LifecycleOptions) {
-	let portRetried = false
-
-	server.on('error', (error: NodeJS.ErrnoException) => {
-		if (error.code === 'EADDRINUSE') {
-			if (portRetried) {
-				console.error(`Port ${port} is still in use after retry, exiting.`)
-
-				process.exit(1)
-			}
-
-			portRetried = true
-
-			console.warn(`Port ${port} is in use, attempting to free it...`)
-
-			const killPortByPlatform: Partial<Record<NodeJS.Platform, string>> = {
-				darwin: `lsof -i :${port} | grep LISTEN | awk '{print $2}' | xargs kill -9`,
-			}
-
-			const defaultKillPortCmd = `fuser -k ${port}/tcp`
-
-			try {
-				const cmd = killPortByPlatform[process.platform] ?? defaultKillPortCmd
-
-				execSync(cmd, { stdio: 'ignore' })
-			} catch {
-				// Process may have already exited
-			}
-
-			server.listen(port)
-		}
-	})
-
+export function setupLifecycle({ server, name, onShutdown }: LifecycleOptions) {
 	let shuttingDown = false
 
 	async function shutdown(signal: NodeJS.Signals) {
