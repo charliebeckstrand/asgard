@@ -33,6 +33,7 @@ export function createBifrostApp() {
 		.route('/api/users', usersRoutes)
 
 	// --- Proxy to downstream services ---
+	// TODO: Migrate to typed Hermes RPC client (hermes/client) for type-safe inter-service calls
 
 	app.all('/events/*', createProxy(env.HUGINN_URL))
 

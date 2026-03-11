@@ -1,3 +1,5 @@
+export type { VidarApp } from './app.js'
+
 import { serve } from '@hono/node-server'
 import { setupLifecycle } from 'norns'
 import { createVidarApp } from './app.js'

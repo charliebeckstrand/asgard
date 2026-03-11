@@ -1,12 +1,16 @@
 {
 	"name": "hermes",
 	"version": "0.1.0",
-	"description": "Stateless multi-channel messaging relay with real-time event streaming",
+	"description": "Typed RPC gateway for inter-service communication with circuit breaking and observability",
 	"type": "module",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
+		},
+		"./client": {
+			"types": "./dist/client.d.ts",
+			"default": "./dist/client.js"
 		}
 	},
 	"scripts": {
@@ -23,12 +27,13 @@
 	"packageManager": "pnpm@10.29.3",
 	"dependencies": {
 		"@hono/node-server": "^1.19.11",
-		"@hono/node-ws": "^1.1.1",
 		"@hono/swagger-ui": "^0.6.0",
 		"@hono/zod-openapi": "^1.2.2",
 		"grid": "workspace:*",
 		"hono": "^4.12.5",
+		"huginn": "workspace:*",
 		"norns": "workspace:*",
+		"vidar": "workspace:*",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

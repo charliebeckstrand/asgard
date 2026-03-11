@@ -1,5 +1,8 @@
 {
 	"name": "hermes",
 	"port": 3001,
-	"vars": {}
+	"vars": {
+		"HUGINN_URL": "http://localhost:3002",
+		"VIDAR_URL": "http://localhost:3003"
+	}
 }
