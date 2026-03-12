@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { createProcessManager } from './lib/process-manager.js'
-import { createRenderer } from './lib/renderer.js'
+import { createRenderer, renderLoading } from './lib/renderer.js'
 import type { DashboardOptions, SortOrder } from './lib/types.js'
 import {
 	discoverWorkspaces,
@@ -71,6 +71,9 @@ function parseArgs(argv: string[]): DashboardOptions {
 }
 
 async function createDashboard(options: DashboardOptions): Promise<void> {
+	// Show loading screen immediately
+	renderLoading()
+
 	let dockerCleanup: (() => Promise<void>) | undefined
 
 	// Start Docker if requested

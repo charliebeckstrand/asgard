@@ -51,6 +51,17 @@ function truncate(str: string, maxLen: number): string {
 	return `${str.slice(0, maxLen - 1)}…`
 }
 
+export function renderLoading(): void {
+	const cols = process.stdout.columns || 80
+	
+	const write = (s: string) => process.stdout.write(s)
+
+	write(CURSOR_HIDE + CURSOR_HOME + CLEAR_SCREEN)
+	write(` ${FG.gray}◦${RESET} ${BOLD}Yggdrasil${RESET}\n`)
+	write(`${DIM}${'─'.repeat(cols)}${RESET}\n`)
+	write(`\n ${DIM}Starting...${RESET}\n`)
+}
+
 export function createRenderer(): Renderer {
 	const write = (s: string) => process.stdout.write(s)
 
