@@ -29,6 +29,10 @@
 		"./containers": {
 			"types": "./src/containers/index.ts",
 			"default": "./dist/containers.js"
+		},
+		"./config": {
+			"types": "./src/config.ts",
+			"default": "./dist/config.js"
 		}
 	},
 	"scripts": {
@@ -45,14 +49,14 @@
 	"dependencies": {
 		"@testcontainers/postgresql": "^11.12.0",
 		"hono": "^4.8.3",
-		"testcontainers": "^11.12.0"
+		"testcontainers": "^11.12.0",
+		"vitest": "^4.0.18"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
 		"@types/node": "^25.3.3",
 		"tsup": "^8.5.1",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.18",
 		"zod": "^4.3.6"
 	}
 }

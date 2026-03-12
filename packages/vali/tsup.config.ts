@@ -8,6 +8,7 @@ export default defineConfig({
 		fixtures: 'src/fixtures/index.ts',
 		setup: 'src/setup.ts',
 		containers: 'src/containers/index.ts',
+		config: 'src/config.ts',
 	},
 	format: ['esm'],
 	target: 'node22',

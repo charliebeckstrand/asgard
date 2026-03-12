@@ -6,13 +6,11 @@ import { createTempDir } from 'vali/fixtures'
 import { createDatabaseClient } from '../db.js'
 import { getMigrationStatus, runMigrations } from '../migrate.js'
 
-const hasDocker = isDockerAvailable()
-
 let testDb: TestDatabase
 let pool: Pool
 
 beforeAll(async () => {
-	if (!hasDocker) return
+	if (!isDockerAvailable()) return
 
 	testDb = await startPostgres()
 
@@ -25,7 +23,7 @@ afterAll(async () => {
 	await testDb?.stop()
 })
 
-const describeWithDocker = hasDocker ? describe : describe.skip
+const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 
 describeWithDocker('runMigrations (integration)', () => {
 	beforeEach(async () => {

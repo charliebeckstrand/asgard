@@ -3,13 +3,11 @@ import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/contai
 import { createDatabaseClient, NoRowsError } from '../db.js'
 import { sql } from '../sql.js'
 
-const hasDocker = isDockerAvailable()
-
 let testDb: TestDatabase
 let pool: Pool
 
 beforeAll(async () => {
-	if (!hasDocker) return
+	if (!isDockerAvailable()) return
 
 	testDb = await startPostgres()
 
@@ -37,7 +35,7 @@ afterAll(async () => {
 	await testDb?.stop()
 })
 
-const describeWithDocker = hasDocker ? describe : describe.skip
+const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 
 describeWithDocker('createDatabaseClient (integration)', () => {
 	describe('query', () => {

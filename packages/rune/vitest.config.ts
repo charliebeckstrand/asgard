@@ -1,19 +1,5 @@
-import { defineConfig } from 'vitest/config'
+import { createVitestConfig } from 'vali/config'
 
-export default defineConfig({
-	test: {
-		globals: true,
-		environment: 'node',
-		passWithNoTests: true,
-		coverage: {
-			provider: 'v8',
-			include: ['src/**/*.{ts,tsx}'],
-			exclude: ['src/__tests__/**'],
-		},
-	},
-	resolve: {
-		alias: {
-			'@': './src',
-		},
-	},
+export default createVitestConfig({
+	coverage: { include: ['src/**/*.{ts,tsx}'] },
 })
