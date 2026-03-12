@@ -46,7 +46,10 @@ function parseArgs(argv: string[]): DashboardOptions {
 
 	for (const arg of argv) {
 		if (arg.startsWith('--filter=')) {
-			filter.push(arg.slice('--filter='.length))
+			// Strip curly braces — pnpm/turbo use {name} syntax
+			const value = arg.slice('--filter='.length).replace(/^\{(.+)\}$/, '$1')
+
+			filter.push(value)
 		}
 	}
 
