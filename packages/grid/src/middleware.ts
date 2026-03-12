@@ -2,7 +2,11 @@ import { getConnInfo } from '@hono/node-server/conninfo'
 import type { Context } from 'hono'
 
 export function getIpAddress(c: Context): string {
-	const info = getConnInfo(c)
+	try {
+		const info = getConnInfo(c)
 
-	return info.remote.address ?? 'unknown'
+		return info.remote.address ?? 'unknown'
+	} catch {
+		return 'unknown'
+	}
 }
