@@ -102,17 +102,19 @@ async function refreshAccessToken(sessionData: SessionData): Promise<SessionData
 	return attempt
 }
 
-export function setSessionCookie(c: Context, data: SessionData, secret: string): Promise<void> {
-	const isProduction = process.env.NODE_ENV === 'production'
+export async function setSessionCookie(
+	c: Context,
+	data: SessionData,
+	secret: string,
+): Promise<void> {
+	const value = await encodeSession(data, secret)
 
-	return encodeSession(data, secret).then((value) => {
-		setCookie(c, COOKIE_NAME, value, {
-			httpOnly: true,
-			secure: isProduction,
-			sameSite: 'Lax',
-			path: '/',
-			maxAge: 60 * 60 * 24 * 7,
-		})
+	setCookie(c, COOKIE_NAME, value, {
+		httpOnly: true,
+		secure: true,
+		sameSite: 'Lax',
+		path: '/',
+		maxAge: 60 * 60 * 24 * 7,
 	})
 }
 
