@@ -23,7 +23,7 @@ export function getClient() {
  * Check if an IP is banned via Hermes RPC.
  * Returns null if Hermes is unreachable (fail-open).
  */
-async function checkIpBan(ip: string): Promise<{ is_banned: boolean } | null> {
+async function checkIpBan(ip: string): Promise<{ banned: boolean } | null> {
 	if (!_client) return null
 
 	try {
@@ -34,7 +34,7 @@ async function checkIpBan(ip: string): Promise<{ is_banned: boolean } | null> {
 
 		if (!res.ok) return null
 
-		return (await res.json()) as { is_banned: boolean }
+		return (await res.json()) as { banned: boolean }
 	} catch {
 		return null
 	}
@@ -88,7 +88,7 @@ export function createHermesGuard(options?: CreateHermesMiddlewareOptions): Midd
 
 		const result = await checkIpBan(ip)
 
-		if (result?.is_banned) {
+		if (result?.banned) {
 			throw new HTTPException(403, { message: 'Unauthorized' })
 		}
 
