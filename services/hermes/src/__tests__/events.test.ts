@@ -1,23 +1,23 @@
 import { createHermesApp } from '@/app'
 
 const mockPublishResponse = {
-	id: '123',
+	id: '550e8400-e29b-41d4-a716-446655440000',
 	topic: 'user.registered',
 	payload: {},
 	source: 'test',
-	created_at: '2026-01-01T00:00:00Z',
+	created_at: '2026-01-01T00:00:00.000Z',
 }
 
 const mockSubscriptionsResponse = {
 	data: [
 		{
-			id: '456',
+			id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
 			topic: 'user.registered',
 			callback_url: 'http://localhost:3000/webhook',
 			service: 'bifrost',
 			is_active: true,
-			created_at: '2026-01-01T00:00:00Z',
-			updated_at: '2026-01-01T00:00:00Z',
+			created_at: '2026-01-01T00:00:00.000Z',
+			updated_at: '2026-01-01T00:00:00.000Z',
 		},
 	],
 	total: 1,
@@ -101,7 +101,7 @@ describe('events routes', () => {
 
 		const data = await res.json()
 
-		expect(data.id).toBe('123')
+		expect(data.id).toBe('550e8400-e29b-41d4-a716-446655440000')
 		expect(data.topic).toBe('user.registered')
 	})
 

@@ -3,9 +3,11 @@ import {
 	CircuitBreakerStateSchema,
 	createListSchema,
 	HealthStatusSchema,
+	IdSchema,
 	PayloadSchema,
 	ServiceNameSchema,
 	ServiceReachabilitySchema,
+	TimestampSchema,
 	TopicSchema,
 } from 'skuld'
 import { z } from 'zod'
@@ -31,11 +33,11 @@ export const PublishEventSchema = z
 
 export const EventSchema = z
 	.object({
-		id: z.string(),
+		id: IdSchema,
 		topic: z.string(),
 		payload: z.record(z.string(), z.unknown()),
 		source: z.string(),
-		created_at: z.string(),
+		created_at: TimestampSchema,
 	})
 	.openapi('Event')
 
@@ -49,13 +51,13 @@ export const CreateSubscriptionSchema = z
 
 export const SubscriptionSchema = z
 	.object({
-		id: z.string(),
+		id: IdSchema,
 		topic: z.string(),
 		callback_url: z.string(),
 		service: z.string(),
 		is_active: z.boolean(),
-		created_at: z.string(),
-		updated_at: z.string(),
+		created_at: TimestampSchema,
+		updated_at: TimestampSchema,
 	})
 	.openapi('Subscription')
 
