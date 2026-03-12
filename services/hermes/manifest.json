@@ -2,6 +2,7 @@
 	"name": "hermes",
 	"port": 3001,
 	"vars": {
-		"VIDAR_URL": { "type": "value", "default": "http://localhost:3002" }
+		"VIDAR_URL": { "type": "value", "default": "http://localhost:3002" },
+		"VIDAR_API_KEY": { "type": "ref", "service": "vidar", "key": "VIDAR_API_KEY" }
 	}
 }
