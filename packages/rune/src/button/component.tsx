@@ -1,10 +1,12 @@
 import type { Child } from 'hono/jsx'
 
+import type { Size, Type } from '../types/index.js'
+
 import { buttonVariants } from './variants.js'
 
 export type ButtonProps = {
-	type?: 'default' | 'secondary' | 'warning' | 'error' | 'tertiary'
-	size?: 'tiny' | 'small' | 'medium' | 'large'
+	type?: Type
+	size?: Size
 	disabled?: boolean
 	class?: string
 	children?: Child
