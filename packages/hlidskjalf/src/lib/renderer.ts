@@ -53,7 +53,7 @@ function truncate(str: string, maxLen: number): string {
 
 export function renderLoading(message: string = 'Starting...'): void {
 	const cols = process.stdout.columns || 80
-	
+
 	const write = (s: string) => process.stdout.write(s)
 
 	write(CURSOR_HIDE + CURSOR_HOME + CLEAR_SCREEN)
