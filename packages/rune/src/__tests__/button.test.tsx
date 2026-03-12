@@ -1,4 +1,4 @@
-import { buttonVariants } from '@/button'
+import { buttonVariants } from '@/button/variants'
 
 describe('buttonVariants', () => {
 	describe('defaults', () => {
