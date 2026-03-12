@@ -9,15 +9,14 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
-		"hlidskjalf": "workspace:*",
 		"husky": "^9.1.7",
 		"turbo": "^2.8.14"
 	},
 	"scripts": {
 		"prepare": "husky || true",
 		"build": "turbo run build",
-		"dev": "turbo run build --filter=hlidskjalf && hlidskjalf",
-		"dev:bare": "turbo run build --filter=hlidskjalf && hlidskjalf --no-docker",
+		"dev": "turbo run build --filter=hlidskjalf && node packages/hlidskjalf/dist/index.js",
+		"dev:bare": "turbo run build --filter=hlidskjalf && node packages/hlidskjalf/dist/index.js --no-docker",
 		"dev:turbo": "bash scripts/dev.sh",
 		"test": "turbo run test",
 		"lint": "biome check packages/ services/",
