@@ -5,8 +5,11 @@
 	"type": "module",
 	"scripts": {
 		"env:init": "tsx ../../scripts/init-env.ts --services=demo",
-		"dev": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i src/styles.css -o dist/styles.css && node ./node_modules/@tailwindcss/cli/dist/index.mjs -i src/styles.css -o dist/styles.css --watch & tsx watch --env-file=.env src/index.ts",
-		"build": "tsup && node ./node_modules/@tailwindcss/cli/dist/index.mjs -i src/styles.css -o dist/styles.css --minify",
+		"css": "./node_modules/.bin/tailwindcss -i src/styles.css -o dist/styles.css",
+		"css:watch": "./node_modules/.bin/tailwindcss -i src/styles.css -o dist/styles.css --watch",
+		"css:minify": "./node_modules/.bin/tailwindcss -i src/styles.css -o dist/styles.css --minify",
+		"dev": "pnpm run css && (pnpm run css:watch & tsx watch --env-file=.env src/index.ts)",
+		"build": "tsup && pnpm run css:minify",
 		"start": "node dist/index.js",
 		"lint": "biome check --config-path=../.. .",
 		"lint:fix": "biome check --config-path=../.. --write .",
