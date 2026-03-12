@@ -6,7 +6,9 @@ export type LayoutProps = {
 }
 
 export function Layout({ title, children }: LayoutProps) {
-	const cssHref = process.env.NODE_ENV === 'production' ? '/styles.css' : '/src/styles.css'
+	const isProd = process.env.NODE_ENV === 'production'
+	const cssHref = isProd ? '/styles.css' : '/src/styles.css'
+	const formHandlerSrc = isProd ? '/form-handler.js' : '/src/client/form-handler.ts'
 
 	return (
 		<html lang="en">
@@ -15,7 +17,7 @@ export function Layout({ title, children }: LayoutProps) {
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<title>{title ?? 'Demo'}</title>
 				<link rel="stylesheet" href={cssHref} />
-				<script defer src="/form-handler.js" />
+				<script defer src={formHandlerSrc} />
 				<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" />
 			</head>
 

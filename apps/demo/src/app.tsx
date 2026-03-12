@@ -11,10 +11,9 @@ export function createDemoApp() {
 
 	const app = new Hono()
 
-	app.use('/form-handler.js', serveStatic({ root: './public' }))
-
 	if (process.env.NODE_ENV === 'production') {
 		app.use('/styles.css', serveStatic({ root: './dist' }))
+		app.use('/form-handler.js', serveStatic({ root: './dist' }))
 	}
 
 	app.use('*', auth(env.SESSION_SECRET))

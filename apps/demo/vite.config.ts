@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
 			tailwindcss(),
 			devServer({
 				entry: 'src/app.tsx',
+				exclude: ['/src/client/**'],
 			}),
 		],
 		server: {
