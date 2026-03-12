@@ -6,9 +6,9 @@ Microservices built with TypeScript and Hono
 
 | Service | Role | Port |
 | --- | --- | --- |
-| **[Bifrost](services/bifrost)** | API | `3000` |
-| **[Hermes](services/hermes)** | WebSockets | `3001` |
-| **[Vidar](services/vidar)** | Monitoring | `3002` |
+| **[Bifrost](services/bifrost)** | API | `4000` |
+| **[Hermes](services/hermes)** | WebSockets | `4001` |
+| **[Vidar](services/vidar)** | Monitoring | `4002` |
 
 ## Packages
 

@@ -10,9 +10,9 @@ Yggdrasil is a TypeScript microservices monorepo with Norse mythology naming. It
 
 | Service     | Port | Role                                           |
 | ----------- | ---- | ---------------------------------------------- |
-| **bifrost** | 3000 | API Gateway / BFF — routes `/api/*`, `/auth/*` |
-| **hermes**  | 3001 | WebSocket messaging service                    |
-| **vidar**   | 3002 | Security monitoring, IP ban enforcement        |
+| **bifrost** | 4000 | API Gateway / BFF — routes `/api/*`, `/auth/*` |
+| **hermes**  | 4001 | WebSocket messaging service                    |
+| **vidar**   | 4002 | Security monitoring, IP ban enforcement        |
 
 ### Packages (shared libraries)
 

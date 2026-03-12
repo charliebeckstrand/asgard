@@ -1,6 +1,6 @@
 {
 	"name": "bifrost",
-	"port": 3001,
+	"port": 4000,
 	"vars": {
 		"DATABASE_URL": { "type": "value", "default": "postgres://heimdall:heimdall@localhost:5432/bifrost" },
 		"SECRET_KEY": { "type": "secret" },
