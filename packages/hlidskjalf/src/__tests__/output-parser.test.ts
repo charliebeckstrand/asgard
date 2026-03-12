@@ -2,17 +2,17 @@ import { parseLine, stripAnsi } from '../lib/output-parser.js'
 
 describe('parseLine', () => {
 	it('detects server ready with URL', () => {
-		const result = parseLine('Bifrost running on http://localhost:3000')
+		const result = parseLine('Bifrost running on http://localhost:4000')
 
 		expect(result.status).toBe('ready')
-		expect(result.url).toBe('http://localhost:3000')
+		expect(result.url).toBe('http://localhost:4000')
 	})
 
 	it('detects listening with URL', () => {
-		const result = parseLine('Server listening on http://localhost:3001')
+		const result = parseLine('Server listening on http://localhost:4001')
 
 		expect(result.status).toBe('ready')
-		expect(result.url).toBe('http://localhost:3001')
+		expect(result.url).toBe('http://localhost:4001')
 	})
 
 	it('detects build success', () => {

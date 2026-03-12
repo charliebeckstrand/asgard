@@ -103,10 +103,12 @@ async function refreshAccessToken(sessionData: SessionData): Promise<SessionData
 }
 
 export function setSessionCookie(c: Context, data: SessionData, secret: string): Promise<void> {
+	const isProduction = process.env.NODE_ENV === 'production'
+
 	return encodeSession(data, secret).then((value) => {
 		setCookie(c, COOKIE_NAME, value, {
 			httpOnly: true,
-			secure: true,
+			secure: isProduction,
 			sameSite: 'Lax',
 			path: '/',
 			maxAge: 60 * 60 * 24 * 7,

@@ -27,7 +27,7 @@ describe('createEnvironment', () => {
 	})
 
 	it('defaults NODE_ENV to development', () => {
-		vi.stubEnv('PORT', '3000')
+		vi.stubEnv('PORT', '4000')
 
 		delete process.env.NODE_ENV
 
@@ -62,7 +62,7 @@ describe('createEnvironment', () => {
 	})
 
 	it('treats empty strings as undefined for optional fields', () => {
-		vi.stubEnv('PORT', '3000')
+		vi.stubEnv('PORT', '4000')
 		vi.stubEnv('NODE_ENV', 'test')
 		vi.stubEnv('OPTIONAL_VAR', '')
 

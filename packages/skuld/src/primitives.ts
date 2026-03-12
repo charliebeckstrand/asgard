@@ -19,7 +19,7 @@ export const UrlSchema = z.url().openapi({
 
 export const CallbackUrlSchema = z.url().openapi({
 	description: 'URL to receive callbacks',
-	example: 'http://localhost:3000/api/webhooks/event',
+	example: 'http://localhost:4000/api/webhooks/event',
 })
 
 export const EmailSchema = z.email().openapi({ example: 'user@example.com' })

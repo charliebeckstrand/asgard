@@ -29,7 +29,7 @@ COPY --from=build /app/packages/mimir/dist ./packages/mimir/dist
 COPY --from=build /app/packages/grid/dist ./packages/grid/dist
 
 ENV NODE_ENV=production
-ENV PORT=3003
-EXPOSE 3003
+ENV PORT=4002
+EXPOSE 4002
 
 CMD ["node", "services/vidar/dist/index.js"]

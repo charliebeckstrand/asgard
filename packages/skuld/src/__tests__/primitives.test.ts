@@ -78,7 +78,7 @@ describe('UrlSchema', () => {
 
 describe('CallbackUrlSchema', () => {
 	it('accepts valid callback URLs', () => {
-		const result = CallbackUrlSchema.safeParse('http://localhost:3000/api/webhooks/test')
+		const result = CallbackUrlSchema.safeParse('http://localhost:4000/api/webhooks/test')
 
 		expect(result.success).toBe(true)
 	})
