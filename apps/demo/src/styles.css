@@ -1,3 +1,47 @@
 @import 'tailwindcss';
 
+@theme {
+    --color-white: #FAFAFA;
+
+    --color-black-100: #80827d;
+    --color-black-200: #6b6d68;
+    --color-black-300: #555852;
+    --color-black-400: #40433d;
+    --color-black-500: #2b2e27;
+    --color-black-600: #272923;
+    --color-black-700: #22251f;
+    --color-black-800: #1e201b;
+    --color-black-900: #1a1c17;
+
+    --color-black: var(--color-black-500);
+
+    --color-grey-100: #b2afb6;
+    --color-grey-200: #a5a2aa;
+    --color-grey-300: #99959d;
+    --color-grey-400: #8c8791;
+    --color-grey-500: #7f7a85;
+    --color-grey-600: #726e78;
+    --color-grey-700: #66626a;
+    --color-grey-800: #59555d;
+    --color-grey-900: #4c4950;
+
+    --color-grey: var(--color-grey-500);
+
+    --color-blue-100: oklch(95% 0.06 258.23);
+    --color-blue-200: oklch(87% 0.11 258.23);
+    --color-blue-300: oklch(78% 0.16 258.23);
+    --color-blue-400: oklch(68% 0.21 258.23);
+    --color-blue-500: oklch(57.61% 0.2508 258.23);
+    --color-blue-600: oklch(51% 0.23 258.23);
+    --color-blue-700: oklch(44% 0.2 258.23);
+    --color-blue-800: oklch(37% 0.17 258.23);
+    --color-blue-900: oklch(30% 0.14 258.23);
+
+    --color-blue: var(--color-blue-500);
+
+    
+
+    
+}
+
 @source '../../../packages/rune/src';

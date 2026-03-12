@@ -16,6 +16,8 @@ const patterns: Array<{
 	{ regex: /running on (https?:\/\/\S+)/, status: 'ready', extractUrl: true },
 	{ regex: /listening on (https?:\/\/\S+)/, status: 'ready', extractUrl: true },
 	{ regex: /started.*(https?:\/\/localhost:\d+)/, status: 'ready', extractUrl: true },
+	{ regex: /\bVITE\b.*\bready in\b/i, status: 'ready' },
+	{ regex: /\bLocal:\s+(https?:\/\/\S+)/, status: 'ready', extractUrl: true },
 	// ⚡ may include U+FE0F variation selector (⚡️)
 	{ regex: /⚡\uFE0F?\s*Build success/, status: 'watching' },
 	{ regex: /Build start/, status: 'building' },

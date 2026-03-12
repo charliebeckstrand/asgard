@@ -12,15 +12,15 @@ export type LoginFormProps = {
 
 export function LoginForm({ action, method, class: className }: LoginFormProps) {
 	return (
-		<Card padding="medium" shadow="small" class={className}>
+		<Card class={className}>
 			<Form action={action} method={method ?? 'post'}>
-				<div class="flex flex-col gap-1.5">
+				<div class="flex flex-col gap-2">
 					<Label htmlFor="email">Email</Label>
 
 					<Input inputType="email" name="email" id="email" placeholder="you@example.com" required />
 				</div>
 
-				<div class="flex flex-col gap-1.5">
+				<div class="flex flex-col gap-2">
 					<Label htmlFor="password">Password</Label>
 
 					<Input

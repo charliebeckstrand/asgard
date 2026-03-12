@@ -29,7 +29,7 @@ register.get('/register', (c) => {
 
 				<p class="text-sm text-center text-gray-500">
 					Already have an account?{' '}
-					<a href="/login" class="text-blue-600 hover:underline">
+					<a href="/login" class="text-blue hover:underline">
 						Sign in
 					</a>
 				</p>

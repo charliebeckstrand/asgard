@@ -18,6 +18,6 @@ export const cardVariants = cva(['bg-white text-black', 'border border-gray-200'
 
 	defaultVariants: {
 		padding: 'medium',
-		shadow: 'small',
+		shadow: 'none',
 	},
 })

@@ -12,7 +12,7 @@ export const buttonVariants = cva(
 	{
 		variants: {
 			type: {
-				default: 'bg-black text-white hover:bg-gray-800 active:bg-gray-700',
+				default: 'bg-black-500 text-white hover:bg-black-400 active:bg-black-600',
 
 				secondary: [
 					'bg-white text-black',

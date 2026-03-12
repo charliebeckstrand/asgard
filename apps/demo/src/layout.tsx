@@ -17,7 +17,7 @@ export function Layout({ title, children }: LayoutProps) {
 				<link rel="stylesheet" href={cssHref} />
 			</head>
 
-			<body class="min-h-screen bg-gray-50 flex items-center justify-center">{children}</body>
+			<body class="min-h-screen bg-white flex items-center justify-center">{children}</body>
 		</html>
 	)
 }

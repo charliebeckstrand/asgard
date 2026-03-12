@@ -26,7 +26,7 @@ login.get('/login', (c) => {
 
 				<p class="text-sm text-center text-gray-500">
 					Don't have an account?{' '}
-					<a href="/register" class="text-blue-600 hover:underline">
+					<a href="/register" class="text-blue hover:underline">
 						Create one
 					</a>
 				</p>
