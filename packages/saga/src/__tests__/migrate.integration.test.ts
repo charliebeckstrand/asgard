@@ -147,15 +147,16 @@ describeWithDocker('getMigrationStatus (integration)', () => {
 
 		await writeFile(join(tmp.path, '0001_applied.sql'), 'CREATE TABLE status_test (id INT)')
 
-		await writeFile(
-			join(tmp.path, '0002_pending.sql'),
-			'ALTER TABLE status_test ADD COLUMN val TEXT',
-		)
-
 		const db = createDatabaseClient(pool)
 
 		// Apply only the first migration
 		await runMigrations(db, tmp.path)
+
+		// Add a second migration file after the first run
+		await writeFile(
+			join(tmp.path, '0002_pending.sql'),
+			'ALTER TABLE status_test ADD COLUMN val TEXT',
+		)
 
 		const status = await getMigrationStatus(db, tmp.path)
 
