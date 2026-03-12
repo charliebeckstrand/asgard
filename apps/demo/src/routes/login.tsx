@@ -53,13 +53,13 @@ login.post('/login', async (c) => {
 		return c.redirect('/login?error=invalid_credentials')
 	}
 
-	const setCookie = res.headers.get('set-cookie')
+	const headers = new Headers({ Location: '/' })
 
-	if (setCookie) {
-		c.header('set-cookie', setCookie)
+	for (const cookie of res.headers.getSetCookie()) {
+		headers.append('set-cookie', cookie)
 	}
 
-	return c.redirect('/')
+	return new Response(null, { status: 302, headers })
 })
 
 export { login }

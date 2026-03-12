@@ -47,9 +47,13 @@ export function createDemoApp() {
 			},
 		}).catch(() => {})
 
-		c.header('set-cookie', 'bifrost_session=; Path=/; Max-Age=0')
-
-		return c.redirect('/login')
+		return new Response(null, {
+			status: 302,
+			headers: new Headers([
+				['Location', '/login'],
+				['Set-Cookie', 'bifrost_session=; Path=/; Max-Age=0'],
+			]),
+		})
 	})
 
 	return app
