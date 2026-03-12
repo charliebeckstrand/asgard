@@ -129,13 +129,17 @@ export function createRenderer(): Renderer {
 		const icon = allReady ? `${FG.yellow}⚡${RESET}` : `${FG.gray}◦${RESET}`
 
 		const title = `${icon} ${BOLD}Yggdrasil${RESET}`
-		const hints = `${DIM}↑/↓ select  q quit${RESET}`
-
+		const hintsText = '↑/↓ select  q quit'
 		const titleVisual = 1 + stripAnsi(title).length // leading space + title
-		const hintsVisual = stripAnsi(hints).length
-		const titlePad = Math.max(0, cols - titleVisual - hintsVisual)
+		const remaining = cols - titleVisual
 
-		lines.push(` ${title}${' '.repeat(titlePad)}${hints}`)
+		if (remaining >= hintsText.length + 2) {
+			const titlePad = remaining - hintsText.length
+
+			lines.push(` ${title}${' '.repeat(titlePad)}${DIM}${hintsText}${RESET}`)
+		} else {
+			lines.push(` ${title}`)
+		}
 		lines.push(`${DIM}${'─'.repeat(cols)}${RESET}`)
 
 		// Table header
