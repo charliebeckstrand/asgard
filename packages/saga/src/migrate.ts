@@ -94,9 +94,9 @@ export async function getMigrationStatus(db: Db, migrationsDir: string): Promise
 	`)
 
 	const appliedNames = new Set(appliedRows.map((r) => r.name))
-	
+
 	const files = await readMigrationFiles(migrationsDir)
-	
+
 	const pending = files.filter((f) => !appliedNames.has(f))
 
 	return { applied: appliedRows, pending }

@@ -15,11 +15,12 @@ jobs:
             rune: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.rune == 'true' }}
             skuld: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' }}
             vali: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.vali == 'true' }}
-            bifrost: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' || steps.filter.outputs.bifrost == 'true' || steps.filter.outputs.heimdall == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.vidar == 'true' }}
+            grid: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.grid == 'true' || steps.filter.outputs.skuld == 'true' }}
+            bifrost: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' || steps.filter.outputs.grid == 'true' || steps.filter.outputs.bifrost == 'true' || steps.filter.outputs.heimdall == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.vidar == 'true' }}
             heimdall: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' || steps.filter.outputs.heimdall == 'true' }}
             saga: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.vali == 'true' }}
-            hermes: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.hermes == 'true' }}
-            vidar: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' || steps.filter.outputs.vidar == 'true' || steps.filter.outputs.saga == 'true' }}
+            hermes: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.grid == 'true' || steps.filter.outputs.hermes == 'true' }}
+            vidar: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' || steps.filter.outputs.grid == 'true' || steps.filter.outputs.vidar == 'true' || steps.filter.outputs.saga == 'true' }}
         steps:
             - uses: actions/checkout@v6
               with:
@@ -45,6 +46,8 @@ jobs:
                         - 'packages/saga/**'
                       vali:
                         - 'packages/vali/**'
+                      grid:
+                        - 'packages/grid/**'
                       hermes:
                         - 'services/hermes/**'
                       vidar:
@@ -106,6 +109,25 @@ jobs:
 
             - run: pnpm install --frozen-lockfile
             - run: pnpm turbo run lint test build --filter=vali
+
+    grid:
+        name: Grid (Middleware)
+        needs: changes
+        if: needs.changes.outputs.grid == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - uses: pnpm/action-setup@v4
+
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
+
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm turbo run lint test build --filter=grid
 
     bifrost:
         name: Bifrost (API)
