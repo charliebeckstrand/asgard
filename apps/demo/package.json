@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"env:init": "tsx ../../scripts/init-env.ts --services=demo",
-		"dev": "tailwindcss -i src/styles.css -o dist/styles.css --watch &  tsx watch --env-file=.env src/index.ts",
+		"dev": "tailwindcss -i src/styles.css -o dist/styles.css && tailwindcss -i src/styles.css -o dist/styles.css --watch & tsx watch --env-file=.env src/index.ts",
 		"build": "tsup && tailwindcss -i src/styles.css -o dist/styles.css --minify",
 		"start": "node dist/index.js",
 		"lint": "biome check --config-path=../.. .",
