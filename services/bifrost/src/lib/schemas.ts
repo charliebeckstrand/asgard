@@ -1,1 +1,1 @@
-export { ErrorSchema, MessageSchema } from 'skuld'
+export { ErrorSchema } from 'skuld'

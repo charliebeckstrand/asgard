@@ -7,31 +7,21 @@ import type { VidarApp } from './app.js'
 import { type CircuitBreaker, createCircuitBreaker } from './circuit-breaker.js'
 import { createTokenBucket } from './rate-limit.js'
 
-export type {
-	CircuitBreaker,
-	CircuitBreakerOptions,
-	CircuitBreakerStatus,
-} from './circuit-breaker.js'
-export { createCircuitBreaker } from './circuit-breaker.js'
-
-export interface VidarClientConfig {
+interface VidarClientConfig {
 	vidarUrl?: string
 	vidarApiKey?: string
 }
 
-export interface BanCheckResult {
+interface BanCheckResult {
 	banned: boolean
 	reason?: string
 	expires_at?: string
 }
 
-let _config: VidarClientConfig = {}
 let _client: ReturnType<typeof hc<VidarApp>> | null = null
 let _breaker: CircuitBreaker | null = null
 
 export function configure(config: VidarClientConfig): void {
-	_config = { ...config }
-
 	_client = config.vidarUrl
 		? hc<VidarApp>(config.vidarUrl, {
 				headers: config.vidarApiKey ? { Authorization: `Bearer ${config.vidarApiKey}` } : undefined,
@@ -41,20 +31,7 @@ export function configure(config: VidarClientConfig): void {
 	_breaker = config.vidarUrl ? createCircuitBreaker('vidar') : null
 }
 
-/**
- * Get the circuit breaker status for monitoring/health checks.
- * Returns null if Vidar is not configured.
- */
-export function getCircuitBreakerStatus() {
-	return _breaker?.getStatus() ?? null
-}
-
-/**
- * Check if an IP is banned by Vidar.
- * Returns null if Vidar is not configured or unreachable.
- * Uses circuit breaker to prevent cascading failures.
- */
-export async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
+async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
 	const client = _client
 	const breaker = _breaker
 
@@ -78,20 +55,6 @@ export async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
 	} catch {
 		// Vidar is unreachable or circuit is open — fail open so auth still works
 		return null
-	}
-}
-
-export function checkBan(): MiddlewareHandler {
-	return async (c, next) => {
-		const ip = getIpAddress(c)
-
-		const result = await checkIpBan(ip)
-
-		if (result?.banned) {
-			throw new HTTPException(403, { message: 'Unauthorized' })
-		}
-
-		await next()
 	}
 }
 

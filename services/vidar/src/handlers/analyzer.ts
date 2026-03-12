@@ -1,10 +1,3 @@
-/**
- * AI Analyzer interface for threat analysis.
- *
- * This is a placeholder — implement a concrete provider (e.g. Anthropic, OpenAI)
- * by implementing the Analyzer interface and registering it via setAnalyzer().
- */
-
 export interface AnalysisResult {
 	status: string
 	message: string
@@ -25,11 +18,7 @@ class StubAnalyzer implements Analyzer {
 	}
 }
 
-let currentAnalyzer: Analyzer = new StubAnalyzer()
-
-export function setAnalyzer(analyzer: Analyzer): void {
-	currentAnalyzer = analyzer
-}
+const currentAnalyzer: Analyzer = new StubAnalyzer()
 
 export function getAnalyzer(): Analyzer {
 	return currentAnalyzer

@@ -1,3 +1,2 @@
-export { createBearerAuth, timingSafeCompare } from './api-key.js'
-export { errorHandler, notFoundHandler } from './errors.js'
+export { createBearerAuth } from './api-key.js'
 export { getIpAddress } from './middleware.js'

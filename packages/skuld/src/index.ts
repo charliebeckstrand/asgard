@@ -1,5 +1,3 @@
-// Primitives — reusable atomic schema building blocks
-
 // Composites — structured schemas and schema factories
 export {
 	createListSchema,
@@ -9,6 +7,7 @@ export {
 	MessageSchema,
 	PaginationSchema,
 } from './composites.js'
+
 // Enums — shared status and category enumerations
 export {
 	CircuitBreakerStateSchema,
@@ -18,16 +17,9 @@ export {
 	NodeEnvSchema,
 	ServiceReachabilitySchema,
 } from './enums.js'
-// Event bus — publish/subscribe domain schemas
+
+// Primitives — reusable atomic schema building blocks
 export {
-	CreateSubscriptionSchema,
-	EventSchema,
-	PublishEventSchema,
-	SubscriptionListSchema,
-	SubscriptionSchema,
-} from './event-bus.js'
-export {
-	CallbackUrlSchema,
 	DetailsSchema,
 	EmailSchema,
 	EventTypeSchema,
@@ -37,12 +29,9 @@ export {
 	MetadataSchema,
 	OptionalTimestampSchema,
 	PasswordSchema,
-	PayloadSchema,
 	ServiceNameSchema,
 	StringIdSchema,
 	TimestampSchema,
-	TopicFilterSchema,
-	TopicSchema,
 	UrlSchema,
 } from './primitives.js'
 

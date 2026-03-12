@@ -9,5 +9,3 @@ export const environment = createEnvironment({
 		.default('false')
 		.transform((v) => v === 'true'),
 })
-
-export type Environment = ReturnType<typeof environment>

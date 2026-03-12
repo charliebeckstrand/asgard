@@ -1,1 +1,1 @@
-export { createEnvironment, getManifestPort } from './environment.js'
+export { createEnvironment } from './environment.js'

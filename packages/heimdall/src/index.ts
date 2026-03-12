@@ -4,7 +4,6 @@ export {
 	authenticateUser,
 	refreshTokenPair,
 	registerUser,
-	verifyAccessToken,
 } from './auth.js'
 export type { Config } from './config.js'
 export { configure, getConfig } from './config.js'

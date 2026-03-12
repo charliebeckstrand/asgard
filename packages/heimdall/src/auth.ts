@@ -90,30 +90,6 @@ export async function registerUser(email: string, password: string, ip?: string)
 	}
 }
 
-export async function verifyAccessToken(token: string): Promise<UserRow> {
-	let claims: Awaited<ReturnType<typeof verifyToken>>
-
-	try {
-		claims = await verifyToken(token)
-	} catch {
-		throw new AuthError('invalid_token', 'Invalid or expired token')
-	}
-
-	if (claims.type !== 'access') {
-		throw new AuthError('invalid_token', 'Invalid token type')
-	}
-
-	const { userRepository } = getConfig()
-
-	const user = await userRepository.getUserById(claims.sub)
-
-	if (!user || !user.is_active) {
-		throw new AuthError('invalid_token', 'Invalid or expired token')
-	}
-
-	return user
-}
-
 export async function refreshTokenPair(refreshToken: string): Promise<TokenPair> {
 	let claims: Awaited<ReturnType<typeof verifyToken>>
 

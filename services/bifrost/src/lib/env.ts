@@ -10,5 +10,3 @@ export const environment = createEnvironment({
 	HEIMDALL_API_KEY: z.string().optional(),
 	CORS_ORIGIN: z.string().default('http://localhost:3000'),
 })
-
-export type Environment = ReturnType<typeof environment>

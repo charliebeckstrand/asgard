@@ -1,5 +1,4 @@
 import {
-	CallbackUrlSchema,
 	DetailsSchema,
 	EmailSchema,
 	EventTypeSchema,
@@ -8,14 +7,12 @@ import {
 	LoginPasswordSchema,
 	MetadataSchema,
 	PasswordSchema,
-	PayloadSchema,
 	ServiceNameSchema,
 	StringIdSchema,
 	TimestampSchema,
-	TopicFilterSchema,
-	TopicSchema,
 	UrlSchema,
 } from '../index.js'
+import { CallbackUrlSchema, PayloadSchema, TopicFilterSchema, TopicSchema } from '../primitives.js'
 
 describe('IdSchema', () => {
 	it('accepts valid UUIDs', () => {
