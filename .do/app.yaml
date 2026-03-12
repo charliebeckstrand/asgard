@@ -84,10 +84,10 @@ services:
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-0.5gb
     routes:
-      - path: /rpc
+      - path: /msg
         preserve_path_prefix: true
     health_check:
-      http_path: /rpc/health
+      http_path: /msg/health
       initial_delay_seconds: 10
       period_seconds: 10
     envs:
