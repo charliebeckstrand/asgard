@@ -1,22 +1,21 @@
+import { EventEmitter } from 'node:events'
 import { createMessageId, getEmitter } from '@/lib/emitter'
 
 describe('getEmitter', () => {
 	it('returns an EventEmitter instance', () => {
 		const emitter = getEmitter()
 
-		expect(emitter).toBeDefined()
-		expect(emitter.on).toBeTypeOf('function')
-		expect(emitter.emit).toBeTypeOf('function')
+		expect(emitter).toBeInstanceOf(EventEmitter)
 	})
 
-	it('returns the same emitter instance', () => {
-		const emitter1 = getEmitter()
-		const emitter2 = getEmitter()
+	it('returns the same instance on repeated calls', () => {
+		const first = getEmitter()
+		const second = getEmitter()
 
-		expect(emitter1).toBe(emitter2)
+		expect(first).toBe(second)
 	})
 
-	it('supports up to 100 listeners', () => {
+	it('has maxListeners set to 100', () => {
 		const emitter = getEmitter()
 
 		expect(emitter.getMaxListeners()).toBe(100)
@@ -24,28 +23,30 @@ describe('getEmitter', () => {
 })
 
 describe('createMessageId', () => {
-	it('returns a string starting with msg_', () => {
+	it('returns string starting with msg_', () => {
 		const id = createMessageId()
 
 		expect(id).toMatch(/^msg_/)
 	})
 
-	it('generates unique IDs', () => {
+	it('returns unique IDs on successive calls', () => {
 		const id1 = createMessageId()
 		const id2 = createMessageId()
 
 		expect(id1).not.toBe(id2)
 	})
 
-	it('includes a timestamp component', () => {
+	it('includes timestamp component', () => {
+		const before = Date.now()
+
 		const id = createMessageId()
 
+		const after = Date.now()
+
 		const parts = id.split('_')
-
-		expect(parts.length).toBeGreaterThanOrEqual(3)
-
 		const timestamp = Number(parts[1])
 
-		expect(timestamp).toBeGreaterThan(0)
+		expect(timestamp).toBeGreaterThanOrEqual(before)
+		expect(timestamp).toBeLessThanOrEqual(after)
 	})
 })

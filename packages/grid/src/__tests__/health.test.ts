@@ -1,18 +1,20 @@
 import { createHealthRoute } from '../health.js'
 
+type HealthResponse = {
+	status: string
+	version: string
+	uptime: number
+}
+
 describe('createHealthRoute', () => {
-	it('returns healthy status with version and uptime', async () => {
+	it('returns 200 with healthy status', async () => {
 		const app = createHealthRoute()
 
 		const res = await app.request('/health')
 
 		expect(res.status).toBe(200)
 
-		const body = (await res.json()) as {
-			status: string
-			version: string
-			uptime: number
-		}
+		const body = (await res.json()) as HealthResponse
 
 		expect(body.status).toBe('healthy')
 		expect(body.version).toBe('0.1.0')
@@ -20,30 +22,28 @@ describe('createHealthRoute', () => {
 		expect(body.uptime).toBeGreaterThanOrEqual(0)
 	})
 
-	it('accepts a custom description', async () => {
+	it('includes extra fields from custom check function', async () => {
+		const app = createHealthRoute({
+			check: async () => ({ db_latency_ms: 5, subscribers: 42 }),
+		})
+
+		const res = await app.request('/health')
+
+		const body = (await res.json()) as HealthResponse & {
+			db_latency_ms: number
+			subscribers: number
+		}
+
+		expect(body.status).toBe('healthy')
+		expect(body.db_latency_ms).toBe(5)
+		expect(body.subscribers).toBe(42)
+	})
+
+	it('accepts custom description', async () => {
 		const app = createHealthRoute({ description: 'Custom health check' })
 
 		const res = await app.request('/health')
 
 		expect(res.status).toBe(200)
-	})
-
-	it('merges custom check data into the response', async () => {
-		const app = createHealthRoute({
-			check: async () => ({ database: 'connected', subscribers: 42 }),
-		})
-
-		const res = await app.request('/health')
-
-		expect(res.status).toBe(200)
-
-		const body = (await res.json()) as {
-			status: string
-			database: string
-			subscribers: number
-		}
-
-		expect(body.database).toBe('connected')
-		expect(body.subscribers).toBe(42)
 	})
 })

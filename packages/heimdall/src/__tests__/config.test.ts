@@ -1,4 +1,3 @@
-import { configure, getConfig } from '../config.js'
 import type { UserRepository } from '../types.js'
 
 const mockRepo: UserRepository = {
@@ -7,45 +6,57 @@ const mockRepo: UserRepository = {
 	getUserById: vi.fn(),
 }
 
-const validKey = 'a'.repeat(32)
-
-describe('configure', () => {
-	it('stores configuration when secretKey is valid', () => {
-		configure({ userRepository: mockRepo, secretKey: validKey })
-
-		const config = getConfig()
-
-		expect(config.secretKey).toBe(validKey)
-		expect(config.userRepository).toBe(mockRepo)
+describe('heimdall config', () => {
+	beforeEach(() => {
+		vi.resetModules()
 	})
 
-	it('throws when secretKey is too short', () => {
-		expect(() => configure({ userRepository: mockRepo, secretKey: 'short' })).toThrow(
-			'at least 32 characters',
-		)
+	it('getConfig throws before configure is called', async () => {
+		const { getConfig } = await import('../config.js')
+
+		expect(() => getConfig()).toThrow('Heimdall not configured. Call configure() first.')
 	})
 
-	it('accepts optional apiKey and onSecurityEvent', () => {
-		const onSecurityEvent = vi.fn()
+	it('configure succeeds with valid secretKey', async () => {
+		const { configure, getConfig } = await import('../config.js')
 
 		configure({
 			userRepository: mockRepo,
-			secretKey: validKey,
+			secretKey: 'a'.repeat(32),
+		})
+
+		const config = getConfig()
+
+		expect(config.secretKey).toBe('a'.repeat(32))
+		expect(config.userRepository).toBe(mockRepo)
+	})
+
+	it('configure throws if secretKey is too short', async () => {
+		const { configure } = await import('../config.js')
+
+		expect(() =>
+			configure({
+				userRepository: mockRepo,
+				secretKey: 'short',
+			}),
+		).toThrow('Heimdall secretKey must be at least 32 characters')
+	})
+
+	it('configure accepts optional fields', async () => {
+		const { configure, getConfig } = await import('../config.js')
+
+		const onEvent = vi.fn()
+
+		configure({
+			userRepository: mockRepo,
+			secretKey: 'a'.repeat(32),
 			apiKey: 'test-api-key',
-			onSecurityEvent,
+			onSecurityEvent: onEvent,
 		})
 
 		const config = getConfig()
 
 		expect(config.apiKey).toBe('test-api-key')
-		expect(config.onSecurityEvent).toBe(onSecurityEvent)
-	})
-})
-
-describe('getConfig', () => {
-	it('throws when not configured', () => {
-		// Reset by importing fresh — we need to test the unconfigured state
-		// Since config is module-level state, we test this by verifying the error message pattern
-		expect(() => getConfig()).not.toThrow()
+		expect(config.onSecurityEvent).toBe(onEvent)
 	})
 })

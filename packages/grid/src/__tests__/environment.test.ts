@@ -2,34 +2,28 @@ import { z } from 'zod'
 import { createEnvironment, getManifestPort } from '../environment.js'
 
 describe('getManifestPort', () => {
-	it('throws when manifest.json is not found in packages', () => {
+	it('throws when manifest.json is not found', () => {
+		const original = process.cwd
+
+		process.cwd = () => '/'
+
 		expect(() => getManifestPort()).toThrow('manifest.json not found')
+
+		process.cwd = original
 	})
 })
 
 describe('createEnvironment', () => {
-	it('returns a function that parses base environment', () => {
+	it('returns parsed env with defaults', () => {
 		vi.stubEnv('PORT', '4000')
 		vi.stubEnv('NODE_ENV', 'test')
 
-		const env = createEnvironment()
+		const environment = createEnvironment()
 
-		const result = env()
+		const env = environment()
 
-		expect(result.PORT).toBe(4000)
-		expect(result.NODE_ENV).toBe('test')
-
-		vi.unstubAllEnvs()
-	})
-
-	it('coerces PORT from string to number', () => {
-		vi.stubEnv('PORT', '9999')
-
-		const env = createEnvironment()
-
-		expect(env().PORT).toBe(9999)
-
-		vi.unstubAllEnvs()
+		expect(env.PORT).toBe(4000)
+		expect(env.NODE_ENV).toBe('test')
 	})
 
 	it('defaults NODE_ENV to development', () => {
@@ -40,39 +34,31 @@ describe('createEnvironment', () => {
 		const env = createEnvironment()
 
 		expect(env().NODE_ENV).toBe('development')
-
-		vi.unstubAllEnvs()
 	})
 
-	it('caches the result after first call', () => {
-		vi.stubEnv('PORT', '3000')
+	it('caches result on subsequent calls', () => {
+		vi.stubEnv('PORT', '4000')
 		vi.stubEnv('NODE_ENV', 'test')
 
-		const env = createEnvironment()
+		const environment = createEnvironment()
 
-		const first = env()
-		const second = env()
+		const first = environment()
+		const second = environment()
 
 		expect(first).toBe(second)
-
-		vi.unstubAllEnvs()
 	})
 
 	it('extends with extra Zod schema fields', () => {
-		vi.stubEnv('PORT', '3000')
+		vi.stubEnv('PORT', '4000')
 		vi.stubEnv('NODE_ENV', 'test')
-		vi.stubEnv('DATABASE_URL', 'postgres://localhost:5432/test')
+		vi.stubEnv('DATABASE_URL', 'postgres://localhost/test')
 
-		const env = createEnvironment({
-			DATABASE_URL: z.string(),
-		})
+		const environment = createEnvironment({ DATABASE_URL: z.string() })
 
-		const result = env()
+		const env = environment()
 
-		expect(result.DATABASE_URL).toBe('postgres://localhost:5432/test')
-		expect(result.PORT).toBe(3000)
-
-		vi.unstubAllEnvs()
+		expect(env.DATABASE_URL).toBe('postgres://localhost/test')
+		expect(env.PORT).toBe(4000)
 	})
 
 	it('treats empty strings as undefined for optional fields', () => {
@@ -87,24 +73,31 @@ describe('createEnvironment', () => {
 		const result = env()
 
 		expect(result.OPTIONAL_VAR).toBeUndefined()
-
-		vi.unstubAllEnvs()
 	})
 
-	it('exits process on invalid environment', () => {
-		vi.stubEnv('PORT', '3000')
-		vi.stubEnv('NODE_ENV', 'invalid-value')
+	it('filters empty string env vars', () => {
+		vi.stubEnv('PORT', '4000')
+		vi.stubEnv('NODE_ENV', '')
 
-		const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
+		const environment = createEnvironment()
 
-		const env = createEnvironment()
+		const env = environment()
 
-		env()
+		expect(env.NODE_ENV).toBe('development')
+	})
 
-		expect(exitSpy).toHaveBeenCalledWith(1)
+	it('calls process.exit on invalid env', () => {
+		vi.stubEnv('PORT', 'not-a-number')
+		vi.stubEnv('NODE_ENV', 'invalid')
 
-		exitSpy.mockRestore()
+		const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
 
-		vi.unstubAllEnvs()
+		const environment = createEnvironment()
+
+		environment()
+
+		expect(mockExit).toHaveBeenCalledWith(1)
+
+		mockExit.mockRestore()
 	})
 })

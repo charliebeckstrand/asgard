@@ -2,12 +2,12 @@ import { Hono } from 'hono'
 import { createBearerAuth, timingSafeCompare } from '../api-key.js'
 
 describe('timingSafeCompare', () => {
-	it('returns true for identical strings', () => {
-		expect(timingSafeCompare('hello', 'hello')).toBe(true)
+	it('returns true for matching strings', () => {
+		expect(timingSafeCompare('secret-token', 'secret-token')).toBe(true)
 	})
 
-	it('returns false for different strings', () => {
-		expect(timingSafeCompare('hello', 'world')).toBe(false)
+	it('returns false for different strings of same length', () => {
+		expect(timingSafeCompare('secret-token', 'wrong!-token')).toBe(false)
 	})
 
 	it('returns false for different lengths', () => {
@@ -20,67 +20,55 @@ describe('timingSafeCompare', () => {
 })
 
 describe('createBearerAuth', () => {
-	it('allows requests with the correct token', async () => {
+	const TOKEN = 'my-secret-api-key'
+
+	function buildApp(getToken: () => string | undefined) {
 		const app = new Hono()
 
-		app.use(
-			'*',
-			createBearerAuth(() => 'secret-token'),
-		)
+		app.use('*', createBearerAuth(getToken))
 
-		app.get('/', (c) => c.json({ ok: true }))
+		app.get('/protected', (c) => c.json({ ok: true }))
 
-		const res = await app.request('/', {
-			headers: { Authorization: 'Bearer secret-token' },
-		})
+		return app
+	}
 
-		expect(res.status).toBe(200)
+	it('returns 401 without Authorization header', async () => {
+		const app = buildApp(() => TOKEN)
+
+		const res = await app.request('/protected')
+
+		expect(res.status).toBe(401)
 	})
 
-	it('rejects requests with wrong token', async () => {
-		const app = new Hono()
+	it('returns 401 with wrong token', async () => {
+		const app = buildApp(() => TOKEN)
 
-		app.use(
-			'*',
-			createBearerAuth(() => 'secret-token'),
-		)
-
-		app.get('/', (c) => c.json({ ok: true }))
-
-		const res = await app.request('/', {
+		const res = await app.request('/protected', {
 			headers: { Authorization: 'Bearer wrong-token' },
 		})
 
 		expect(res.status).toBe(401)
 	})
 
-	it('rejects requests with no Authorization header', async () => {
-		const app = new Hono()
+	it('allows request with correct token', async () => {
+		const app = buildApp(() => TOKEN)
 
-		app.use(
-			'*',
-			createBearerAuth(() => 'secret-token'),
-		)
+		const res = await app.request('/protected', {
+			headers: { Authorization: `Bearer ${TOKEN}` },
+		})
 
-		app.get('/', (c) => c.json({ ok: true }))
+		expect(res.status).toBe(200)
 
-		const res = await app.request('/')
+		const body = (await res.json()) as { ok: boolean }
 
-		expect(res.status).toBe(401)
+		expect(body.ok).toBe(true)
 	})
 
-	it('rejects when token provider returns undefined', async () => {
-		const app = new Hono()
+	it('returns 401 when getToken returns undefined', async () => {
+		const app = buildApp(() => undefined)
 
-		app.use(
-			'*',
-			createBearerAuth(() => undefined),
-		)
-
-		app.get('/', (c) => c.json({ ok: true }))
-
-		const res = await app.request('/', {
-			headers: { Authorization: 'Bearer any-token' },
+		const res = await app.request('/protected', {
+			headers: { Authorization: `Bearer ${TOKEN}` },
 		})
 
 		expect(res.status).toBe(401)
