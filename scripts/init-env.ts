@@ -21,7 +21,7 @@ type Manifests = Record<string, Manifest>
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 
 const rootDir = resolve(scriptDir, '..')
-const servicesDir = resolve(rootDir, 'services')
+const serviceDirs = [resolve(rootDir, 'apps'), resolve(rootDir, 'services')]
 const secretsPath = resolve(rootDir, '.secrets.json')
 
 // --- Parse CLI args ---
@@ -44,18 +44,28 @@ const filterServices = servicesFlag?.match(/^--services=(.+)$/)?.[1].split(',')
 // --- Load manifests ---
 
 const manifests: Manifests = {}
+const manifestPaths: Record<string, string> = {}
 
-for (const entry of readdirSync(servicesDir, { withFileTypes: true })) {
-	if (!entry.isDirectory()) continue
+for (const servicesDir of serviceDirs) {
+	if (!existsSync(servicesDir)) continue
 
-	try {
-		const manifest: Manifest = JSON.parse(
-			readFileSync(resolve(servicesDir, entry.name, 'manifest.json'), 'utf-8'),
-		)
+	for (const entry of readdirSync(servicesDir, { withFileTypes: true })) {
+		if (!entry.isDirectory()) continue
 
-		manifests[manifest.name || entry.name] = manifest
-	} catch {
-		// Skip missing or malformed manifests
+		const entryDir = resolve(servicesDir, entry.name)
+
+		try {
+			const manifest: Manifest = JSON.parse(
+				readFileSync(resolve(entryDir, 'manifest.json'), 'utf-8'),
+			)
+
+			const name = manifest.name || entry.name
+
+			manifests[name] = manifest
+			manifestPaths[name] = entryDir
+		} catch {
+			// Skip missing or malformed manifests
+		}
 	}
 }
 
@@ -171,9 +181,9 @@ for (const [serviceName, manifest] of Object.entries(manifests)) {
 for (const [serviceName, vars] of Object.entries(environments)) {
 	if (filterServices && !filterServices.includes(serviceName)) continue
 
-	const serviceDir = resolve(servicesDir, serviceName)
+	const serviceDir = manifestPaths[serviceName]
 
-	if (!existsSync(serviceDir)) continue
+	if (!serviceDir || !existsSync(serviceDir)) continue
 
 	const content = Object.entries(vars)
 		.map(([key, value]) => `${key}=${value}`)

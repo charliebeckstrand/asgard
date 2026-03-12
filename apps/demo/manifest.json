@@ -1,0 +1,8 @@
+{
+	"name": "demo",
+	"port": 3000,
+	"vars": {
+		"BIFROST_URL": { "type": "value", "default": "http://localhost:3001" },
+		"SESSION_SECRET": { "type": "ref", "service": "bifrost", "key": "SESSION_SECRET" }
+	}
+}

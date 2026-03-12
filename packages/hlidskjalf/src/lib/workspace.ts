@@ -47,7 +47,7 @@ function getWorkspaceDeps(pkg: PackageJson): string[] {
 }
 
 export function discoverWorkspaces(root: string): WorkspaceEntry[] {
-	const dirs = ['packages', 'services']
+	const dirs = ['apps', 'packages', 'services']
 	const entries: WorkspaceEntry[] = []
 
 	for (const dir of dirs) {
