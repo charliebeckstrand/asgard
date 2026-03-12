@@ -17,7 +17,7 @@ Microservices built with TypeScript snd Hono
 | **[Heimdall](packages/heimdall)** | Authentication |
 | **[Saga](packages/saga)** | Database |
 | **[Skuld](packages/skuld)** | Schemas |
-| **[Grid](packages/grid)** | Factories/Middleware |
+| **[Grid](packages/grid)** | Middleware |
 | **[Rune](packages/rune)** | UI |
 | **[Hlidskjalf](packages/hlidskjalf)** | CLI |
 
