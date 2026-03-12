@@ -20,6 +20,9 @@ importers:
 
   packages/grid:
     dependencies:
+      '@hono/node-server':
+        specifier: ^1.19.11
+        version: 1.19.11(hono@4.12.5)
       '@hono/swagger-ui':
         specifier: ^0.6.0
         version: 0.6.0(hono@4.12.5)
