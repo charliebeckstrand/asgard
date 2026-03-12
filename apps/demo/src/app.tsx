@@ -1,3 +1,4 @@
+import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { Layout } from './layout.js'
 import { environment } from './lib/env.js'
@@ -9,6 +10,8 @@ export function createDemoApp() {
 	const env = environment()
 
 	const app = new Hono()
+
+	app.use('/styles.css', serveStatic({ root: './dist' }))
 
 	app.use('*', auth(env.SESSION_SECRET))
 

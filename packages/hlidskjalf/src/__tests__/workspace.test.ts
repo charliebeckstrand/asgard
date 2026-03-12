@@ -75,6 +75,33 @@ describe('discoverWorkspaces', () => {
 		expect(gamma?.dependencies).toEqual(['alpha', 'beta'])
 	})
 
+	it('discovers apps as app type', () => {
+		const root = createTmpWorkspace()
+
+		mkdirSync(join(root, 'apps', 'demo'), { recursive: true })
+
+		writeFileSync(
+			join(root, 'apps', 'demo', 'package.json'),
+			JSON.stringify({
+				name: 'demo',
+				scripts: { dev: 'tsx watch src/index.ts' },
+				dependencies: {},
+			}),
+		)
+
+		writeFileSync(
+			join(root, 'apps', 'demo', 'manifest.json'),
+			JSON.stringify({ name: 'demo', port: 3000 }),
+		)
+
+		const entries = discoverWorkspaces(root)
+
+		const demo = entries.find((e) => e.name === 'demo')
+
+		expect(demo?.type).toBe('app')
+		expect(demo?.port).toBe(3000)
+	})
+
 	it('skips directories without package.json', () => {
 		const root = createTmpWorkspace()
 
@@ -97,6 +124,20 @@ describe('sortByDependencyOrder', () => {
 
 		expect(sorted[0].name).toBe('pkg')
 		expect(sorted[1].name).toBe('svc')
+	})
+
+	it('sorts packages before services before apps', () => {
+		const entries: WorkspaceEntry[] = [
+			{ name: 'demo', type: 'app', path: '/demo', dependencies: [] },
+			{ name: 'svc', type: 'service', path: '/svc', dependencies: [] },
+			{ name: 'pkg', type: 'package', path: '/pkg', dependencies: [] },
+		]
+
+		const sorted = sortByDependencyOrder(entries)
+
+		expect(sorted[0].name).toBe('pkg')
+		expect(sorted[1].name).toBe('svc')
+		expect(sorted[2].name).toBe('demo')
 	})
 
 	it('sorts by dependency count within same type', () => {

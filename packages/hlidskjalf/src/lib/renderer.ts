@@ -153,7 +153,9 @@ export function createRenderer(): Renderer {
 			const nameColor = isSelected ? `${FG.cyan}${BOLD}` : ''
 			const nameReset = isSelected ? RESET : ''
 
-			const typeLabel = proc.entry.type === 'service' ? 'svc' : 'pkg'
+			const typeLabels = { package: 'pkg', service: 'svc', app: 'app' } as const
+
+			const typeLabel = typeLabels[proc.entry.type]
 
 			lines.push(
 				`${arrow}${nameColor}${pad(proc.entry.name, nameWidth)}${nameReset}` +

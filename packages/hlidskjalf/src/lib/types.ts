@@ -1,4 +1,4 @@
-export type WorkspaceType = 'package' | 'service'
+export type WorkspaceType = 'package' | 'app' | 'service'
 
 export type ProcessStatus = 'pending' | 'building' | 'watching' | 'ready' | 'error' | 'stopped'
 

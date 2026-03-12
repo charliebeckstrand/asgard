@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 
 import type { WorkspaceEntry, WorkspaceType } from './types.js'
 
@@ -22,7 +22,11 @@ function readJson<T>(path: string): T | null {
 	}
 }
 
-function classifyEntry(dir: string, pkg: PackageJson): WorkspaceType {
+const typeOrder: Record<WorkspaceType, number> = { package: 0, service: 1, app: 2 }
+
+function classifyEntry(parentDir: string, dir: string, pkg: PackageJson): WorkspaceType {
+	if (basename(parentDir) === 'apps') return 'app'
+
 	const manifest = join(dir, 'manifest.json')
 
 	if (existsSync(manifest)) return 'service'
@@ -66,7 +70,7 @@ export function discoverWorkspaces(root: string): WorkspaceEntry[] {
 			// Skip hlidskjalf itself
 			if (pkg.name === 'hlidskjalf') continue
 
-			const type = classifyEntry(entryPath, pkg)
+			const type = classifyEntry(base, entryPath, pkg)
 
 			const manifest = readJson<Manifest>(join(entryPath, 'manifest.json'))
 
@@ -84,15 +88,15 @@ export function discoverWorkspaces(root: string): WorkspaceEntry[] {
 }
 
 /**
- * Returns workspace entries sorted so packages come before services,
+ * Returns workspace entries sorted by type (packages → services → apps),
  * and within each group, entries with fewer workspace dependencies come first.
  */
 export function sortByDependencyOrder(entries: WorkspaceEntry[]): WorkspaceEntry[] {
 	const entryNames = new Set(entries.map((e) => e.name))
 
 	return [...entries].sort((a, b) => {
-		// Packages before services
-		if (a.type !== b.type) return a.type === 'package' ? -1 : 1
+		// Group by type: packages → services → apps
+		if (a.type !== b.type) return typeOrder[a.type] - typeOrder[b.type]
 
 		// Within same type, sort by number of internal deps
 		const aDeps = a.dependencies.filter((d) => entryNames.has(d)).length
@@ -104,12 +108,12 @@ export function sortByDependencyOrder(entries: WorkspaceEntry[]): WorkspaceEntry
 
 /**
  * Returns workspace entries sorted alphabetically by name,
- * with packages grouped before services.
+ * grouped by type (packages → services → apps).
  */
 export function sortAlphabetically(entries: WorkspaceEntry[]): WorkspaceEntry[] {
 	return [...entries].sort((a, b) => {
-		// Packages before services
-		if (a.type !== b.type) return a.type === 'package' ? -1 : 1
+		// Group by type: packages → services → apps
+		if (a.type !== b.type) return typeOrder[a.type] - typeOrder[b.type]
 
 		// Alphabetical within same type
 		return a.name.localeCompare(b.name)
