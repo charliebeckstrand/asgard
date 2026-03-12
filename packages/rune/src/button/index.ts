@@ -1,2 +1,2 @@
-export { Button, type ButtonProps } from './button.js'
+export { Button, type ButtonProps } from './component.js'
 export { buttonVariants } from './variants.js'
