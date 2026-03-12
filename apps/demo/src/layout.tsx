@@ -15,6 +15,8 @@ export function Layout({ title, children }: LayoutProps) {
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<title>{title ?? 'Demo'}</title>
 				<link rel="stylesheet" href={cssHref} />
+				<script defer src="/form-handler.js" />
+				<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" />
 			</head>
 
 			<body class="min-h-screen bg-white flex items-center justify-center">{children}</body>

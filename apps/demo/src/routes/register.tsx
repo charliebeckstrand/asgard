@@ -8,22 +8,25 @@ const register = new Hono()
 register.get('/register', (c) => {
 	const error = c.req.query('error')
 
+	const errorMessage =
+		error === 'password_mismatch'
+			? 'Passwords do not match.'
+			: error === 'email_exists'
+				? 'An account with that email already exists.'
+				: error
+					? 'Registration failed. Please try again.'
+					: ''
+
 	return c.html(
 		<Layout title="Create account">
-			<div class="w-full max-w-sm space-y-4">
+			<div
+				class="w-full max-w-sm space-y-4"
+				x-data={`asyncForm('${errorMessage}', '/login?registered=true')`}
+				x-on:submit="submit"
+			>
 				<h1 class="text-2xl font-semibold text-center">Create account</h1>
 
-				{error === 'password_mismatch' && (
-					<p class="text-sm text-red-600 text-center">Passwords do not match.</p>
-				)}
-
-				{error === 'email_exists' && (
-					<p class="text-sm text-red-600 text-center">An account with that email already exists.</p>
-				)}
-
-				{error && error !== 'password_mismatch' && error !== 'email_exists' && (
-					<p class="text-sm text-red-600 text-center">Registration failed. Please try again.</p>
-				)}
+				<p x-show="error" x-text="error" class="text-sm text-red-600 text-center" />
 
 				<RegisterForm action="/register" method="post" />
 
@@ -40,10 +43,15 @@ register.get('/register', (c) => {
 
 register.post('/register', async (c) => {
 	const env = environment()
+	const wantsJson = c.req.header('accept')?.includes('application/json')
 
 	const body = await c.req.parseBody()
 
 	if (body.password !== body.confirmPassword) {
+		if (wantsJson) {
+			return c.json({ error: 'password_mismatch', message: 'Passwords do not match.' }, 400)
+		}
+
 		return c.redirect('/register?error=password_mismatch')
 	}
 
@@ -60,11 +68,24 @@ register.post('/register', async (c) => {
 	if (!res.ok) {
 		const data = (await res.json().catch(() => ({}))) as { code?: string }
 
+		if (wantsJson) {
+			const message =
+				data.code === 'email_exists'
+					? 'An account with that email already exists.'
+					: 'Registration failed. Please try again.'
+
+			return c.json({ error: data.code ?? 'failed', message }, 400)
+		}
+
 		if (data.code === 'email_exists') {
 			return c.redirect('/register?error=email_exists')
 		}
 
 		return c.redirect('/register?error=failed')
+	}
+
+	if (wantsJson) {
+		return c.json({ success: true })
 	}
 
 	return c.redirect('/login?registered=true')

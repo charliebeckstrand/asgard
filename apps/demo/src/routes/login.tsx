@@ -9,9 +9,15 @@ login.get('/login', (c) => {
 	const error = c.req.query('error')
 	const registered = c.req.query('registered')
 
+	const initialError = error ? 'Invalid email or password.' : ''
+
 	return c.html(
 		<Layout title="Sign in">
-			<div class="w-full max-w-sm space-y-4">
+			<div
+				class="w-full max-w-sm space-y-4"
+				x-data={`asyncForm('${initialError}')`}
+				x-on:submit="submit"
+			>
 				<h1 class="text-2xl font-semibold text-center">Sign in</h1>
 
 				{registered && (
@@ -20,7 +26,7 @@ login.get('/login', (c) => {
 					</p>
 				)}
 
-				{error && <p class="text-sm text-red-600 text-center">Invalid email or password.</p>}
+				<p x-show="error" x-text="error" class="text-sm text-red-600 text-center" />
 
 				<LoginForm action="/login" method="post" />
 
@@ -50,6 +56,12 @@ login.post('/login', async (c) => {
 	})
 
 	if (!res.ok) {
+		const wantsJson = c.req.header('accept')?.includes('application/json')
+
+		if (wantsJson) {
+			return c.json({ error: 'invalid_credentials', message: 'Invalid email or password.' }, 401)
+		}
+
 		return c.redirect('/login?error=invalid_credentials')
 	}
 
