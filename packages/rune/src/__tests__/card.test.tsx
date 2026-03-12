@@ -5,7 +5,7 @@ describe('cardVariants', () => {
 		it('returns default padding and shadow classes', () => {
 			const classes = cardVariants()
 
-			expect(classes).toContain('p-6')
+			expect(classes).toContain('p-4')
 			expect(classes).toContain('shadow-sm')
 		})
 	})
@@ -14,27 +14,27 @@ describe('cardVariants', () => {
 		it('applies none padding', () => {
 			const classes = cardVariants({ padding: 'none' })
 
+			expect(classes).not.toContain('p-2')
 			expect(classes).not.toContain('p-4')
 			expect(classes).not.toContain('p-6')
-			expect(classes).not.toContain('p-8')
 		})
 
 		it('applies small padding', () => {
 			const classes = cardVariants({ padding: 'small' })
 
-			expect(classes).toContain('p-4')
+			expect(classes).toContain('p-2')
 		})
 
 		it('applies medium padding', () => {
 			const classes = cardVariants({ padding: 'medium' })
 
-			expect(classes).toContain('p-6')
+			expect(classes).toContain('p-4')
 		})
 
 		it('applies large padding', () => {
 			const classes = cardVariants({ padding: 'large' })
 
-			expect(classes).toContain('p-8')
+			expect(classes).toContain('p-6')
 		})
 	})
 

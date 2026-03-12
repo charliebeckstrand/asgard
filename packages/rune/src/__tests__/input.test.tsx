@@ -61,7 +61,7 @@ describe('inputVariants', () => {
 
 			expect(classes).toContain('h-10')
 			expect(classes).toContain('px-3.5')
-			expect(classes).toContain('text-sm')
+			expect(classes).toContain('text-base')
 			expect(classes).toContain('rounded-lg')
 		})
 	})

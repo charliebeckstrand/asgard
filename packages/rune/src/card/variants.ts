@@ -4,9 +4,9 @@ export const cardVariants = cva(['bg-white text-black', 'border border-gray-200'
 	variants: {
 		padding: {
 			none: '',
-			small: 'p-4',
-			medium: 'p-6',
-			large: 'p-8',
+			small: 'p-2',
+			medium: 'p-4',
+			large: 'p-6',
 		},
 
 		shadow: {

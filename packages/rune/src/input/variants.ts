@@ -23,7 +23,7 @@ export const inputVariants = cva(
 			size: {
 				small: 'h-8 px-2.5 text-xs rounded-md',
 				medium: 'h-9 px-3 text-sm rounded-md',
-				large: 'h-10 px-3.5 text-sm rounded-lg',
+				large: 'h-10 px-3.5 text-base rounded-lg',
 			},
 		},
 
