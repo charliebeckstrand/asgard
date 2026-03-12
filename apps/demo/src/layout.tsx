@@ -12,7 +12,7 @@ export function Layout({ title, children }: LayoutProps) {
 				<meta charset="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<title>{title ?? 'Demo'}</title>
-				<script src="https://cdn.tailwindcss.com" />
+				<link rel="stylesheet" href="/styles.css" />
 			</head>
 
 			<body class="min-h-screen bg-gray-50 flex items-center justify-center">{children}</body>

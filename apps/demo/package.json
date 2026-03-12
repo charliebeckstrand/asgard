@@ -5,8 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"env:init": "tsx ../../scripts/init-env.ts --services=demo",
-		"dev": "tsx watch --env-file=.env src/index.ts",
-		"build": "tsup",
+		"dev": "tailwindcss -i src/styles.css -o dist/styles.css --watch &  tsx watch --env-file=.env src/index.ts",
+		"build": "tsup && tailwindcss -i src/styles.css -o dist/styles.css --minify",
 		"start": "node dist/index.js",
 		"lint": "biome check --config-path=../.. .",
 		"lint:fix": "biome check --config-path=../.. --write .",
@@ -25,7 +25,9 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
+		"@tailwindcss/cli": "^4.1.0",
 		"@types/node": "^25.3.3",
+		"tailwindcss": "^4.1.0",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",
