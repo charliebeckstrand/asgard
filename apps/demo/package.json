@@ -6,7 +6,7 @@
 	"scripts": {
 		"env:init": "tsx ../../scripts/init-env.ts --services=demo",
 		"css": "./node_modules/.bin/tailwindcss -i src/styles.css -o dist/styles.css",
-		"css:watch": "./node_modules/.bin/tailwindcss -i src/styles.css -o dist/styles.css --watch",
+		"css:watch": "./node_modules/.bin/tailwindcss -i src/styles.css -o dist/styles.css --watch=always",
 		"css:minify": "./node_modules/.bin/tailwindcss -i src/styles.css -o dist/styles.css --minify",
 		"dev": "pnpm run css && (pnpm run css:watch & tsx watch --env-file=.env src/index.ts)",
 		"build": "tsup && pnpm run css:minify",
