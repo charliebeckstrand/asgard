@@ -2,7 +2,6 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { Layout } from './layout.js'
 import { environment } from './lib/env.js'
-import { setupLivereload } from './lib/livereload.js'
 import { auth } from './middleware/auth.js'
 import { login } from './routes/login.js'
 import { register } from './routes/register.js'
@@ -11,10 +10,6 @@ export function createDemoApp() {
 	const env = environment()
 
 	const app = new Hono()
-
-	if (process.env.NODE_ENV !== 'production') {
-		setupLivereload(app)
-	}
 
 	app.use('/styles.css', serveStatic({ root: './dist' }))
 
@@ -57,3 +52,5 @@ export function createDemoApp() {
 
 	return app
 }
+
+export default createDemoApp()

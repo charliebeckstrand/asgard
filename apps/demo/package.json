@@ -8,7 +8,7 @@
 		"css": "./node_modules/.bin/tailwindcss -i src/styles.css -o dist/styles.css",
 		"css:watch": "./node_modules/.bin/tailwindcss -i src/styles.css -o dist/styles.css --watch=always",
 		"css:minify": "./node_modules/.bin/tailwindcss -i src/styles.css -o dist/styles.css --minify",
-		"dev": "pnpm run css && (pnpm run css:watch & tsx watch --env-file=.env src/index.ts)",
+		"dev": "pnpm run css && (pnpm run css:watch & vite --host)",
 		"build": "tsup && pnpm run css:minify",
 		"start": "node dist/index.js",
 		"lint": "biome check --config-path=../.. .",
@@ -28,6 +28,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
+		"@hono/vite-dev-server": "^0.25.1",
 		"@tailwindcss/cli": "^4.1.0",
 		"@types/node": "^25.3.3",
 		"tailwindcss": "^4.1.0",
@@ -35,6 +36,7 @@
 		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",
 		"vali": "workspace:*",
+		"vite": "^8.0.0",
 		"vitest": "^4.0.18"
 	}
 }
