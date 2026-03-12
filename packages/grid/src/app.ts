@@ -14,6 +14,7 @@ interface CreateAppOptions {
 	basePath: string
 	title: string
 	description: string
+	port: number
 	cors?: Parameters<typeof cors>[0]
 }
 
@@ -32,6 +33,7 @@ export function createApp(options: CreateAppOptions) {
 	const openApiConfig = createOpenApiConfig({
 		title: options.title,
 		description: options.description,
+		port: options.port,
 	})
 
 	const setup = () => {

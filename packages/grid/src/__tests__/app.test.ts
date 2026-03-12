@@ -1,13 +1,12 @@
 import { createApp } from '../app.js'
 
-vi.stubEnv('PORT', '3000')
-
 describe('createApp', () => {
 	it('returns an app and setup function', () => {
 		const { app, setup } = createApp({
 			basePath: '/test',
 			title: 'Test Service',
 			description: 'A test service',
+			port: 3000,
 		})
 
 		expect(app).toBeDefined()
@@ -19,6 +18,7 @@ describe('createApp', () => {
 			basePath: '/test',
 			title: 'Test Service',
 			description: 'A test service',
+			port: 3000,
 		})
 
 		setup()
@@ -43,6 +43,7 @@ describe('createApp', () => {
 			basePath: '/api',
 			title: 'API',
 			description: 'Main API',
+			port: 3000,
 		})
 
 		setup()
@@ -62,6 +63,7 @@ describe('createApp', () => {
 			basePath: '/test',
 			title: 'Test',
 			description: '',
+			port: 3000,
 		})
 
 		app.get('/test/boom', () => {
@@ -84,6 +86,7 @@ describe('createApp', () => {
 			basePath: '/test',
 			title: 'Test',
 			description: '',
+			port: 3000,
 		})
 
 		setup()

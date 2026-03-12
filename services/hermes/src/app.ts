@@ -14,6 +14,7 @@ export function createHermesApp() {
 		basePath: '/msg',
 		title: 'Hermes',
 		description: 'Real-time messaging service with pub/sub and SSE streaming',
+		port: env.PORT,
 		cors: { origin: env.CORS_ORIGIN, credentials: true },
 	})
 
