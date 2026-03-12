@@ -24,9 +24,6 @@ const patterns: Array<{
 	{ regex: /process exit/, status: 'error' },
 ]
 
-// Lines to filter out (noise from build tools)
-const ignorePatterns: RegExp[] = [/^DTS\s/, /^DTS\s.*Build/, /^\s*$/]
-
 export function parseLine(line: string): ParseResult {
 	// Skip DTS lines — they shouldn't affect process status
 	if (DTS_LINE.test(line)) return {}
@@ -43,10 +40,6 @@ export function parseLine(line: string): ParseResult {
 	}
 
 	return {}
-}
-
-export function isNoiseLine(line: string): boolean {
-	return ignorePatterns.some((r) => r.test(line))
 }
 
 export function stripAnsi(text: string): string {

@@ -1,3 +1,4 @@
+import { stripAnsi } from './output-parser.js'
 import type { ProcessInfo, ProcessStatus } from './types.js'
 
 // ANSI escape codes
@@ -18,6 +19,8 @@ const FG = {
 	gray: `${ESC}[90m`,
 	white: `${ESC}[37m`,
 } as const
+
+const typeLabels = { package: 'pkg', service: 'svc', app: 'app' } as const
 
 const statusDisplay: Record<ProcessStatus, { color: string; label: string }> = {
 	pending: { color: FG.gray, label: 'pending' },
@@ -128,7 +131,9 @@ export function createRenderer(): Renderer {
 		const title = `${icon} ${BOLD}Yggdrasil${RESET}`
 		const hints = `${DIM}↑/↓ select  q quit${RESET}`
 
-		const titlePad = Math.max(0, cols - 25 - 19)
+		const titleVisual = 1 + stripAnsi(title).length // leading space + title
+		const hintsVisual = stripAnsi(hints).length
+		const titlePad = Math.max(0, cols - titleVisual - hintsVisual)
 
 		lines.push(` ${title}${' '.repeat(titlePad)}${hints}`)
 		lines.push(`${DIM}${'─'.repeat(cols)}${RESET}`)
@@ -152,8 +157,6 @@ export function createRenderer(): Renderer {
 
 			const nameColor = isSelected ? `${FG.cyan}${BOLD}` : ''
 			const nameReset = isSelected ? RESET : ''
-
-			const typeLabels = { package: 'pkg', service: 'svc', app: 'app' } as const
 
 			const typeLabel = typeLabels[proc.entry.type]
 

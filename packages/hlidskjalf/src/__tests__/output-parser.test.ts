@@ -1,4 +1,4 @@
-import { isNoiseLine, parseLine, stripAnsi } from '../lib/output-parser.js'
+import { parseLine, stripAnsi } from '../lib/output-parser.js'
 
 describe('parseLine', () => {
 	it('detects server ready with URL', () => {
@@ -63,21 +63,6 @@ describe('parseLine', () => {
 
 		expect(result.status).toBeUndefined()
 		expect(result.url).toBeUndefined()
-	})
-})
-
-describe('isNoiseLine', () => {
-	it('identifies DTS lines as noise', () => {
-		expect(isNoiseLine('DTS Build start')).toBe(true)
-	})
-
-	it('identifies empty lines as noise', () => {
-		expect(isNoiseLine('')).toBe(true)
-		expect(isNoiseLine('   ')).toBe(true)
-	})
-
-	it('does not flag regular output', () => {
-		expect(isNoiseLine('Server started')).toBe(false)
 	})
 })
 

@@ -11,7 +11,14 @@ export interface ProcessManagerEvents {
 	'all-ready': []
 }
 
-export class ProcessManager extends EventEmitter<ProcessManagerEvents> {
+export interface ProcessManager extends EventEmitter<ProcessManagerEvents> {
+	getAll(): ProcessInfo[]
+	get(name: string): ProcessInfo | undefined
+	startAll(entries: WorkspaceEntry[]): Promise<void>
+	shutdown(): Promise<void>
+}
+
+class ProcessManagerImpl extends EventEmitter<ProcessManagerEvents> {
 	private processes = new Map<string, ChildProcess>()
 
 	private infos = new Map<string, ProcessInfo>()
@@ -36,7 +43,7 @@ export class ProcessManager extends EventEmitter<ProcessManagerEvents> {
 
 	async startAll(entries: WorkspaceEntry[]): Promise<void> {
 		const packages = entries.filter((e) => e.type === 'package')
-		const services = entries.filter((e) => e.type === 'service')
+		const runnables = entries.filter((e) => e.type === 'service' || e.type === 'app')
 
 		// Initialize all process infos
 		for (const entry of entries) {
@@ -52,13 +59,13 @@ export class ProcessManager extends EventEmitter<ProcessManagerEvents> {
 			this.spawnProcess(entry)
 		}
 
-		// Wait for packages to finish initial build, then start services
+		// Wait for packages to finish initial build, then start services/apps
 		if (packages.length > 0) {
 			await this.waitForPackages(packages)
 		}
 
-		// Run env:init for services, then start them
-		for (const entry of services) {
+		// Run env:init for services/apps, then start them
+		for (const entry of runnables) {
 			await this.runEnvInit(entry)
 
 			this.spawnProcess(entry)
@@ -132,7 +139,7 @@ export class ProcessManager extends EventEmitter<ProcessManagerEvents> {
 				info.logs.push(line)
 
 				if (info.logs.length > MAX_LOG_LINES) {
-					info.logs.splice(0, info.logs.length - MAX_LOG_LINES)
+					info.logs = info.logs.slice(-MAX_LOG_LINES)
 				}
 
 				// Parse for status changes
@@ -214,5 +221,5 @@ export class ProcessManager extends EventEmitter<ProcessManagerEvents> {
 }
 
 export function createProcessManager(root: string): ProcessManager {
-	return new ProcessManager(root)
+	return new ProcessManagerImpl(root)
 }

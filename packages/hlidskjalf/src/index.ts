@@ -38,7 +38,9 @@ async function startDocker(root: string): Promise<() => Promise<void>> {
 			resolve(cleanup)
 		})
 
-		child.on('error', () => {
+		child.on('error', (err) => {
+			console.warn(`Docker compose failed to start: ${err.message}`)
+
 			resolve(async () => {})
 		})
 	})
@@ -90,8 +92,6 @@ async function createDashboard(options: DashboardOptions): Promise<void> {
 	// Apply filter if provided
 	if (options.filter) {
 		entries = filterWorkspaces(entries, options.filter)
-
-		entries = sortByDependencyOrder(entries)
 	}
 
 	if (entries.length === 0) {
@@ -114,6 +114,22 @@ async function createDashboard(options: DashboardOptions): Promise<void> {
 	let selectedIndex = 0
 
 	let shuttingDown = false
+
+	const shutdown = async () => {
+		if (shuttingDown) return
+
+		shuttingDown = true
+
+		renderer.cleanup()
+
+		await manager.shutdown()
+
+		if (dockerCleanup) {
+			await dockerCleanup()
+		}
+
+		process.exit(0)
+	}
 
 	// Render on every process update
 	const doRender = () => {
@@ -142,41 +158,13 @@ async function createDashboard(options: DashboardOptions): Promise<void> {
 
 			doRender()
 		} else if (key === 'quit') {
-			if (shuttingDown) return
-
-			shuttingDown = true
-
-			renderer.cleanup()
-
-			await manager.shutdown()
-
-			if (dockerCleanup) {
-				await dockerCleanup()
-			}
-
-			process.exit(0)
+			await shutdown()
 		}
 	})
 
 	// Handle signals
-	const handleSignal = async () => {
-		if (shuttingDown) return
-
-		shuttingDown = true
-
-		renderer.cleanup()
-
-		await manager.shutdown()
-
-		if (dockerCleanup) {
-			await dockerCleanup()
-		}
-
-		process.exit(0)
-	}
-
-	process.on('SIGINT', handleSignal)
-	process.on('SIGTERM', handleSignal)
+	process.on('SIGINT', shutdown)
+	process.on('SIGTERM', shutdown)
 
 	// Handle terminal resize
 	process.stdout.on('resize', doRender)
