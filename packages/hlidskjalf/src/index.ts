@@ -4,8 +4,13 @@ import { join } from 'node:path'
 
 import { createProcessManager } from './lib/process-manager.js'
 import { createRenderer } from './lib/renderer.js'
-import type { DashboardOptions } from './lib/types.js'
-import { discoverWorkspaces, filterWorkspaces, sortByDependencyOrder } from './lib/workspace.js'
+import type { DashboardOptions, SortOrder } from './lib/types.js'
+import {
+	discoverWorkspaces,
+	filterWorkspaces,
+	sortAlphabetically,
+	sortByDependencyOrder,
+} from './lib/workspace.js'
 
 async function startDocker(root: string): Promise<() => Promise<void>> {
 	const composePath = join(root, 'docker-compose.dev.yml')
@@ -43,6 +48,7 @@ function parseArgs(argv: string[]): DashboardOptions {
 	const root = process.cwd()
 	const docker = !argv.includes('--no-docker')
 	const filter: string[] = []
+	let order: SortOrder = 'alphabetical'
 
 	for (const arg of argv) {
 		if (arg.startsWith('--filter=')) {
@@ -51,9 +57,17 @@ function parseArgs(argv: string[]): DashboardOptions {
 
 			filter.push(value)
 		}
+
+		if (arg.startsWith('--order=')) {
+			const value = arg.slice('--order='.length)
+
+			if (value === 'run' || value === 'alphabetical') {
+				order = value
+			}
+		}
 	}
 
-	return { root, docker, filter: filter.length > 0 ? filter : undefined }
+	return { root, docker, filter: filter.length > 0 ? filter : undefined, order }
 }
 
 async function createDashboard(options: DashboardOptions): Promise<void> {
@@ -64,13 +78,12 @@ async function createDashboard(options: DashboardOptions): Promise<void> {
 		dockerCleanup = await startDocker(options.root)
 	}
 
-	// Discover and sort workspaces
-	let entries = sortByDependencyOrder(discoverWorkspaces(options.root))
+	// Discover workspaces
+	let entries = discoverWorkspaces(options.root)
 
 	// Apply filter if provided
 	if (options.filter) {
 		entries = filterWorkspaces(entries, options.filter)
-		entries = sortByDependencyOrder(entries)
 	}
 
 	if (entries.length === 0) {
@@ -78,6 +91,12 @@ async function createDashboard(options: DashboardOptions): Promise<void> {
 
 		process.exit(1)
 	}
+
+	// Sort for startup (always dependency order — packages must build first)
+	const startupEntries = sortByDependencyOrder(entries)
+
+	// Sort for display
+	const sortEntries = options.order === 'run' ? sortByDependencyOrder : sortAlphabetically
 
 	// Create process manager and renderer
 	const manager = createProcessManager(options.root)
@@ -87,10 +106,14 @@ async function createDashboard(options: DashboardOptions): Promise<void> {
 
 	// Render on every process update
 	const doRender = () => {
-		renderer.render({
-			processes: manager.getAll(),
-			selectedIndex,
+		const displayOrder = sortEntries(manager.getAll().map((p) => p.entry))
+		const processes = displayOrder.flatMap((entry) => {
+			const info = manager.get(entry.name)
+
+			return info ? [info] : []
 		})
+
+		renderer.render({ processes, selectedIndex })
 	}
 
 	manager.on('update', doRender)
@@ -150,7 +173,7 @@ async function createDashboard(options: DashboardOptions): Promise<void> {
 	// Start all processes (renders progress as they start)
 	doRender()
 
-	manager.startAll(entries)
+	manager.startAll(startupEntries)
 }
 
 // CLI entry point

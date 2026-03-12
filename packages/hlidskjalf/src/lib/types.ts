@@ -17,8 +17,11 @@ export interface ProcessInfo {
 	logs: string[]
 }
 
+export type SortOrder = 'alphabetical' | 'run'
+
 export interface DashboardOptions {
 	root: string
 	docker: boolean
 	filter?: string[]
+	order: SortOrder
 }

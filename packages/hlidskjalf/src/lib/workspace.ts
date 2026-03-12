@@ -101,6 +101,20 @@ export function sortByDependencyOrder(entries: WorkspaceEntry[]): WorkspaceEntry
 }
 
 /**
+ * Returns workspace entries sorted alphabetically by name,
+ * with packages grouped before services.
+ */
+export function sortAlphabetically(entries: WorkspaceEntry[]): WorkspaceEntry[] {
+	return [...entries].sort((a, b) => {
+		// Packages before services
+		if (a.type !== b.type) return a.type === 'package' ? -1 : 1
+
+		// Alphabetical within same type
+		return a.name.localeCompare(b.name)
+	})
+}
+
+/**
  * Filters entries by name patterns, supporting the `...` suffix
  * to include transitive dependencies (like turbo --filter=name...).
  */

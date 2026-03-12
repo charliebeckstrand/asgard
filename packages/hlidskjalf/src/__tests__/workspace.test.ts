@@ -2,7 +2,12 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { WorkspaceEntry } from '../lib/types.js'
-import { discoverWorkspaces, filterWorkspaces, sortByDependencyOrder } from '../lib/workspace.js'
+import {
+	discoverWorkspaces,
+	filterWorkspaces,
+	sortAlphabetically,
+	sortByDependencyOrder,
+} from '../lib/workspace.js'
 
 function createTmpWorkspace() {
 	const root = join(tmpdir(), `hlidskjalf-test-${Date.now()}`)
@@ -104,6 +109,33 @@ describe('sortByDependencyOrder', () => {
 
 		expect(sorted[0].name).toBe('alpha')
 		expect(sorted[1].name).toBe('beta')
+	})
+})
+
+describe('sortAlphabetically', () => {
+	it('sorts by name within type groups', () => {
+		const entries: WorkspaceEntry[] = [
+			{ name: 'zebra', type: 'package', path: '/zebra', dependencies: [] },
+			{ name: 'gamma', type: 'service', path: '/gamma', dependencies: [] },
+			{ name: 'alpha', type: 'package', path: '/alpha', dependencies: [] },
+			{ name: 'beta', type: 'service', path: '/beta', dependencies: [] },
+		]
+
+		const sorted = sortAlphabetically(entries)
+
+		expect(sorted.map((e) => e.name)).toEqual(['alpha', 'zebra', 'beta', 'gamma'])
+	})
+
+	it('keeps packages before services', () => {
+		const entries: WorkspaceEntry[] = [
+			{ name: 'svc', type: 'service', path: '/svc', dependencies: [] },
+			{ name: 'pkg', type: 'package', path: '/pkg', dependencies: [] },
+		]
+
+		const sorted = sortAlphabetically(entries)
+
+		expect(sorted[0].name).toBe('pkg')
+		expect(sorted[1].name).toBe('svc')
 	})
 })
 
