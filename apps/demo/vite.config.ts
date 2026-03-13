@@ -20,6 +20,10 @@ export default defineConfig(({ mode }) => {
 					target: env.BIFROST_URL || 'http://localhost:4000',
 					changeOrigin: true,
 				},
+				'/api': {
+					target: env.BIFROST_URL || 'http://localhost:4000',
+					changeOrigin: true,
+				},
 			},
 		},
 	}

@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -14,17 +14,17 @@ export function RegisterPage() {
 	const [password, setPassword] = useState('')
 	const [confirmPassword, setConfirmPassword] = useState('')
 
-	async function handleSubmit(e: FormEvent) {
+	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault()
 
 		await register(name, email, password, confirmPassword)
 	}
 
 	return (
-		<div className="w-full max-w-sm space-y-4">
+		<div className="w-full min-w-[18rem] space-y-4">
 			<h1 className="text-2xl font-semibold text-center">Create account</h1>
 
-			{error && <p className="text-sm text-red-600 text-center">{error}</p>}
+			{error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
 			<Card padding="medium" shadow="small">
 				<Form onSubmit={handleSubmit}>

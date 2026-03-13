@@ -1,13 +1,22 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+const errors = {
+	invalid_credentials: 'Invalid email or password.',
+	email_exists: 'An account with that email already exists.',
+	registeration_failed: 'Registration failed. Please try again.',
+	password_mismatch: 'Passwords do not match.',
+}
+
 export function useAuth() {
 	const navigate = useNavigate()
+
 	const [error, setError] = useState('')
 	const [submitting, setSubmitting] = useState(false)
 
 	async function login(email: string, password: string) {
 		setError('')
+
 		setSubmitting(true)
 
 		try {
@@ -25,9 +34,9 @@ export function useAuth() {
 
 			const data = (await res.json().catch(() => ({}))) as { message?: string }
 
-			setError(data.message || 'Invalid email or password.')
+			setError(data.message || errors.invalid_credentials)
 		} catch {
-			setError('Something went wrong. Please try again.')
+			setError(errors.registeration_failed)
 		} finally {
 			setSubmitting(false)
 		}
@@ -35,10 +44,12 @@ export function useAuth() {
 
 	async function register(name: string, email: string, password: string, confirmPassword: string) {
 		setError('')
+
 		setSubmitting(true)
 
 		if (password !== confirmPassword) {
-			setError('Passwords do not match.')
+			setError(errors.password_mismatch)
+
 			setSubmitting(false)
 
 			return
@@ -59,13 +70,9 @@ export function useAuth() {
 
 			const data = (await res.json().catch(() => ({}))) as { code?: string }
 
-			setError(
-				data.code === 'email_exists'
-					? 'An account with that email already exists.'
-					: 'Registration failed. Please try again.',
-			)
+			setError(data.code === 'email_exists' ? errors.email_exists : errors.registeration_failed)
 		} catch {
-			setError('Something went wrong. Please try again.')
+			setError(errors.registeration_failed)
 		} finally {
 			setSubmitting(false)
 		}

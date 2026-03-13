@@ -91,24 +91,6 @@ const logoutRoute = createRoute({
 	},
 })
 
-const sessionRoute = createRoute({
-	method: 'get',
-	path: '/session',
-	tags: ['Auth'],
-	summary: 'Get current session',
-	description: 'Returns session info if authenticated, 401 otherwise.',
-	responses: {
-		200: {
-			content: { 'application/json': { schema: SessionResponseSchema } },
-			description: 'Active session',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Not authenticated',
-		},
-	},
-})
-
 const registerRoute = createRoute({
 	method: 'post',
 	path: '/register',
@@ -133,6 +115,24 @@ const registerRoute = createRoute({
 		409: {
 			content: { 'application/json': { schema: ErrorSchema } },
 			description: 'Email already registered',
+		},
+	},
+})
+
+const sessionRoute = createRoute({
+	method: 'get',
+	path: '/session',
+	tags: ['Auth'],
+	summary: 'Get current session',
+	description: 'Returns session info if authenticated, 401 otherwise.',
+	responses: {
+		200: {
+			content: { 'application/json': { schema: SessionResponseSchema } },
+			description: 'Active session',
+		},
+		401: {
+			content: { 'application/json': { schema: ErrorSchema } },
+			description: 'Not authenticated',
 		},
 	},
 })

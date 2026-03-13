@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@source '../../../packages/rune/src';
+
 @theme {
     --color-black-100: #80827d;
     --color-black-200: #6b6d68;

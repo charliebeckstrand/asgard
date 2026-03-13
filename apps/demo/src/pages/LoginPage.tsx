@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -8,29 +8,31 @@ import { useAuth } from '@/hooks/useAuth'
 
 export function LoginPage() {
 	const [searchParams] = useSearchParams()
+
 	const { error, submitting, login } = useAuth()
 
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
+
 	const registered = searchParams.get('registered') === 'true'
 
-	async function handleSubmit(e: FormEvent) {
+	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault()
 
 		await login(email, password)
 	}
 
 	return (
-		<div className="w-full max-w-sm space-y-4">
+		<div className="w-full min-w-[18rem] space-y-4">
 			<h1 className="text-2xl font-semibold text-center">Sign in</h1>
 
 			{registered && (
-				<p className="text-sm text-green-600 text-center">
+				<p className="text-sm text-green-500 text-center">
 					Account created successfully. Please sign in.
 				</p>
 			)}
 
-			{error && <p className="text-sm text-red-600 text-center">{error}</p>}
+			{error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
 			<Card>
 				<Form onSubmit={handleSubmit}>
