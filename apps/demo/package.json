@@ -20,7 +20,8 @@
 	"dependencies": {
 		"react": "^19.1.0",
 		"react-dom": "^19.1.0",
-		"react-router-dom": "^7.6.0"
+		"react-router-dom": "^7.6.0",
+		"rune": "workspace:*"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",

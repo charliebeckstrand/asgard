@@ -32,6 +32,9 @@ importers:
       react-router-dom:
         specifier: ^7.6.0
         version: 7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      rune:
+        specifier: workspace:*
+        version: link:../../packages/rune
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.4.6

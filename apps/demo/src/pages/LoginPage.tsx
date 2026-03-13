@@ -2,6 +2,7 @@ import type { FormEvent } from 'react'
 
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { Button, Card, Form, Input, Label } from 'rune'
 
 import { useAuth } from '@/hooks/useAuth'
 
@@ -31,51 +32,41 @@ export function LoginPage() {
 
 			{error && <p className="text-sm text-red-600 text-center">{error}</p>}
 
-			<div className="bg-white text-black border border-gray-200 rounded-lg p-4">
-				<form className="flex flex-col w-full gap-4" onSubmit={handleSubmit}>
+			<Card>
+				<Form onSubmit={handleSubmit}>
 					<div className="flex flex-col gap-2">
-						<label htmlFor="email" className="font-medium text-gray-700 text-sm">
-							Email
-						</label>
+						<Label htmlFor="email">Email</Label>
 
-						<input
-							id="email"
-							type="email"
+						<Input
+							inputType="email"
 							name="email"
+							id="email"
 							placeholder="you@example.com"
 							required
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
-							className="flex w-full bg-white text-black outline-none placeholder:text-gray-400 transition-colors duration-150 ease-in-out border border-gray-200 hover:border-gray-300 focus:border-gray-400 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black h-9 px-3 text-sm rounded-md"
 						/>
 					</div>
 
 					<div className="flex flex-col gap-2">
-						<label htmlFor="password" className="font-medium text-gray-700 text-sm">
-							Password
-						</label>
+						<Label htmlFor="password">Password</Label>
 
-						<input
-							id="password"
-							type="password"
+						<Input
+							inputType="password"
 							name="password"
+							id="password"
 							placeholder="Password"
 							required
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
-							className="flex w-full bg-white text-black outline-none placeholder:text-gray-400 transition-colors duration-150 ease-in-out border border-gray-200 hover:border-gray-300 focus:border-gray-400 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black h-9 px-3 text-sm rounded-md"
 						/>
 					</div>
 
-					<button
-						type="submit"
-						disabled={submitting}
-						className="inline-flex items-center justify-center outline-none font-medium whitespace-nowrap transition-colors duration-150 ease-in-out focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black disabled:pointer-events-none disabled:opacity-50 bg-black-500 text-white hover:bg-black-400 active:bg-black-600 h-9 px-3.5 text-sm rounded-md"
-					>
+					<Button type="default" disabled={submitting}>
 						Sign in
-					</button>
-				</form>
-			</div>
+					</Button>
+				</Form>
+			</Card>
 
 			<p className="text-sm text-center text-gray-500">
 				Don't have an account?{' '}

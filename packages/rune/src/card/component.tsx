@@ -1,12 +1,10 @@
-import type { ReactNode } from 'react'
+import type { HTMLAttributes } from 'react'
 
 import { cardVariants } from './variants.js'
 
-export type CardProps = {
+export type CardProps = HTMLAttributes<HTMLDivElement> & {
 	padding?: 'none' | 'small' | 'medium' | 'large'
 	shadow?: 'none' | 'small' | 'medium'
-	className?: string
-	children?: ReactNode
 }
 
 export function Card({ padding, shadow, className, children, ...rest }: CardProps) {

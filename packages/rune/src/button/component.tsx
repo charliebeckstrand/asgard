@@ -1,20 +1,17 @@
-import type { ReactNode } from 'react'
+import type { ButtonHTMLAttributes } from 'react'
 
 import type { Size, Type } from '../types/index.js'
 
 import { buttonVariants } from './variants.js'
 
-export type ButtonProps = {
+export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> & {
 	type?: Type
 	size?: Size
-	disabled?: boolean
-	className?: string
-	children?: ReactNode
 }
 
-export function Button({ type, size, disabled, className, children, ...rest }: ButtonProps) {
+export function Button({ type, size, className, children, ...rest }: ButtonProps) {
 	return (
-		<button className={buttonVariants({ type, size, className })} disabled={disabled} {...rest}>
+		<button className={buttonVariants({ type, size, className })} {...rest}>
 			{children}
 		</button>
 	)

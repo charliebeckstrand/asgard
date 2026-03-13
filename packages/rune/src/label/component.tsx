@@ -1,12 +1,9 @@
-import type { ReactNode } from 'react'
+import type { LabelHTMLAttributes } from 'react'
 
 import { labelVariants } from './variants.js'
 
-export type LabelProps = {
-	htmlFor?: string
+export type LabelProps = LabelHTMLAttributes<HTMLLabelElement> & {
 	size?: 'small' | 'medium'
-	className?: string
-	children?: ReactNode
 }
 
 export function Label({ htmlFor, size, className, children, ...rest }: LabelProps) {
