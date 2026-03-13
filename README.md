@@ -1,7 +1,5 @@
 # Yggdrasil
 
-Microservices built with TypeScript and Hono
-
 ## Services
 
 | Service | Role | Port |
