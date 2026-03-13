@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: yggdrasil-postgres
+    container_name: asgard-postgres
     ports:
       - '127.0.0.1:5432:5432'
     environment:
@@ -19,7 +19,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: yggdrasil-redis
+    container_name: asgard-redis
     ports:
       - '127.0.0.1:6379:6379'
     volumes:

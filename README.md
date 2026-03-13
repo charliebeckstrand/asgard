@@ -1,4 +1,4 @@
-# Yggdrasil
+# Asgard
 
 ## Services
 
@@ -17,7 +17,6 @@
 | **[Skuld](packages/skuld)** | Schemas |
 | **[Vali](packages/vali)** | Testing |
 | **[Grid](packages/grid)** | Middleware |
-| **[Rune](packages/rune)** | UI |
 | **[Hlidskjalf](packages/hlidskjalf)** | CLI |
 
 ## Prerequisites

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Yggdrasil is a TypeScript microservices monorepo with Norse mythology naming. It contains 4 services and 3 shared packages, built on Hono, PostgreSQL, and Node.js 22.
+Asgard is a TypeScript microservices monorepo with Norse mythology naming. It contains 3 services and 7 shared packages, built on Hono, PostgreSQL, and Node.js 22.
 
 ## Architecture
 
@@ -59,7 +59,6 @@ Add a blank line between distinct statements — variable declarations, function
 // Bad
 if (pool) {
 	await closePool(pool)
-
 	pool = null
 }
 
@@ -99,7 +98,6 @@ app.use('*', logRequest())
 - **Factory functions** for initialization: `createApp()`, `createPool()`, `createEnvironment()`
 - **Middleware-driven architecture** — all services compose Hono middleware chains
 - **Schema-driven APIs** — Zod schemas paired with `@hono/zod-openapi` for every endpoint
-- **Lazy initialization** — e.g., Saga pool connects on first use
 - **Config injection** — config objects passed to package setup functions
 
 ### File Structure

@@ -60,7 +60,7 @@ export function renderLoading(message: string = 'Starting...'): void {
 	const write = (s: string) => process.stdout.write(s)
 
 	write(CURSOR_HIDE + CURSOR_HOME + CLEAR_SCREEN)
-	write(` ${FG.gray}◦${RESET} ${BOLD}Yggdrasil${RESET}\n`)
+	write(` ${FG.gray}◦${RESET} ${BOLD}Asgard${RESET}\n`)
 	write(`${DIM}${'─'.repeat(cols)}${RESET}\n`)
 	write(`\n ${DIM}${message}${RESET}\n`)
 }
@@ -128,7 +128,7 @@ export function createRenderer(): Renderer {
 
 		const icon = allReady ? `${FG.yellow}⚡${RESET}` : `${FG.gray}◦${RESET}`
 
-		const title = `${icon} ${BOLD}Yggdrasil${RESET}`
+		const title = `${icon} ${BOLD}Asgard${RESET}`
 		const hintsText = '↑/↓ select  q quit'
 		const titleVisual = 1 + stripAnsi(title).length // leading space + title
 		const remaining = cols - titleVisual

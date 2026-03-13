@@ -1,7 +1,0 @@
-{
-	"name": "demo",
-	"port": 3000,
-	"vars": {
-		"BIFROST_URL": { "type": "value", "default": "http://localhost:4000" }
-	}
-}
