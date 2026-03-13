@@ -1,0 +1,101 @@
+import type { FormEvent } from 'react'
+
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Button, Card, Form, Input, Label } from 'rune'
+
+import { useAuth } from '@/hooks/useAuth'
+
+export function RegisterPage() {
+	const { error, submitting, register } = useAuth()
+
+	const [name, setName] = useState('')
+	const [email, setEmail] = useState('')
+	const [password, setPassword] = useState('')
+	const [confirmPassword, setConfirmPassword] = useState('')
+
+	async function handleSubmit(e: FormEvent) {
+		e.preventDefault()
+
+		await register(name, email, password, confirmPassword)
+	}
+
+	return (
+		<div className="w-full max-w-sm space-y-4">
+			<h1 className="text-2xl font-semibold text-center">Create account</h1>
+
+			{error && <p className="text-sm text-red-600 text-center">{error}</p>}
+
+			<Card padding="medium" shadow="small">
+				<Form onSubmit={handleSubmit}>
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="name">Name</Label>
+
+						<Input
+							inputType="text"
+							name="name"
+							id="name"
+							placeholder="Jane Doe"
+							required
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+						/>
+					</div>
+
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="email">Email</Label>
+
+						<Input
+							inputType="email"
+							name="email"
+							id="email"
+							placeholder="you@example.com"
+							required
+							value={email}
+							onChange={(e) => setEmail(e.target.value)}
+						/>
+					</div>
+
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="password">Password</Label>
+
+						<Input
+							inputType="password"
+							name="password"
+							id="password"
+							placeholder="Password"
+							required
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+						/>
+					</div>
+
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="confirmPassword">Confirm password</Label>
+
+						<Input
+							inputType="password"
+							name="confirmPassword"
+							id="confirmPassword"
+							placeholder="Confirm password"
+							required
+							value={confirmPassword}
+							onChange={(e) => setConfirmPassword(e.target.value)}
+						/>
+					</div>
+
+					<Button type="default" disabled={submitting}>
+						Create account
+					</Button>
+				</Form>
+			</Card>
+
+			<p className="text-sm text-center text-gray-500">
+				Already have an account?{' '}
+				<Link to="/login" className="text-blue hover:underline">
+					Sign in
+				</Link>
+			</p>
+		</div>
+	)
+}

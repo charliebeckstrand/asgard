@@ -2,10 +2,11 @@
 	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
 		"baseUrl": ".",
-		"jsx": "preserve",
+		"jsx": "react-jsx",
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
 		"paths": {
 			"@/*": ["./src/*"]
 		}
 	},
-	"include": ["src", "src/env.d.ts"]
+	"include": ["src"]
 }

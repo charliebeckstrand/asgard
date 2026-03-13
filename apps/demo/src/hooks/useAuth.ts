@@ -1,14 +1,14 @@
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export function useAuth() {
-	const router = useRouter()
-	const error = ref('')
-	const submitting = ref(false)
+	const navigate = useNavigate()
+	const [error, setError] = useState('')
+	const [submitting, setSubmitting] = useState(false)
 
 	async function login(email: string, password: string) {
-		error.value = ''
-		submitting.value = true
+		setError('')
+		setSubmitting(true)
 
 		try {
 			const res = await fetch('/auth/login', {
@@ -18,28 +18,28 @@ export function useAuth() {
 			})
 
 			if (res.ok) {
-				router.push('/')
+				navigate('/')
 
 				return
 			}
 
 			const data = (await res.json().catch(() => ({}))) as { message?: string }
 
-			error.value = data.message || 'Invalid email or password.'
+			setError(data.message || 'Invalid email or password.')
 		} catch {
-			error.value = 'Something went wrong. Please try again.'
+			setError('Something went wrong. Please try again.')
 		} finally {
-			submitting.value = false
+			setSubmitting(false)
 		}
 	}
 
 	async function register(name: string, email: string, password: string, confirmPassword: string) {
-		error.value = ''
-		submitting.value = true
+		setError('')
+		setSubmitting(true)
 
 		if (password !== confirmPassword) {
-			error.value = 'Passwords do not match.'
-			submitting.value = false
+			setError('Passwords do not match.')
+			setSubmitting(false)
 
 			return
 		}
@@ -52,28 +52,29 @@ export function useAuth() {
 			})
 
 			if (res.ok) {
-				router.push('/login?registered=true')
+				navigate('/login?registered=true')
 
 				return
 			}
 
 			const data = (await res.json().catch(() => ({}))) as { code?: string }
 
-			error.value =
+			setError(
 				data.code === 'email_exists'
 					? 'An account with that email already exists.'
-					: 'Registration failed. Please try again.'
+					: 'Registration failed. Please try again.',
+			)
 		} catch {
-			error.value = 'Something went wrong. Please try again.'
+			setError('Something went wrong. Please try again.')
 		} finally {
-			submitting.value = false
+			setSubmitting(false)
 		}
 	}
 
 	async function logout() {
 		await fetch('/auth/logout', { method: 'POST' }).catch(() => {})
 
-		router.push('/login')
+		navigate('/login')
 	}
 
 	return { error, submitting, login, register, logout }

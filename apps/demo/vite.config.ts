@@ -1,13 +1,13 @@
 import { resolve } from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
-import vue from '@vitejs/plugin-vue'
+import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, '.', '')
 
 	return {
-		plugins: [vue(), tailwindcss()],
+		plugins: [react(), tailwindcss()],
 		resolve: {
 			alias: {
 				'@': resolve(__dirname, 'src'),
