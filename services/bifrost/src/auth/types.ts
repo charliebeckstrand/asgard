@@ -17,4 +17,6 @@ export interface UserRepository {
 	insertUser(id: string, email: string, hashedPassword: string): Promise<UserRow>
 	getCredentialsByEmail(email: string): Promise<CredentialsRow | null>
 	getUserById(id: string): Promise<UserRow | null>
+	updateUser(id: string, data: { email?: string; is_active?: boolean }): Promise<UserRow | null>
+	deleteUser(id: string): Promise<boolean>
 }
