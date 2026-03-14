@@ -1,10 +1,9 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import { EmailSchema, PasswordSchema } from 'skuld'
+import { EmailSchema, ErrorSchema, PasswordSchema } from 'skuld'
 import { getConfig } from '../auth/index.js'
 import { handleRegisterUser } from '../handlers/register.js'
-import { ErrorSchema } from '../lib/schemas.js'
 import { requireSession, type SessionEnv } from '../middleware/session.js'
 
 const UserIdParamSchema = z.object({

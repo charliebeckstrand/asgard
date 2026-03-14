@@ -1,12 +1,11 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import { EmailSchema, LoginPasswordSchema, PasswordSchema } from 'skuld'
+import { EmailSchema, ErrorSchema, LoginPasswordSchema, PasswordSchema } from 'skuld'
 import { authenticateUser, getConfig } from '../auth/index.js'
 import { verifyToken } from '../auth/jwt.js'
 import { handleRegisterUser } from '../handlers/register.js'
 import { environment } from '../lib/env.js'
-import { ErrorSchema } from '../lib/schemas.js'
 import {
 	clearSessionCookie,
 	type SessionData,
