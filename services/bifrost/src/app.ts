@@ -22,7 +22,14 @@ export function createBifrostApp() {
 	app.use('*', session())
 	app.use('*', csrf({ origin: env.CORS_ORIGIN }))
 
-	app.use('/auth/*', createVidar({ rate: 2, burst: 5, route: '/auth', service: 'bifrost' }))
+	app.use(
+		'/auth/login',
+		createVidar({ rate: 2, burst: 5, route: '/auth/login', service: 'bifrost' }),
+	)
+	app.use(
+		'/auth/register',
+		createVidar({ rate: 2, burst: 5, route: '/auth/register', service: 'bifrost' }),
+	)
 
 	const routes = app
 		.route('/auth', authRoutes)

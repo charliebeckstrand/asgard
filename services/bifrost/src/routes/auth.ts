@@ -210,6 +210,8 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 			return c.json({ error: 'Unauthorized', message: 'Not authenticated', statusCode: 401 }, 401)
 		}
 
+		c.header('Cache-Control', 'private, max-age=60')
+
 		return c.json(
 			{
 				authenticated: true as const,
