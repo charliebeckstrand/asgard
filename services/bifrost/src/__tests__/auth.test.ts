@@ -5,37 +5,47 @@ vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
 vi.stubEnv('SECRET_KEY', 'test-secret-key-that-is-at-least-32-chars')
 
 // Use vi.hoisted so mock values are available when vi.mock is hoisted
-const { MockAuthError, mockAuthenticateUser, mockRegisterUser } = vi.hoisted(() => {
-	const AUTH_STATUS: Record<string, number> = {
-		invalid_credentials: 401,
-		account_inactive: 403,
-		email_exists: 409,
-		invalid_token: 401,
-	}
-
-	class MockAuthError extends Error {
-		code: string
-		status: number
-		constructor(code: string, message: string) {
-			super(message)
-			this.code = code
-			this.status = AUTH_STATUS[code] ?? 500
-			this.name = 'AuthError'
+const { MockAuthError, mockAuthenticateUser, mockRegisterUser, mockVerifyToken, mockGetUserById } =
+	vi.hoisted(() => {
+		const AUTH_STATUS: Record<string, number> = {
+			invalid_credentials: 401,
+			account_inactive: 403,
+			email_exists: 409,
+			invalid_token: 401,
 		}
-	}
-	return {
-		MockAuthError,
-		mockAuthenticateUser: vi.fn(),
-		mockRegisterUser: vi.fn(),
-	}
-})
+
+		class MockAuthError extends Error {
+			code: string
+			status: number
+			constructor(code: string, message: string) {
+				super(message)
+				this.code = code
+				this.status = AUTH_STATUS[code] ?? 500
+				this.name = 'AuthError'
+			}
+		}
+		return {
+			MockAuthError,
+			mockAuthenticateUser: vi.fn(),
+			mockRegisterUser: vi.fn(),
+			mockVerifyToken: vi.fn(),
+			mockGetUserById: vi.fn(),
+		}
+	})
 
 vi.mock('../auth/index.js', () => ({
 	configure: vi.fn(),
+	getConfig: () => ({
+		userRepository: { getUserById: (...args: unknown[]) => mockGetUserById(...args) },
+	}),
 	authenticateUser: (...args: unknown[]) => mockAuthenticateUser(...args),
 	registerUser: (...args: unknown[]) => mockRegisterUser(...args),
 	AuthError: MockAuthError,
 	refreshTokenPair: vi.fn(),
+}))
+
+vi.mock('../auth/jwt.js', () => ({
+	verifyToken: (...args: unknown[]) => mockVerifyToken(...args),
 }))
 
 vi.mock('vidar/client', () => ({
@@ -66,6 +76,8 @@ describe('Auth routes', () => {
 	beforeEach(() => {
 		mockAuthenticateUser.mockReset()
 		mockRegisterUser.mockReset()
+		mockVerifyToken.mockReset()
+		mockGetUserById.mockReset()
 	})
 
 	afterEach(() => {
@@ -206,6 +218,82 @@ describe('Auth routes', () => {
 			expect(body.authenticated).toBe(true)
 
 			expect(body.expiresAt).toBeTypeOf('number')
+		})
+	})
+
+	describe('GET /auth/user', () => {
+		it('returns 401 when no session cookie exists', async () => {
+			const res = await app.request('/auth/user')
+
+			expect(res.status).toBe(401)
+		})
+
+		it('returns authenticated user details when session is valid', async () => {
+			mockAuthenticateUser.mockResolvedValueOnce({
+				access_token: 'at_test123',
+				refresh_token: 'rt_test123',
+				token_type: 'bearer',
+			})
+
+			const loginRes = await app.request('/auth/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+				body: JSON.stringify({ email: 'test@example.com', password: 'password123' }),
+			})
+
+			const cookie = getCookieFromResponse(loginRes)
+
+			expect(cookie).toBeDefined()
+
+			mockVerifyToken.mockResolvedValueOnce({ sub: 'user-123', type: 'access' })
+
+			const mockUser = {
+				id: 'user-123',
+				email: 'test@example.com',
+				is_active: true,
+				is_verified: false,
+				created_at: '2026-01-01T00:00:00.000Z',
+				updated_at: '2026-01-01T00:00:00.000Z',
+			}
+
+			mockGetUserById.mockResolvedValueOnce(mockUser)
+
+			const res = await app.request('/auth/user', {
+				headers: { Cookie: `bifrost_session=${cookie}` },
+			})
+
+			expect(res.status).toBe(200)
+
+			const body = await res.json()
+
+			expect(body).toEqual(mockUser)
+			expect(mockVerifyToken).toHaveBeenCalledWith('at_test123')
+			expect(mockGetUserById).toHaveBeenCalledWith('user-123')
+		})
+
+		it('returns 401 when user no longer exists', async () => {
+			mockAuthenticateUser.mockResolvedValueOnce({
+				access_token: 'at_test123',
+				refresh_token: 'rt_test123',
+				token_type: 'bearer',
+			})
+
+			const loginRes = await app.request('/auth/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+				body: JSON.stringify({ email: 'test@example.com', password: 'password123' }),
+			})
+
+			const cookie = getCookieFromResponse(loginRes)
+
+			mockVerifyToken.mockResolvedValueOnce({ sub: 'user-deleted', type: 'access' })
+			mockGetUserById.mockResolvedValueOnce(null)
+
+			const res = await app.request('/auth/user', {
+				headers: { Cookie: `bifrost_session=${cookie}` },
+			})
+
+			expect(res.status).toBe(401)
 		})
 	})
 
