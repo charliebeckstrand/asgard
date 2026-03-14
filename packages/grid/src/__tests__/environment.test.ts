@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { createEnvironment, getManifestPort } from '../environment.js'
+import { createEnvironment } from '../env/environment.js'
+import { getManifestPort } from '../env/manifest.js'
 
 describe('getManifestPort', () => {
 	it('throws when manifest.json is not found', () => {

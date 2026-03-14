@@ -1,22 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { z } from 'zod'
-
-export function getManifestPort(): number {
-	let dir = process.cwd()
-
-	while (!existsSync(resolve(dir, 'manifest.json'))) {
-		const parent = resolve(dir, '..')
-
-		if (parent === dir) throw new Error('manifest.json not found')
-
-		dir = parent
-	}
-
-	const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf-8'))
-
-	return manifest.port
-}
+import { getManifestPort } from './manifest.js'
 
 const baseSchema = z.object({
 	PORT: z.coerce.number().default(() => getManifestPort()),
