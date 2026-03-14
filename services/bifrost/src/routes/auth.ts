@@ -2,7 +2,8 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import { EmailSchema, LoginPasswordSchema, PasswordSchema } from 'skuld'
-import { authenticateUser } from '../auth/index.js'
+import { authenticateUser, getConfig } from '../auth/index.js'
+import { verifyToken } from '../auth/jwt.js'
 import { handleRegisterUser } from '../handlers/register.js'
 import { environment } from '../lib/env.js'
 import { ErrorSchema } from '../lib/schemas.js'
@@ -33,6 +34,17 @@ const SessionResponseSchema = z
 		expiresAt: z.number(),
 	})
 	.openapi('SessionResponse')
+
+const AuthUserResponseSchema = z
+	.object({
+		id: z.string(),
+		email: z.string(),
+		is_active: z.boolean(),
+		is_verified: z.boolean(),
+		created_at: z.string(),
+		updated_at: z.string(),
+	})
+	.openapi('AuthUserResponse')
 
 const RegisterRequestSchema = z
 	.object({
@@ -138,6 +150,24 @@ const sessionRoute = createRoute({
 	},
 })
 
+const userRoute = createRoute({
+	method: 'get',
+	path: '/user',
+	tags: ['Auth'],
+	summary: 'Get authenticated user',
+	description: "Returns the current authenticated user's details.",
+	responses: {
+		200: {
+			content: { 'application/json': { schema: AuthUserResponseSchema } },
+			description: 'Authenticated user',
+		},
+		401: {
+			content: { 'application/json': { schema: ErrorSchema } },
+			description: 'Not authenticated',
+		},
+	},
+})
+
 export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
 	.openapi(loginRoute, async (c) => {
 		const env = environment()
@@ -187,6 +217,25 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 			},
 			200,
 		)
+	})
+	.openapi(userRoute, async (c) => {
+		const session = c.get('session')
+
+		if (!session) {
+			return c.json({ error: 'Unauthorized', message: 'Not authenticated', statusCode: 401 }, 401)
+		}
+
+		const payload = await verifyToken(session.accessToken)
+
+		const { userRepository } = getConfig()
+
+		const user = await userRepository.getUserById(payload.sub as string)
+
+		if (!user) {
+			return c.json({ error: 'Unauthorized', message: 'Not authenticated', statusCode: 401 }, 401)
+		}
+
+		return c.json(user, 200)
 	})
 	.openapi(registerRoute, async (c) => {
 		const { email, password } = c.req.valid('json')
