@@ -64,8 +64,8 @@ describe('validationHook', () => {
 		const body = (await res.json()) as ErrorResponse
 
 		expect(body.error).toBe('Validation Error')
-		expect(body.message).toContain('email')
-		expect(body.message).toContain('password')
+		expect(body.message).toContain('Invalid email address')
+		expect(body.message).toContain('Password must be at least 8 characters')
 		expect(body.statusCode).toBe(400)
 	})
 

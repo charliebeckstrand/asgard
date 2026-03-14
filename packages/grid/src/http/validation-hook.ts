@@ -8,10 +8,7 @@ import type { Env } from 'hono'
 export const validationHook: Hook<any, Env, any, any> = (result, c) => {
 	if (result.success) return
 
-	const messages = result.error.issues.map((issue: { path: PropertyKey[]; message: string }) => {
-		const field = issue.path.map(String).join('.')
-		return field ? `${field}: ${issue.message}` : issue.message
-	})
+	const messages = result.error.issues.map((issue: { message: string }) => issue.message)
 
 	return c.json(
 		{
