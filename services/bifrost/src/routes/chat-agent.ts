@@ -43,6 +43,7 @@ chatAgentRoutes.openapi(agentRoute, async (c) => {
 	const { message } = c.req.valid('json')
 
 	const encoder = new EventEncoder()
+
 	const runId = randomUUID()
 	const messageId = randomUUID()
 
