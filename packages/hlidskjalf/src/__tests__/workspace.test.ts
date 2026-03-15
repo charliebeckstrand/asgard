@@ -1,13 +1,13 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { WorkspaceEntry } from '../lib/types.js'
+import type { WorkspaceEntry } from '../types.js'
 import {
 	discoverWorkspaces,
 	filterWorkspaces,
 	sortAlphabetically,
 	sortByDependencyOrder,
-} from '../lib/workspace.js'
+} from '../workspace.js'
 
 function createTmpWorkspace() {
 	const root = join(tmpdir(), `hlidskjalf-test-${Date.now()}`)

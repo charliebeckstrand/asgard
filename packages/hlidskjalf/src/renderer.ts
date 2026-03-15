@@ -1,34 +1,23 @@
-import { stripAnsi } from './output-parser.js'
-import type { ProcessInfo, ProcessStatus } from './types.js'
+import pc from 'picocolors'
 
-// ANSI escape codes
+import { stripAnsi } from './output-parser.js'
+import type { ProcessInfo, ProcessStatus, WorkspaceType } from './types.js'
+
 const ESC = '\x1b'
 const CLEAR_SCREEN = `${ESC}[2J`
 const CURSOR_HOME = `${ESC}[H`
 const CURSOR_HIDE = `${ESC}[?25l`
 const CURSOR_SHOW = `${ESC}[?25h`
-const BOLD = `${ESC}[1m`
-const DIM = `${ESC}[2m`
-const RESET = `${ESC}[0m`
 
-const FG = {
-	red: `${ESC}[31m`,
-	green: `${ESC}[32m`,
-	yellow: `${ESC}[33m`,
-	cyan: `${ESC}[36m`,
-	gray: `${ESC}[90m`,
-	white: `${ESC}[37m`,
-} as const
+const typeLabels: Record<WorkspaceType, string> = { package: 'pkg', service: 'svc', app: 'app' }
 
-const typeLabels = { package: 'pkg', service: 'svc', app: 'app' } as const
-
-const statusDisplay: Record<ProcessStatus, { color: string; label: string }> = {
-	pending: { color: FG.gray, label: 'pending' },
-	building: { color: FG.yellow, label: 'build' },
-	watching: { color: FG.green, label: 'watch' },
-	ready: { color: FG.green, label: 'ready' },
-	error: { color: FG.red, label: 'error' },
-	stopped: { color: FG.gray, label: 'stop' },
+const statusStyles: Record<ProcessStatus, { color: (s: string) => string; label: string }> = {
+	pending: { color: pc.gray, label: 'pending' },
+	building: { color: pc.yellow, label: 'build' },
+	watching: { color: pc.green, label: 'watch' },
+	ready: { color: pc.green, label: 'ready' },
+	error: { color: pc.red, label: 'error' },
+	stopped: { color: pc.gray, label: 'stop' },
 }
 
 export interface RendererState {
@@ -36,13 +25,16 @@ export interface RendererState {
 	selectedIndex: number
 }
 
-type InputCallback = (key: 'up' | 'down' | 'quit') => void
+type InputKey = 'up' | 'down' | 'quit'
+type InputCallback = (key: InputKey) => void
 
 export interface Renderer {
 	render(state: RendererState): void
 	onInput(callback: InputCallback): void
 	cleanup(): void
 }
+
+// --- Layout helpers ---
 
 function pad(str: string, len: number): string {
 	return str + ' '.repeat(Math.max(0, len - str.length))
@@ -54,176 +46,122 @@ function truncate(str: string, maxLen: number): string {
 	return `${str.slice(0, maxLen - 1)}…`
 }
 
+// --- Frame builders ---
+
+function renderHeader(cols: number, allReady: boolean): string[] {
+	const icon = allReady ? pc.yellow('⚡') : pc.gray('◦')
+	const title = `${icon} ${pc.bold('Asgard')}`
+	const hints = '↑/↓ select  q quit'
+	const titleLen = 1 + stripAnsi(title).length
+	const remaining = cols - titleLen
+
+	const header =
+		remaining >= hints.length + 2
+			? ` ${title}${' '.repeat(remaining - hints.length)}${pc.dim(hints)}`
+			: ` ${title}`
+
+	return [header, pc.dim('─'.repeat(cols))]
+}
+
+function renderTable(processes: ProcessInfo[], selectedIndex: number, nameWidth: number): string[] {
+	const header = ` ${pc.dim(pc.bold(`${pad('Name', nameWidth)}${pad('Type', 6)}${pad('Status', 12)}URL`))}`
+
+	const rows = processes.map((proc, i) => {
+		const selected = i === selectedIndex
+		const { color, label } = statusStyles[proc.status]
+		const name = proc.entry.name
+		const type = typeLabels[proc.entry.type]
+
+		return [
+			selected ? pc.cyan(`▸${pad(name, nameWidth)}`) : ` ${pad(name, nameWidth)}`,
+			pc.dim(pad(type, 6)),
+			color(`● ${pad(label, 10)}`),
+			pc.dim(proc.url ?? ''),
+		].join('')
+	})
+
+	return [header, ...rows]
+}
+
+function renderLogs(selected: ProcessInfo | undefined, logHeight: number, cols: number): string[] {
+	if (!selected) return []
+
+	const lines: string[] = [` ${pc.bold(`Logs: ${selected.entry.name}`)}`]
+
+	const visible = selected.logs.slice(-logHeight)
+
+	for (const line of visible) {
+		lines.push(` ${truncate(line, cols - 2)}`)
+	}
+
+	// Fill remaining space
+	for (let i = visible.length; i < logHeight; i++) {
+		lines.push('')
+	}
+
+	return lines
+}
+
+// --- Input handling ---
+
+function listenForKeys(callback: InputCallback): void {
+	if (!process.stdin.isTTY) return
+
+	process.stdin.setRawMode(true)
+	process.stdin.resume()
+	process.stdin.setEncoding('utf-8')
+
+	process.stdin.on('data', (data: string) => {
+		if (data === '\x03' || data === 'q') return callback('quit')
+		if (data === `${ESC}[A` || data === 'k') return callback('up')
+		if (data === `${ESC}[B` || data === 'j') return callback('down')
+	})
+}
+
+// --- Public API ---
+
 export function renderLoading(message: string = 'Starting...'): void {
 	const cols = process.stdout.columns || 80
 
-	const write = (s: string) => process.stdout.write(s)
-
-	write(CURSOR_HIDE + CURSOR_HOME + CLEAR_SCREEN)
-	write(` ${FG.gray}◦${RESET} ${BOLD}Asgard${RESET}\n`)
-	write(`${DIM}${'─'.repeat(cols)}${RESET}\n`)
-	write(`\n ${DIM}${message}${RESET}\n`)
+	process.stdout.write(CURSOR_HIDE + CURSOR_HOME + CLEAR_SCREEN)
+	process.stdout.write(` ${pc.gray('◦')} ${pc.bold('Asgard')}\n`)
+	process.stdout.write(`${pc.dim('─'.repeat(cols))}\n`)
+	process.stdout.write(`\n ${pc.dim(message)}\n`)
 }
 
 export function createRenderer(): Renderer {
-	const write = (s: string) => process.stdout.write(s)
-
-	let inputCallback: InputCallback | null = null
-
-	let stdinSetup = false
-
-	function setupInput() {
-		if (stdinSetup || !process.stdin.isTTY) return
-
-		stdinSetup = true
-
-		process.stdin.setRawMode(true)
-
-		process.stdin.resume()
-		process.stdin.setEncoding('utf-8')
-
-		process.stdin.on('data', (data: string) => {
-			if (!inputCallback) return
-
-			// Ctrl+C
-			if (data === '\x03') {
-				inputCallback('quit')
-
-				return
-			}
-
-			// q
-			if (data === 'q') {
-				inputCallback('quit')
-
-				return
-			}
-
-			// Arrow up or k
-			if (data === `${ESC}[A` || data === 'k') {
-				inputCallback('up')
-
-				return
-			}
-
-			// Arrow down or j
-			if (data === `${ESC}[B` || data === 'j') {
-				inputCallback('down')
-
-				return
-			}
-		})
-	}
-
-	function renderFrame(state: RendererState): void {
-		const { processes, selectedIndex } = state
-
-		const cols = process.stdout.columns || 80
-		const rows = process.stdout.rows || 24
-
-		const lines: string[] = []
-
-		// Header
-		const allReady = processes.every((p) => p.status === 'ready' || p.status === 'watching')
-
-		const icon = allReady ? `${FG.yellow}⚡${RESET}` : `${FG.gray}◦${RESET}`
-
-		const title = `${icon} ${BOLD}Asgard${RESET}`
-		const hintsText = '↑/↓ select  q quit'
-		const titleVisual = 1 + stripAnsi(title).length // leading space + title
-		const remaining = cols - titleVisual
-
-		if (remaining >= hintsText.length + 2) {
-			const titlePad = remaining - hintsText.length
-
-			lines.push(` ${title}${' '.repeat(titlePad)}${DIM}${hintsText}${RESET}`)
-		} else {
-			lines.push(` ${title}`)
-		}
-		lines.push(`${DIM}${'─'.repeat(cols)}${RESET}`)
-
-		// Table header
-		const nameWidth = Math.max(10, ...processes.map((p) => p.entry.name.length + 2))
-
-		lines.push(
-			` ${DIM}${BOLD}${pad('Name', nameWidth)}${pad('Type', 6)}${pad('Status', 12)}URL${RESET}`,
-		)
-
-		// Table rows
-		for (let i = 0; i < processes.length; i++) {
-			const proc = processes[i]
-
-			const isSelected = i === selectedIndex
-
-			const status = statusDisplay[proc.status]
-
-			const arrow = isSelected ? `${FG.cyan}▸${RESET}` : ' '
-
-			const nameColor = isSelected ? `${FG.cyan}${BOLD}` : ''
-			const nameReset = isSelected ? RESET : ''
-
-			const typeLabel = typeLabels[proc.entry.type]
-
-			lines.push(
-				`${arrow}${nameColor}${pad(proc.entry.name, nameWidth)}${nameReset}` +
-					`${DIM}${pad(typeLabel, 6)}${RESET}` +
-					`${status.color}● ${pad(status.label, 10)}${RESET}` +
-					`${DIM}${proc.url ?? ''}${RESET}`,
-			)
-		}
-
-		lines.push(`${DIM}${'─'.repeat(cols)}${RESET}`)
-
-		// Log panel
-		const selected = processes[selectedIndex]
-
-		const logHeaderHeight = 2
-
-		const tableHeight = lines.length
-
-		const logHeight = Math.max(3, rows - tableHeight - logHeaderHeight - 1)
-
-		if (selected) {
-			lines.push(` ${BOLD}Logs: ${selected.entry.name}${RESET}`)
-
-			const logs = selected.logs
-
-			const visibleLogs = logs.slice(-logHeight)
-
-			for (const line of visibleLogs) {
-				lines.push(` ${truncate(line, cols - 2)}`)
-			}
-
-			// Fill remaining space with empty lines
-			const remaining = logHeight - visibleLogs.length
-
-			for (let i = 0; i < remaining; i++) {
-				lines.push('')
-			}
-		}
-
-		write(CURSOR_HIDE + CURSOR_HOME + CLEAR_SCREEN)
-
-		write(lines.join('\n'))
-	}
-
 	return {
 		render(state: RendererState): void {
-			renderFrame(state)
+			const { processes, selectedIndex } = state
+			const cols = process.stdout.columns || 80
+			const rows = process.stdout.rows || 24
+
+			const allReady = processes.every((p) => p.status === 'ready' || p.status === 'watching')
+
+			const nameWidth = Math.max(10, ...processes.map((p) => p.entry.name.length + 2))
+
+			const header = renderHeader(cols, allReady)
+			const table = renderTable(processes, selectedIndex, nameWidth)
+			const divider = [pc.dim('─'.repeat(cols))]
+
+			const usedRows = header.length + table.length + divider.length + 1
+			const logHeight = Math.max(3, rows - usedRows - 1)
+			const logs = renderLogs(processes[selectedIndex], logHeight, cols)
+
+			const frame = [...header, ...table, ...divider, ...logs]
+
+			process.stdout.write(CURSOR_HIDE + CURSOR_HOME + CLEAR_SCREEN + frame.join('\n'))
 		},
 
 		onInput(callback: InputCallback): void {
-			inputCallback = callback
-
-			setupInput()
+			listenForKeys(callback)
 		},
 
 		cleanup(): void {
-			write(CURSOR_SHOW)
+			process.stdout.write(CURSOR_SHOW)
 
 			if (process.stdin.isTTY) {
 				process.stdin.setRawMode(false)
-
 				process.stdin.pause()
 			}
 		},

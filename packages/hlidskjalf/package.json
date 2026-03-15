@@ -29,5 +29,8 @@
 		"typescript": "^5.9.3",
 		"vali": "workspace:*",
 		"vitest": "^3.2.4"
+	},
+	"dependencies": {
+		"picocolors": "^1.1.1"
 	}
 }

@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process'
-import { EventEmitter } from 'node:events'
+import { EventEmitter, on } from 'node:events'
 
 import { parseLine, stripAnsi } from './output-parser.js'
 import type { ProcessInfo, ProcessStatus, WorkspaceEntry } from './types.js'
@@ -20,11 +20,8 @@ export interface ProcessManager extends EventEmitter<ProcessManagerEvents> {
 
 class ProcessManagerImpl extends EventEmitter<ProcessManagerEvents> {
 	private processes = new Map<string, ChildProcess>()
-
 	private infos = new Map<string, ProcessInfo>()
-
 	private root: string
-
 	private shuttingDown = false
 
 	constructor(root: string) {
@@ -45,26 +42,18 @@ class ProcessManagerImpl extends EventEmitter<ProcessManagerEvents> {
 		const packages = entries.filter((e) => e.type === 'package')
 		const runnables = entries.filter((e) => e.type === 'service' || e.type === 'app')
 
-		// Initialize all process infos
 		for (const entry of entries) {
-			this.infos.set(entry.name, {
-				entry,
-				status: 'pending',
-				logs: [],
-			})
+			this.infos.set(entry.name, { entry, status: 'pending', logs: [] })
 		}
 
-		// Start packages first
 		for (const entry of packages) {
 			this.spawnProcess(entry)
 		}
 
-		// Wait for packages to finish initial build, then start services/apps
 		if (packages.length > 0) {
 			await this.waitForPackages(packages)
 		}
 
-		// Run env:init for services/apps, then start them
 		for (const entry of runnables) {
 			await this.runEnvInit(entry)
 
@@ -75,28 +64,18 @@ class ProcessManagerImpl extends EventEmitter<ProcessManagerEvents> {
 	private async waitForPackages(packages: WorkspaceEntry[]): Promise<void> {
 		const names = new Set(packages.map((p) => p.name))
 
-		return new Promise((resolve) => {
-			const check = () => {
-				const allReady = [...names].every((name) => {
-					const info = this.infos.get(name)
+		const isDone = () =>
+			[...names].every((name) => {
+				const status = this.infos.get(name)?.status
 
-					return info?.status === 'watching' || info?.status === 'error'
-				})
+				return status === 'watching' || status === 'error'
+			})
 
-				if (allReady) {
-					this.off('update', listener)
+		if (isDone()) return
 
-					resolve()
-				}
-			}
-
-			const listener = () => check()
-
-			this.on('update', listener)
-
-			// Check immediately in case they're already done
-			check()
-		})
+		for await (const _ of on(this, 'update')) {
+			if (isDone()) break
+		}
 	}
 
 	private async runEnvInit(entry: WorkspaceEntry): Promise<void> {
@@ -120,40 +99,15 @@ class ProcessManagerImpl extends EventEmitter<ProcessManagerEvents> {
 		})
 
 		this.processes.set(entry.name, child)
-
 		this.updateStatus(entry.name, 'building')
 
 		const handleOutput = (data: Buffer) => {
-			const lines = data.toString().split('\n')
-
-			for (const rawLine of lines) {
+			for (const rawLine of data.toString().split('\n')) {
 				const line = rawLine.trimEnd()
 
 				if (!line) continue
 
-				const info = this.infos.get(entry.name)
-
-				if (!info) continue
-
-				// Add to log buffer
-				info.logs.push(line)
-
-				if (info.logs.length > MAX_LOG_LINES) {
-					info.logs = info.logs.slice(-MAX_LOG_LINES)
-				}
-
-				// Parse for status changes
-				const parsed = parseLine(stripAnsi(line))
-
-				if (parsed.status) {
-					this.updateStatus(entry.name, parsed.status)
-				}
-
-				if (parsed.url) {
-					info.url = parsed.url
-				}
-
-				this.emit('update', entry.name, info)
+				this.processLine(entry.name, line)
 			}
 		}
 
@@ -171,6 +125,30 @@ class ProcessManagerImpl extends EventEmitter<ProcessManagerEvents> {
 		})
 	}
 
+	private processLine(name: string, line: string): void {
+		const info = this.infos.get(name)
+
+		if (!info) return
+
+		info.logs.push(line)
+
+		if (info.logs.length > MAX_LOG_LINES) {
+			info.logs.splice(0, info.logs.length - MAX_LOG_LINES)
+		}
+
+		const parsed = parseLine(stripAnsi(line))
+
+		if (parsed.status) {
+			info.status = parsed.status
+		}
+
+		if (parsed.url) {
+			info.url = parsed.url
+		}
+
+		this.emit('update', name, info)
+	}
+
 	private updateStatus(name: string, status: ProcessStatus): void {
 		const info = this.infos.get(name)
 
@@ -180,7 +158,6 @@ class ProcessManagerImpl extends EventEmitter<ProcessManagerEvents> {
 
 		this.emit('update', name, info)
 
-		// Check if all processes are ready
 		const allReady = [...this.infos.values()].every(
 			(i) => i.status === 'ready' || i.status === 'watching',
 		)
@@ -206,7 +183,6 @@ class ProcessManagerImpl extends EventEmitter<ProcessManagerEvents> {
 
 					child.kill('SIGTERM')
 
-					// Force kill after 5s
 					setTimeout(() => {
 						if (!child.killed) {
 							child.kill('SIGKILL')

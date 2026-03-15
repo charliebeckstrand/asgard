@@ -24,6 +24,7 @@
 - Imperative mood, atomic commits. Each commit represents one logical change, described by what it does — not what you did.
 - Feature branches for non-trivial work. Never force-push shared branches.
 - Review your own diff before committing. Read it as a reviewer would.
+- Do not commit until the task is resolved. Plans, intermediate artifacts, and work-in-progress belong in the working tree until the work is complete.
 
 ## Workflow
 

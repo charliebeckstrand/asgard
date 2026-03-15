@@ -1,4 +1,4 @@
-import { parseLine, stripAnsi } from '../lib/output-parser.js'
+import { parseLine, stripAnsi } from '../output-parser.js'
 
 describe('parseLine', () => {
 	it('detects server ready with URL', () => {
