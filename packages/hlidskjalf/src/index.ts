@@ -2,15 +2,15 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { createProcessManager } from './lib/process-manager.js'
-import { createRenderer, renderLoading } from './lib/renderer.js'
-import type { DashboardOptions, SortOrder } from './lib/types.js'
+import { createProcessManager } from './process-manager.js'
+import { createRenderer, renderLoading } from './renderer.js'
+import type { DashboardOptions, SortOrder } from './types.js'
 import {
 	discoverWorkspaces,
 	filterWorkspaces,
 	sortAlphabetically,
 	sortByDependencyOrder,
-} from './lib/workspace.js'
+} from './workspace.js'
 
 async function startDocker(root: string): Promise<() => Promise<void>> {
 	const composePath = join(root, 'docker-compose.dev.yml')

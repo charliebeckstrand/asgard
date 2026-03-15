@@ -5,7 +5,7 @@ import { environment } from './env.js'
 
 export const { closePool, db, getPool } = createDatabase(() => environment().DATABASE_URL)
 
-const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'migrations')
+const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'migrations')
 
 export async function migrate(): Promise<void> {
 	await runMigrations(db)
