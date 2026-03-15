@@ -1,6 +1,6 @@
 CREATE SCHEMA IF NOT EXISTS users;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id          UUID        PRIMARY KEY,
     email       VARCHAR(255) NOT NULL,
     hashed_password VARCHAR(255) NOT NULL,
@@ -10,4 +10,4 @@ CREATE TABLE users (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ix_users_email ON users (email);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users (email);
