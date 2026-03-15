@@ -1,5 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { Db } from './db.js'
 import { sql } from './sql.js'
 
@@ -78,6 +79,12 @@ export async function runMigrations(db: Db, migrationsDir: string): Promise<Migr
 	}
 
 	return result
+}
+
+export async function runSagaMigrations(db: Db): Promise<MigrationResult> {
+	const dir = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'migrations')
+
+	return runMigrations(db, dir)
 }
 
 export async function getMigrationStatus(db: Db, migrationsDir: string): Promise<MigrationStatus> {

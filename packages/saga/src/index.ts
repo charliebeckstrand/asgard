@@ -4,6 +4,7 @@ export {
 	type MigrationResult,
 	type MigrationStatus,
 	runMigrations,
+	runSagaMigrations,
 } from './migrate.js'
 export type { PoolOptions } from './pool.js'
 export { type SqlFragment, sql } from './sql.js'
