@@ -16,14 +16,15 @@
 	"scripts": {
 		"prepare": "husky || true",
 		"build": "turbo run build",
-		"dev": "turbo run build --filter=hlidskjalf && node packages/hlidskjalf/dist/index.js",
-		"dev:bare": "turbo run build --filter=hlidskjalf && node packages/hlidskjalf/dist/index.js --no-docker",
-"test": "turbo run test",
+		"dev": "hlidskjalf",
 		"test:coverage": "turbo run test:coverage",
 		"lint": "biome check packages/ services/",
 		"lint:fix": "biome check --write packages/ services/",
 		"format": "biome format --write packages/ services/",
 		"env:init": "tsx scripts/init-env.ts",
 		"env:rotate": "tsx scripts/init-env.ts --rotate"
+	},
+	"dependencies": {
+		"hlidskjalf": "latest"
 	}
 }

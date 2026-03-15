@@ -8,7 +8,6 @@ Monorepo using pnpm workspaces + Turborepo. ESM throughout, TypeScript everywher
 | Package | Purpose |
 |---------|---------|
 | **grid** | Shared utilities: Hono app factory, middleware, environment helpers |
-| **hlidskjalf** | (unexplored) |
 | **saga** | Database query builder, PostgreSQL connection pool |
 | **skuld** | Shared schemas and types (Zod): error, email, password, health |
 | **vali** | Shared test/vitest configuration |
