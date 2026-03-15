@@ -6,6 +6,7 @@ import { environment } from './lib/env.js'
 import { session } from './middleware/session.js'
 import { authRoutes } from './routes/auth.js'
 import { chatRoutes } from './routes/chat.js'
+import { chatAgentRoutes } from './routes/chat-agent.js'
 import { health } from './routes/health.js'
 import { usersRoutes } from './routes/users.js'
 
@@ -36,6 +37,7 @@ export function createBifrostApp() {
 		.route('/auth', authRoutes)
 		.route('/api', health)
 		.route('/api/chat', chatRoutes)
+		.route('/api/chat', chatAgentRoutes)
 		.route('/api/users', usersRoutes)
 
 	setup()

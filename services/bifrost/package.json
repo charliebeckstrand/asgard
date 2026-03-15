@@ -24,6 +24,8 @@
 	},
 	"packageManager": "pnpm@10.29.3",
 	"dependencies": {
+		"@ag-ui/core": "^0.0.47",
+		"@ag-ui/encoder": "^0.0.47",
 		"@hono/node-server": "^1.19.11",
 		"@hono/swagger-ui": "^0.6.0",
 		"@hono/zod-openapi": "^1.2.2",
