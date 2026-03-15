@@ -25,7 +25,8 @@ const ChatMessageResponseSchema = z
 		id: z.string(),
 		chat_id: z.string(),
 		role: z.enum(['user', 'agent']),
-		message: z.string(),
+		type: z.string(),
+		content: z.string(),
 		tool: ToolSchema,
 		created_at: z.string(),
 	})
@@ -51,7 +52,8 @@ const ChatDetailResponseSchema = z
 const CreateMessageRequestSchema = z
 	.object({
 		role: z.enum(['user', 'agent']),
-		message: z.string().min(1),
+		type: z.string().default('text'),
+		content: z.string().min(1),
 		tool: z
 			.object({
 				type: z.string(),
@@ -176,7 +178,7 @@ chatRoutes.openapi(getChatRoute, async (c) => {
 
 chatRoutes.openapi(postMessageRoute, async (c) => {
 	const { id: chatId } = c.req.valid('param')
-	const { role, message, tool } = c.req.valid('json')
+	const { role, type, content, tool } = c.req.valid('json')
 	const userId = await getUserId(c)
 
 	const existingChat = await chatRepository.getChatById(chatId, userId)
@@ -189,7 +191,8 @@ chatRoutes.openapi(postMessageRoute, async (c) => {
 		randomUUID(),
 		chatId,
 		role,
-		message,
+		type,
+		content,
 		tool ?? null,
 	)
 

@@ -8,7 +8,7 @@ import { requireSession, type SessionEnv } from '../middleware/session.js'
 const AgentMessageRequestSchema = z
 	.object({
 		type: z.literal('user'),
-		message: z.string().min(1),
+		content: z.string().min(1),
 	})
 	.openapi('AgentMessageRequest')
 
@@ -40,7 +40,7 @@ const chatAgentRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHoo
 chatAgentRoutes.use('*', requireSession())
 
 chatAgentRoutes.openapi(agentRoute, async (c) => {
-	const { message } = c.req.valid('json')
+	const { content } = c.req.valid('json')
 
 	const encoder = new EventEncoder()
 
@@ -64,7 +64,7 @@ chatAgentRoutes.openapi(agentRoute, async (c) => {
 			send({
 				type: EventType.TEXT_MESSAGE_CONTENT,
 				messageId,
-				delta: `Echo: ${message}`,
+				delta: `Echo: ${content}`,
 			})
 
 			send({ type: EventType.TEXT_MESSAGE_END, messageId })

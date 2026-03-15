@@ -24,7 +24,7 @@ export function createChatRepository(): ChatRepository {
 			if (!chat) return null
 
 			const messages = await db.many<ChatMessageRow>(
-				sql`SELECT id, chat_id, role, message, tool, created_at FROM chat_messages WHERE chat_id = ${id} ORDER BY created_at`,
+				sql`SELECT id, chat_id, role, type, content, tool, created_at FROM chat_messages WHERE chat_id = ${id} ORDER BY created_at`,
 			)
 
 			return {
@@ -39,12 +39,12 @@ export function createChatRepository(): ChatRepository {
 			)
 		},
 
-		async insertMessage(id, chatId, role, message, tool) {
+		async insertMessage(id, chatId, role, type, content, tool) {
 			return db.tx<ChatMessageRow>(async (tx) => {
 				const row = await tx.get<ChatMessageRow>(
-					sql`INSERT INTO chat_messages (id, chat_id, role, message, tool)
-						VALUES (${id}, ${chatId}, ${role}, ${message}, ${tool ? sql`${JSON.stringify(tool)}::jsonb` : sql`NULL`})
-						RETURNING id, chat_id, role, message, tool, created_at`,
+					sql`INSERT INTO chat_messages (id, chat_id, role, type, content, tool)
+						VALUES (${id}, ${chatId}, ${role}, ${type}, ${content}, ${tool ? sql`${JSON.stringify(tool)}::jsonb` : sql`NULL`})
+						RETURNING id, chat_id, role, type, content, tool, created_at`,
 				)
 
 				await tx.exec(sql`UPDATE chats SET updated_at = now() WHERE id = ${chatId}`)

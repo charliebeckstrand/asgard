@@ -14,7 +14,8 @@ export interface ChatMessageRow {
 	id: string
 	chat_id: string
 	role: 'user' | 'agent'
-	message: string
+	type: string
+	content: string
 	tool: Tool | null
 	created_at: string
 }
@@ -31,7 +32,8 @@ export interface ChatRepository {
 		id: string,
 		chatId: string,
 		role: string,
-		message: string,
+		type: string,
+		content: string,
 		tool: Tool | null,
 	): Promise<ChatMessageRow>
 	deleteChat(id: string, userId: string): Promise<boolean>
