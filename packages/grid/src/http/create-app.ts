@@ -29,7 +29,15 @@ export function createApp(options: CreateAppOptions) {
 	app.use('*', logger())
 	app.use('*', timing())
 	app.use('*', compress())
-	app.use('*', etag())
+	app.use('*', async (c, next) => {
+		await next()
+
+		if (c.res.headers.get('Content-Type')?.includes('text/event-stream')) {
+			return
+		}
+
+		return etag()(c, async () => {})
+	})
 
 	const openApiConfig = createOpenApiConfig({
 		title: options.title,
