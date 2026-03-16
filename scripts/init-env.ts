@@ -189,13 +189,24 @@ for (const [serviceName, vars] of Object.entries(environments)) {
 		.map(([key, value]) => `${key}=${value}`)
 		.join('\n')
 
-	writeFileSync(resolve(serviceDir, '.env'), `${content}\n`)
+	const envPath = resolve(serviceDir, '.env')
+	const newContent = `${content}\n`
+
+	if (existsSync(envPath) && readFileSync(envPath, 'utf-8') === newContent) {
+		continue
+	}
+
+	writeFileSync(envPath, newContent)
 
 	console.log(`wrote ${serviceName}/.env`)
 }
 
 // --- Save secrets cache ---
 
-writeFileSync(secretsPath, `${JSON.stringify(secrets, null, '\t')}\n`)
+const newSecrets = `${JSON.stringify(secrets, null, '\t')}\n`
 
-console.log('saved secrets cache')
+if (!existsSync(secretsPath) || readFileSync(secretsPath, 'utf-8') !== newSecrets) {
+	writeFileSync(secretsPath, newSecrets)
+
+	console.log('saved secrets cache')
+}
