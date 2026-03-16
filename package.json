@@ -25,6 +25,6 @@
 		"env:rotate": "tsx scripts/init-env.ts --rotate"
 	},
 	"dependencies": {
-		"hlidskjalf": "latest"
+		"hlidskjalf": "0.1.2"
 	}
 }

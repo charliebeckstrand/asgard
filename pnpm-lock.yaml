@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       hlidskjalf:
-        specifier: latest
-        version: 0.0.8
+        specifier: 0.1.2
+        version: 0.1.2
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.4.6
@@ -1346,8 +1346,8 @@ packages:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
     engines: {node: '>=8'}
 
-  hlidskjalf@0.0.8:
-    resolution: {integrity: sha512-jF4noM46RVGclK3bmAjah1zX/0lZO6dNLQ6Yj7YzZKVwFI7opcQsSkR3CxkraEikxd+MGfPpiFqdmzYh2zC5dw==}
+  hlidskjalf@0.1.2:
+    resolution: {integrity: sha512-sDJovlyxDdvSCAYy0ntSFWwiUX9jrD/h+EkFA3DJVbTZQiDwau09lobGyIoGEI0hsks6SCotm5ATRni+Nn+13g==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -3171,7 +3171,7 @@ snapshots:
 
   has-flag@4.0.0: {}
 
-  hlidskjalf@0.0.8:
+  hlidskjalf@0.1.2:
     dependencies:
       ink: 5.2.1(react@18.3.1)
       react: 18.3.1
