@@ -30,6 +30,7 @@ function rand(min: number, max: number): number {
 
 function pick<T>(arr: T[], count: number): T[] {
 	const shuffled = [...arr].sort(() => Math.random() - 0.5)
+
 	return shuffled.slice(0, count)
 }
 
@@ -52,6 +53,7 @@ interface ChartData {
 function axisChartData(seriesCount = 2): ChartData {
 	const months = pick(LABELS, rand(5, 8))
 	const colors = pick(COLORS, seriesCount)
+
 	return {
 		labels: months,
 		datasets: Array.from({ length: seriesCount }, (_, i) => ({
@@ -65,6 +67,7 @@ function axisChartData(seriesCount = 2): ChartData {
 
 function pieData(): ChartData {
 	const slices = pick(PRODUCT_NAMES, rand(3, 6))
+
 	return {
 		labels: slices,
 		datasets: [
@@ -91,6 +94,7 @@ interface ScatterDataset {
 function scatterData(): { datasets: ScatterDataset[] } {
 	const count = rand(2, 3)
 	const colors = pick(COLORS, count)
+
 	return {
 		datasets: Array.from({ length: count }, (_, i) => ({
 			label: PRODUCT_NAMES[i] ?? `Group ${i + 1}`,
@@ -118,6 +122,7 @@ interface BubbleDataset {
 function bubbleData(): { datasets: BubbleDataset[] } {
 	const count = rand(2, 3)
 	const colors = pick(COLORS, count)
+
 	return {
 		datasets: Array.from({ length: count }, (_, i) => ({
 			label: PRODUCT_NAMES[i] ?? `Group ${i + 1}`,
@@ -142,6 +147,7 @@ interface ComboDataset {
 function comboData(): { labels: string[]; datasets: ComboDataset[] } {
 	const months = pick(LABELS, rand(5, 8))
 	const colors = pick(COLORS, 2)
+
 	return {
 		labels: months,
 		datasets: [
@@ -181,6 +187,7 @@ function gridData(): GridData {
 	]
 
 	const categories = ['Electronics', 'Software', 'Services', 'Hardware']
+
 	const rows = PRODUCT_NAMES.slice(0, rand(3, 6)).map((name) => {
 		const price = rand(10, 500)
 		const quantity = rand(1, 100)
@@ -233,5 +240,6 @@ const generators: Record<ToolType, () => unknown> = {
 
 export function randomTool(): { type: ToolType; data: unknown } {
 	const type = TOOL_TYPES[Math.floor(Math.random() * TOOL_TYPES.length)]
+
 	return { type, data: generators[type]() }
 }
