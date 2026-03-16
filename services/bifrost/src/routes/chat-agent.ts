@@ -8,7 +8,6 @@ import { requireSession, type SessionEnv } from '../middleware/session.js'
 
 const AgentMessageRequestSchema = z
 	.object({
-		type: z.literal('user'),
 		content: z.string().min(1),
 	})
 	.openapi('AgentMessageRequest')
