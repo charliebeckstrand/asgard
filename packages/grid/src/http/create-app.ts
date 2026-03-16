@@ -28,15 +28,17 @@ export function createApp(options: CreateAppOptions) {
 	app.use('*', secureHeaders())
 	app.use('*', logger())
 	app.use('*', timing())
-	app.use('*', compress())
 	app.use('*', async (c, next) => {
 		await next()
 
-		if (c.res.headers.get('Content-Type')?.includes('text/event-stream')) {
+		const isSSE = c.res.headers.get('Content-Type')?.includes('text/event-stream')
+
+		if (isSSE) {
 			return
 		}
 
-		return etag()(c, async () => {})
+		await compress()(c, async () => {})
+		await etag()(c, async () => {})
 	})
 
 	const openApiConfig = createOpenApiConfig({
