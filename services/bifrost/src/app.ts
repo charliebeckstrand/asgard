@@ -36,8 +36,8 @@ export function createBifrostApp() {
 	const routes = app
 		.route('/auth', authRoutes)
 		.route('/api', health)
-		.route('/api/chat', chatRoutes)
 		.route('/api/chat', chatAgentRoutes)
+		.route('/api/chat', chatRoutes)
 		.route('/api/users', usersRoutes)
 
 	setup()
