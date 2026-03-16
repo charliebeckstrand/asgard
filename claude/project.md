@@ -16,7 +16,7 @@ Monorepo using pnpm workspaces + Turborepo. ESM throughout, TypeScript everywher
 | Service | Port | Purpose |
 |---------|------|---------|
 | **bifrost** | 4000 | API gateway / BFF: auth (JWT, Argon2id, login/register/refresh), session management, user CRUD, health, OpenAPI docs. Auth logic lives in `src/auth/`. |
-| **vidar** | 4002 | Rate limiting and security event tracking |
+| **vidar** | 4001 | Rate limiting and security event tracking |
 
 ## Tech Stack
 - **Runtime**: Node.js
