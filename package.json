@@ -4,19 +4,20 @@
 	"packageManager": "pnpm@10.29.3",
 	"pnpm": {
 		"onlyBuiltDependencies": [
-			"argon2"
+			"argon2",
+			"lefthook"
 		]
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
 		"@vitest/coverage-v8": "^4.0.18",
-		"husky": "^9.1.7",
+		"lefthook": "^2.1.4",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"turbo": "^2.8.14"
 	},
 	"scripts": {
-		"prepare": "husky || true",
+		"prepare": "lefthook install",
 		"build": "turbo run build",
 		"predev": "docker compose -f docker-compose.dev.yml up -d",
 		"dev": "hlidskjalf",
