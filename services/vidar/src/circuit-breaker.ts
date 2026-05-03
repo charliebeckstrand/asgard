@@ -2,15 +2,15 @@ type CircuitState = 'closed' | 'open' | 'half-open'
 
 export interface CircuitBreakerOptions {
 	failureThreshold?: number
-	resetTimeout?: number
 	halfOpenMaxAttempts?: number
+	resetTimeout?: number
 }
 
 export interface CircuitBreakerStatus {
-	state: CircuitState
 	failures: number
 	lastFailure: number | null
 	halfOpenAttempts: number
+	state: CircuitState
 }
 
 export interface CircuitBreaker {
@@ -25,10 +25,10 @@ export function createCircuitBreaker(
 ): CircuitBreaker {
 	const { failureThreshold = 5, resetTimeout = 30_000, halfOpenMaxAttempts = 3 } = options
 
-	let state: CircuitState = 'closed'
 	let failures = 0
 	let lastFailure: number | null = null
 	let halfOpenAttempts = 0
+	let state: CircuitState = 'closed'
 
 	function shouldAttemptReset(): boolean {
 		if (state !== 'open' || lastFailure === null) return false
@@ -92,10 +92,10 @@ export function createCircuitBreaker(
 		},
 
 		reset(): void {
-			state = 'closed'
 			failures = 0
 			lastFailure = null
 			halfOpenAttempts = 0
+			state = 'closed'
 		},
 	}
 }
