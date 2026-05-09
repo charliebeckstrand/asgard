@@ -4,6 +4,7 @@
 	"vars": {
 		"DATABASE_URL": { "type": "value", "default": "postgres://heimdall:heimdall@localhost:5432/bifrost" },
 		"SECRET_KEY": { "type": "secret" },
+		"PREVIOUS_SECRET_KEY": { "type": "value", "default": "" },
 		"SESSION_SECRET": { "type": "secret" },
 		"VIDAR_URL": { "type": "ref", "service": "vidar" },
 		"VIDAR_API_KEY": { "type": "ref", "service": "vidar", "key": "VIDAR_API_KEY" }

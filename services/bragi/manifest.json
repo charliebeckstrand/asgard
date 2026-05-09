@@ -5,6 +5,7 @@
 	"vars": {
 		"DATABASE_URL": { "type": "value", "default": "postgres://bragi:bragi@localhost:5432/bragi" },
 		"SECRET_KEY": { "type": "ref", "service": "bifrost", "key": "SECRET_KEY" },
+		"PREVIOUS_SECRET_KEY": { "type": "ref", "service": "bifrost", "key": "PREVIOUS_SECRET_KEY" },
 		"CORS_ORIGIN": { "type": "value", "default": "http://localhost:3000" }
 	}
 }

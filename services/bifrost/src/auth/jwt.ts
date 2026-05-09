@@ -18,9 +18,9 @@ export {
 }
 
 export function signToken(sub: string, type: TokenType): Promise<string> {
-	return gridSignToken(sub, type, getConfig().secretKey)
+	return gridSignToken(sub, type, getConfig().keys)
 }
 
 export function verifyToken(token: string): Promise<JWTPayload> {
-	return gridVerifyToken(token, getConfig().secretKey)
+	return gridVerifyToken(token, getConfig().keys)
 }

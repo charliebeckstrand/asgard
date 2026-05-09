@@ -13,8 +13,15 @@ export function requireAuth(): MiddlewareHandler<AuthEnv> {
 	return bearerAuth({
 		verifyToken: async (token, c) => {
 			try {
-				const { sub } = await verifyAccessToken(token, environment().SECRET_KEY)
+				const env = environment()
+
+				const { sub } = await verifyAccessToken(token, {
+					current: env.SECRET_KEY,
+					previous: env.PREVIOUS_SECRET_KEY,
+				})
+
 				c.set('userId', sub)
+
 				return true
 			} catch {
 				return false
