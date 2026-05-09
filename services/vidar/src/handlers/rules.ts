@@ -110,29 +110,19 @@ export async function evaluateRules(ip: string, eventType: string): Promise<void
 }
 
 async function checkRule(ip: string, rule: Rule): Promise<boolean> {
-	if (rule.distinct_accounts) {
-		const row = await db.get<{ event_count: number; account_count: number }>(
-			sql`SELECT
-				COUNT(*)::int AS event_count,
-				COUNT(DISTINCT details->>'email')::int AS account_count
-			 FROM vdr_security_events
-			 WHERE ip = ${ip}
-			   AND event_type = ${rule.event_type}
-			   AND created_at > now() - make_interval(mins => ${rule.window_minutes}::int)`,
-		)
-
-		return row.event_count >= rule.threshold && row.account_count >= rule.distinct_accounts
-	}
-
-	const count = await db.val<number>(
-		sql`
-			SELECT COUNT(*)::int
-			FROM vdr_security_events
+	const row = await db.get<{ event_count: number; account_count: number }>(
+		sql`SELECT
+			COUNT(*)::int AS event_count,
+			COUNT(DISTINCT details->>'email')::int AS account_count
+		 FROM vdr_security_events
 		 WHERE ip = ${ip}
 		   AND event_type = ${rule.event_type}
-		   AND created_at > now() - make_interval(mins => ${rule.window_minutes}::int)
-		`,
+		   AND created_at > now() - make_interval(mins => ${rule.window_minutes}::int)`,
 	)
 
-	return count >= rule.threshold
+	if (row.event_count < rule.threshold) return false
+
+	if (rule.distinct_accounts && row.account_count < rule.distinct_accounts) return false
+
+	return true
 }
