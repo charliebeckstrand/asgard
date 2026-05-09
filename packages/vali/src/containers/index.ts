@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process'
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql'
+import { vi } from 'vitest'
 
 /**
  * Check if Docker is available and responsive.
@@ -107,8 +108,6 @@ export async function startPostgres(
 export async function startPostgresWithEnv(
 	options: Parameters<typeof startPostgres>[0] = {},
 ): Promise<() => Promise<void>> {
-	const { vi } = await import('vitest')
-
 	const testDb = await startPostgres(options)
 
 	vi.stubEnv('DATABASE_URL', testDb.connectionUri)
