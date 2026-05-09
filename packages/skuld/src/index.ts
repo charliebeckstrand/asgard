@@ -36,6 +36,8 @@ export {
 	type BanList,
 	BanListSchema,
 	BanSchema,
+	type BanSource,
+	BanSourceSchema,
 	type CheckIpResponse,
 	CheckIpResponseSchema,
 	type CreateBan,
