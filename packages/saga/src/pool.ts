@@ -16,6 +16,7 @@ export function createPool(databaseUrl: string, options?: PoolOptions): Pool {
 	const url = new URL(databaseUrl)
 
 	const sslmode = url.searchParams.get('sslmode')
+
 	const requiresSsl = sslmode !== null && sslmode !== 'disable'
 
 	return new Pool({
