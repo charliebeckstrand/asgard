@@ -10,7 +10,8 @@ export function logger(): Logger {
 
 	cached = createLogger({
 		service: 'bragi',
-		pretty: env.NODE_ENV !== 'production',
+		level: env.NODE_ENV === 'test' ? 'silent' : 'info',
+		pretty: env.NODE_ENV === 'development',
 	})
 
 	return cached
