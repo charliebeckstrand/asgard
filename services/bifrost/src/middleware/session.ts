@@ -2,6 +2,7 @@ import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { HTTPException } from 'hono/http-exception'
 import { refreshTokenPair } from '../auth/index.js'
+import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from '../auth/jwt.js'
 import { environment } from '../lib/env.js'
 
 export type SessionData = {
@@ -86,7 +87,7 @@ async function refreshAccessToken(sessionData: SessionData): Promise<SessionData
 			return {
 				accessToken: tokens.access_token,
 				refreshToken: tokens.refresh_token,
-				expiresAt: Math.floor(Date.now() / 1000) + 30 * 60,
+				expiresAt: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS,
 			}
 		} catch {
 			return null
@@ -114,7 +115,7 @@ export async function setSessionCookie(
 		secure: true,
 		sameSite: 'Lax',
 		path: '/',
-		maxAge: 60 * 60 * 24 * 7,
+		maxAge: REFRESH_TOKEN_TTL_SECONDS,
 	})
 }
 

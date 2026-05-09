@@ -1,14 +1,16 @@
-import type { Hook } from '@hono/zod-openapi'
-import type { Env } from 'hono'
+import type { Context, Env } from 'hono'
 
-/**
- * Formats Zod validation errors into a consistent, human-readable response
- * matching the standard ErrorSchema shape.
- */
-export const validationHook: Hook<unknown, Env, string, Response | undefined> = (result, c) => {
+type ValidationResult =
+	| { success: true }
+	| { success: false; error: { issues: Array<{ message: string }> } }
+
+export function validationHook<E extends Env>(
+	result: ValidationResult,
+	c: Context<E>,
+): Response | undefined {
 	if (result.success) return
 
-	const messages = result.error.issues.map((issue: { message: string }) => issue.message)
+	const messages = result.error.issues.map((issue) => issue.message)
 
 	return c.json(
 		{

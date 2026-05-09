@@ -3,7 +3,10 @@ import type { UserRepository } from '../types.js'
 const mockRepo: UserRepository = {
 	insertUser: vi.fn(),
 	getCredentialsByEmail: vi.fn(),
+	getUsers: vi.fn(),
 	getUserById: vi.fn(),
+	updateUser: vi.fn(),
+	deleteUser: vi.fn(),
 }
 
 describe('heimdall config', () => {

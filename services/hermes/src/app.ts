@@ -10,7 +10,7 @@ export function createHermesApp() {
 	const { app, setup } = createApp({
 		basePath: '/hermes',
 		title: 'Hermes',
-		description: '',
+		description: 'Chat and conversation service',
 		port: env.PORT,
 		cors: { origin: env.CORS_ORIGIN },
 	})

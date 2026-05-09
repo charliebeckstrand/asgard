@@ -46,6 +46,8 @@ vi.mock('../auth/index.js', () => ({
 
 vi.mock('../auth/jwt.js', () => ({
 	verifyToken: (...args: unknown[]) => mockVerifyToken(...args),
+	ACCESS_TOKEN_TTL_SECONDS: 30 * 60,
+	REFRESH_TOKEN_TTL_SECONDS: 7 * 24 * 60 * 60,
 }))
 
 vi.mock('vidar/client', () => ({
