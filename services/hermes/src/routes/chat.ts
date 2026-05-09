@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { HttpError, validationHook } from 'grid'
+import { errorResponse, HttpError, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { streamSSE } from 'hono/streaming'
-import { ErrorSchema } from 'skuld'
 import { createChatRepository } from '../lib/chat-repository.js'
 import { type AuthEnv, requireAuth } from '../middleware/auth.js'
 
@@ -53,10 +52,7 @@ const listChatsRoute = createRoute({
 	security: [{ Bearer: [] }],
 	summary: 'List all chats',
 	responses: {
-		200: {
-			content: { 'application/json': { schema: z.array(ChatResponseSchema) } },
-			description: 'List of chats',
-		},
+		200: jsonResponse(z.array(ChatResponseSchema), 'List of chats'),
 	},
 })
 
@@ -70,14 +66,8 @@ const getChatRoute = createRoute({
 		params: ChatIdParamSchema,
 	},
 	responses: {
-		200: {
-			content: { 'application/json': { schema: ChatDetailResponseSchema } },
-			description: 'Chat with messages',
-		},
-		404: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Chat not found',
-		},
+		200: jsonResponse(ChatDetailResponseSchema, 'Chat with messages'),
+		404: errorResponse('Chat not found'),
 	},
 })
 
@@ -89,20 +79,14 @@ const postMessageRoute = createRoute({
 	summary: 'Send a message and stream the agent response',
 	request: {
 		params: ChatIdParamSchema,
-		body: {
-			content: { 'application/json': { schema: CreateMessageRequestSchema } },
-			required: true,
-		},
+		body: jsonRequest(CreateMessageRequestSchema),
 	},
 	responses: {
 		200: {
 			content: { 'text/event-stream': { schema: z.any() } },
 			description: 'SSE stream of agent response',
 		},
-		400: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Validation error',
-		},
+		400: errorResponse('Validation error'),
 	},
 })
 
@@ -119,10 +103,7 @@ const deleteChatRoute = createRoute({
 		204: {
 			description: 'Chat deleted',
 		},
-		404: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Chat not found',
-		},
+		404: errorResponse('Chat not found'),
 	},
 })
 

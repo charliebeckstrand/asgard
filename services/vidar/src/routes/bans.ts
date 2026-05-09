@@ -1,13 +1,7 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { errorResponse, HttpError, jsonRequest, jsonResponse } from 'grid'
+import { BanListSchema, BanSchema, CreateBanSchema, MessageSchema } from 'skuld'
 import { createBan, listActiveBans, removeBan } from '../handlers/bans.js'
-import {
-	BanListSchema,
-	BanSchema,
-	CreateBanSchema,
-	ErrorSchema,
-	MessageSchema,
-} from '../lib/schemas.js'
-import { apiKeyAuth } from '../middleware/api-key.js'
 
 const listBansRoute = createRoute({
 	method: 'get',
@@ -17,14 +11,8 @@ const listBansRoute = createRoute({
 	description: 'Returns all currently active IP bans (excludes expired bans).',
 	security: [{ Bearer: [] }],
 	responses: {
-		200: {
-			content: { 'application/json': { schema: BanListSchema } },
-			description: 'List of active bans',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
+		200: jsonResponse(BanListSchema, 'List of active bans'),
+		401: errorResponse('Unauthorized'),
 	},
 })
 
@@ -36,20 +24,11 @@ const createBanRoute = createRoute({
 	description: 'Create a manual IP ban. Optionally specify a duration; omit for a permanent ban.',
 	security: [{ Bearer: [] }],
 	request: {
-		body: {
-			content: { 'application/json': { schema: CreateBanSchema } },
-			required: true,
-		},
+		body: jsonRequest(CreateBanSchema),
 	},
 	responses: {
-		201: {
-			content: { 'application/json': { schema: BanSchema } },
-			description: 'Ban created',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
+		201: jsonResponse(BanSchema, 'Ban created'),
+		401: errorResponse('Unauthorized'),
 	},
 })
 
@@ -66,25 +45,13 @@ const removeBanRoute = createRoute({
 		}),
 	},
 	responses: {
-		200: {
-			content: { 'application/json': { schema: MessageSchema } },
-			description: 'Ban removed',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
-		404: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Ban not found',
-		},
+		200: jsonResponse(MessageSchema, 'Ban removed'),
+		401: errorResponse('Unauthorized'),
+		404: errorResponse('Ban not found'),
 	},
 })
 
 const app = new OpenAPIHono()
-
-app.use('/bans', apiKeyAuth())
-app.use('/bans/*', apiKeyAuth())
 
 export const bans = app
 	.openapi(listBansRoute, async (c) => {
@@ -108,10 +75,7 @@ export const bans = app
 		const removed = await removeBan(ip)
 
 		if (!removed) {
-			return c.json(
-				{ error: 'Not Found', message: `No active ban found for IP ${ip}`, statusCode: 404 },
-				404,
-			)
+			throw new HttpError(404, `No active ban found for IP ${ip}`, 'Not Found')
 		}
 
 		return c.json({ message: `Ban removed for IP ${ip}` }, 200)

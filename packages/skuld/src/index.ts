@@ -6,6 +6,7 @@ export {
 	ErrorSchema,
 	MessageSchema,
 	PaginationSchema,
+	toList,
 } from './composites.js'
 
 // Enums — shared status and category enumerations

@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { errorResponse, jsonResponse } from 'grid'
 import { listThreats } from '../handlers/threats.js'
-import { ErrorSchema, ThreatListSchema } from '../lib/schemas.js'
-import { apiKeyAuth } from '../middleware/api-key.js'
+import { ThreatListSchema } from '../lib/schemas.js'
 
 const listThreatsRoute = createRoute({
 	method: 'get',
@@ -20,20 +20,12 @@ const listThreatsRoute = createRoute({
 		}),
 	},
 	responses: {
-		200: {
-			content: { 'application/json': { schema: ThreatListSchema } },
-			description: 'List of threats',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
+		200: jsonResponse(ThreatListSchema, 'List of threats'),
+		401: errorResponse('Unauthorized'),
 	},
 })
 
 const app = new OpenAPIHono()
-
-app.use('/threats', apiKeyAuth())
 
 export const threats = app.openapi(listThreatsRoute, async (c) => {
 	const { resolved, ip } = c.req.valid('query')

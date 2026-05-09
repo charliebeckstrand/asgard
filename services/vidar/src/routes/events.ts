@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
+import { errorResponse, jsonRequest, jsonResponse } from 'grid'
+import { IngestEventSchema, SecurityEventSchema } from 'skuld'
 import { ingestEvent } from '../handlers/events.js'
-import { ErrorSchema, IngestEventSchema, SecurityEventSchema } from '../lib/schemas.js'
-import { apiKeyAuth } from '../middleware/api-key.js'
 
 const ingestRoute = createRoute({
 	method: 'post',
@@ -12,26 +12,15 @@ const ingestRoute = createRoute({
 		'Report a security event for monitoring. Events are stored and evaluated against predefined rules.',
 	security: [{ Bearer: [] }],
 	request: {
-		body: {
-			content: { 'application/json': { schema: IngestEventSchema } },
-			required: true,
-		},
+		body: jsonRequest(IngestEventSchema),
 	},
 	responses: {
-		201: {
-			content: { 'application/json': { schema: SecurityEventSchema } },
-			description: 'Event ingested',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
+		201: jsonResponse(SecurityEventSchema, 'Event ingested'),
+		401: errorResponse('Unauthorized'),
 	},
 })
 
 const app = new OpenAPIHono()
-
-app.use('/events', apiKeyAuth())
 
 export const events = app.openapi(ingestRoute, async (c) => {
 	const body = c.req.valid('json')

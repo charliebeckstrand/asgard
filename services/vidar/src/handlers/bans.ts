@@ -1,24 +1,27 @@
 import { sql } from 'saga'
+import { toList } from 'skuld'
 import { db } from '../lib/db.js'
+import type { CheckIpResponse } from '../lib/schemas.js'
+
+/** Who created the ban — used in the audit trail. */
+export type BanSource = 'system' | 'manual' | 'vidar'
 
 export interface BanRow {
 	id: string
 	ip: string
 	reason: string
 	rule_id: string | null
-	created_by: string
+	created_by: BanSource
 	expires_at: string | null
 	created_at: string
 }
 
-export async function isIpBanned(
-	ip: string,
-): Promise<{ banned: boolean; reason?: string; expires_at?: string }> {
-	const row = await db.query<BanRow>(
+export async function isIpBanned(ip: string): Promise<CheckIpResponse> {
+	const row = await db.query<Pick<BanRow, 'reason' | 'expires_at'>>(
 		sql`
-			SELECT reason, expires_at 
+			SELECT reason, expires_at
 			FROM vdr_bans
-		 	WHERE ip = ${ip} 
+		 	WHERE ip = ${ip}
 			AND (expires_at IS NULL OR expires_at > now())
 		 	LIMIT 1
 		`,
@@ -38,7 +41,7 @@ export async function isIpBanned(
 export async function createBan(
 	ip: string,
 	reason: string,
-	options?: { rule_id?: string; created_by?: string; duration_minutes?: number },
+	options?: { rule_id?: string; created_by?: BanSource; duration_minutes?: number },
 ): Promise<BanRow> {
 	const expiresAt = options?.duration_minutes
 		? sql`now() + make_interval(mins => ${options.duration_minutes}::int)`
@@ -83,7 +86,7 @@ export async function listActiveBans(): Promise<{ data: BanRow[]; total: number 
 		`,
 	)
 
-	return { data: rows, total: rows.length }
+	return toList(rows)
 }
 
 export async function cleanExpiredBans(): Promise<number> {

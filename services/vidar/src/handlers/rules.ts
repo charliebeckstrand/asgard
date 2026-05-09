@@ -3,6 +3,8 @@ import { db } from '../lib/db.js'
 import { createBan } from './bans.js'
 import { createThreat } from './threats.js'
 
+export type RuleSeverity = 'low' | 'medium' | 'high'
+
 export interface Rule {
 	id: string
 	name: string
@@ -11,6 +13,7 @@ export interface Rule {
 	threshold: number
 	window_minutes: number
 	ban_duration_minutes: number
+	severity: RuleSeverity
 	enabled: boolean
 	/** For credential stuffing: minimum distinct accounts targeted */
 	distinct_accounts?: number
@@ -25,6 +28,7 @@ const PREDEFINED_RULES: Rule[] = [
 		threshold: 10,
 		window_minutes: 15,
 		ban_duration_minutes: 60,
+		severity: 'medium',
 		enabled: true,
 	},
 	{
@@ -35,6 +39,7 @@ const PREDEFINED_RULES: Rule[] = [
 		threshold: 5,
 		window_minutes: 30,
 		ban_duration_minutes: 1440,
+		severity: 'high',
 		enabled: true,
 	},
 	{
@@ -45,6 +50,7 @@ const PREDEFINED_RULES: Rule[] = [
 		threshold: 20,
 		window_minutes: 10,
 		ban_duration_minutes: 120,
+		severity: 'medium',
 		enabled: true,
 	},
 	{
@@ -55,6 +61,7 @@ const PREDEFINED_RULES: Rule[] = [
 		threshold: 15,
 		window_minutes: 30,
 		ban_duration_minutes: 1440,
+		severity: 'high',
 		enabled: true,
 		distinct_accounts: 10,
 	},
@@ -75,8 +82,6 @@ export function getRules(): Rule[] {
 }
 
 export async function evaluateRules(ip: string, eventType: string): Promise<void> {
-	const knownIp = ip && ip !== 'unknown' ? ip : null
-
 	const matchingRules = PREDEFINED_RULES.filter((r) => r.enabled && r.event_type === eventType)
 
 	for (const rule of matchingRules) {
@@ -91,49 +96,33 @@ export async function evaluateRules(ip: string, eventType: string): Promise<void
 
 			await createThreat({
 				threat_type: rule.id,
-				severity: rule.ban_duration_minutes >= 1440 ? 'high' : 'medium',
+				severity: rule.severity,
 				ip,
 				details: { rule_id: rule.id, rule_name: rule.name },
 				action_taken: `Banned for ${formatDuration(rule.ban_duration_minutes)}`,
 			})
 
-			const ipPart = knownIp ? ` for IP ${knownIp}` : ''
-
 			console.log(
-				`[vidar] Rule "${rule.id}" triggered${ipPart} — banned for ${formatDuration(rule.ban_duration_minutes)}`,
+				`[vidar] Rule "${rule.id}" triggered for IP ${ip} — banned for ${formatDuration(rule.ban_duration_minutes)}`,
 			)
 		}
 	}
 }
 
 async function checkRule(ip: string, rule: Rule): Promise<boolean> {
-	if (rule.distinct_accounts) {
-		const row = await db.get<{ event_count: string; account_count: string }>(
-			sql`SELECT
-				COUNT(*)::text AS event_count,
-				COUNT(DISTINCT details->>'email')::text AS account_count
-			 FROM vdr_security_events
-			 WHERE ip = ${ip}
-			   AND event_type = ${rule.event_type}
-			   AND created_at > now() - make_interval(mins => ${rule.window_minutes}::int)`,
-		)
-
-		const eventCount = Number.parseInt(row.event_count, 10)
-
-		const accountCount = Number.parseInt(row.account_count, 10)
-
-		return eventCount >= rule.threshold && accountCount >= rule.distinct_accounts
-	}
-
-	const count = await db.val<string>(
-		sql`
-			SELECT COUNT(*)::text
-			FROM vdr_security_events
+	const row = await db.get<{ event_count: number; account_count: number }>(
+		sql`SELECT
+			COUNT(*)::int AS event_count,
+			COUNT(DISTINCT details->>'email')::int AS account_count
+		 FROM vdr_security_events
 		 WHERE ip = ${ip}
 		   AND event_type = ${rule.event_type}
-		   AND created_at > now() - make_interval(mins => ${rule.window_minutes}::int)
-		`,
+		   AND created_at > now() - make_interval(mins => ${rule.window_minutes}::int)`,
 	)
 
-	return Number.parseInt(count, 10) >= rule.threshold
+	if (row.event_count < rule.threshold) return false
+
+	if (rule.distinct_accounts && row.account_count < rule.distinct_accounts) return false
+
+	return true
 }

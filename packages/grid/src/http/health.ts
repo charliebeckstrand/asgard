@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { ConnectionStatusSchema, HealthStatusSchema } from 'skuld'
+import { jsonResponse } from './responses.js'
 
 const ServiceStatusSchema = z.object({
 	status: ConnectionStatusSchema,
@@ -58,14 +59,8 @@ export function createHealthRoute(options?: CreateHealthRouteOptions) {
 		summary: 'Health check',
 		description: options?.description ?? 'Returns the health status of the service',
 		responses: {
-			200: {
-				content: { 'application/json': { schema: HealthResponseSchema } },
-				description: 'Service is healthy or degraded',
-			},
-			503: {
-				content: { 'application/json': { schema: HealthResponseSchema } },
-				description: 'Service is unhealthy',
-			},
+			200: jsonResponse(HealthResponseSchema, 'Service is healthy or degraded'),
+			503: jsonResponse(HealthResponseSchema, 'Service is unhealthy'),
 		},
 	})
 
