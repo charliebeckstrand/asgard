@@ -38,11 +38,11 @@ afterAll(async () => {
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 
 describeWithDocker('createDatabaseClient (integration)', () => {
-	describe('query', () => {
+	describe('first', () => {
 		it('returns the first row from a real database', async () => {
 			const db = createDatabaseClient(pool)
 
-			const result = await db.query<{ id: number; name: string }>(
+			const result = await db.first<{ id: number; name: string }>(
 				sql`
 					SELECT *
 					FROM users
@@ -58,7 +58,7 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 		it('returns null when no rows match', async () => {
 			const db = createDatabaseClient(pool)
 
-			const result = await db.query(sql`
+			const result = await db.first(sql`
 				SELECT *
 				FROM users
 				WHERE name = ${'Nobody'}
@@ -68,11 +68,11 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 		})
 	})
 
-	describe('get', () => {
+	describe('one', () => {
 		it('returns the first row', async () => {
 			const db = createDatabaseClient(pool)
 
-			const result = await db.get<{ id: number; name: string }>(sql`
+			const result = await db.one<{ id: number; name: string }>(sql`
 				SELECT *
 				FROM users
 				WHERE name = ${'Alice'}
@@ -85,7 +85,7 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 			const db = createDatabaseClient(pool)
 
 			await expect(
-				db.get(sql`
+				db.one(sql`
 					SELECT *
 					FROM users
 					WHERE name = ${'Nobody'}
@@ -178,7 +178,7 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 			const db = createDatabaseClient(pool)
 
 			const result = await db.tx(async (tx) => {
-				return tx.get<{ id: number }>(sql`
+				return tx.one<{ id: number }>(sql`
 					INSERT INTO users (name, email)
 					VALUES (${'Charlie'}, ${'charlie@example.com'})
 					RETURNING id
@@ -187,7 +187,7 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 
 			expect(result.id).toBeTypeOf('number')
 
-			const check = await db.query<{ name: string }>(sql`
+			const check = await db.first<{ name: string }>(sql`
 				SELECT name
 				FROM users
 				WHERE id = ${result.id}

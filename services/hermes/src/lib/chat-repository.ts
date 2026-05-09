@@ -11,7 +11,7 @@ export function createChatRepository(): ChatRepository {
 		},
 
 		async getChatById(id, userId) {
-			const chat = await db.query<ChatRow>(
+			const chat = await db.first<ChatRow>(
 				sql`SELECT id, user_id, created_at, updated_at FROM hrm_chats WHERE id = ${id} AND user_id = ${userId}`,
 			)
 
@@ -25,14 +25,14 @@ export function createChatRepository(): ChatRepository {
 		},
 
 		async insertChat(id, userId) {
-			return db.get<ChatRow>(
+			return db.one<ChatRow>(
 				sql`INSERT INTO hrm_chats (id, user_id) VALUES (${id}, ${userId}) RETURNING id, user_id, created_at, updated_at`,
 			)
 		},
 
 		async insertMessage(id, chatId, role, type, content) {
 			return db.tx<ChatMessageRow>(async (tx) => {
-				const row = await tx.get<ChatMessageRow>(
+				const row = await tx.one<ChatMessageRow>(
 					sql`INSERT INTO hrm_chat_messages (id, chat_id, role, type, content)
 						VALUES (${id}, ${chatId}, ${role}, ${type}, ${content})
 						RETURNING id, chat_id, role, type, content, created_at`,

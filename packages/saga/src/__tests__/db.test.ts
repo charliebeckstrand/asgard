@@ -17,13 +17,13 @@ function createMockClient(queryResult: { rows: unknown[]; rowCount?: number }) {
 }
 
 describe('createDatabaseClient', () => {
-	describe('query', () => {
+	describe('first', () => {
 		it('returns the first row', async () => {
 			const pool = createMockPool({ rows: [{ id: 1, name: 'Alice' }] })
 
 			const db = createDatabaseClient(pool)
 
-			const result = await db.query<{ id: number; name: string }>(
+			const result = await db.first<{ id: number; name: string }>(
 				sql`
 					SELECT *
 					FROM users
@@ -39,7 +39,7 @@ describe('createDatabaseClient', () => {
 
 			const db = createDatabaseClient(pool)
 
-			const result = await db.query(sql`
+			const result = await db.first(sql`
 				SELECT *
 				FROM users
 				WHERE id = ${999}
@@ -49,13 +49,13 @@ describe('createDatabaseClient', () => {
 		})
 	})
 
-	describe('get', () => {
+	describe('one', () => {
 		it('returns the first row', async () => {
 			const pool = createMockPool({ rows: [{ id: 1 }] })
 
 			const db = createDatabaseClient(pool)
 
-			const result = await db.get<{ id: number }>(sql`
+			const result = await db.one<{ id: number }>(sql`
 				INSERT INTO t (v)
 				VALUES (${1})
 				RETURNING id
@@ -70,7 +70,7 @@ describe('createDatabaseClient', () => {
 			const db = createDatabaseClient(pool)
 
 			await expect(
-				db.get(sql`
+				db.one(sql`
 					SELECT *
 					FROM t
 					WHERE id = ${999}
@@ -179,7 +179,7 @@ describe('createDatabaseClient', () => {
 			const db = createDatabaseClient(pool)
 
 			const result = await db.tx(async (tx) => {
-				return tx.get<{ id: number }>(sql`
+				return tx.one<{ id: number }>(sql`
 					INSERT INTO t (v)
 					VALUES (${1})
 					RETURNING id

@@ -8,8 +8,8 @@ function createMockDb(state: { appliedMigrations: string[] }) {
 	const execCalls: string[] = []
 
 	const mockTx: Queryable = {
-		query: vi.fn(),
-		get: vi.fn(),
+		first: vi.fn(),
+		one: vi.fn(),
 		many: vi.fn(),
 		val: vi.fn(),
 
@@ -21,12 +21,12 @@ function createMockDb(state: { appliedMigrations: string[] }) {
 	}
 
 	const db: Db = {
-		async query() {
+		async first() {
 			return null
 		},
 
-		async get(_fragment) {
-			throw new Error('Unexpected get call')
+		async one(_fragment) {
+			throw new Error('Unexpected one call')
 		},
 
 		async many() {
