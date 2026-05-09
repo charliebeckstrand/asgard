@@ -21,7 +21,11 @@ export function bootstrapServiceDb(
 		const result = await runMigrations(db, migrationsDir)
 
 		if (result.applied.length > 0) {
-			console.log(`[${name}] Applied migrations: ${result.applied.join(', ')}`)
+			if (options?.logger) {
+				options.logger.info({ migrations: result.applied }, 'applied migrations')
+			} else {
+				console.log(`[${name}] Applied migrations: ${result.applied.join(', ')}`)
+			}
 		}
 	}
 

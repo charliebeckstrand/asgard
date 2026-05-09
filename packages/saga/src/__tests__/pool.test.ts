@@ -1,4 +1,5 @@
 import { Pool } from 'pg'
+import type { Mock } from 'vitest'
 import { createPool } from '../pool.js'
 
 vi.mock('pg', () => {
@@ -113,5 +114,40 @@ describe('createPool', () => {
 		const pool = createPool('postgres://user:pass@host:5432/db')
 
 		expect(pool.on).toHaveBeenCalledWith('error', expect.any(Function))
+	})
+
+	it('routes idle-client errors through the provided logger', () => {
+		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+
+		const pool = createPool('postgres://user:pass@host:5432/db', {
+			// biome-ignore lint/suspicious/noExplicitAny: minimal logger stub for the test
+			logger: logger as any,
+		})
+
+		const handler = (pool.on as unknown as Mock).mock.calls.find((c) => c[0] === 'error')?.[1] as
+			| ((err: Error) => void)
+			| undefined
+
+		expect(handler).toBeDefined()
+
+		handler?.(new Error('boom'))
+
+		expect(logger.error).toHaveBeenCalledWith({ err: expect.any(Error) }, 'idle client error')
+	})
+
+	it('falls back to console.error when no logger is provided', () => {
+		const consoleErr = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+		const pool = createPool('postgres://user:pass@host:5432/db')
+
+		const handler = (pool.on as unknown as Mock).mock.calls.find((c) => c[0] === 'error')?.[1] as
+			| ((err: Error) => void)
+			| undefined
+
+		handler?.(new Error('boom'))
+
+		expect(consoleErr).toHaveBeenCalledWith('[saga] idle client error:', 'boom')
+
+		consoleErr.mockRestore()
 	})
 })
