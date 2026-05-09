@@ -1,12 +1,12 @@
 import { STATUS_CODES } from 'node:http'
-import type { Context } from 'hono'
+import type { Context, Env } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 export function errorBody(status: number, message: string, error?: string) {
 	return { error: error ?? STATUS_CODES[status] ?? 'Error', message, statusCode: status }
 }
 
-export function errorHandler(err: Error, c: Context) {
+export function errorHandler<E extends Env>(err: Error, c: Context<E>) {
 	if ('status' in err && typeof err.status === 'number') {
 		const status = err.status as ContentfulStatusCode
 
@@ -18,6 +18,6 @@ export function errorHandler(err: Error, c: Context) {
 	return c.json(errorBody(500, 'An unexpected error occurred'), 500)
 }
 
-export function notFoundHandler(c: Context) {
+export function notFoundHandler<E extends Env>(c: Context<E>) {
 	return c.json(errorBody(404, `Route ${c.req.method} ${c.req.path} not found`), 404)
 }

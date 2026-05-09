@@ -18,6 +18,8 @@ export const HealthResponseSchema = z
 	})
 	.openapi('HealthResponse')
 
+export type HealthResponse = z.infer<typeof HealthResponseSchema>
+
 type ServiceProbe = () => Promise<{ up: boolean }>
 
 interface CreateHealthRouteOptions {

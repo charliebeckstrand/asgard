@@ -1,5 +1,6 @@
 import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
+import type { Env } from 'hono'
 import { compress } from 'hono/compress'
 import { cors } from 'hono/cors'
 import { etag } from 'hono/etag'
@@ -27,8 +28,8 @@ interface CreateAppOptions {
 	logger?: Logger
 }
 
-export function createApp(options: CreateAppOptions) {
-	const app = new OpenAPIHono({ defaultHook: validationHook })
+export function createApp<E extends Env = Env>(options: CreateAppOptions): OpenAPIHono<E> {
+	const app = new OpenAPIHono<E>({ defaultHook: validationHook })
 
 	app.use(trimTrailingSlash())
 

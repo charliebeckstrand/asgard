@@ -1,6 +1,6 @@
 export { HTTPException } from 'hono/http-exception'
 export { createApp } from './http/create-app.js'
-export { createHealthRoute } from './http/health.js'
+export { createHealthRoute, type HealthResponse, HealthResponseSchema } from './http/health.js'
 export { errorResponse, jsonRequest, jsonResponse } from './http/responses.js'
 export { createSSEStream } from './http/sse.js'
 export { validationHook } from './http/validation-hook.js'
