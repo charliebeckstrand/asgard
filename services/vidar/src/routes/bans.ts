@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { HttpError } from 'grid'
 import { createBan, listActiveBans, removeBan } from '../handlers/bans.js'
 import {
 	BanListSchema,
@@ -104,10 +105,7 @@ export const bans = app
 		const removed = await removeBan(ip)
 
 		if (!removed) {
-			return c.json(
-				{ error: 'Not Found', message: `No active ban found for IP ${ip}`, statusCode: 404 },
-				404,
-			)
+			throw new HttpError(404, `No active ban found for IP ${ip}`, 'Not Found')
 		}
 
 		return c.json({ message: `Ban removed for IP ${ip}` }, 200)
