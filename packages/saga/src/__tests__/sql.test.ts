@@ -470,7 +470,7 @@ describe('sql.set', () => {
 	it('builds SET clause from object', () => {
 		const result = sql.set({ name: 'Alice', email: 'alice@test.com' })
 
-		expect(result.text).toBe('SET name = $1, email = $2')
+		expect(result.text).toBe('SET "name" = $1, "email" = $2')
 
 		expect(result.values).toEqual(['Alice', 'alice@test.com'])
 	})
@@ -478,7 +478,7 @@ describe('sql.set', () => {
 	it('handles single column', () => {
 		const result = sql.set({ active: false })
 
-		expect(result.text).toBe('SET active = $1')
+		expect(result.text).toBe('SET "active" = $1')
 
 		expect(result.values).toEqual([false])
 	})
@@ -490,9 +490,17 @@ describe('sql.set', () => {
 	it('handles null values', () => {
 		const result = sql.set({ deleted_at: null })
 
-		expect(result.text).toBe('SET deleted_at = $1')
+		expect(result.text).toBe('SET "deleted_at" = $1')
 
 		expect(result.values).toEqual([null])
+	})
+
+	it('escapes column names containing quotes', () => {
+		const result = sql.set({ 'weird"name': 1 })
+
+		expect(result.text).toBe('SET "weird""name" = $1')
+
+		expect(result.values).toEqual([1])
 	})
 
 	it('works nested inside a sql template', () => {
@@ -502,7 +510,7 @@ describe('sql.set', () => {
 			WHERE id = ${42}
 		`
 
-		expect(result.text).toBe('UPDATE users SET name = $1, active = $2 WHERE id = $3')
+		expect(result.text).toBe('UPDATE users SET "name" = $1, "active" = $2 WHERE id = $3')
 
 		expect(result.values).toEqual(['Bob', true, 42])
 	})
@@ -512,7 +520,7 @@ describe('sql.insert', () => {
 	it('builds INSERT statement from table and object', () => {
 		const result = sql.insert('users', { name: 'Alice', email: 'alice@test.com' })
 
-		expect(result.text).toBe('INSERT INTO users (name, email) VALUES ($1, $2)')
+		expect(result.text).toBe('INSERT INTO users ("name", "email") VALUES ($1, $2)')
 
 		expect(result.values).toEqual(['Alice', 'alice@test.com'])
 	})
@@ -520,13 +528,21 @@ describe('sql.insert', () => {
 	it('handles single column', () => {
 		const result = sql.insert('logs', { message: 'hello' })
 
-		expect(result.text).toBe('INSERT INTO logs (message) VALUES ($1)')
+		expect(result.text).toBe('INSERT INTO logs ("message") VALUES ($1)')
 
 		expect(result.values).toEqual(['hello'])
 	})
 
 	it('throws on empty object', () => {
 		expect(() => sql.insert('t', {})).toThrow('sql.insert() requires at least one column')
+	})
+
+	it('escapes column names containing quotes', () => {
+		const result = sql.insert('t', { 'weird"col': 1 })
+
+		expect(result.text).toBe('INSERT INTO t ("weird""col") VALUES ($1)')
+
+		expect(result.values).toEqual([1])
 	})
 
 	it('works nested inside a sql template with RETURNING', () => {
@@ -536,7 +552,7 @@ describe('sql.insert', () => {
 		`
 
 		expect(result.text).toBe(
-			'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, created_at',
+			'INSERT INTO users ("name", "email") VALUES ($1, $2) RETURNING id, created_at',
 		)
 
 		expect(result.values).toEqual(['Alice', 'alice@test.com'])
@@ -545,7 +561,7 @@ describe('sql.insert', () => {
 	it('handles null and numeric values', () => {
 		const result = sql.insert('events', { ip: '1.2.3.4', rule_id: null, score: 5 })
 
-		expect(result.text).toBe('INSERT INTO events (ip, rule_id, score) VALUES ($1, $2, $3)')
+		expect(result.text).toBe('INSERT INTO events ("ip", "rule_id", "score") VALUES ($1, $2, $3)')
 
 		expect(result.values).toEqual(['1.2.3.4', null, 5])
 	})

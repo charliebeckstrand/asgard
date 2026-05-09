@@ -1,9 +1,15 @@
+import { Client } from 'pg'
+
 const SQL_FRAGMENT = Symbol('SqlFragment')
 
 export interface SqlFragment {
 	readonly [SQL_FRAGMENT]: true
 	readonly text: string
 	readonly values: unknown[]
+}
+
+function escapeIdentifier(name: string): string {
+	return Client.prototype.escapeIdentifier.call(null as never, name)
 }
 
 function isSqlFragment(value: unknown): value is SqlFragment {
@@ -60,6 +66,11 @@ function sql(strings: TemplateStringsArray, ...params: unknown[]): SqlFragment {
 	return { [SQL_FRAGMENT]: true, text: normalizeWhitespace(textParts.join('')), values }
 }
 
+/**
+ * Inlines a string verbatim into a SQL fragment with no escaping or
+ * parameterization. The caller is responsible for ensuring the value is
+ * trusted SQL — never pass user input.
+ */
 sql.raw = function raw(value: string): SqlFragment {
 	return { [SQL_FRAGMENT]: true, text: value, values: [] }
 }
@@ -141,7 +152,7 @@ sql.set = function set(obj: Record<string, unknown>): SqlFragment {
 		throw new Error('sql.set() requires at least one column')
 	}
 
-	const fragments = entries.map(([key, value]) => sql`${sql.raw(key)} = ${value}`)
+	const fragments = entries.map(([key, value]) => sql`${sql.raw(escapeIdentifier(key))} = ${value}`)
 
 	return sql`SET ${sql.join(fragments)}`
 }
@@ -153,7 +164,7 @@ sql.insert = function insert(table: string, data: Record<string, unknown>): SqlF
 		throw new Error('sql.insert() requires at least one column')
 	}
 
-	const columns = keys.join(', ')
+	const columns = keys.map(escapeIdentifier).join(', ')
 
 	const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ')
 
