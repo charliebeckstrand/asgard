@@ -1,4 +1,5 @@
-import { emitEvent, eventEmitter, type VidarEvent } from '@/lib/emitter'
+import type { SecurityEvent } from 'skuld'
+import { emitEvent, eventEmitter } from '@/lib/emitter'
 
 describe('emitEvent', () => {
 	it('emits events on the eventEmitter', () => {
@@ -6,7 +7,7 @@ describe('emitEvent', () => {
 
 		eventEmitter.on('event', handler)
 
-		const event: VidarEvent = {
+		const event: SecurityEvent = {
 			id: 'evt-1',
 			ip: '10.0.0.1',
 			event_type: 'login_failed',

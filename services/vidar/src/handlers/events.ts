@@ -1,25 +1,12 @@
 import { sql } from 'saga'
+import type { IngestEvent, SecurityEvent } from 'skuld'
 import { db } from '../lib/db.js'
 import { emitEvent } from '../lib/emitter.js'
 import { logger } from '../lib/log.js'
 import { evaluateRules } from './rules.js'
 
-export interface SecurityEventRow {
-	id: string
-	ip: string
-	event_type: string
-	details: Record<string, unknown>
-	service: string
-	created_at: string
-}
-
-export async function ingestEvent(event: {
-	ip: string
-	event_type: string
-	details: Record<string, unknown>
-	service: string
-}): Promise<SecurityEventRow> {
-	const row = await db.one<SecurityEventRow>(
+export async function ingestEvent(event: IngestEvent): Promise<SecurityEvent> {
+	const row = await db.one<SecurityEvent>(
 		sql`
 			INSERT INTO vdr_security_events (ip, event_type, details, service)
 			VALUES (${event.ip}, ${event.event_type}, ${sql.json(event.details)}, ${event.service})
