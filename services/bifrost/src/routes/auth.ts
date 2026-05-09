@@ -3,7 +3,7 @@ import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook
 import { getIpAddress } from 'grid/middleware'
 import { EmailSchema, LoginPasswordSchema, MessageSchema, PasswordSchema, UserSchema } from 'skuld'
 import { authenticateUser, getConfig, registerUser } from '../auth/index.js'
-import { ACCESS_TOKEN_TTL_SECONDS, verifyToken } from '../auth/jwt.js'
+import { ACCESS_TOKEN_TTL_SECONDS, verifyAccessToken } from '../auth/jwt.js'
 import { environment } from '../lib/env.js'
 import {
 	clearSessionCookie,
@@ -166,11 +166,9 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 			throw new HTTPException(401, { message: 'Not authenticated' })
 		}
 
-		const payload = await verifyToken(session.accessToken)
-
-		if (typeof payload.sub !== 'string') {
+		const payload = await verifyAccessToken(session.accessToken).catch(() => {
 			throw new HTTPException(401, { message: 'Not authenticated' })
-		}
+		})
 
 		const { userRepository } = getConfig()
 

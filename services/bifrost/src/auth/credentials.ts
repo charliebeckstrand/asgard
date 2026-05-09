@@ -3,7 +3,7 @@ import { hash, verify } from '@node-rs/argon2'
 import type { User } from 'skuld'
 import { getConfig } from './config.js'
 import { AuthError } from './errors.js'
-import { signToken, verifyToken } from './jwt.js'
+import { signToken, verifyRefreshToken } from './jwt.js'
 
 export { AuthError } from './errors.js'
 
@@ -84,17 +84,9 @@ export async function registerUser(email: string, password: string, ip?: string)
 }
 
 export async function refreshTokenPair(refreshToken: string): Promise<TokenPair> {
-	let claims: Awaited<ReturnType<typeof verifyToken>>
-
-	try {
-		claims = await verifyToken(refreshToken)
-	} catch {
+	const claims = await verifyRefreshToken(refreshToken).catch(() => {
 		throw new AuthError('invalid_token', 'Invalid or expired refresh token')
-	}
-
-	if (claims.type !== 'refresh') {
-		throw new AuthError('invalid_token', 'Invalid or expired refresh token')
-	}
+	})
 
 	const { userRepository } = getConfig()
 
