@@ -1,21 +1,33 @@
 import { z } from '@hono/zod-openapi'
 import { createListSchema } from './composites.js'
-import {
-	DetailsSchema,
-	EventTypeSchema,
-	IdSchema,
-	IpAddressSchema,
-	OptionalTimestampSchema,
-	ServiceNameSchema,
-	TimestampSchema,
-} from './primitives.js'
+import { IdSchema, IpAddressSchema, TimestampSchema } from './primitives.js'
+
+const eventType = z
+	.string()
+	.min(1)
+	.openapi({ description: 'Type of event', example: 'login_failed' })
+
+const serviceName = z
+	.string()
+	.min(1)
+	.max(100)
+	.openapi({ description: 'Service name', example: 'bifrost' })
+
+const details = z
+	.record(z.string(), z.unknown())
+	.default({})
+	.openapi({ description: 'Additional details' })
+
+const optionalTimestamp = z.iso.datetime().optional().openapi({
+	description: 'Optional ISO 8601 datetime',
+})
 
 export const IngestEventSchema = z
 	.object({
 		ip: IpAddressSchema,
-		event_type: EventTypeSchema,
-		details: DetailsSchema,
-		service: ServiceNameSchema,
+		event_type: eventType,
+		details,
+		service: serviceName,
 	})
 	.openapi('IngestEvent')
 
@@ -34,7 +46,7 @@ export const CheckIpResponseSchema = z
 	.object({
 		banned: z.boolean(),
 		reason: z.string().optional(),
-		expires_at: OptionalTimestampSchema,
+		expires_at: optionalTimestamp,
 	})
 	.openapi('CheckIpResponse')
 

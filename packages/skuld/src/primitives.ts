@@ -23,24 +23,3 @@ export const TimestampSchema = z.iso.datetime().openapi({
 	description: 'ISO 8601 datetime',
 	example: '2026-01-01T00:00:00.000Z',
 })
-
-// Internal helpers — used only by security.ts. Not part of the public API.
-export const OptionalTimestampSchema = z.iso.datetime().optional().openapi({
-	description: 'Optional ISO 8601 datetime',
-})
-
-export const ServiceNameSchema = z
-	.string()
-	.min(1)
-	.max(100)
-	.openapi({ description: 'Service name', example: 'bifrost' })
-
-export const EventTypeSchema = z
-	.string()
-	.min(1)
-	.openapi({ description: 'Type of event', example: 'login_failed' })
-
-export const DetailsSchema = z
-	.record(z.string(), z.unknown())
-	.default({})
-	.openapi({ description: 'Additional details' })
