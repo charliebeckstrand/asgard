@@ -7,7 +7,6 @@ import {
 	ErrorSchema,
 	MessageSchema,
 } from '../lib/schemas.js'
-import { apiKeyAuth } from '../middleware/api-key.js'
 
 const listBansRoute = createRoute({
 	method: 'get',
@@ -82,9 +81,6 @@ const removeBanRoute = createRoute({
 })
 
 const app = new OpenAPIHono()
-
-app.use('/bans', apiKeyAuth())
-app.use('/bans/*', apiKeyAuth())
 
 export const bans = app
 	.openapi(listBansRoute, async (c) => {

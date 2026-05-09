@@ -1,7 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { isIpBanned } from '../handlers/bans.js'
 import { CheckIpResponseSchema, ErrorSchema } from '../lib/schemas.js'
-import { apiKeyAuth } from '../middleware/api-key.js'
 
 const checkIpRoute = createRoute({
 	method: 'get',
@@ -32,8 +31,6 @@ const checkIpRoute = createRoute({
 })
 
 const app = new OpenAPIHono()
-
-app.use('/check-ip', apiKeyAuth())
 
 export const checkIp = app.openapi(checkIpRoute, async (c) => {
 	const { ip } = c.req.valid('query')

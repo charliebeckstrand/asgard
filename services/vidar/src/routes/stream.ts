@@ -2,11 +2,8 @@ import { OpenAPIHono } from '@hono/zod-openapi'
 import { createSSEStream } from 'grid'
 import type { VidarEvent } from '../lib/emitter.js'
 import { eventEmitter } from '../lib/emitter.js'
-import { apiKeyAuth } from '../middleware/api-key.js'
 
 const app = new OpenAPIHono()
-
-app.use('/stream', apiKeyAuth())
 
 app.get(
 	'/stream',

@@ -1,7 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { listThreats } from '../handlers/threats.js'
 import { ErrorSchema, ThreatListSchema } from '../lib/schemas.js'
-import { apiKeyAuth } from '../middleware/api-key.js'
 
 const listThreatsRoute = createRoute({
 	method: 'get',
@@ -32,8 +31,6 @@ const listThreatsRoute = createRoute({
 })
 
 const app = new OpenAPIHono()
-
-app.use('/threats', apiKeyAuth())
 
 export const threats = app.openapi(listThreatsRoute, async (c) => {
 	const { resolved, ip } = c.req.valid('query')

@@ -1,7 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
 import { getRules } from '../handlers/rules.js'
 import { ErrorSchema, RuleListSchema } from '../lib/schemas.js'
-import { apiKeyAuth } from '../middleware/api-key.js'
 
 const listRulesRoute = createRoute({
 	method: 'get',
@@ -23,8 +22,6 @@ const listRulesRoute = createRoute({
 })
 
 const app = new OpenAPIHono()
-
-app.use('/rules', apiKeyAuth())
 
 export const rules = app.openapi(listRulesRoute, (c) => {
 	const allRules = getRules()
