@@ -1,17 +1,11 @@
 {
 	"name": "vali",
 	"version": "0.1.0",
-	"description": "Shared test utilities — mock factories, custom matchers, and fixtures for Vitest",
+	"description": "Shared test utilities — vitest config, postgres testcontainers, and temp-dir helpers",
 	"type": "module",
-	"main": "./dist/index.js",
-	"types": "./src/index.ts",
 	"exports": {
-		".": {
-			"types": "./src/index.ts",
-			"default": "./dist/index.js"
-		},
 		"./fixtures": {
-			"types": "./src/fixtures/index.ts",
+			"types": "./src/fixtures.ts",
 			"default": "./dist/fixtures.js"
 		},
 		"./containers": {

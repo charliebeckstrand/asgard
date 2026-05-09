@@ -2,8 +2,7 @@ import { defineConfig } from 'tsup'
 
 export default defineConfig({
 	entry: {
-		index: 'src/index.ts',
-		fixtures: 'src/fixtures/index.ts',
+		fixtures: 'src/fixtures.ts',
 		containers: 'src/containers/index.ts',
 		config: 'src/config.ts',
 	},
