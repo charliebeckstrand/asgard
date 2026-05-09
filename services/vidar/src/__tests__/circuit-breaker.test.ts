@@ -116,6 +116,61 @@ describe('circuit breaker', () => {
 		expect(breaker.getStatus().failures).toBe(0)
 	})
 
+	it('reports open and half-open transitions through the provided logger', async () => {
+		const logger = {
+			warn: vi.fn(),
+			info: vi.fn(),
+			error: vi.fn(),
+			debug: vi.fn(),
+			fatal: vi.fn(),
+			trace: vi.fn(),
+			child: vi.fn(),
+		}
+
+		const breaker = createCircuitBreaker('vidar', {
+			failureThreshold: 1,
+			resetTimeout: 0,
+			// biome-ignore lint/suspicious/noExplicitAny: minimal logger stub
+			logger: logger as any,
+		})
+
+		await breaker
+			.execute(async () => {
+				throw new Error('fail')
+			})
+			.catch(() => {})
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			{ breaker: 'vidar', failures: 1 },
+			'circuit breaker opened',
+		)
+
+		await breaker.execute(async () => 'recovered')
+
+		expect(logger.info).toHaveBeenCalledWith(
+			{ breaker: 'vidar' },
+			'circuit breaker entering half-open',
+		)
+	})
+
+	it('falls back to console when no logger is provided', async () => {
+		const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+		const breaker = createCircuitBreaker('test', { failureThreshold: 1, resetTimeout: 60_000 })
+
+		await breaker
+			.execute(async () => {
+				throw new Error('fail')
+			})
+			.catch(() => {})
+
+		expect(consoleWarn).toHaveBeenCalledWith(
+			'[vidar] Circuit breaker "test" opened after 1 failures',
+		)
+
+		consoleWarn.mockRestore()
+	})
+
 	it('resets failure count on success', async () => {
 		const breaker = createCircuitBreaker('test', { failureThreshold: 5 })
 

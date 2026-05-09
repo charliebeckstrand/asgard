@@ -16,6 +16,7 @@ await migrate(import.meta.url)
 configureVidar({
 	vidarUrl: env.VIDAR_URL,
 	vidarApiKey: env.VIDAR_API_KEY,
+	logger: log,
 })
 
 configure({

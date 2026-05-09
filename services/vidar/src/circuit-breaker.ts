@@ -1,9 +1,18 @@
+import type { Logger } from 'saga/log'
+
 type CircuitState = 'closed' | 'open' | 'half-open'
 
 export interface CircuitBreakerOptions {
 	failureThreshold?: number
 	halfOpenMaxAttempts?: number
 	resetTimeout?: number
+	/**
+	 * When set, state transitions are reported here instead of
+	 * console.{warn,info}. The breaker is constructed inside vidar's
+	 * client (used by other services), so the consumer threads its own
+	 * logger through `configureVidar({ logger })`.
+	 */
+	logger?: Logger
 }
 
 export interface CircuitBreakerStatus {
@@ -23,7 +32,7 @@ export function createCircuitBreaker(
 	name: string,
 	options: CircuitBreakerOptions = {},
 ): CircuitBreaker {
-	const { failureThreshold = 5, resetTimeout = 30_000, halfOpenMaxAttempts = 3 } = options
+	const { failureThreshold = 5, resetTimeout = 30_000, halfOpenMaxAttempts = 3, logger } = options
 
 	let failures = 0
 	let lastFailure: number | null = null
@@ -56,7 +65,11 @@ export function createCircuitBreaker(
 		} else if (failures >= failureThreshold) {
 			state = 'open'
 
-			console.warn(`[vidar] Circuit breaker "${name}" opened after ${failures} failures`)
+			if (logger) {
+				logger.warn({ breaker: name, failures }, 'circuit breaker opened')
+			} else {
+				console.warn(`[vidar] Circuit breaker "${name}" opened after ${failures} failures`)
+			}
 		}
 	}
 
@@ -68,7 +81,11 @@ export function createCircuitBreaker(
 
 					halfOpenAttempts = 0
 
-					console.info(`[vidar] Circuit breaker "${name}" entering half-open state`)
+					if (logger) {
+						logger.info({ breaker: name }, 'circuit breaker entering half-open')
+					} else {
+						console.info(`[vidar] Circuit breaker "${name}" entering half-open state`)
+					}
 				} else {
 					throw new Error(`Circuit breaker "${name}" is open — ${name} is unavailable`)
 				}
