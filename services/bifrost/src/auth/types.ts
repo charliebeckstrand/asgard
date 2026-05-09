@@ -1,11 +1,4 @@
-export interface UserRow {
-	id: string
-	email: string
-	is_active: boolean
-	is_verified: boolean
-	created_at: string
-	updated_at: string
-}
+import type { User } from 'skuld'
 
 export interface CredentialsRow {
 	id: string
@@ -14,10 +7,10 @@ export interface CredentialsRow {
 }
 
 export interface UserRepository {
-	insertUser(id: string, email: string, hashedPassword: string): Promise<UserRow>
+	insertUser(id: string, email: string, hashedPassword: string): Promise<User>
 	getCredentialsByEmail(email: string): Promise<CredentialsRow | null>
-	getUsers(): Promise<UserRow[]>
-	getUserById(id: string): Promise<UserRow | null>
-	updateUser(id: string, data: { email?: string; is_active?: boolean }): Promise<UserRow | null>
+	getUsers(): Promise<User[]>
+	getUserById(id: string): Promise<User | null>
+	updateUser(id: string, data: { email?: string; is_active?: boolean }): Promise<User | null>
 	deleteUser(id: string): Promise<boolean>
 }
