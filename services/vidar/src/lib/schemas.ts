@@ -33,6 +33,12 @@ export const jsonResponse = <S extends z.ZodTypeAny>(schema: S, description: str
 		description,
 	}) as const
 
+/** Wrap rows in the { data, total } envelope used by every list endpoint. */
+export const toList = <T>(items: T[]): { data: T[]; total: number } => ({
+	data: items,
+	total: items.length,
+})
+
 export const ThreatSchema = z
 	.object({
 		id: IdSchema,

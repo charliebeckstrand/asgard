@@ -1,5 +1,6 @@
 import { type SqlFragment, sql } from 'saga'
 import { db } from '../lib/db.js'
+import { toList } from '../lib/schemas.js'
 
 export interface ThreatRow {
 	id: string
@@ -51,5 +52,5 @@ export async function listThreats(options?: {
 		`,
 	)
 
-	return { data: rows, total: rows.length }
+	return toList(rows)
 }

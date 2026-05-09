@@ -1,6 +1,6 @@
 import { sql } from 'saga'
 import { db } from '../lib/db.js'
-import type { CheckIpResponse } from '../lib/schemas.js'
+import { type CheckIpResponse, toList } from '../lib/schemas.js'
 
 /** Who created the ban — used in the audit trail. */
 export type BanSource = 'system' | 'manual' | 'vidar'
@@ -85,7 +85,7 @@ export async function listActiveBans(): Promise<{ data: BanRow[]; total: number 
 		`,
 	)
 
-	return { data: rows, total: rows.length }
+	return toList(rows)
 }
 
 export async function cleanExpiredBans(): Promise<number> {
