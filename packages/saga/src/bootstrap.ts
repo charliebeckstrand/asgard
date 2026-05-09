@@ -41,6 +41,32 @@ async function connectWithRetry(adminUrl: string, timeoutSeconds: number): Promi
 	throw new Error(`Could not connect to postgres within ${timeoutSeconds}s: ${message}`)
 }
 
+async function ensureRole(client: Client, spec: DatabaseSpec): Promise<boolean> {
+	const result = await client.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [spec.role])
+
+	if (result.rowCount !== 0) return false
+
+	const role = client.escapeIdentifier(spec.role)
+	const password = client.escapeLiteral(spec.password)
+
+	await client.query(`CREATE ROLE ${role} WITH LOGIN PASSWORD ${password}`)
+
+	return true
+}
+
+async function ensureDatabase(client: Client, spec: DatabaseSpec): Promise<boolean> {
+	const result = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [spec.name])
+
+	if (result.rowCount !== 0) return false
+
+	const name = client.escapeIdentifier(spec.name)
+	const role = client.escapeIdentifier(spec.role)
+
+	await client.query(`CREATE DATABASE ${name} OWNER ${role}`)
+
+	return true
+}
+
 export async function bootstrapDatabases(
 	adminUrl: string,
 	specs: DatabaseSpec[],
@@ -53,29 +79,8 @@ export async function bootstrapDatabases(
 
 	try {
 		for (const spec of specs) {
-			const role = client.escapeIdentifier(spec.role)
-			const name = client.escapeIdentifier(spec.name)
-			const password = client.escapeLiteral(spec.password)
-
-			const roleResult = await client.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [
-				spec.role,
-			])
-
-			if (roleResult.rowCount === 0) {
-				await client.query(`CREATE ROLE ${role} WITH LOGIN PASSWORD ${password}`)
-
-				createdRoles.push(spec.role)
-			}
-
-			const dbResult = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [
-				spec.name,
-			])
-
-			if (dbResult.rowCount === 0) {
-				await client.query(`CREATE DATABASE ${name} OWNER ${role}`)
-
-				createdDatabases.push(spec.name)
-			}
+			if (await ensureRole(client, spec)) createdRoles.push(spec.role)
+			if (await ensureDatabase(client, spec)) createdDatabases.push(spec.name)
 		}
 	} finally {
 		await client.end()

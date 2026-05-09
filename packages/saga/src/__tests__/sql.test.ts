@@ -217,6 +217,12 @@ describe('sql.values', () => {
 		expect(() => sql.values([])).toThrow('sql.values() requires at least one row')
 	})
 
+	it('throws when rows have inconsistent widths', () => {
+		expect(() => sql.values([['a', 1], ['b']])).toThrow(
+			'sql.values() requires all rows to have the same length',
+		)
+	})
+
 	it('works when nested inside a sql template', () => {
 		const rows = [
 			['info', 'app', 'started'],

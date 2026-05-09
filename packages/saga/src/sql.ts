@@ -1,4 +1,4 @@
-import { Client } from 'pg'
+import { escapeIdentifier } from 'pg'
 
 const SQL_FRAGMENT = Symbol('SqlFragment')
 
@@ -10,10 +10,6 @@ export interface SqlFragment {
 
 function fragment(text: string, values: unknown[]): SqlFragment {
 	return { [SQL_FRAGMENT]: true, text, values }
-}
-
-function escapeIdentifier(name: string): string {
-	return Client.prototype.escapeIdentifier.call(null as never, name)
 }
 
 function isSqlFragment(value: unknown): value is SqlFragment {
@@ -91,19 +87,37 @@ sql.json = function json(value: unknown): SqlFragment {
 	return fragment('$1', [JSON.stringify(value)])
 }
 
-sql.and = function and(conditions: SqlFragment[]): SqlFragment {
+function combine(
+	conditions: SqlFragment[],
+	separator: string,
+	wrap: (text: string) => string,
+): SqlFragment {
 	if (conditions.length === 0) {
 		return fragment('', [])
 	}
 
-	const joined = sql.join(conditions, ' AND ')
+	const joined = sql.join(conditions, separator)
 
-	return fragment(`WHERE ${joined.text}`, joined.values)
+	return fragment(wrap(joined.text), joined.values)
+}
+
+sql.and = function and(conditions: SqlFragment[]): SqlFragment {
+	return combine(conditions, ' AND ', (t) => `WHERE ${t}`)
+}
+
+sql.or = function or(conditions: SqlFragment[]): SqlFragment {
+	return combine(conditions, ' OR ', (t) => `(${t})`)
 }
 
 sql.values = function values(rows: unknown[][]): SqlFragment {
 	if (rows.length === 0) {
 		throw new Error('sql.values() requires at least one row')
+	}
+
+	const width = rows[0].length
+
+	if (rows.some((row) => row.length !== width)) {
+		throw new Error('sql.values() requires all rows to have the same length')
 	}
 
 	const textParts: string[] = []
@@ -123,16 +137,6 @@ sql.values = function values(rows: unknown[][]): SqlFragment {
 	}
 
 	return fragment(textParts.join(', '), allValues)
-}
-
-sql.or = function or(conditions: SqlFragment[]): SqlFragment {
-	if (conditions.length === 0) {
-		return fragment('', [])
-	}
-
-	const joined = sql.join(conditions, ' OR ')
-
-	return fragment(`(${joined.text})`, joined.values)
 }
 
 sql.set = function set(obj: Record<string, unknown>): SqlFragment {
