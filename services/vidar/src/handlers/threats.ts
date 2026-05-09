@@ -20,7 +20,7 @@ export async function createThreat(threat: {
 	details: Record<string, unknown>
 	action_taken?: string
 }): Promise<ThreatRow> {
-	return db.get<ThreatRow>(
+	return db.one<ThreatRow>(
 		sql`
 			INSERT INTO vdr_threats (threat_type, severity, ip, details, action_taken)
 			VALUES (${threat.threat_type}, ${threat.severity}, ${threat.ip}, ${sql.json(threat.details)}, ${threat.action_taken ?? null})
@@ -46,7 +46,7 @@ export async function listThreats(options?: {
 	const rows = await db.many<ThreatRow>(
 		sql`
 			SELECT *
-			FROM vdr_threats ${sql.and(conditions)}
+			FROM vdr_threats ${sql.where(conditions)}
 			ORDER BY created_at DESC
 			LIMIT 100
 		`,

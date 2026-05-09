@@ -4,7 +4,7 @@ import { Pool } from 'pg'
 import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
 import { createTempDir } from 'vali/fixtures'
 import { createDatabaseClient } from '../db.js'
-import { getMigrationStatus, runMigrations } from '../migrate.js'
+import { runMigrations } from '../migrate.js'
 
 let testDb: TestDatabase
 let pool: Pool
@@ -135,34 +135,42 @@ describeWithDocker('runMigrations (integration)', () => {
 
 		await tmp.cleanup()
 	})
-})
 
-describeWithDocker('getMigrationStatus (integration)', () => {
-	beforeEach(async () => {
-		await pool.query('DROP SCHEMA IF EXISTS saga CASCADE')
-	})
-
-	it('returns applied and pending migrations', async () => {
+	it('serializes concurrent runMigrations calls so neither errors', async () => {
 		const tmp = await createTempDir('saga-migrate-')
 
-		await writeFile(join(tmp.path, '0001_applied.sql'), 'CREATE TABLE status_test (id INT)')
-
-		const db = createDatabaseClient(pool)
-
-		// Apply only the first migration
-		await runMigrations(db, tmp.path)
-
-		// Add a second migration file after the first run
 		await writeFile(
-			join(tmp.path, '0002_pending.sql'),
-			'ALTER TABLE status_test ADD COLUMN val TEXT',
+			join(tmp.path, '0001_concurrent.sql'),
+			'CREATE TABLE concurrent_test (id SERIAL PRIMARY KEY)',
 		)
 
-		const status = await getMigrationStatus(db, tmp.path)
+		await writeFile(
+			join(tmp.path, '0002_concurrent.sql'),
+			'ALTER TABLE concurrent_test ADD COLUMN val TEXT',
+		)
 
-		expect(status.applied).toHaveLength(1)
-		expect(status.applied[0].name).toBe('0001_applied.sql')
-		expect(status.pending).toEqual(['0002_pending.sql'])
+		// Two independent pools simulate two service replicas booting at once.
+		const poolA = new Pool({ connectionString: testDb.connectionUri })
+		const poolB = new Pool({ connectionString: testDb.connectionUri })
+
+		try {
+			const [resA, resB] = await Promise.all([
+				runMigrations(createDatabaseClient(poolA), tmp.path),
+				runMigrations(createDatabaseClient(poolB), tmp.path),
+			])
+
+			// Each migration applied exactly once across both runs.
+			const appliedAcross = [...resA.applied, ...resB.applied].sort()
+
+			expect(appliedAcross).toEqual(['0001_concurrent.sql', '0002_concurrent.sql'])
+
+			const { rows } = await pool.query('SELECT name FROM saga.migrations ORDER BY name')
+
+			expect(rows).toEqual([{ name: '0001_concurrent.sql' }, { name: '0002_concurrent.sql' }])
+		} finally {
+			await poolA.end()
+			await poolB.end()
+		}
 
 		await tmp.cleanup()
 	})

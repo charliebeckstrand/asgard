@@ -110,7 +110,7 @@ export async function evaluateRules(ip: string, eventType: string): Promise<void
 }
 
 async function checkRule(ip: string, rule: Rule): Promise<boolean> {
-	const row = await db.get<{ event_count: number; account_count: number }>(
+	const row = await db.one<{ event_count: number; account_count: number }>(
 		sql`SELECT
 			COUNT(*)::int AS event_count,
 			COUNT(DISTINCT details->>'email')::int AS account_count

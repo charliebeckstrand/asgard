@@ -13,8 +13,8 @@ export class NoRowsError extends Error {
 }
 
 export interface Queryable {
-	query<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null>
-	get<T extends QueryResultRow>(fragment: SqlFragment): Promise<T>
+	first<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null>
+	one<T extends QueryResultRow>(fragment: SqlFragment): Promise<T>
 	many<T extends QueryResultRow>(fragment: SqlFragment): Promise<T[]>
 	exec(fragment: SqlFragment): Promise<number>
 	val<T>(fragment: SqlFragment): Promise<T>
@@ -41,13 +41,13 @@ function createQueryable(executor: { query: Pool['query'] | PoolClient['query'] 
 	}
 
 	return {
-		async query<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null> {
+		async first<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null> {
 			const { rows } = await executor.query<T>(toConfig(fragment))
 
 			return rows[0] ?? null
 		},
 
-		get: firstRow,
+		one: firstRow,
 
 		async many<T extends QueryResultRow>(fragment: SqlFragment): Promise<T[]> {
 			const { rows } = await executor.query<T>(toConfig(fragment))
@@ -132,10 +132,6 @@ export function createDatabase(getDatabaseUrl: () => string, options?: PoolOptio
 
 	return {
 		db,
-
-		getPool() {
-			return init().pool
-		},
 
 		async closePool() {
 			if (state) {

@@ -19,11 +19,8 @@ vi.mock('../lib/chat-repository.js', () => ({
 }))
 
 vi.mock('../lib/db.js', () => ({
-	getPool: vi.fn().mockReturnValue({
-		query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
-	}),
+	db: { ping: vi.fn().mockResolvedValue(true) },
 	closePool: vi.fn(),
-	db: {},
 }))
 
 import { sign } from 'hono/jwt'

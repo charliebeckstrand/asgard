@@ -1,6 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import type { Db } from './db.js'
 import { sql } from './sql.js'
 
@@ -14,10 +13,12 @@ export interface MigrationResult {
 	skipped: string[]
 }
 
-export interface MigrationStatus {
-	applied: MigrationRecord[]
-	pending: string[]
-}
+/**
+ * Stable advisory-lock key — bytes of "saga" interpreted as int32 (0x53616761).
+ * Concurrent runMigrations calls across processes serialize on this key, so
+ * rolling deploys that overlap can't race each other into duplicate-key errors.
+ */
+const MIGRATION_LOCK_KEY = 0x53616761
 
 async function ensureSagaSchema(db: Db): Promise<void> {
 	await db.exec(sql`
@@ -47,15 +48,11 @@ async function readMigrationFiles(migrationsDir: string): Promise<string[]> {
 	return files.filter((f) => f.endsWith('.sql')).sort()
 }
 
-const sagaMigrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'migrations')
-
-export async function runMigrations(db: Db, migrationsDir?: string): Promise<MigrationResult> {
-	const dir = migrationsDir ?? sagaMigrationsDir
-
+export async function runMigrations(db: Db, migrationsDir: string): Promise<MigrationResult> {
 	await ensureSagaSchema(db)
 
 	const applied = new Set((await getAppliedMigrations(db)).map((r) => r.name))
-	const files = await readMigrationFiles(dir)
+	const files = await readMigrationFiles(migrationsDir)
 
 	const result: MigrationResult = { applied: [], skipped: [] }
 
@@ -66,31 +63,35 @@ export async function runMigrations(db: Db, migrationsDir?: string): Promise<Mig
 			continue
 		}
 
-		const content = await readFile(join(dir, file), 'utf-8')
+		const content = await readFile(join(migrationsDir, file), 'utf-8')
 
-		await db.tx(async (tx) => {
+		const wasAppliedThisCall = await db.tx(async (tx) => {
+			await tx.exec(sql`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK_KEY}::bigint)`)
+
+			// Re-check under the lock — another process may have applied this
+			// migration between our pre-loop read and acquiring the lock.
+			const existing = await tx.first<{ name: string }>(sql`
+				SELECT name FROM saga.migrations WHERE name = ${file}
+			`)
+
+			if (existing) return false
+
 			await tx.exec(sql.raw(content))
 
 			await tx.exec(sql`
 				INSERT INTO saga.migrations (name)
 				VALUES (${file})
 			`)
+
+			return true
 		})
 
-		result.applied.push(file)
+		if (wasAppliedThisCall) {
+			result.applied.push(file)
+		} else {
+			result.skipped.push(file)
+		}
 	}
 
 	return result
-}
-
-export async function getMigrationStatus(db: Db, migrationsDir: string): Promise<MigrationStatus> {
-	await ensureSagaSchema(db)
-
-	const applied = await getAppliedMigrations(db)
-	const appliedNames = new Set(applied.map((r) => r.name))
-
-	const files = await readMigrationFiles(migrationsDir)
-	const pending = files.filter((f) => !appliedNames.has(f))
-
-	return { applied, pending }
 }

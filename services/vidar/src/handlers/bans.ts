@@ -17,7 +17,7 @@ export interface BanRow {
 }
 
 export async function isIpBanned(ip: string): Promise<CheckIpResponse> {
-	const row = await db.query<Pick<BanRow, 'reason' | 'expires_at'>>(
+	const row = await db.first<Pick<BanRow, 'reason' | 'expires_at'>>(
 		sql`
 			SELECT reason, expires_at
 			FROM vdr_bans
@@ -47,7 +47,7 @@ export async function createBan(
 		? sql`now() + make_interval(mins => ${options.duration_minutes}::int)`
 		: sql`NULL`
 
-	return db.get<BanRow>(
+	return db.one<BanRow>(
 		sql`
 		INSERT INTO vdr_bans (ip, reason, rule_id, created_by, expires_at)
 		VALUES (

@@ -87,26 +87,28 @@ sql.json = function json(value: unknown): SqlFragment {
 	return fragment('$1', [JSON.stringify(value)])
 }
 
-function combine(
-	conditions: SqlFragment[],
-	separator: string,
-	wrap: (text: string) => string,
-): SqlFragment {
+sql.and = function and(conditions: SqlFragment[]): SqlFragment {
+	return sql.join(conditions, ' AND ')
+}
+
+sql.or = function or(conditions: SqlFragment[]): SqlFragment {
 	if (conditions.length === 0) {
 		return fragment('', [])
 	}
 
-	const joined = sql.join(conditions, separator)
+	const joined = sql.join(conditions, ' OR ')
 
-	return fragment(wrap(joined.text), joined.values)
+	return fragment(`(${joined.text})`, joined.values)
 }
 
-sql.and = function and(conditions: SqlFragment[]): SqlFragment {
-	return combine(conditions, ' AND ', (t) => `WHERE ${t}`)
-}
+sql.where = function where(conditions: SqlFragment[]): SqlFragment {
+	if (conditions.length === 0) {
+		return fragment('', [])
+	}
 
-sql.or = function or(conditions: SqlFragment[]): SqlFragment {
-	return combine(conditions, ' OR ', (t) => `(${t})`)
+	const joined = sql.join(conditions, ' AND ')
+
+	return fragment(`WHERE ${joined.text}`, joined.values)
 }
 
 sql.values = function values(rows: unknown[][]): SqlFragment {

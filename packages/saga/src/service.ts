@@ -1,3 +1,5 @@
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createDatabase } from './db.js'
 import { runMigrations } from './migrate.js'
 import type { PoolOptions } from './pool.js'
@@ -7,11 +9,14 @@ export function bootstrapServiceDb(
 	getDatabaseUrl: () => string,
 	options?: PoolOptions,
 ) {
-	const { db, getPool, closePool } = createDatabase(getDatabaseUrl, options)
+	const { db, closePool } = createDatabase(getDatabaseUrl, options)
 
-	async function migrate(migrationsDir: string): Promise<void> {
-		// First call (no dir) bootstraps saga's own migrations table.
-		await runMigrations(db)
+	/**
+	 * Run migrations from `<service>/migrations`. Pass `import.meta.url` from
+	 * the caller — saga resolves the migrations directory relative to it.
+	 */
+	async function migrate(callerModuleUrl: string): Promise<void> {
+		const migrationsDir = resolve(dirname(fileURLToPath(callerModuleUrl)), '..', 'migrations')
 
 		const result = await runMigrations(db, migrationsDir)
 
@@ -20,5 +25,5 @@ export function bootstrapServiceDb(
 		}
 	}
 
-	return { closePool, db, getPool, migrate }
+	return { closePool, db, migrate }
 }

@@ -291,12 +291,48 @@ describe('sql.json', () => {
 })
 
 describe('sql.and', () => {
+	it('joins conditions with AND', () => {
+		const conditions = [sql`ip = ${'1.2.3.4'}`, sql`resolved = ${true}`]
+
+		const result = sql.and(conditions)
+
+		expect(result.text).toBe('ip = $1 AND resolved = $2')
+
+		expect(result.values).toEqual(['1.2.3.4', true])
+	})
+
+	it('returns empty fragment for no conditions', () => {
+		const result = sql.and([])
+
+		expect(result.text).toBe('')
+
+		expect(result.values).toEqual([])
+	})
+
+	it('handles single condition without AND', () => {
+		const result = sql.and([sql`active = ${true}`])
+
+		expect(result.text).toBe('active = $1')
+
+		expect(result.values).toEqual([true])
+	})
+
+	it('composes inside sql.where', () => {
+		const result = sql.where([sql.and([sql`a = ${1}`, sql`b = ${2}`]), sql`c = ${3}`])
+
+		expect(result.text).toBe('WHERE a = $1 AND b = $2 AND c = $3')
+
+		expect(result.values).toEqual([1, 2, 3])
+	})
+})
+
+describe('sql.where', () => {
 	it('produces WHERE clause from conditions', () => {
 		const conditions = [sql`ip = ${'1.2.3.4'}`, sql`resolved = ${true}`]
 
 		const result = sql`
 			SELECT *
-			FROM threats ${sql.and(conditions)}
+			FROM threats ${sql.where(conditions)}
 			LIMIT ${10}
 		`
 
@@ -308,7 +344,7 @@ describe('sql.and', () => {
 	it('returns empty string for no conditions', () => {
 		const result = sql`
 			SELECT *
-			FROM threats ${sql.and([])}
+			FROM threats ${sql.where([])}
 			ORDER BY id
 		`
 
@@ -318,96 +354,15 @@ describe('sql.and', () => {
 	})
 
 	it('handles single condition', () => {
-		const result = sql.and([sql`active = ${true}`])
+		const result = sql.where([sql`active = ${true}`])
 
 		expect(result.text).toBe('WHERE active = $1')
 
 		expect(result.values).toEqual([true])
 	})
 
-	it('works with range operators', () => {
-		const conditions = [sql`created_at >= ${'2024-01-01'}`, sql`created_at <= ${'2024-12-31'}`]
-
-		const result = sql.and(conditions)
-
-		expect(result.text).toBe('WHERE created_at >= $1 AND created_at <= $2')
-
-		expect(result.values).toEqual(['2024-01-01', '2024-12-31'])
-	})
-
-	it('works with JSON operators', () => {
-		const conditions = [sql`details->>'email' = ${'test@test.com'}`]
-
-		const result = sql.and(conditions)
-
-		expect(result.text).toBe("WHERE details->>'email' = $1")
-
-		expect(result.values).toEqual(['test@test.com'])
-	})
-})
-
-describe('dynamic WHERE pattern', () => {
-	it('builds conditional WHERE clause', () => {
-		const conditions: ReturnType<typeof sql>[] = []
-
-		const ip = '1.2.3.4'
-
-		const resolved = true
-
-		if (ip) {
-			conditions.push(sql`ip = ${ip}`)
-		}
-
-		if (resolved !== undefined) {
-			conditions.push(sql`resolved = ${resolved}`)
-		}
-
-		const where =
-			conditions.length > 0
-				? sql`
-				WHERE ${sql.join(conditions, ' AND ')}
-			`
-				: sql.raw('')
-
-		const result = sql`
-			SELECT *
-			FROM threats ${where}
-			ORDER BY created_at DESC
-			LIMIT ${100}
-		`
-
-		expect(result.text).toBe(
-			'SELECT * FROM threats WHERE ip = $1 AND resolved = $2 ORDER BY created_at DESC LIMIT $3',
-		)
-
-		expect(result.values).toEqual(['1.2.3.4', true, 100])
-	})
-
-	it('produces no WHERE when no conditions', () => {
-		const conditions: ReturnType<typeof sql>[] = []
-
-		const where =
-			conditions.length > 0
-				? sql`
-				WHERE ${sql.join(conditions, ' AND ')}
-			`
-				: sql.raw('')
-
-		const result = sql`
-			SELECT *
-			FROM threats ${where}
-			ORDER BY created_at DESC
-		`
-
-		expect(result.text).toBe('SELECT * FROM threats ORDER BY created_at DESC')
-
-		expect(result.values).toEqual([])
-	})
-
 	it('reuses WHERE fragment across multiple queries', () => {
-		const where = sql`
-			WHERE status = ${'active'}
-		`
+		const where = sql.where([sql`status = ${'active'}`])
 
 		const count = sql`
 			SELECT COUNT(*)
@@ -427,6 +382,17 @@ describe('dynamic WHERE pattern', () => {
 		expect(select.text).toBe('SELECT * FROM users WHERE status = $1 LIMIT $2')
 
 		expect(select.values).toEqual(['active', 10])
+	})
+
+	it('composes with sql.or', () => {
+		const result = sql.where([
+			sql`active = ${true}`,
+			sql.or([sql`role = ${'admin'}`, sql`role = ${'mod'}`]),
+		])
+
+		expect(result.text).toBe('WHERE active = $1 AND (role = $2 OR role = $3)')
+
+		expect(result.values).toEqual([true, 'admin', 'mod'])
 	})
 })
 
