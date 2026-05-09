@@ -98,6 +98,7 @@ describe('Auth routes', () => {
 			}
 
 			expect(body.access_token).toBe('at_test123')
+
 			expect(body.token_type).toBe('bearer')
 
 			const cookie = getCookieFromResponse(res)
@@ -259,7 +260,9 @@ describe('Auth routes', () => {
 			const body = await res.json()
 
 			expect(body).toEqual(mockUser)
+
 			expect(mockVerifyAccessToken).toHaveBeenCalledWith('at_test123')
+
 			expect(mockGetUserById).toHaveBeenCalledWith('user-123')
 		})
 
@@ -279,6 +282,7 @@ describe('Auth routes', () => {
 			const cookie = getCookieFromResponse(loginRes)
 
 			mockVerifyAccessToken.mockResolvedValueOnce({ sub: 'user-deleted', type: 'access' })
+
 			mockGetUserById.mockResolvedValueOnce(null)
 
 			const res = await app.request('/auth/user', {
@@ -311,6 +315,7 @@ describe('Auth routes', () => {
 			const body = (await res.json()) as { id: string; email: string }
 
 			expect(body.id).toBe('user-123')
+
 			expect(body.email).toBe('new@example.com')
 		})
 

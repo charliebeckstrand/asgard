@@ -10,6 +10,7 @@ describe('getRules', () => {
 		const rules = getRules()
 
 		expect(rules).toBeInstanceOf(Array)
+
 		expect(rules.length).toBeGreaterThanOrEqual(4)
 	})
 
@@ -19,10 +20,15 @@ describe('getRules', () => {
 		const bruteForce = rules.find((r) => r.id === 'brute_force')
 
 		expect(bruteForce).toBeDefined()
+
 		expect(bruteForce?.event_type).toBe('login_failed')
+
 		expect(bruteForce?.threshold).toBe(10)
+
 		expect(bruteForce?.window_minutes).toBe(15)
+
 		expect(bruteForce?.ban_duration_minutes).toBe(60)
+
 		expect(bruteForce?.enabled).toBe(true)
 	})
 
@@ -32,8 +38,11 @@ describe('getRules', () => {
 		const regSpam = rules.find((r) => r.id === 'registration_spam')
 
 		expect(regSpam).toBeDefined()
+
 		expect(regSpam?.event_type).toBe('registration')
+
 		expect(regSpam?.threshold).toBe(5)
+
 		expect(regSpam?.ban_duration_minutes).toBe(1440)
 	})
 
@@ -43,7 +52,9 @@ describe('getRules', () => {
 		const rateAbuse = rules.find((r) => r.id === 'rate_limit_abuse')
 
 		expect(rateAbuse).toBeDefined()
+
 		expect(rateAbuse?.event_type).toBe('rate_limited')
+
 		expect(rateAbuse?.threshold).toBe(20)
 	})
 
@@ -53,8 +64,11 @@ describe('getRules', () => {
 		const credStuffing = rules.find((r) => r.id === 'credential_stuffing')
 
 		expect(credStuffing).toBeDefined()
+
 		expect(credStuffing?.event_type).toBe('login_failed')
+
 		expect(credStuffing?.threshold).toBe(15)
+
 		expect(credStuffing?.distinct_accounts).toBe(10)
 	})
 

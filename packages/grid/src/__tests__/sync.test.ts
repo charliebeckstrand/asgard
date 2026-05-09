@@ -48,6 +48,7 @@ describe('syncEnv', () => {
 		const env = await readEnv(join(tmp.path, 'services/alpha/.env'))
 
 		expect(env.PORT).toBe('4000')
+
 		expect(env.GREETING).toBe('hi')
 
 		await tmp.cleanup()
@@ -77,6 +78,7 @@ describe('syncEnv', () => {
 		const env2 = await readEnv(join(tmp.path, 'services/alpha/.env'))
 
 		expect(env1.TOKEN).toBe(env2.TOKEN)
+
 		expect(env1.TOKEN).toMatch(/^[a-f0-9]{64}$/)
 
 		await tmp.cleanup()

@@ -51,7 +51,7 @@ function aggregateStatus(
 	return 'degraded'
 }
 
-export function createHealthRoute(options?: CreateHealthRouteOptions): OpenAPIHono {
+export function createHealthRoute(options?: CreateHealthRouteOptions) {
 	const healthRoute = createRoute({
 		method: 'get',
 		path: '/health',
@@ -75,6 +75,7 @@ export function createHealthRoute(options?: CreateHealthRouteOptions): OpenAPIHo
 			)
 
 			const services = Object.fromEntries(entries)
+
 			const status = aggregateStatus(services)
 
 			return c.json(

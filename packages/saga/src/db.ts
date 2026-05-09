@@ -121,6 +121,7 @@ export function createDatabase(
 	const init = (): State => {
 		if (!state) {
 			const pool = createPool(getDatabaseUrl(), options)
+
 			state = { pool, client: createDatabaseClient(pool) }
 		}
 

@@ -67,6 +67,7 @@ export function createCache(
 			if (!state) return
 
 			await state.connected.catch(() => {})
+
 			await state.client.quit().catch(() => {})
 
 			state = null

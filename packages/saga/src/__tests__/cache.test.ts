@@ -52,7 +52,9 @@ describe('createCacheClient', () => {
 
 	beforeEach(() => {
 		const made = createMockRedis()
+
 		cache = createCacheClient(made.client)
+
 		redis = made.mock
 	})
 
@@ -99,6 +101,7 @@ describe('createCacheClient', () => {
 
 		it('del returns 0 for an empty key list without calling Redis', async () => {
 			expect(await cache.del()).toBe(0)
+
 			expect(redis.del).not.toHaveBeenCalled()
 		})
 
@@ -107,6 +110,7 @@ describe('createCacheClient', () => {
 			await cache.set('b', 2)
 
 			expect(await cache.del('a', 'b', 'missing')).toBe(2)
+
 			expect(redis.del).toHaveBeenCalledWith(['a', 'b', 'missing'])
 		})
 	})
@@ -118,6 +122,7 @@ describe('createCacheClient', () => {
 			const fn = vi.fn()
 
 			expect(await cache.remember('k', 60, fn)).toBe('cached')
+
 			expect(fn).not.toHaveBeenCalled()
 		})
 
@@ -127,6 +132,7 @@ describe('createCacheClient', () => {
 			expect(await cache.remember('k', 60, fn)).toEqual({ result: 42 })
 
 			expect(fn).toHaveBeenCalledOnce()
+
 			expect(redis.set).toHaveBeenCalledWith('k', JSON.stringify({ result: 42 }), { EX: 60 })
 		})
 
@@ -148,6 +154,7 @@ describe('createCacheClient', () => {
 			expect(await cache.withLock('lock', 30, fn)).toBe('done')
 
 			expect(redis.set).toHaveBeenCalledWith('lock', expect.any(String), { NX: true, EX: 30 })
+
 			expect(redis.eval).toHaveBeenCalledWith(RELEASE_LOCK_SCRIPT, expect.any(Object))
 		})
 
@@ -157,6 +164,7 @@ describe('createCacheClient', () => {
 			const fn = vi.fn()
 
 			await expect(cache.withLock('lock', 30, fn)).rejects.toBeInstanceOf(LockHeldError)
+
 			expect(fn).not.toHaveBeenCalled()
 		})
 
@@ -228,9 +236,13 @@ describe('createCacheClient', () => {
 			const call = redis.eval.mock.calls[0] as [string, { keys: string[]; arguments: string[] }]
 
 			expect(call[0]).toBe(TAKE_TOKEN_SCRIPT)
+
 			expect(call[1].keys).toEqual(['rl:user:1'])
+
 			expect(call[1].arguments[0]).toBe('10')
+
 			expect(call[1].arguments[1]).toBe('2')
+
 			expect(Number(call[1].arguments[2])).toBeGreaterThan(0)
 		})
 	})

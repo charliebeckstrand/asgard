@@ -1,13 +1,13 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { createSSEStream } from 'grid'
-import type { VidarEvent } from '../lib/emitter.js'
+import type { SecurityEvent } from 'skuld'
 import { eventEmitter } from '../lib/emitter.js'
 
 const app = new OpenAPIHono()
 
 app.get(
 	'/stream',
-	createSSEStream<VidarEvent>({
+	createSSEStream<SecurityEvent>({
 		emitter: eventEmitter,
 		mapping: {
 			data: (e) => JSON.stringify(e),

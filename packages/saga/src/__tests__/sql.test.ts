@@ -64,7 +64,9 @@ describe('sql tagged template', () => {
 
 	it('handles deeply nested fragments', () => {
 		const inner = sql`a = ${1}`
+
 		const middle = sql`${inner} AND b = ${2}`
+
 		const result = sql`
 			SELECT *
 			FROM t

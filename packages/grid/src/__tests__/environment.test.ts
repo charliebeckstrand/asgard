@@ -24,6 +24,7 @@ describe('createEnvironment', () => {
 		const env = environment()
 
 		expect(env.PORT).toBe(4000)
+
 		expect(env.NODE_ENV).toBe('test')
 	})
 
@@ -59,6 +60,7 @@ describe('createEnvironment', () => {
 		const env = environment()
 
 		expect(env.DATABASE_URL).toBe('postgres://localhost/test')
+
 		expect(env.PORT).toBe(4000)
 	})
 

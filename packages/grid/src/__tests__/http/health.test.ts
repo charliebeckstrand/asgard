@@ -17,8 +17,11 @@ describe('createHealthRoute', () => {
 		const body = (await res.json()) as HealthResponse
 
 		expect(body.status).toBe('healthy')
+
 		expect(body.version).toBe('0.1.0')
+
 		expect(body.uptime).toBeTypeOf('number')
+
 		expect(body.uptime).toBeGreaterThanOrEqual(0)
 	})
 
@@ -35,7 +38,9 @@ describe('createHealthRoute', () => {
 		}
 
 		expect(body.status).toBe('healthy')
+
 		expect(body.db_latency_ms).toBe(5)
+
 		expect(body.subscribers).toBe(42)
 	})
 
@@ -67,7 +72,9 @@ describe('createHealthRoute', () => {
 			const body = (await res.json()) as HealthWithServices
 
 			expect(body.status).toBe('healthy')
+
 			expect(body.services.database.status).toBe('up')
+
 			expect(body.services.cache.status).toBe('up')
 		})
 

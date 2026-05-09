@@ -60,6 +60,7 @@ export async function runMigrations(db: Db, migrationsDir: string): Promise<Migr
 	})
 
 	const applied = new Set((await getAppliedMigrations(db)).map((r) => r.name))
+
 	const files = await readMigrationFiles(migrationsDir)
 
 	const result: MigrationResult = { applied: [], skipped: [] }

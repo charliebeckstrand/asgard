@@ -160,10 +160,13 @@ describe('runMigrations', () => {
 		await runMigrations(db, migrationsDir)
 
 		const lockIdx = execCalls.findIndex((s) => s.includes('pg_advisory_xact_lock'))
+
 		const schemaIdx = execCalls.findIndex((s) => s.includes('CREATE SCHEMA IF NOT EXISTS saga'))
 
 		expect(lockIdx).toBeGreaterThanOrEqual(0)
+
 		expect(schemaIdx).toBeGreaterThanOrEqual(0)
+
 		expect(lockIdx).toBeLessThan(schemaIdx)
 	})
 

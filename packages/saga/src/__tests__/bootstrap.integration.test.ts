@@ -33,6 +33,7 @@ describeWithDocker('bootstrapDatabases (integration)', () => {
 		const roles = await admin.query(
 			"SELECT rolname FROM pg_roles WHERE rolname IN ('alpha_role', 'beta_role') ORDER BY rolname",
 		)
+
 		const dbs = await admin.query(
 			"SELECT datname FROM pg_database WHERE datname IN ('alpha_db', 'beta_db') ORDER BY datname",
 		)

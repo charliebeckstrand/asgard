@@ -31,7 +31,9 @@ describe('createApp', () => {
 		}
 
 		expect(body.service).toBe('test service')
+
 		expect(body.openApi).toBe('/test/openapi.json')
+
 		expect(body.docs).toBe('/test/docs')
 	})
 
@@ -50,6 +52,7 @@ describe('createApp', () => {
 		const body = (await res.json()) as { openapi: string; info: { title: string } }
 
 		expect(body.openapi).toBe('3.0.0')
+
 		expect(body.info.title).toBe('API')
 	})
 

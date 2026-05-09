@@ -51,6 +51,7 @@ describe('requestLogger', () => {
 		const lines = dest.lines()
 
 		expect(lines).toHaveLength(1)
+
 		expect(lines[0]).toMatchObject({
 			service: 'test',
 			method: 'GET',
@@ -58,7 +59,9 @@ describe('requestLogger', () => {
 			status: 200,
 			msg: 'http request',
 		})
+
 		expect(typeof lines[0].requestId).toBe('string')
+
 		expect(lines[0].durationMs).toBeTypeOf('number')
 	})
 
@@ -104,6 +107,7 @@ describe('requestLogger', () => {
 		const lines = dest.lines()
 
 		expect(lines).toHaveLength(2)
+
 		expect(lines[0]).toMatchObject({
 			level: 40,
 			service: 'test',
@@ -111,6 +115,7 @@ describe('requestLogger', () => {
 			extra: 'context',
 			msg: 'route-emitted',
 		})
+
 		expect(lines[1]).toMatchObject({ requestId: 'stitch-me', msg: 'http request' })
 	})
 
@@ -132,6 +137,7 @@ describe('requestLogger', () => {
 		const lines = dest.lines()
 
 		expect(lines).toHaveLength(1)
+
 		expect(lines[0]).toMatchObject({ status: 500, msg: 'http request' })
 	})
 })

@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { sign } from 'hono/jwt'
-import { type AuthEnv, requireAuth } from '../auth.js'
+import { type AuthEnv, requireAuth } from '../middleware/auth.js'
 
 const SECRET_KEY = 'test-secret-that-is-at-least-32-chars-long'
 
@@ -109,6 +109,7 @@ describe('requireAuth', () => {
 		})
 
 		expect(res.status).toBe(200)
+
 		expect(await res.json()).toEqual({ userId: 'user-123' })
 	})
 })

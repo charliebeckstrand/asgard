@@ -3,9 +3,11 @@ import { createCircuitBreaker } from '@/circuit-breaker'
 describe('circuit breaker', () => {
 	it('starts in closed state', () => {
 		const breaker = createCircuitBreaker('test')
+
 		const status = breaker.getStatus()
 
 		expect(status.state).toBe('closed')
+
 		expect(status.failures).toBe(0)
 	})
 
@@ -29,6 +31,7 @@ describe('circuit breaker', () => {
 		}
 
 		expect(breaker.getStatus().state).toBe('open')
+
 		expect(breaker.getStatus().failures).toBe(3)
 	})
 
@@ -62,6 +65,7 @@ describe('circuit breaker', () => {
 		const result = await breaker.execute(async () => 'recovered')
 
 		expect(result).toBe('recovered')
+
 		expect(breaker.getStatus().state).toBe('closed')
 	})
 
@@ -113,6 +117,7 @@ describe('circuit breaker', () => {
 		breaker.reset()
 
 		expect(breaker.getStatus().state).toBe('closed')
+
 		expect(breaker.getStatus().failures).toBe(0)
 	})
 

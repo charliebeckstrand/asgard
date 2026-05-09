@@ -48,6 +48,7 @@ describeWithDocker('runMigrations (integration)', () => {
 		const result = await runMigrations(db, tmp.path)
 
 		expect(result.applied).toEqual(['0001_create_test_table.sql', '0002_add_email.sql'])
+
 		expect(result.skipped).toEqual([])
 
 		// Verify the table actually exists with both columns
@@ -89,6 +90,7 @@ describeWithDocker('runMigrations (integration)', () => {
 		const result = await runMigrations(db, tmp.path)
 
 		expect(result.applied).toEqual([])
+
 		expect(result.skipped).toEqual(['0001_create_users.sql', '0002_add_email.sql'])
 
 		await tmp.cleanup()

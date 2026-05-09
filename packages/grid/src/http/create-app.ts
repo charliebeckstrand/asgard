@@ -39,6 +39,7 @@ export function createApp<E extends Env = Env>(options: CreateAppOptions): OpenA
 	app.use('*', timing())
 
 	const compressMw = compress()
+
 	const etagMw = etag()
 
 	// compress() and etag() buffer the response body, which breaks SSE streams.
@@ -49,6 +50,7 @@ export function createApp<E extends Env = Env>(options: CreateAppOptions): OpenA
 		if (c.res.headers.get('Content-Type')?.includes('text/event-stream')) return
 
 		await compressMw(c, async () => {})
+
 		await etagMw(c, async () => {})
 	})
 

@@ -82,6 +82,7 @@ describe('service metadata', () => {
 		}
 
 		expect(body.status).toBe('healthy')
+
 		expect(body.services.database.status).toBe('up')
 	})
 })
@@ -95,6 +96,7 @@ describe('OpenAPI', () => {
 		const spec = (await res.json()) as OpenAPISpec
 
 		expect(spec.info.title).toBe('Bragi')
+
 		expect(spec.components?.securitySchemes?.Bearer).toEqual({
 			type: 'http',
 			scheme: 'bearer',
@@ -150,6 +152,7 @@ describe('chat routes', () => {
 		})
 
 		expect(res.status).toBe(200)
+
 		expect(mockChatRepo.getChats).toHaveBeenCalledWith('user-123')
 	})
 
@@ -167,6 +170,7 @@ describe('chat routes', () => {
 		const body = (await res.json()) as ErrorResponse
 
 		expect(body.error).toBe('Not Found')
+
 		expect(body.message).toBe('Chat not found')
 	})
 
@@ -194,6 +198,7 @@ describe('chat routes', () => {
 		})
 
 		expect(res.status).toBe(204)
+
 		expect(mockChatRepo.deleteChat).toHaveBeenCalledWith(
 			'00000000-0000-4000-8000-000000000001',
 			'user-123',

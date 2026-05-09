@@ -21,6 +21,7 @@ app.get('/unexpected-error', () => {
 })
 
 app.onError(errorHandler)
+
 app.notFound(notFoundHandler)
 
 type ErrorResponse = {
@@ -38,7 +39,9 @@ describe('errorHandler', () => {
 		const body = (await res.json()) as ErrorResponse
 
 		expect(body.error).toBe('Forbidden')
+
 		expect(body.message).toBe('Forbidden')
+
 		expect(body.statusCode).toBe(403)
 	})
 
@@ -50,7 +53,9 @@ describe('errorHandler', () => {
 		const body = (await res.json()) as ErrorResponse
 
 		expect(body.error).toBe('Unprocessable Entity')
+
 		expect(body.message).toBe('Validation failed')
+
 		expect(body.statusCode).toBe(422)
 	})
 
@@ -62,7 +67,9 @@ describe('errorHandler', () => {
 		const body = (await res.json()) as ErrorResponse
 
 		expect(body.error).toBe('Internal Server Error')
+
 		expect(body.message).toBe('An unexpected error occurred')
+
 		expect(body.statusCode).toBe(500)
 	})
 })
@@ -76,8 +83,11 @@ describe('notFoundHandler', () => {
 		const body = (await res.json()) as ErrorResponse
 
 		expect(body.error).toBe('Not Found')
+
 		expect(body.message).toContain('GET')
+
 		expect(body.message).toContain('/does-not-exist')
+
 		expect(body.statusCode).toBe(404)
 	})
 

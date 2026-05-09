@@ -42,7 +42,9 @@ describe('IpAddressSchema', () => {
 
 	it('rejects malformed IP addresses', () => {
 		expect(IpAddressSchema.safeParse('not-an-ip').success).toBe(false)
+
 		expect(IpAddressSchema.safeParse('999.999.999.999').success).toBe(false)
+
 		expect(IpAddressSchema.safeParse('192.168.1').success).toBe(false)
 	})
 })

@@ -29,6 +29,7 @@ describe('createLogger', () => {
 		const log = createLogger({ service: 'test', destination: dest })
 
 		log.info('hello')
+
 		log.error({ code: 'X' }, 'bad')
 
 		await flush()
@@ -36,6 +37,7 @@ describe('createLogger', () => {
 		const lines = dest.lines()
 
 		expect(lines).toHaveLength(2)
+
 		expect(lines[0]).toMatchObject({ level: 'info', msg: 'hello', service: 'test' })
 		expect(lines[1]).toMatchObject({ level: 'error', msg: 'bad', code: 'X', service: 'test' })
 	})
@@ -52,6 +54,7 @@ describe('createLogger', () => {
 		const time = dest.lines()[0].time
 
 		expect(typeof time).toBe('string')
+
 		expect(time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
 	})
 

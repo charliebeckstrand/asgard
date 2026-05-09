@@ -19,6 +19,7 @@ describe('emitEvent', () => {
 		emitEvent(event)
 
 		expect(handler).toHaveBeenCalledOnce()
+
 		expect(handler).toHaveBeenCalledWith(event)
 
 		eventEmitter.off('event', handler)

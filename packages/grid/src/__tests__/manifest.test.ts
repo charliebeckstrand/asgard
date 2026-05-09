@@ -39,7 +39,9 @@ describe('discoverManifests', () => {
 		const found = discoverManifests(tmp.path)
 
 		expect([...found.keys()].sort()).toEqual(['alpha', 'beta'])
+
 		expect(found.get('alpha')?.manifest.port).toBe(4000)
+
 		expect(found.get('beta')?.dir).toBe(join(tmp.path, 'apps/beta'))
 
 		await tmp.cleanup()

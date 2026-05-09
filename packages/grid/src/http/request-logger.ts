@@ -30,6 +30,7 @@ export function requestLogger(baseLogger: Logger): MiddlewareHandler<RequestLogg
 
 		c.set('requestId', requestId)
 		c.set('logger', logger)
+
 		c.header(REQUEST_ID_HEADER, requestId)
 
 		const start = Date.now()

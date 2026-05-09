@@ -64,6 +64,7 @@ function walkUpFor(start: string, marker: string): string {
 
 function readManifest(dir: string): Manifest {
 	const path = resolve(dir, 'manifest.json')
+
 	const parsed = ManifestSchema.safeParse(JSON.parse(readFileSync(path, 'utf-8')))
 
 	if (!parsed.success) {

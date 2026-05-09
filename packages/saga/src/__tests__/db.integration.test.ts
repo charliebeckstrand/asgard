@@ -51,7 +51,9 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 			)
 
 			expect(result).not.toBeNull()
+
 			expect(result?.name).toBe('Alice')
+
 			expect(result?.email).toBe('alice@example.com')
 		})
 
@@ -105,7 +107,9 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 			`)
 
 			expect(result).toHaveLength(2)
+
 			expect(result[0].name).toBe('Alice')
+
 			expect(result[1].name).toBe('Bob')
 		})
 

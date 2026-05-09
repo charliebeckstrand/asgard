@@ -34,7 +34,9 @@ describe('signToken', () => {
 		const payload = await verifyToken(token, keys())
 
 		expect(payload.sub).toBe('user-1')
+
 		expect(payload.type).toBe('access')
+
 		expect(payload.iss).toBe(TOKEN_ISSUER)
 	})
 
@@ -43,6 +45,7 @@ describe('signToken', () => {
 		const b = await verifyToken(await signToken('u', 'access', keys()), keys())
 
 		expect(a.jti).toBeTypeOf('string')
+
 		expect(a.jti).not.toBe(b.jti)
 	})
 })
@@ -94,6 +97,7 @@ describe('verifyAccessToken', () => {
 		const payload = await verifyAccessToken(token, keys())
 
 		expect(payload.sub).toBe('user-1')
+
 		expect(payload.type).toBe('access')
 	})
 
