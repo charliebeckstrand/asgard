@@ -31,7 +31,10 @@ beforeEach(() => {
 			hashed_password: hashedPassword,
 			is_active: true,
 		} satisfies CredentialsRow),
+		getUsers: vi.fn().mockResolvedValue([]),
 		getUserById: vi.fn().mockResolvedValue(TEST_USER),
+		updateUser: vi.fn().mockResolvedValue(TEST_USER),
+		deleteUser: vi.fn().mockResolvedValue(true),
 	}
 
 	configure({ userRepository: mockRepo, secretKey: SECRET })

@@ -7,7 +7,10 @@ const SECRET = 'a-test-secret-key-that-is-at-least-32-characters-long'
 const mockRepo: UserRepository = {
 	insertUser: vi.fn(),
 	getCredentialsByEmail: vi.fn(),
+	getUsers: vi.fn(),
 	getUserById: vi.fn(),
+	updateUser: vi.fn(),
+	deleteUser: vi.fn(),
 }
 
 beforeAll(() => {

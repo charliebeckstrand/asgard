@@ -25,7 +25,7 @@ export interface ChatRepository {
 	insertMessage(
 		id: string,
 		chatId: string,
-		role: string,
+		role: ChatMessageRow['role'],
 		type: string,
 		content: string,
 	): Promise<ChatMessageRow>

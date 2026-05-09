@@ -9,7 +9,6 @@ type Event = {
 export interface Config {
 	userRepository: UserRepository
 	secretKey: string
-	apiKey?: string
 	onSecurityEvent?: (event: Event) => void
 }
 
