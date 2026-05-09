@@ -81,16 +81,27 @@ export async function verifyToken(token: string, keys: JwtKeys): Promise<JWTPayl
 	}
 }
 
-export const AccessTokenPayloadSchema = z.object({
+const tokenPayloadShape = {
 	sub: z.string(),
-	type: z.literal('access'),
 	iss: z.literal(TOKEN_ISSUER),
 	exp: z.number(),
 	iat: z.number(),
 	jti: z.string().optional(),
+}
+
+export const AccessTokenPayloadSchema = z.object({
+	...tokenPayloadShape,
+	type: z.literal('access'),
 })
 
 export type AccessTokenPayload = z.infer<typeof AccessTokenPayloadSchema>
+
+export const RefreshTokenPayloadSchema = z.object({
+	...tokenPayloadShape,
+	type: z.literal('refresh'),
+})
+
+export type RefreshTokenPayload = z.infer<typeof RefreshTokenPayloadSchema>
 
 export async function parseJwtPayload<S extends z.ZodType>(
 	token: string,
@@ -110,4 +121,8 @@ export async function parseJwtPayload<S extends z.ZodType>(
 
 export function verifyAccessToken(token: string, keys: JwtKeys): Promise<AccessTokenPayload> {
 	return parseJwtPayload(token, keys, AccessTokenPayloadSchema)
+}
+
+export function verifyRefreshToken(token: string, keys: JwtKeys): Promise<RefreshTokenPayload> {
+	return parseJwtPayload(token, keys, RefreshTokenPayloadSchema)
 }
