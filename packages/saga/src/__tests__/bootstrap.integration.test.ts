@@ -30,11 +30,15 @@ describeWithDocker('bootstrapDatabases (integration)', () => {
 
 		await admin.connect()
 
-		const roles = await admin.query("SELECT rolname FROM pg_roles WHERE rolname LIKE '%_role'")
-		const dbs = await admin.query("SELECT datname FROM pg_database WHERE datname LIKE '%_db'")
+		const roles = await admin.query(
+			"SELECT rolname FROM pg_roles WHERE rolname IN ('alpha_role', 'beta_role') ORDER BY rolname",
+		)
+		const dbs = await admin.query(
+			"SELECT datname FROM pg_database WHERE datname IN ('alpha_db', 'beta_db') ORDER BY datname",
+		)
 
-		expect(roles.rows.map((r) => r.rolname).sort()).toEqual(['alpha_role', 'beta_role'])
-		expect(dbs.rows.map((r) => r.datname).sort()).toEqual(['alpha_db', 'beta_db'])
+		expect(roles.rows.map((r) => r.rolname)).toEqual(['alpha_role', 'beta_role'])
+		expect(dbs.rows.map((r) => r.datname)).toEqual(['alpha_db', 'beta_db'])
 
 		await admin.end()
 	})

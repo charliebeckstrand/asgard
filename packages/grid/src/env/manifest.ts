@@ -50,12 +50,14 @@ function walkUpFor(start: string, marker: string): string {
 	return dir
 }
 
+function readManifest(dir: string): Manifest {
+	return JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf-8')) as Manifest
+}
+
 export function getManifestPort(): number {
 	const dir = walkUpFor(process.cwd(), 'manifest.json')
 
-	const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf-8'))
-
-	return manifest.port
+	return readManifest(dir).port
 }
 
 export function findWorkspaceRoot(start: string = process.cwd()): string {
@@ -77,11 +79,9 @@ export function discoverManifests(workspaceRoot: string): Map<string, Discovered
 
 			const dir = resolve(root, entry.name)
 
-			const manifestPath = resolve(dir, 'manifest.json')
+			if (!existsSync(resolve(dir, 'manifest.json'))) continue
 
-			if (!existsSync(manifestPath)) continue
-
-			const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as Manifest
+			const manifest = readManifest(dir)
 
 			found.set(manifest.name, { manifest, dir })
 		}

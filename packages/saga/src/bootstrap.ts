@@ -41,14 +41,6 @@ async function connectWithRetry(adminUrl: string, timeoutSeconds: number): Promi
 	throw new Error(`Could not connect to postgres within ${timeoutSeconds}s: ${message}`)
 }
 
-function quoteIdentifier(value: string): string {
-	return `"${value.replace(/"/g, '""')}"`
-}
-
-function quoteLiteral(value: string): string {
-	return `'${value.replace(/'/g, "''")}'`
-}
-
 export async function bootstrapDatabases(
 	adminUrl: string,
 	specs: DatabaseSpec[],
@@ -61,14 +53,16 @@ export async function bootstrapDatabases(
 
 	try {
 		for (const spec of specs) {
+			const role = client.escapeIdentifier(spec.role)
+			const name = client.escapeIdentifier(spec.name)
+			const password = client.escapeLiteral(spec.password)
+
 			const roleResult = await client.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [
 				spec.role,
 			])
 
 			if (roleResult.rowCount === 0) {
-				await client.query(
-					`CREATE ROLE ${quoteIdentifier(spec.role)} WITH LOGIN PASSWORD ${quoteLiteral(spec.password)}`,
-				)
+				await client.query(`CREATE ROLE ${role} WITH LOGIN PASSWORD ${password}`)
 
 				createdRoles.push(spec.role)
 			}
@@ -78,9 +72,7 @@ export async function bootstrapDatabases(
 			])
 
 			if (dbResult.rowCount === 0) {
-				await client.query(
-					`CREATE DATABASE ${quoteIdentifier(spec.name)} OWNER ${quoteIdentifier(spec.role)}`,
-				)
+				await client.query(`CREATE DATABASE ${name} OWNER ${role}`)
 
 				createdDatabases.push(spec.name)
 			}
