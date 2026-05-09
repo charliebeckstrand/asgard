@@ -51,6 +51,7 @@
 		"@hono/swagger-ui": "^0.6.0",
 		"@hono/zod-openapi": "^1.2.2",
 		"hono": "^4.12.5",
+		"pino": "^9.5.0",
 		"skuld": "workspace:*",
 		"zod": "^4.3.6"
 	},

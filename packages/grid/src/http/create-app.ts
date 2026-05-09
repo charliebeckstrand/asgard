@@ -3,11 +3,13 @@ import { OpenAPIHono } from '@hono/zod-openapi'
 import { compress } from 'hono/compress'
 import { cors } from 'hono/cors'
 import { etag } from 'hono/etag'
-import { logger } from 'hono/logger'
+import { logger as honoRequestLogger } from 'hono/logger'
 import { secureHeaders } from 'hono/secure-headers'
 import { timing } from 'hono/timing'
 import { trimTrailingSlash } from 'hono/trailing-slash'
+import type { Logger } from 'pino'
 import { errorHandler, notFoundHandler } from './error-handler.js'
+import { requestLogger } from './request-logger.js'
 import { validationHook } from './validation-hook.js'
 
 interface CreateAppOptions {
@@ -16,6 +18,13 @@ interface CreateAppOptions {
 	description: string
 	port: number
 	cors?: Parameters<typeof cors>[0]
+	/**
+	 * Service-scoped Pino logger. When set, Hono's built-in request logger
+	 * is replaced with structured access logs (JSON, with `service`,
+	 * `requestId`, method, path, status, and durationMs). Routes can read
+	 * a request-scoped child logger via `c.get('logger')`.
+	 */
+	logger?: Logger
 }
 
 export function createApp(options: CreateAppOptions) {
@@ -25,7 +34,7 @@ export function createApp(options: CreateAppOptions) {
 
 	app.use('*', cors(options.cors))
 	app.use('*', secureHeaders())
-	app.use('*', logger())
+	app.use('*', options.logger ? requestLogger(options.logger) : honoRequestLogger())
 	app.use('*', timing())
 
 	const compressMw = compress()
