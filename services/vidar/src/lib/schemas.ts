@@ -19,7 +19,6 @@ export {
 	BanSchema,
 	CheckIpResponseSchema,
 	CreateBanSchema,
-	ErrorSchema,
 	IngestEventSchema,
 	MessageSchema,
 	SecurityEventSchema,
@@ -32,6 +31,8 @@ export const jsonResponse = <S extends z.ZodTypeAny>(schema: S, description: str
 		content: { 'application/json': { schema } },
 		description,
 	}) as const
+
+export const errorResponse = (description: string) => jsonResponse(ErrorSchema, description)
 
 /** Wrap rows in the { data, total } envelope used by every list endpoint. */
 export const toList = <T>(items: T[]): { data: T[]; total: number } => ({

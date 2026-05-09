@@ -5,7 +5,7 @@ import {
 	BanListSchema,
 	BanSchema,
 	CreateBanSchema,
-	ErrorSchema,
+	errorResponse,
 	jsonResponse,
 	MessageSchema,
 } from '../lib/schemas.js'
@@ -19,7 +19,7 @@ const listBansRoute = createRoute({
 	security: [{ Bearer: [] }],
 	responses: {
 		200: jsonResponse(BanListSchema, 'List of active bans'),
-		401: jsonResponse(ErrorSchema, 'Unauthorized'),
+		401: errorResponse('Unauthorized'),
 	},
 })
 
@@ -38,7 +38,7 @@ const createBanRoute = createRoute({
 	},
 	responses: {
 		201: jsonResponse(BanSchema, 'Ban created'),
-		401: jsonResponse(ErrorSchema, 'Unauthorized'),
+		401: errorResponse('Unauthorized'),
 	},
 })
 
@@ -56,8 +56,8 @@ const removeBanRoute = createRoute({
 	},
 	responses: {
 		200: jsonResponse(MessageSchema, 'Ban removed'),
-		401: jsonResponse(ErrorSchema, 'Unauthorized'),
-		404: jsonResponse(ErrorSchema, 'Ban not found'),
+		401: errorResponse('Unauthorized'),
+		404: errorResponse('Ban not found'),
 	},
 })
 

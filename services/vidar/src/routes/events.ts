@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
 import { ingestEvent } from '../handlers/events.js'
 import {
-	ErrorSchema,
+	errorResponse,
 	IngestEventSchema,
 	jsonResponse,
 	SecurityEventSchema,
@@ -23,7 +23,7 @@ const ingestRoute = createRoute({
 	},
 	responses: {
 		201: jsonResponse(SecurityEventSchema, 'Event ingested'),
-		401: jsonResponse(ErrorSchema, 'Unauthorized'),
+		401: errorResponse('Unauthorized'),
 	},
 })
 

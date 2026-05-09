@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { listThreats } from '../handlers/threats.js'
-import { ErrorSchema, jsonResponse, ThreatListSchema } from '../lib/schemas.js'
+import { errorResponse, jsonResponse, ThreatListSchema } from '../lib/schemas.js'
 
 const listThreatsRoute = createRoute({
 	method: 'get',
@@ -20,7 +20,7 @@ const listThreatsRoute = createRoute({
 	},
 	responses: {
 		200: jsonResponse(ThreatListSchema, 'List of threats'),
-		401: jsonResponse(ErrorSchema, 'Unauthorized'),
+		401: errorResponse('Unauthorized'),
 	},
 })
 

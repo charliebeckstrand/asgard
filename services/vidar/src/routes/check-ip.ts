@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { isIpBanned } from '../handlers/bans.js'
-import { CheckIpResponseSchema, ErrorSchema, jsonResponse } from '../lib/schemas.js'
+import { CheckIpResponseSchema, errorResponse, jsonResponse } from '../lib/schemas.js'
 
 const checkIpRoute = createRoute({
 	method: 'get',
@@ -20,7 +20,7 @@ const checkIpRoute = createRoute({
 	},
 	responses: {
 		200: jsonResponse(CheckIpResponseSchema, 'Ban check result'),
-		401: jsonResponse(ErrorSchema, 'Unauthorized'),
+		401: errorResponse('Unauthorized'),
 	},
 })
 
