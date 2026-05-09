@@ -15,7 +15,9 @@ export interface PoolOptions {
 export function createPool(databaseUrl: string, options?: PoolOptions): Pool {
 	const url = new URL(databaseUrl)
 
-	const requiresSsl = url.searchParams.has('sslmode')
+	const sslmode = url.searchParams.get('sslmode')
+
+	const requiresSsl = sslmode !== null && sslmode !== 'disable'
 
 	return new Pool({
 		host: url.hostname,
@@ -28,8 +30,4 @@ export function createPool(databaseUrl: string, options?: PoolOptions): Pool {
 		connectionTimeoutMillis: options?.connectionTimeoutMillis ?? 5000,
 		ssl: requiresSsl ? { rejectUnauthorized: false } : false,
 	})
-}
-
-export async function closePool(pool: Pool): Promise<void> {
-	await pool.end()
 }

@@ -1,9 +1,15 @@
+import { escapeIdentifier } from 'pg'
+
 const SQL_FRAGMENT = Symbol('SqlFragment')
 
 export interface SqlFragment {
 	readonly [SQL_FRAGMENT]: true
 	readonly text: string
 	readonly values: unknown[]
+}
+
+function fragment(text: string, values: unknown[]): SqlFragment {
+	return { [SQL_FRAGMENT]: true, text, values }
 }
 
 function isSqlFragment(value: unknown): value is SqlFragment {
@@ -17,21 +23,7 @@ function reNumber(text: string, offset: number): string {
 }
 
 function normalizeWhitespace(text: string): string {
-	const lines = text.split('\n')
-
-	while (lines[0]?.trim() === '') {
-		lines.shift()
-	}
-
-	while (lines.at(-1)?.trim() === '') {
-		lines.pop()
-	}
-
-	if (lines.length === 0) {
-		return ''
-	}
-
-	return lines.map((line) => line.trim()).join(' ')
+	return text.replace(/\s+/g, ' ').trim()
 }
 
 function sql(strings: TemplateStringsArray, ...params: unknown[]): SqlFragment {
@@ -57,16 +49,21 @@ function sql(strings: TemplateStringsArray, ...params: unknown[]): SqlFragment {
 		}
 	}
 
-	return { [SQL_FRAGMENT]: true, text: normalizeWhitespace(textParts.join('')), values }
+	return fragment(normalizeWhitespace(textParts.join('')), values)
 }
 
+/**
+ * Inlines a string verbatim into a SQL fragment with no escaping or
+ * parameterization. The caller is responsible for ensuring the value is
+ * trusted SQL — never pass user input.
+ */
 sql.raw = function raw(value: string): SqlFragment {
-	return { [SQL_FRAGMENT]: true, text: value, values: [] }
+	return fragment(value, [])
 }
 
 sql.join = function join(fragments: SqlFragment[], separator = ', '): SqlFragment {
 	if (fragments.length === 0) {
-		return { [SQL_FRAGMENT]: true, text: '', values: [] }
+		return fragment('', [])
 	}
 
 	const textParts: string[] = []
@@ -83,26 +80,44 @@ sql.join = function join(fragments: SqlFragment[], separator = ', '): SqlFragmen
 		values.push(...fragments[i].values)
 	}
 
-	return { [SQL_FRAGMENT]: true, text: textParts.join(''), values }
+	return fragment(textParts.join(''), values)
 }
 
 sql.json = function json(value: unknown): SqlFragment {
-	return { [SQL_FRAGMENT]: true, text: '$1', values: [JSON.stringify(value)] }
+	return fragment('$1', [JSON.stringify(value)])
+}
+
+function combine(
+	conditions: SqlFragment[],
+	separator: string,
+	wrap: (text: string) => string,
+): SqlFragment {
+	if (conditions.length === 0) {
+		return fragment('', [])
+	}
+
+	const joined = sql.join(conditions, separator)
+
+	return fragment(wrap(joined.text), joined.values)
 }
 
 sql.and = function and(conditions: SqlFragment[]): SqlFragment {
-	if (conditions.length === 0) {
-		return { [SQL_FRAGMENT]: true, text: '', values: [] }
-	}
+	return combine(conditions, ' AND ', (t) => `WHERE ${t}`)
+}
 
-	const joined = sql.join(conditions, ' AND ')
-
-	return { [SQL_FRAGMENT]: true, text: `WHERE ${joined.text}`, values: joined.values }
+sql.or = function or(conditions: SqlFragment[]): SqlFragment {
+	return combine(conditions, ' OR ', (t) => `(${t})`)
 }
 
 sql.values = function values(rows: unknown[][]): SqlFragment {
 	if (rows.length === 0) {
 		throw new Error('sql.values() requires at least one row')
+	}
+
+	const width = rows[0].length
+
+	if (rows.some((row) => row.length !== width)) {
+		throw new Error('sql.values() requires all rows to have the same length')
 	}
 
 	const textParts: string[] = []
@@ -121,17 +136,7 @@ sql.values = function values(rows: unknown[][]): SqlFragment {
 		textParts.push(`(${placeholders.join(', ')})`)
 	}
 
-	return { [SQL_FRAGMENT]: true, text: textParts.join(', '), values: allValues }
-}
-
-sql.or = function or(conditions: SqlFragment[]): SqlFragment {
-	if (conditions.length === 0) {
-		return { [SQL_FRAGMENT]: true, text: '', values: [] }
-	}
-
-	const joined = sql.join(conditions, ' OR ')
-
-	return { [SQL_FRAGMENT]: true, text: `(${joined.text})`, values: joined.values }
+	return fragment(textParts.join(', '), allValues)
 }
 
 sql.set = function set(obj: Record<string, unknown>): SqlFragment {
@@ -141,7 +146,7 @@ sql.set = function set(obj: Record<string, unknown>): SqlFragment {
 		throw new Error('sql.set() requires at least one column')
 	}
 
-	const fragments = entries.map(([key, value]) => sql`${sql.raw(key)} = ${value}`)
+	const fragments = entries.map(([key, value]) => sql`${sql.raw(escapeIdentifier(key))} = ${value}`)
 
 	return sql`SET ${sql.join(fragments)}`
 }
@@ -153,15 +158,11 @@ sql.insert = function insert(table: string, data: Record<string, unknown>): SqlF
 		throw new Error('sql.insert() requires at least one column')
 	}
 
-	const columns = keys.join(', ')
+	const columns = keys.map(escapeIdentifier).join(', ')
 
 	const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ')
 
-	return {
-		[SQL_FRAGMENT]: true,
-		text: `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`,
-		values: Object.values(data),
-	}
+	return fragment(`INSERT INTO ${table} (${columns}) VALUES (${placeholders})`, Object.values(data))
 }
 
 export { sql }

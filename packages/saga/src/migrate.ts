@@ -19,7 +19,11 @@ export interface MigrationStatus {
 	pending: string[]
 }
 
-async function ensureMigrationsTable(db: Db): Promise<void> {
+async function ensureSagaSchema(db: Db): Promise<void> {
+	await db.exec(sql`
+		CREATE SCHEMA IF NOT EXISTS saga
+	`)
+
 	await db.exec(sql`
 		CREATE TABLE IF NOT EXISTS saga.migrations (
 			id SERIAL PRIMARY KEY,
@@ -29,14 +33,12 @@ async function ensureMigrationsTable(db: Db): Promise<void> {
 	`)
 }
 
-async function getAppliedMigrations(db: Db): Promise<Set<string>> {
-	const rows = await db.many<MigrationRecord>(sql`
+async function getAppliedMigrations(db: Db): Promise<MigrationRecord[]> {
+	return db.many<MigrationRecord>(sql`
 		SELECT name, applied_at::text AS applied_at
 		FROM saga.migrations
 		ORDER BY name
 	`)
-
-	return new Set(rows.map((r) => r.name))
 }
 
 async function readMigrationFiles(migrationsDir: string): Promise<string[]> {
@@ -50,13 +52,9 @@ const sagaMigrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..',
 export async function runMigrations(db: Db, migrationsDir?: string): Promise<MigrationResult> {
 	const dir = migrationsDir ?? sagaMigrationsDir
 
-	await db.exec(sql`
-		CREATE SCHEMA IF NOT EXISTS saga
-	`)
+	await ensureSagaSchema(db)
 
-	await ensureMigrationsTable(db)
-
-	const applied = await getAppliedMigrations(db)
+	const applied = new Set((await getAppliedMigrations(db)).map((r) => r.name))
 	const files = await readMigrationFiles(dir)
 
 	const result: MigrationResult = { applied: [], skipped: [] }
@@ -86,23 +84,13 @@ export async function runMigrations(db: Db, migrationsDir?: string): Promise<Mig
 }
 
 export async function getMigrationStatus(db: Db, migrationsDir: string): Promise<MigrationStatus> {
-	await db.exec(sql`
-		CREATE SCHEMA IF NOT EXISTS saga
-	`)
+	await ensureSagaSchema(db)
 
-	await ensureMigrationsTable(db)
-
-	const appliedRows = await db.many<MigrationRecord>(sql`
-		SELECT name, applied_at::text AS applied_at
-		FROM saga.migrations
-		ORDER BY name
-	`)
-
-	const appliedNames = new Set(appliedRows.map((r) => r.name))
+	const applied = await getAppliedMigrations(db)
+	const appliedNames = new Set(applied.map((r) => r.name))
 
 	const files = await readMigrationFiles(migrationsDir)
-
 	const pending = files.filter((f) => !appliedNames.has(f))
 
-	return { applied: appliedRows, pending }
+	return { applied, pending }
 }
