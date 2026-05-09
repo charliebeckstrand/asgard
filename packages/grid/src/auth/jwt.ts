@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { JwtVariables } from 'hono/jwt'
 import { sign, verify } from 'hono/jwt'
+import { z } from 'zod'
 
 export type TokenType = 'access' | 'refresh'
 
@@ -80,14 +81,33 @@ export async function verifyToken(token: string, keys: JwtKeys): Promise<JWTPayl
 	}
 }
 
-export type AccessTokenPayload = JWTPayload & { sub: string; type: 'access' }
+export const AccessTokenPayloadSchema = z.object({
+	sub: z.string(),
+	type: z.literal('access'),
+	iss: z.literal(TOKEN_ISSUER),
+	exp: z.number(),
+	iat: z.number(),
+	jti: z.string().optional(),
+})
 
-export async function verifyAccessToken(token: string, keys: JwtKeys): Promise<AccessTokenPayload> {
+export type AccessTokenPayload = z.infer<typeof AccessTokenPayloadSchema>
+
+export async function parseJwtPayload<S extends z.ZodType>(
+	token: string,
+	keys: JwtKeys,
+	schema: S,
+): Promise<z.infer<S>> {
 	const payload = await verifyToken(token, keys)
 
-	if (payload.type !== 'access' || typeof payload.sub !== 'string') {
-		throw new InvalidTokenError('Invalid token')
+	const parsed = schema.safeParse(payload)
+
+	if (!parsed.success) {
+		throw new InvalidTokenError('Invalid token payload')
 	}
 
-	return payload as AccessTokenPayload
+	return parsed.data
+}
+
+export function verifyAccessToken(token: string, keys: JwtKeys): Promise<AccessTokenPayload> {
+	return parseJwtPayload(token, keys, AccessTokenPayloadSchema)
 }

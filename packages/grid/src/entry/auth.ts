@@ -1,9 +1,11 @@
 export {
 	ACCESS_TOKEN_TTL_SECONDS,
 	type AccessTokenPayload,
+	AccessTokenPayloadSchema,
 	InvalidTokenError,
 	type JWTPayload,
 	type JwtKeys,
+	parseJwtPayload,
 	REFRESH_TOKEN_TTL_SECONDS,
 	signToken,
 	TOKEN_ISSUER,
