@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { HttpError, validationHook } from 'grid'
+import { errorResponse, HttpError, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import { EmailSchema, ErrorSchema, LoginPasswordSchema, MessageSchema, PasswordSchema } from 'skuld'
+import { EmailSchema, LoginPasswordSchema, MessageSchema, PasswordSchema } from 'skuld'
 import { authenticateUser, getConfig, registerUser } from '../auth/index.js'
 import { ACCESS_TOKEN_TTL_SECONDS, verifyToken } from '../auth/jwt.js'
 import { environment } from '../lib/env.js'
@@ -66,24 +66,12 @@ const loginRoute = createRoute({
 	summary: 'Login with email and password',
 	description: 'Authenticates credentials and sets a session cookie.',
 	request: {
-		body: {
-			content: { 'application/json': { schema: LoginRequestSchema } },
-			required: true,
-		},
+		body: jsonRequest(LoginRequestSchema),
 	},
 	responses: {
-		200: {
-			content: { 'application/json': { schema: LoginResponseSchema } },
-			description: 'Login successful',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Invalid credentials',
-		},
-		403: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Account inactive',
-		},
+		200: jsonResponse(LoginResponseSchema, 'Login successful'),
+		401: errorResponse('Invalid credentials'),
+		403: errorResponse('Account inactive'),
 	},
 })
 
@@ -93,10 +81,7 @@ const logoutRoute = createRoute({
 	tags: ['Auth'],
 	summary: 'Logout and clear session',
 	responses: {
-		200: {
-			content: { 'application/json': { schema: MessageSchema } },
-			description: 'Logged out',
-		},
+		200: jsonResponse(MessageSchema, 'Logged out'),
 	},
 })
 
@@ -107,24 +92,12 @@ const registerRoute = createRoute({
 	summary: 'Register a new account',
 	description: 'Creates a new user account.',
 	request: {
-		body: {
-			content: { 'application/json': { schema: RegisterRequestSchema } },
-			required: true,
-		},
+		body: jsonRequest(RegisterRequestSchema),
 	},
 	responses: {
-		201: {
-			content: { 'application/json': { schema: RegisterResponseSchema } },
-			description: 'Account created',
-		},
-		400: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Validation error',
-		},
-		409: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Email already registered',
-		},
+		201: jsonResponse(RegisterResponseSchema, 'Account created'),
+		400: errorResponse('Validation error'),
+		409: errorResponse('Email already registered'),
 	},
 })
 
@@ -135,14 +108,8 @@ const sessionRoute = createRoute({
 	summary: 'Get current session',
 	description: 'Returns session info if authenticated, 401 otherwise.',
 	responses: {
-		200: {
-			content: { 'application/json': { schema: SessionResponseSchema } },
-			description: 'Active session',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Not authenticated',
-		},
+		200: jsonResponse(SessionResponseSchema, 'Active session'),
+		401: errorResponse('Not authenticated'),
 	},
 })
 
@@ -153,14 +120,8 @@ const userRoute = createRoute({
 	summary: 'Get authenticated user',
 	description: "Returns the current authenticated user's details.",
 	responses: {
-		200: {
-			content: { 'application/json': { schema: AuthUserResponseSchema } },
-			description: 'Authenticated user',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Not authenticated',
-		},
+		200: jsonResponse(AuthUserResponseSchema, 'Authenticated user'),
+		401: errorResponse('Not authenticated'),
 	},
 })
 

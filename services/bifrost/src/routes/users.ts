@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { HttpError, validationHook } from 'grid'
+import { errorResponse, HttpError, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import { EmailSchema, ErrorSchema, PasswordSchema } from 'skuld'
+import { EmailSchema, PasswordSchema } from 'skuld'
 import { getConfig, registerUser } from '../auth/index.js'
 import { requireSession, type SessionEnv } from '../middleware/session.js'
 
@@ -48,10 +48,7 @@ const listUsersRoute = createRoute({
 	tags: ['Users'],
 	summary: 'List all users',
 	responses: {
-		200: {
-			content: { 'application/json': { schema: z.array(UserResponseSchema) } },
-			description: 'List of users',
-		},
+		200: jsonResponse(z.array(UserResponseSchema), 'List of users'),
 	},
 })
 
@@ -62,24 +59,12 @@ const createUserRoute = createRoute({
 	summary: 'Create a new user account',
 	description: '',
 	request: {
-		body: {
-			content: { 'application/json': { schema: CreateUserRequestSchema } },
-			required: true,
-		},
+		body: jsonRequest(CreateUserRequestSchema),
 	},
 	responses: {
-		201: {
-			content: { 'application/json': { schema: CreateUserResponseSchema } },
-			description: 'User created',
-		},
-		400: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Validation error',
-		},
-		409: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Email already registered',
-		},
+		201: jsonResponse(CreateUserResponseSchema, 'User created'),
+		400: errorResponse('Validation error'),
+		409: errorResponse('Email already registered'),
 	},
 })
 
@@ -92,14 +77,8 @@ const getUserRoute = createRoute({
 		params: UserIdParamSchema,
 	},
 	responses: {
-		200: {
-			content: { 'application/json': { schema: UserResponseSchema } },
-			description: 'User found',
-		},
-		404: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'User not found',
-		},
+		200: jsonResponse(UserResponseSchema, 'User found'),
+		404: errorResponse('User not found'),
 	},
 })
 
@@ -110,24 +89,12 @@ const updateUserRoute = createRoute({
 	summary: 'Update a user',
 	request: {
 		params: UserIdParamSchema,
-		body: {
-			content: { 'application/json': { schema: UpdateUserRequestSchema } },
-			required: true,
-		},
+		body: jsonRequest(UpdateUserRequestSchema),
 	},
 	responses: {
-		200: {
-			content: { 'application/json': { schema: UserResponseSchema } },
-			description: 'User updated',
-		},
-		400: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Validation error',
-		},
-		404: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'User not found',
-		},
+		200: jsonResponse(UserResponseSchema, 'User updated'),
+		400: errorResponse('Validation error'),
+		404: errorResponse('User not found'),
 	},
 })
 
@@ -143,10 +110,7 @@ const deleteUserRoute = createRoute({
 		204: {
 			description: 'User deleted',
 		},
-		404: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'User not found',
-		},
+		404: errorResponse('User not found'),
 	},
 })
 
