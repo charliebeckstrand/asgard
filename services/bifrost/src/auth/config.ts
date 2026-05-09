@@ -1,10 +1,10 @@
 import type { JwtKeys } from 'grid/auth'
 import type { UserRepository } from './types.js'
 
-export type SecurityEventType = 'login_failed' | 'registration'
+export type AuthSecurityEventType = 'login_failed' | 'registration'
 
-export interface SecurityEvent {
-	type: SecurityEventType
+export interface AuthSecurityEvent {
+	type: AuthSecurityEventType
 	ip: string
 	details?: Record<string, unknown>
 }
@@ -12,7 +12,7 @@ export interface SecurityEvent {
 export interface Config {
 	userRepository: UserRepository
 	keys: JwtKeys
-	onSecurityEvent?: (event: SecurityEvent) => void
+	onSecurityEvent?: (event: AuthSecurityEvent) => void
 }
 
 let _config: Config | null = null
