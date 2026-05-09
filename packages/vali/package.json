@@ -10,21 +10,9 @@
 			"types": "./src/index.ts",
 			"default": "./dist/index.js"
 		},
-		"./matchers": {
-			"types": "./src/matchers/index.ts",
-			"default": "./dist/matchers.js"
-		},
-		"./mocks": {
-			"types": "./src/mocks/index.ts",
-			"default": "./dist/mocks.js"
-		},
 		"./fixtures": {
 			"types": "./src/fixtures/index.ts",
 			"default": "./dist/fixtures.js"
-		},
-		"./setup": {
-			"types": "./src/setup.ts",
-			"default": "./dist/setup.js"
 		},
 		"./containers": {
 			"types": "./src/containers/index.ts",
@@ -56,7 +44,6 @@
 		"@biomejs/biome": "^2.4.6",
 		"@types/node": "^25.3.3",
 		"tsup": "^8.5.1",
-		"typescript": "^5.9.3",
-		"zod": "^4.3.6"
+		"typescript": "^5.9.3"
 	}
 }
