@@ -1,4 +1,4 @@
-import { HttpError } from 'grid'
+import { HTTPException } from 'grid'
 import type { Context, MiddlewareHandler } from 'hono'
 import { verify } from 'hono/jwt'
 import { environment } from '../lib/env.js'
@@ -14,7 +14,7 @@ export function requireAuth(): MiddlewareHandler<AuthEnv> {
 		const header = c.req.header('Authorization')
 
 		if (!header?.startsWith('Bearer ')) {
-			throw new HttpError(401, 'Missing bearer token', 'Unauthorized')
+			throw new HTTPException(401, { message: 'Missing bearer token' })
 		}
 
 		const token = header.slice('Bearer '.length)
@@ -24,7 +24,7 @@ export function requireAuth(): MiddlewareHandler<AuthEnv> {
 		try {
 			payload = await verify(token, environment().SECRET_KEY, 'HS256')
 		} catch {
-			throw new HttpError(401, 'Invalid token', 'Unauthorized')
+			throw new HTTPException(401, { message: 'Invalid token' })
 		}
 
 		if (
@@ -32,7 +32,7 @@ export function requireAuth(): MiddlewareHandler<AuthEnv> {
 			payload.type !== 'access' ||
 			typeof payload.sub !== 'string'
 		) {
-			throw new HttpError(401, 'Invalid token', 'Unauthorized')
+			throw new HTTPException(401, { message: 'Invalid token' })
 		}
 
 		c.set('userId', payload.sub)

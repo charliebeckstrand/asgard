@@ -11,7 +11,7 @@ import { usersRoutes } from './routes/users.js'
 export function createBifrostApp() {
 	const env = environment()
 
-	const { app, setup } = createApp({
+	const app = createApp({
 		basePath: '/api',
 		title: 'Bifrost',
 		description: '',
@@ -31,14 +31,7 @@ export function createBifrostApp() {
 		createVidar({ rate: 2, burst: 5, route: '/auth/register', service: 'bifrost' }),
 	)
 
-	const routes = app
-		.route('/auth', authRoutes)
-		.route('/api', health)
-		.route('/api/users', usersRoutes)
-
-	setup()
-
-	return routes
+	return app.route('/auth', authRoutes).route('/api', health).route('/api/users', usersRoutes)
 }
 
 export type BifrostApp = ReturnType<typeof createBifrostApp>

@@ -8,7 +8,6 @@ import { secureHeaders } from 'hono/secure-headers'
 import { timing } from 'hono/timing'
 import { trimTrailingSlash } from 'hono/trailing-slash'
 import { errorHandler, notFoundHandler } from './error-handler.js'
-import { createOpenApiConfig } from './openapi.js'
 import { validationHook } from './validation-hook.js'
 
 interface CreateAppOptions {
@@ -24,46 +23,43 @@ export function createApp(options: CreateAppOptions) {
 
 	app.use(trimTrailingSlash())
 
-	app.use('*', cors(options.cors ?? undefined))
+	app.use('*', cors(options.cors))
 	app.use('*', secureHeaders())
 	app.use('*', logger())
 	app.use('*', timing())
+
+	const compressMw = compress()
+	const etagMw = etag()
+
+	// compress() and etag() buffer the response body, which breaks SSE streams.
+	// Skip both when the handler is producing text/event-stream.
 	app.use('*', async (c, next) => {
 		await next()
 
-		const isSSE = c.res.headers.get('Content-Type')?.includes('text/event-stream')
+		if (c.res.headers.get('Content-Type')?.includes('text/event-stream')) return
 
-		if (isSSE) {
-			return
-		}
-
-		await compress()(c, async () => {})
-		await etag()(c, async () => {})
+		await compressMw(c, async () => {})
+		await etagMw(c, async () => {})
 	})
 
-	const openApiConfig = createOpenApiConfig({
-		title: options.title,
-		description: options.description,
-		port: options.port,
+	app.get(options.basePath, (c) =>
+		c.json({
+			service: options.title.toLowerCase(),
+			openApi: `${options.basePath}/openapi.json`,
+			docs: `${options.basePath}/docs`,
+		}),
+	)
+
+	app.get(`${options.basePath}/docs`, swaggerUI({ url: `${options.basePath}/openapi.json` }))
+
+	app.doc(`${options.basePath}/openapi.json`, {
+		openapi: '3.0.0',
+		info: { title: options.title, description: options.description, version: '0.1.0' },
+		servers: [{ url: `http://localhost:${options.port}`, description: 'Local development' }],
 	})
 
-	const setup = () => {
-		app.get(options.basePath, (c) =>
-			c.json({
-				service: options.title.toLowerCase(),
-				openApi: `${options.basePath}/openapi.json`,
-				docs: `${options.basePath}/docs`,
-			}),
-		)
+	app.onError(errorHandler)
+	app.notFound(notFoundHandler)
 
-		app.get(`${options.basePath}/docs`, swaggerUI({ url: `${options.basePath}/openapi.json` }))
-
-		app.doc(`${options.basePath}/openapi.json`, openApiConfig)
-
-		app.onError(errorHandler)
-
-		app.notFound(notFoundHandler)
-	}
-
-	return { app, setup }
+	return app
 }

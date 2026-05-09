@@ -50,8 +50,6 @@ function aggregateStatus(
 }
 
 export function createHealthRoute(options?: CreateHealthRouteOptions) {
-	const startTime = Date.now()
-
 	const healthRoute = createRoute({
 		method: 'get',
 		path: '/health',
@@ -65,7 +63,7 @@ export function createHealthRoute(options?: CreateHealthRouteOptions) {
 	})
 
 	return new OpenAPIHono().openapi(healthRoute, async (c) => {
-		const uptimeSeconds = (Date.now() - startTime) / 1000
+		const uptimeSeconds = process.uptime()
 
 		if (options?.services) {
 			const entries = await Promise.all(

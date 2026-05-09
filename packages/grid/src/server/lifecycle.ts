@@ -59,6 +59,8 @@ export function setupLifecycle({ server, name, onShutdown }: LifecycleOptions) {
 	}
 
 	for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+		// Clear any prior handlers so multiple setupLifecycle calls (e.g. across
+		// hot-reloads or tests in the same process) don't accumulate listeners.
 		process.removeAllListeners(signal)
 
 		process.once(signal, () => {

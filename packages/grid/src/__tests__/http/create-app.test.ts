@@ -1,8 +1,8 @@
 import { createApp } from '../../http/create-app.js'
 
 describe('createApp', () => {
-	it('returns an app and setup function', () => {
-		const { app, setup } = createApp({
+	it('returns a configured app', () => {
+		const app = createApp({
 			basePath: '/test',
 			title: 'Test Service',
 			description: 'A test service',
@@ -10,18 +10,15 @@ describe('createApp', () => {
 		})
 
 		expect(app).toBeDefined()
-		expect(setup).toBeTypeOf('function')
 	})
 
-	it('serves the base path with service info after setup', async () => {
-		const { app, setup } = createApp({
+	it('serves the base path with service info', async () => {
+		const app = createApp({
 			basePath: '/test',
 			title: 'Test Service',
 			description: 'A test service',
 			port: 4000,
 		})
-
-		setup()
 
 		const res = await app.request('/test')
 
@@ -39,14 +36,12 @@ describe('createApp', () => {
 	})
 
 	it('serves OpenAPI JSON at basePath/openapi.json', async () => {
-		const { app, setup } = createApp({
+		const app = createApp({
 			basePath: '/api',
 			title: 'API',
 			description: 'Main API',
 			port: 4000,
 		})
-
-		setup()
 
 		const res = await app.request('/api/openapi.json')
 
@@ -58,8 +53,8 @@ describe('createApp', () => {
 		expect(body.info.title).toBe('API')
 	})
 
-	it('handles errors using errorHandler after setup', async () => {
-		const { app, setup } = createApp({
+	it('handles errors using errorHandler', async () => {
+		const app = createApp({
 			basePath: '/test',
 			title: 'Test',
 			description: '',
@@ -70,8 +65,6 @@ describe('createApp', () => {
 			throw new Error('Boom')
 		})
 
-		setup()
-
 		const res = await app.request('/test/boom')
 
 		expect(res.status).toBe(500)
@@ -81,15 +74,13 @@ describe('createApp', () => {
 		expect(body.error).toBe('Internal Server Error')
 	})
 
-	it('returns 404 for unknown routes after setup', async () => {
-		const { app, setup } = createApp({
+	it('returns 404 for unknown routes', async () => {
+		const app = createApp({
 			basePath: '/test',
 			title: 'Test',
 			description: '',
 			port: 4000,
 		})
-
-		setup()
 
 		const res = await app.request('/test/nonexistent')
 

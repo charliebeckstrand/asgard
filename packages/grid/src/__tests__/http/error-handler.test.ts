@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
+import { HTTPException } from 'hono/http-exception'
 import { errorHandler, notFoundHandler } from '../../http/error-handler.js'
-import { HttpError } from '../../http/errors.js'
 
 const app = new Hono()
 
@@ -8,13 +8,12 @@ app.get('/error-with-status', () => {
 	const err = new Error('Forbidden') as Error & { status: number }
 
 	err.status = 403
-	err.name = 'ForbiddenError'
 
 	throw err
 })
 
-app.get('/http-error', () => {
-	throw new HttpError(422, 'Validation failed', 'ValidationError')
+app.get('/http-exception', () => {
+	throw new HTTPException(422, { message: 'Validation failed' })
 })
 
 app.get('/unexpected-error', () => {
@@ -38,19 +37,19 @@ describe('errorHandler', () => {
 
 		const body = (await res.json()) as ErrorResponse
 
-		expect(body.error).toBe('ForbiddenError')
+		expect(body.error).toBe('Forbidden')
 		expect(body.message).toBe('Forbidden')
 		expect(body.statusCode).toBe(403)
 	})
 
-	it('returns structured JSON for HttpError instances', async () => {
-		const res = await app.request('/http-error')
+	it('returns structured JSON for HTTPException instances', async () => {
+		const res = await app.request('/http-exception')
 
 		expect(res.status).toBe(422)
 
 		const body = (await res.json()) as ErrorResponse
 
-		expect(body.error).toBe('ValidationError')
+		expect(body.error).toBe('Unprocessable Entity')
 		expect(body.message).toBe('Validation failed')
 		expect(body.statusCode).toBe(422)
 	})
