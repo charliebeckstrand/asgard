@@ -2,7 +2,9 @@ import { Pool } from 'pg'
 import { createPool } from '../pool.js'
 
 vi.mock('pg', () => {
-	const MockPool = vi.fn()
+	const MockPool = vi.fn().mockImplementation(function (this: { on: unknown }) {
+		this.on = vi.fn()
+	})
 
 	return { Pool: MockPool }
 })
@@ -105,5 +107,11 @@ describe('createPool', () => {
 				connectionTimeoutMillis: 10000,
 			}),
 		)
+	})
+
+	it("attaches an 'error' listener so idle-client errors don't crash the process", () => {
+		const pool = createPool('postgres://user:pass@host:5432/db')
+
+		expect(pool.on).toHaveBeenCalledWith('error', expect.any(Function))
 	})
 })

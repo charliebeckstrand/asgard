@@ -19,7 +19,7 @@ export function createPool(databaseUrl: string, options?: PoolOptions): Pool {
 
 	const requiresSsl = sslmode !== null && sslmode !== 'disable'
 
-	return new Pool({
+	const pool = new Pool({
 		host: url.hostname,
 		port: Number.parseInt(url.port, 10) || 5432,
 		database: url.pathname.slice(1),
@@ -30,4 +30,12 @@ export function createPool(databaseUrl: string, options?: PoolOptions): Pool {
 		connectionTimeoutMillis: options?.connectionTimeoutMillis ?? 5000,
 		ssl: requiresSsl ? { rejectUnauthorized: false } : false,
 	})
+
+	// Idle clients can disconnect (network blip, DB restart). Without a listener,
+	// node-postgres surfaces the error as an uncaught exception and crashes.
+	pool.on('error', (err) => {
+		console.error('[saga] idle client error:', err.message)
+	})
+
+	return pool
 }
