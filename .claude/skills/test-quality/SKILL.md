@@ -81,7 +81,9 @@ beforeAll(async () => {
     if (!isDockerAvailable()) return
 
     const testDb = await startPostgres()
+
     pool = new Pool({ connectionString: testDb.connectionUri })
+
     await applyMigrations(pool, migrationsDir)
 
     vi.doMock('../db.js', () => ({ db: createDatabaseClient(pool) }))
@@ -132,6 +134,7 @@ For fire-and-forget code paths (e.g. `reportEvent`), wait on the assertion rathe
 ```ts
 // ✗ flaky
 await new Promise((r) => setTimeout(r, 10))
+
 expect(fetchMock).toHaveBeenCalled()
 
 // ✓ robust
