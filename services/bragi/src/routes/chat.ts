@@ -2,42 +2,32 @@ import { randomUUID } from 'node:crypto'
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { streamSSE } from 'hono/streaming'
+import { createListSchema, IdSchema, toList } from 'skuld'
+import { ChatMessageSchema, ChatSchema } from '../chat/types.js'
 import { createChatRepository } from '../lib/chat-repository.js'
 import { type AuthEnv, requireAuth } from '../middleware/auth.js'
 
 const chatRepository = createChatRepository()
 
 const ChatIdParamSchema = z.object({
-	id: z.string().uuid(),
+	id: IdSchema,
 })
 
-const ChatMessageResponseSchema = z
-	.object({
-		id: z.string(),
-		chat_id: z.string(),
-		role: z.enum(['user', 'agent']),
-		type: z.string(),
-		content: z.string(),
-		created_at: z.string(),
-	})
-	.openapi('ChatMessageResponse')
+const ChatResponseSchema = ChatSchema.omit({ user_id: true }).openapi('Chat')
 
-const ChatResponseSchema = z
-	.object({
-		id: z.string(),
-		created_at: z.string(),
-		updated_at: z.string(),
-	})
-	.openapi('ChatResponse')
+const ChatDetailResponseSchema = ChatResponseSchema.extend({
+	messages: z.array(ChatMessageSchema),
+}).openapi('ChatDetail')
 
-const ChatDetailResponseSchema = z
-	.object({
-		id: z.string(),
-		created_at: z.string(),
-		updated_at: z.string(),
-		messages: z.array(ChatMessageResponseSchema),
-	})
-	.openapi('ChatDetailResponse')
+const ChatListResponseSchema = createListSchema(ChatResponseSchema, 'ChatList')
+
+const ChatStreamEventSchema = z
+	.discriminatedUnion('event', [
+		z.object({ event: z.literal('user_message'), data: ChatMessageSchema }),
+		z.object({ event: z.literal('content'), data: z.string() }),
+		z.object({ event: z.literal('done'), data: ChatMessageSchema }),
+	])
+	.openapi('ChatStreamEvent')
 
 const CreateMessageRequestSchema = z
 	.object({
@@ -52,7 +42,7 @@ const listChatsRoute = createRoute({
 	security: [{ Bearer: [] }],
 	summary: 'List all chats',
 	responses: {
-		200: jsonResponse(z.array(ChatResponseSchema), 'List of chats'),
+		200: jsonResponse(ChatListResponseSchema, 'List of chats'),
 	},
 })
 
@@ -83,7 +73,7 @@ const postMessageRoute = createRoute({
 	},
 	responses: {
 		200: {
-			content: { 'text/event-stream': { schema: z.any() } },
+			content: { 'text/event-stream': { schema: ChatStreamEventSchema } },
 			description: 'SSE stream of agent response',
 		},
 		400: errorResponse('Validation error'),
@@ -116,7 +106,7 @@ chatRoutes.openapi(listChatsRoute, async (c) => {
 
 	const chats = await chatRepository.getChats(userId)
 
-	return c.json(chats, 200)
+	return c.json(toList(chats), 200)
 })
 
 chatRoutes.openapi(getChatRoute, async (c) => {
