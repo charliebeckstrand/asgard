@@ -1,30 +1,12 @@
 {
 	"name": "vali",
 	"version": "0.1.0",
-	"description": "Shared test utilities — mock factories, custom matchers, and fixtures for Vitest",
+	"description": "Shared test utilities — vitest config, postgres testcontainers, and temp-dir helpers",
 	"type": "module",
-	"main": "./dist/index.js",
-	"types": "./src/index.ts",
 	"exports": {
-		".": {
-			"types": "./src/index.ts",
-			"default": "./dist/index.js"
-		},
-		"./matchers": {
-			"types": "./src/matchers/index.ts",
-			"default": "./dist/matchers.js"
-		},
-		"./mocks": {
-			"types": "./src/mocks/index.ts",
-			"default": "./dist/mocks.js"
-		},
 		"./fixtures": {
-			"types": "./src/fixtures/index.ts",
+			"types": "./src/fixtures.ts",
 			"default": "./dist/fixtures.js"
-		},
-		"./setup": {
-			"types": "./src/setup.ts",
-			"default": "./dist/setup.js"
 		},
 		"./containers": {
 			"types": "./src/containers/index.ts",
@@ -48,7 +30,6 @@
 	"packageManager": "pnpm@10.29.3",
 	"dependencies": {
 		"@testcontainers/postgresql": "^11.12.0",
-		"hono": "^4.8.3",
 		"testcontainers": "^11.12.0",
 		"vitest": "^4.0.18"
 	},
@@ -56,7 +37,6 @@
 		"@biomejs/biome": "^2.4.6",
 		"@types/node": "^25.3.3",
 		"tsup": "^8.5.1",
-		"typescript": "^5.9.3",
-		"zod": "^4.3.6"
+		"typescript": "^5.9.3"
 	}
 }
