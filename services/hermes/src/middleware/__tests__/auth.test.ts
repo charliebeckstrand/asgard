@@ -51,12 +51,12 @@ describe('requireAuth', () => {
 		expect(res.status).toBe(401)
 	})
 
-	it('returns 401 when scheme is not Bearer', async () => {
+	it('returns 400 when scheme is not Bearer', async () => {
 		const res = await makeApp().request('/', {
 			headers: { Authorization: 'Basic abc' },
 		})
 
-		expect(res.status).toBe(401)
+		expect(res.status).toBe(400)
 	})
 
 	it('returns 401 when signature is invalid', async () => {
