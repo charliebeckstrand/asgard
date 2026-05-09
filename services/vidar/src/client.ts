@@ -13,7 +13,9 @@ interface VidarClientConfig {
 	vidarApiKey?: string
 }
 
-let _client: ReturnType<typeof hc<VidarApp>> | null = null
+type VidarClient = ReturnType<typeof hc<VidarApp>>
+
+let _client: VidarClient | null = null
 let _breaker: CircuitBreaker | null = null
 
 export function configure(config: VidarClientConfig): void {
@@ -26,31 +28,36 @@ export function configure(config: VidarClientConfig): void {
 	_breaker = config.vidarUrl ? createCircuitBreaker('vidar') : null
 }
 
-async function checkIpBan(ip: string): Promise<CheckIpResponse | null> {
+/**
+ * Run an HTTP call against Vidar through the circuit breaker.
+ * Returns null when Vidar isn't configured, the breaker is open, or the
+ * call throws — callers fail open so a Vidar outage can't lock them out.
+ */
+async function callVidar<T>(fn: (client: VidarClient) => Promise<T>): Promise<T | null> {
 	const client = _client
 	const breaker = _breaker
 
 	if (!client || !breaker) return null
 
 	try {
-		return await breaker.execute(async () => {
-			const res = await client.vidar['check-ip'].$get(
-				{ query: { ip } },
-				{ init: { signal: AbortSignal.timeout(3000) } },
-			)
-
-			if (!res.ok && res.status >= 500) {
-				throw new Error(`Vidar returned ${res.status}`)
-			}
-
-			if (!res.ok) return null
-
-			return (await res.json()) as CheckIpResponse
-		})
+		return await breaker.execute(() => fn(client))
 	} catch {
-		// Vidar is unreachable or circuit is open — fail open so auth still works
 		return null
 	}
+}
+
+async function checkIpBan(ip: string): Promise<CheckIpResponse | null> {
+	return callVidar(async (client) => {
+		const res = await client.vidar['check-ip'].$get(
+			{ query: { ip } },
+			{ init: { signal: AbortSignal.timeout(3000) } },
+		)
+
+		if (!res.ok && res.status >= 500) throw new Error(`Vidar returned ${res.status}`)
+		if (!res.ok) return null
+
+		return (await res.json()) as CheckIpResponse
+	})
 }
 
 /**
@@ -64,27 +71,14 @@ export function reportEvent(
 	details: Record<string, unknown> = {},
 	service = 'unknown',
 ): void {
-	const client = _client
-	const breaker = _breaker
+	void callVidar(async (client) => {
+		const res = await client.vidar.events.$post(
+			{ json: { ip, event_type: eventType, details, service } },
+			{ init: { signal: AbortSignal.timeout(5000) } },
+		)
 
-	if (!client || !breaker) return
-
-	breaker
-		.execute(async () => {
-			const res = await client.vidar.events.$post(
-				{ json: { ip, event_type: eventType, details, service } },
-				{ init: { signal: AbortSignal.timeout(5000) } },
-			)
-
-			if (!res.ok && res.status >= 500) {
-				throw new Error(`Vidar returned ${res.status}`)
-			}
-
-			return res
-		})
-		.catch(() => {
-			// Silently ignore — Vidar being down should not affect callers
-		})
+		if (!res.ok && res.status >= 500) throw new Error(`Vidar returned ${res.status}`)
+	})
 }
 
 export interface CreateVidarOptions {
