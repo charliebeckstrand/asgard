@@ -1,18 +1,11 @@
 import {
-	DetailsSchema,
 	EmailSchema,
-	EventTypeSchema,
 	IdSchema,
 	IpAddressSchema,
 	LoginPasswordSchema,
-	MetadataSchema,
 	PasswordSchema,
-	ServiceNameSchema,
-	StringIdSchema,
 	TimestampSchema,
-	UrlSchema,
 } from '../index.js'
-import { CallbackUrlSchema, PayloadSchema, TopicFilterSchema, TopicSchema } from '../primitives.js'
 
 describe('IdSchema', () => {
 	it('accepts valid UUIDs', () => {
@@ -23,20 +16,6 @@ describe('IdSchema', () => {
 
 	it('rejects non-UUIDs', () => {
 		const result = IdSchema.safeParse('not-a-uuid')
-
-		expect(result.success).toBe(false)
-	})
-})
-
-describe('StringIdSchema', () => {
-	it('accepts non-empty strings', () => {
-		const result = StringIdSchema.safeParse('abc-123')
-
-		expect(result.success).toBe(true)
-	})
-
-	it('rejects empty strings', () => {
-		const result = StringIdSchema.safeParse('')
 
 		expect(result.success).toBe(false)
 	})
@@ -59,28 +38,6 @@ describe('IpAddressSchema', () => {
 		const result = IpAddressSchema.safeParse('')
 
 		expect(result.success).toBe(false)
-	})
-})
-
-describe('UrlSchema', () => {
-	it('accepts valid URLs', () => {
-		const result = UrlSchema.safeParse('https://example.com')
-
-		expect(result.success).toBe(true)
-	})
-
-	it('rejects invalid URLs', () => {
-		const result = UrlSchema.safeParse('not-a-url')
-
-		expect(result.success).toBe(false)
-	})
-})
-
-describe('CallbackUrlSchema', () => {
-	it('accepts valid callback URLs', () => {
-		const result = CallbackUrlSchema.safeParse('http://localhost:4000/api/webhooks/test')
-
-		expect(result.success).toBe(true)
 	})
 })
 
@@ -137,109 +94,5 @@ describe('TimestampSchema', () => {
 		const result = TimestampSchema.safeParse('yesterday')
 
 		expect(result.success).toBe(false)
-	})
-})
-
-describe('ServiceNameSchema', () => {
-	it('accepts valid service names', () => {
-		const result = ServiceNameSchema.safeParse('bifrost')
-
-		expect(result.success).toBe(true)
-	})
-
-	it('rejects empty strings', () => {
-		const result = ServiceNameSchema.safeParse('')
-
-		expect(result.success).toBe(false)
-	})
-
-	it('rejects strings over 100 characters', () => {
-		const result = ServiceNameSchema.safeParse('a'.repeat(101))
-
-		expect(result.success).toBe(false)
-	})
-})
-
-describe('TopicSchema', () => {
-	it('accepts valid topics', () => {
-		const result = TopicSchema.safeParse('user.registered')
-
-		expect(result.success).toBe(true)
-	})
-
-	it('rejects empty strings', () => {
-		const result = TopicSchema.safeParse('')
-
-		expect(result.success).toBe(false)
-	})
-
-	it('rejects strings over 255 characters', () => {
-		const result = TopicSchema.safeParse('a'.repeat(256))
-
-		expect(result.success).toBe(false)
-	})
-})
-
-describe('TopicFilterSchema', () => {
-	it('accepts a topic string', () => {
-		const result = TopicFilterSchema.safeParse('user.registered')
-
-		expect(result.success).toBe(true)
-	})
-
-	it('accepts undefined', () => {
-		const result = TopicFilterSchema.safeParse(undefined)
-
-		expect(result.success).toBe(true)
-	})
-})
-
-describe('EventTypeSchema', () => {
-	it('accepts valid event types', () => {
-		const result = EventTypeSchema.safeParse('login_failed')
-
-		expect(result.success).toBe(true)
-	})
-
-	it('rejects empty strings', () => {
-		const result = EventTypeSchema.safeParse('')
-
-		expect(result.success).toBe(false)
-	})
-})
-
-describe('PayloadSchema', () => {
-	it('accepts record objects', () => {
-		const result = PayloadSchema.safeParse({ key: 'value' })
-
-		expect(result.success).toBe(true)
-	})
-
-	it('defaults to empty object', () => {
-		const result = PayloadSchema.parse(undefined)
-
-		expect(result).toEqual({})
-	})
-})
-
-describe('DetailsSchema', () => {
-	it('defaults to empty object', () => {
-		const result = DetailsSchema.parse(undefined)
-
-		expect(result).toEqual({})
-	})
-})
-
-describe('MetadataSchema', () => {
-	it('accepts metadata objects', () => {
-		const result = MetadataSchema.safeParse({ request_id: '123', user_agent: 'curl' })
-
-		expect(result.success).toBe(true)
-	})
-
-	it('defaults to empty object', () => {
-		const result = MetadataSchema.parse(undefined)
-
-		expect(result).toEqual({})
 	})
 })

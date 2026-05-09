@@ -1,19 +1,5 @@
 import { z } from '@hono/zod-openapi'
 
-export const PaginationSchema = z.object({
-	limit: z.coerce
-		.number()
-		.min(1)
-		.max(1000)
-		.default(50)
-		.openapi({ description: 'Maximum items to return', example: 50 }),
-	offset: z.coerce
-		.number()
-		.min(0)
-		.default(0)
-		.openapi({ description: 'Number of items to skip', example: 0 }),
-})
-
 export const ErrorSchema = z
 	.object({
 		error: z.string(),
@@ -42,18 +28,3 @@ export const toList = <T>(items: T[]): { data: T[]; total: number } => ({
 	data: items,
 	total: items.length,
 })
-
-export const DateRangeSchema = z.object({
-	from: z.iso.datetime().optional().openapi({ description: 'Start of date range (ISO 8601)' }),
-	to: z.iso.datetime().optional().openapi({ description: 'End of date range (ISO 8601)' }),
-})
-
-export function createSortSchema<T extends readonly [string, ...string[]]>(
-	fields: T,
-	defaultField: T[number] = fields[0],
-) {
-	return z.object({
-		sort_by: z.enum(fields).default(defaultField).openapi({ description: 'Field to sort by' }),
-		sort_order: z.enum(['asc', 'desc']).default('desc').openapi({ description: 'Sort direction' }),
-	})
-}
