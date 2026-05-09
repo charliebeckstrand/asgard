@@ -18,14 +18,22 @@
 			"types": "./src/entry/environment.ts",
 			"default": "./dist/environment.js"
 		},
+		"./manifest": {
+			"types": "./src/entry/manifest.ts",
+			"default": "./dist/manifest.js"
+		},
 		"./server-lifecycle": {
 			"types": "./src/entry/server-lifecycle.ts",
 			"default": "./dist/server-lifecycle.js"
 		}
 	},
+	"bin": {
+		"grid-sync-env": "./src/bin/sync-env.ts"
+	},
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",
+		"sync-env": "tsx src/bin/sync-env.ts",
 		"lint": "biome check --config-path=../.. .",
 		"lint:fix": "biome check --config-path=../.. --write .",
 		"format": "biome format --config-path=../.. --write .",

@@ -11,9 +11,13 @@
 			"default": "./dist/index.js"
 		}
 	},
+	"bin": {
+		"saga-bootstrap": "./src/bin/bootstrap.ts"
+	},
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",
+		"bootstrap": "tsx src/bin/bootstrap.ts",
 		"lint": "biome check --config-path=../.. .",
 		"lint:fix": "biome check --config-path=../.. --write .",
 		"format": "biome format --config-path=../.. --write .",
@@ -31,6 +35,7 @@
 		"@biomejs/biome": "^2.4.6",
 		"@types/node": "^25.3.3",
 		"@types/pg": "^8.11.0",
+		"grid": "workspace:*",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",

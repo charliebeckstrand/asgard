@@ -95,6 +95,9 @@ importers:
       '@types/pg':
         specifier: ^8.11.0
         version: 8.18.0
+      grid:
+        specifier: workspace:*
+        version: link:../grid
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.8)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
