@@ -8,9 +8,8 @@ export const IdSchema = z.uuid().openapi({
 export type Id = z.infer<typeof IdSchema>
 
 export const IpAddressSchema = z
-	.string()
-	.min(1)
-	.openapi({ description: 'IP address', example: '192.168.1.100' })
+	.union([z.ipv4(), z.ipv6()])
+	.openapi({ description: 'IPv4 or IPv6 address', example: '192.168.1.100' })
 
 export type IpAddress = z.infer<typeof IpAddressSchema>
 
