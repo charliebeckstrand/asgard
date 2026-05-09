@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
 import { getRules } from '../handlers/rules.js'
-import { ErrorSchema, RuleListSchema } from '../lib/schemas.js'
+import { ErrorSchema, jsonResponse, RuleListSchema } from '../lib/schemas.js'
 
 const listRulesRoute = createRoute({
 	method: 'get',
@@ -10,14 +10,8 @@ const listRulesRoute = createRoute({
 	description: 'Returns all predefined security rules and their current configuration.',
 	security: [{ Bearer: [] }],
 	responses: {
-		200: {
-			content: { 'application/json': { schema: RuleListSchema } },
-			description: 'List of rules',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
+		200: jsonResponse(RuleListSchema, 'List of rules'),
+		401: jsonResponse(ErrorSchema, 'Unauthorized'),
 	},
 })
 

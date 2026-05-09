@@ -27,6 +27,12 @@ export {
 
 export type CheckIpResponse = z.infer<typeof CheckIpResponseSchema>
 
+export const jsonResponse = <S extends z.ZodTypeAny>(schema: S, description: string) =>
+	({
+		content: { 'application/json': { schema } },
+		description,
+	}) as const
+
 export const ThreatSchema = z
 	.object({
 		id: IdSchema,

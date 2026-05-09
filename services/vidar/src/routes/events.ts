@@ -1,6 +1,11 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
 import { ingestEvent } from '../handlers/events.js'
-import { ErrorSchema, IngestEventSchema, SecurityEventSchema } from '../lib/schemas.js'
+import {
+	ErrorSchema,
+	IngestEventSchema,
+	jsonResponse,
+	SecurityEventSchema,
+} from '../lib/schemas.js'
 
 const ingestRoute = createRoute({
 	method: 'post',
@@ -17,14 +22,8 @@ const ingestRoute = createRoute({
 		},
 	},
 	responses: {
-		201: {
-			content: { 'application/json': { schema: SecurityEventSchema } },
-			description: 'Event ingested',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
+		201: jsonResponse(SecurityEventSchema, 'Event ingested'),
+		401: jsonResponse(ErrorSchema, 'Unauthorized'),
 	},
 })
 

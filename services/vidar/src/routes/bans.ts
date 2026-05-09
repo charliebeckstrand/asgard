@@ -6,6 +6,7 @@ import {
 	BanSchema,
 	CreateBanSchema,
 	ErrorSchema,
+	jsonResponse,
 	MessageSchema,
 } from '../lib/schemas.js'
 
@@ -17,14 +18,8 @@ const listBansRoute = createRoute({
 	description: 'Returns all currently active IP bans (excludes expired bans).',
 	security: [{ Bearer: [] }],
 	responses: {
-		200: {
-			content: { 'application/json': { schema: BanListSchema } },
-			description: 'List of active bans',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
+		200: jsonResponse(BanListSchema, 'List of active bans'),
+		401: jsonResponse(ErrorSchema, 'Unauthorized'),
 	},
 })
 
@@ -42,14 +37,8 @@ const createBanRoute = createRoute({
 		},
 	},
 	responses: {
-		201: {
-			content: { 'application/json': { schema: BanSchema } },
-			description: 'Ban created',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
+		201: jsonResponse(BanSchema, 'Ban created'),
+		401: jsonResponse(ErrorSchema, 'Unauthorized'),
 	},
 })
 
@@ -66,18 +55,9 @@ const removeBanRoute = createRoute({
 		}),
 	},
 	responses: {
-		200: {
-			content: { 'application/json': { schema: MessageSchema } },
-			description: 'Ban removed',
-		},
-		401: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Unauthorized',
-		},
-		404: {
-			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'Ban not found',
-		},
+		200: jsonResponse(MessageSchema, 'Ban removed'),
+		401: jsonResponse(ErrorSchema, 'Unauthorized'),
+		404: jsonResponse(ErrorSchema, 'Ban not found'),
 	},
 })
 
