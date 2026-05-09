@@ -22,4 +22,4 @@ app.get(
 	}),
 )
 
-export const securityStream = app
+export const stream = app

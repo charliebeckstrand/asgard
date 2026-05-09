@@ -8,7 +8,7 @@ import { checkIp } from './routes/check-ip.js'
 import { events } from './routes/events.js'
 import { health } from './routes/health.js'
 import { rules } from './routes/rules.js'
-import { securityStream } from './routes/stream.js'
+import { stream } from './routes/stream.js'
 import { threats } from './routes/threats.js'
 
 const BASE_PATH = '/vidar'
@@ -40,7 +40,7 @@ export function createVidarApp() {
 		.route(BASE_PATH, threats)
 		.route(BASE_PATH, rules)
 		.route(BASE_PATH, analyze)
-		.route(BASE_PATH, securityStream)
+		.route(BASE_PATH, stream)
 
 	setup()
 
