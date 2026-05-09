@@ -1,11 +1,12 @@
 import { type SqlFragment, sql } from 'saga'
 import { toList } from 'skuld'
 import { db } from '../lib/db.js'
+import type { RuleSeverity } from '../lib/schemas.js'
 
 export interface ThreatRow {
 	id: string
 	threat_type: string
-	severity: string
+	severity: RuleSeverity
 	ip: string
 	details: Record<string, unknown>
 	action_taken: string | null
@@ -15,7 +16,7 @@ export interface ThreatRow {
 
 export async function createThreat(threat: {
 	threat_type: string
-	severity: string
+	severity: RuleSeverity
 	ip: string
 	details: Record<string, unknown>
 	action_taken?: string
