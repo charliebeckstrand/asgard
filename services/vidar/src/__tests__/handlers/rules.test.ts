@@ -123,6 +123,7 @@ describe('evaluateRules', () => {
 
 			// Only rate_limit_abuse listens for 'rate_limited'.
 			expect(mockCreateBan).toHaveBeenCalledTimes(1)
+
 			expect(mockCreateBan.mock.calls[0][1]).toBe('Rate Limit Abuse Detection')
 		})
 
@@ -130,6 +131,7 @@ describe('evaluateRules', () => {
 			await evaluateRules(IP, 'unknown_event_type')
 
 			expect(mockDbOne).not.toHaveBeenCalled()
+
 			expect(mockCreateBan).not.toHaveBeenCalled()
 		})
 	})

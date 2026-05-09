@@ -68,7 +68,9 @@ describeWithDocker('createChatRepository (integration)', () => {
 			const chatB1 = randomUUID()
 
 			await repo.insertChat(chatA1, USER_A)
+
 			await repo.insertChat(chatA2, USER_A)
+
 			await repo.insertChat(chatB1, USER_B)
 
 			const aChats = await repo.getChats(USER_A)
@@ -93,6 +95,7 @@ describeWithDocker('createChatRepository (integration)', () => {
 			const chats = await repo.getChats(USER_A)
 
 			expect(chats[0].id).toBe(newChat)
+
 			expect(chats[1].id).toBe(oldChat)
 		})
 	})
@@ -102,14 +105,19 @@ describeWithDocker('createChatRepository (integration)', () => {
 			const chatId = randomUUID()
 
 			await repo.insertChat(chatId, USER_A)
+
 			await repo.insertMessage(randomUUID(), chatId, 'user', 'text', 'hello')
+
 			await repo.insertMessage(randomUUID(), chatId, 'agent', 'text', 'hi back')
 
 			const chat = await repo.getChatById(chatId, USER_A)
 
 			expect(chat).not.toBeNull()
+
 			expect(chat?.messages).toHaveLength(2)
+
 			expect(chat?.messages[0].content).toBe('hello')
+
 			expect(chat?.messages[1].content).toBe('hi back')
 		})
 
@@ -170,9 +178,11 @@ describeWithDocker('createChatRepository (integration)', () => {
 			await repo.insertChat(chatId, USER_A)
 
 			expect(await repo.deleteChat(chatId, USER_B)).toBe(false)
+
 			expect(await repo.getChatById(chatId, USER_A)).not.toBeNull()
 
 			expect(await repo.deleteChat(chatId, USER_A)).toBe(true)
+
 			expect(await repo.getChatById(chatId, USER_A)).toBeNull()
 		})
 
@@ -181,6 +191,7 @@ describeWithDocker('createChatRepository (integration)', () => {
 			const messageId = randomUUID()
 
 			await repo.insertChat(chatId, USER_A)
+
 			await repo.insertMessage(messageId, chatId, 'user', 'text', 'orphan-me')
 
 			await repo.deleteChat(chatId, USER_A)

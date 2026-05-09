@@ -65,13 +65,17 @@ describeWithDocker('createUserRepository (integration)', () => {
 			const inserted = await repo.insertUser(id, 'alice@example.com', 'hash')
 
 			expect(inserted.id).toBe(id)
+
 			expect(inserted.email).toBe('alice@example.com')
+
 			expect(inserted.is_active).toBe(true)
+
 			expect(inserted.is_verified).toBe(false)
 
 			const fetched = await repo.getUserById(id)
 
 			expect(fetched).not.toBeNull()
+
 			expect(fetched?.email).toBe('alice@example.com')
 		})
 
@@ -141,6 +145,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 			const after = await repo.updateUser(id, { is_active: false })
 
 			expect(after?.is_active).toBe(false)
+
 			expect(new Date(after?.updated_at as string).getTime()).toBeGreaterThan(
 				new Date(before.updated_at).getTime(),
 			)

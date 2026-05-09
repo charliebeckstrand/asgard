@@ -119,6 +119,7 @@ describe('Users routes', () => {
 			const body = (await res.json()) as { data: (typeof sampleUser)[]; total: number }
 
 			expect(body.total).toBe(1)
+
 			expect(body.data).toEqual([sampleUser])
 		})
 	})
@@ -132,7 +133,9 @@ describe('Users routes', () => {
 			})
 
 			expect(res.status).toBe(200)
+
 			expect(await res.json()).toEqual(sampleUser)
+
 			expect(mockUserRepository.getUserById).toHaveBeenCalledWith(VALID_ID)
 		})
 
@@ -152,6 +155,7 @@ describe('Users routes', () => {
 			})
 
 			expect(res.status).toBe(400)
+
 			expect(mockUserRepository.getUserById).not.toHaveBeenCalled()
 		})
 	})
@@ -171,6 +175,7 @@ describe('Users routes', () => {
 			const body = (await res.json()) as { id: string; email: string }
 
 			expect(body).toEqual({ id: sampleUser.id, email: sampleUser.email })
+
 			expect(mockRegisterUser).toHaveBeenCalledWith(
 				'new@example.com',
 				'password1234',
@@ -200,6 +205,7 @@ describe('Users routes', () => {
 			})
 
 			expect(res.status).toBe(400)
+
 			expect(mockRegisterUser).not.toHaveBeenCalled()
 		})
 	})
@@ -217,7 +223,9 @@ describe('Users routes', () => {
 			})
 
 			expect(res.status).toBe(200)
+
 			expect(await res.json()).toEqual(updated)
+
 			expect(mockUserRepository.updateUser).toHaveBeenCalledWith(VALID_ID, { is_active: false })
 		})
 
@@ -241,6 +249,7 @@ describe('Users routes', () => {
 			})
 
 			expect(res.status).toBe(400)
+
 			expect(mockUserRepository.updateUser).not.toHaveBeenCalled()
 		})
 	})
@@ -255,6 +264,7 @@ describe('Users routes', () => {
 			})
 
 			expect(res.status).toBe(204)
+
 			expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(VALID_ID)
 		})
 
@@ -277,6 +287,7 @@ describe('Users routes', () => {
 			})
 
 			expect(extractCookie(fake, 'bifrost_session')).toBe('abc123')
+
 			expect(extractCookie(fake, 'missing')).toBeUndefined()
 		})
 	})

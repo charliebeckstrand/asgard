@@ -45,6 +45,7 @@ describe('createVidar middleware', () => {
 			const res = await app.request('/test')
 
 			expect(res.status).toBe(200)
+
 			expect(fetchMock).not.toHaveBeenCalled()
 		})
 
@@ -193,7 +194,7 @@ describe('reportEvent', () => {
 
 		expect(init.method).toBe('POST')
 
-		const body = JSON.parse(init.body as string)
+		const body = JSON.parse(init.body as string) as Record<string, unknown>
 
 		expect(body).toEqual({
 			ip: '1.2.3.4',

@@ -9,8 +9,11 @@ describe('stubServiceEnv', () => {
 		stubServiceEnv()
 
 		expect(process.env.SECRET_KEY).toBe(TEST_SECRET_KEY)
+
 		expect(process.env.SESSION_SECRET).toBe(TEST_SESSION_SECRET)
+
 		expect(process.env.DATABASE_URL).toBe(TEST_DATABASE_URL)
+
 		expect(process.env.CORS_ORIGIN).toBe('http://localhost:3000')
 	})
 
@@ -18,6 +21,7 @@ describe('stubServiceEnv', () => {
 		stubServiceEnv({ CORS_ORIGIN: 'http://localhost:4444' })
 
 		expect(process.env.CORS_ORIGIN).toBe('http://localhost:4444')
+
 		expect(process.env.SECRET_KEY).toBe(TEST_SECRET_KEY)
 	})
 
@@ -27,6 +31,7 @@ describe('stubServiceEnv', () => {
 		stubServiceEnv({ DATABASE_URL: null })
 
 		expect(process.env.DATABASE_URL).toBe(before)
+
 		expect(process.env.SECRET_KEY).toBe(TEST_SECRET_KEY)
 	})
 

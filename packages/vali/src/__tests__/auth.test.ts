@@ -15,7 +15,9 @@ describe('signTestAccessToken', () => {
 		const payload = await verify(token, SECRET, 'HS256')
 
 		expect(payload.iss).toBe(TEST_TOKEN_ISSUER)
+
 		expect(payload.type).toBe('access')
+
 		expect(payload.sub).toBe('user-test')
 	})
 
@@ -79,6 +81,7 @@ describe('extractCookie', () => {
 		})
 
 		expect(extractCookie(res, 'a.b')).toBe('safe')
+
 		expect(extractCookie(res, 'aXb')).toBeUndefined()
 	})
 })
