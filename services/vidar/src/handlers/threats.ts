@@ -46,7 +46,7 @@ export async function listThreats(options?: {
 	const rows = await db.many<ThreatRow>(
 		sql`
 			SELECT *
-			FROM vdr_threats ${sql.and(conditions)}
+			FROM vdr_threats ${sql.where(conditions)}
 			ORDER BY created_at DESC
 			LIMIT 100
 		`,
