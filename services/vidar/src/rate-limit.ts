@@ -5,6 +5,11 @@ export interface RateLimitConfig {
 	burst?: number
 }
 
+export interface TokenBucket {
+	/** Consume one token for the given key. Returns false when the bucket is empty. */
+	consume(key: string): boolean
+}
+
 interface BucketEntry {
 	tokens: number
 	lastRefill: number
@@ -13,7 +18,7 @@ interface BucketEntry {
 const EVICT_AFTER_MS = 3_600_000 // 1 hour
 const SWEEP_INTERVAL_MS = 300_000 // 5 minutes
 
-export function createTokenBucket(config?: RateLimitConfig) {
+export function createTokenBucket(config?: RateLimitConfig): TokenBucket {
 	const rate = config?.rate ?? 5
 	const burst = config?.burst ?? 10
 
