@@ -10,25 +10,27 @@ import { rules } from './routes/rules.js'
 import { securityStream } from './routes/stream.js'
 import { threats } from './routes/threats.js'
 
+const BASE_PATH = '/vidar'
+
 export function createVidarApp() {
 	const env = environment()
 
 	const { app, setup } = createApp({
-		basePath: '/vidar',
+		basePath: BASE_PATH,
 		title: 'Vidar',
 		description: '',
 		port: env.PORT,
 	})
 
 	const routes = app
-		.route('/vidar', health)
-		.route('/vidar', events)
-		.route('/vidar', checkIp)
-		.route('/vidar', bans)
-		.route('/vidar', threats)
-		.route('/vidar', rules)
-		.route('/vidar', analyze)
-		.route('/vidar', securityStream)
+		.route(BASE_PATH, health)
+		.route(BASE_PATH, events)
+		.route(BASE_PATH, checkIp)
+		.route(BASE_PATH, bans)
+		.route(BASE_PATH, threats)
+		.route(BASE_PATH, rules)
+		.route(BASE_PATH, analyze)
+		.route(BASE_PATH, securityStream)
 
 	setup()
 
