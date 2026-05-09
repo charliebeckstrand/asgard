@@ -5,9 +5,11 @@ import { createBifrostApp } from './app.js'
 import { configure } from './auth/index.js'
 import { closePool, migrate } from './lib/db.js'
 import { environment } from './lib/env.js'
+import { logger } from './lib/log.js'
 import { createUserRepository } from './lib/user-repository.js'
 
 const env = environment()
+const log = logger()
 
 await migrate(import.meta.url)
 
@@ -30,8 +32,7 @@ const server = serve(
 		port: env.PORT,
 	},
 	(info) => {
-		console.log(`Bifrost running on http://localhost:${info.port}`)
-		console.log(`API docs available at http://localhost:${info.port}/api/docs`)
+		log.info({ port: info.port, docs: '/api/docs' }, 'bifrost listening')
 	},
 )
 
