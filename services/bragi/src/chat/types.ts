@@ -20,12 +20,13 @@ export const ChatMessageSchema = z
 
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
 
-export const ChatSchema = z.object({
-	id: IdSchema,
-	user_id: IdSchema,
-	created_at: TimestampSchema,
-	updated_at: TimestampSchema,
-})
+export const ChatSchema = z
+	.object({
+		id: IdSchema,
+		created_at: TimestampSchema,
+		updated_at: TimestampSchema,
+	})
+	.openapi('Chat')
 
 export type Chat = z.infer<typeof ChatSchema>
 

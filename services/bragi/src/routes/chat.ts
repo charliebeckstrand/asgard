@@ -13,13 +13,11 @@ const ChatIdParamSchema = z.object({
 	id: IdSchema,
 })
 
-const ChatResponseSchema = ChatSchema.omit({ user_id: true }).openapi('Chat')
-
-const ChatDetailResponseSchema = ChatResponseSchema.extend({
+const ChatDetailSchema = ChatSchema.extend({
 	messages: z.array(ChatMessageSchema),
 }).openapi('ChatDetail')
 
-const ChatListResponseSchema = createListSchema(ChatResponseSchema, 'ChatList')
+const ChatListSchema = createListSchema(ChatSchema, 'ChatList')
 
 const ChatStreamEventSchema = z
 	.discriminatedUnion('event', [
@@ -42,7 +40,7 @@ const listChatsRoute = createRoute({
 	security: [{ Bearer: [] }],
 	summary: 'List all chats',
 	responses: {
-		200: jsonResponse(ChatListResponseSchema, 'List of chats'),
+		200: jsonResponse(ChatListSchema, 'List of chats'),
 	},
 })
 
@@ -56,7 +54,7 @@ const getChatRoute = createRoute({
 		params: ChatIdParamSchema,
 	},
 	responses: {
-		200: jsonResponse(ChatDetailResponseSchema, 'Chat with messages'),
+		200: jsonResponse(ChatDetailSchema, 'Chat with messages'),
 		404: errorResponse('Chat not found'),
 	},
 })

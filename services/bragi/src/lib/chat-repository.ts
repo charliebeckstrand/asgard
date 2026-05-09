@@ -6,13 +6,13 @@ export function createChatRepository(): ChatRepository {
 	return {
 		async getChats(userId) {
 			return db.many<Chat>(
-				sql`SELECT id, user_id, created_at, updated_at FROM brg_chats WHERE user_id = ${userId} ORDER BY updated_at DESC`,
+				sql`SELECT id, created_at, updated_at FROM brg_chats WHERE user_id = ${userId} ORDER BY updated_at DESC`,
 			)
 		},
 
 		async getChatById(id, userId) {
 			const chat = await db.first<Chat>(
-				sql`SELECT id, user_id, created_at, updated_at FROM brg_chats WHERE id = ${id} AND user_id = ${userId}`,
+				sql`SELECT id, created_at, updated_at FROM brg_chats WHERE id = ${id} AND user_id = ${userId}`,
 			)
 
 			if (!chat) return null
@@ -26,7 +26,7 @@ export function createChatRepository(): ChatRepository {
 
 		async insertChat(id, userId) {
 			return db.one<Chat>(
-				sql`INSERT INTO brg_chats (id, user_id) VALUES (${id}, ${userId}) RETURNING id, user_id, created_at, updated_at`,
+				sql`INSERT INTO brg_chats (id, user_id) VALUES (${id}, ${userId}) RETURNING id, created_at, updated_at`,
 			)
 		},
 
