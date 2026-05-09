@@ -1,12 +1,15 @@
 import { sql } from 'saga'
 import { db } from '../lib/db.js'
 
+/** Who created the ban — used in the audit trail. */
+export type BanSource = 'system' | 'manual' | 'vidar'
+
 export interface BanRow {
 	id: string
 	ip: string
 	reason: string
 	rule_id: string | null
-	created_by: string
+	created_by: BanSource
 	expires_at: string | null
 	created_at: string
 }
@@ -38,7 +41,7 @@ export async function isIpBanned(
 export async function createBan(
 	ip: string,
 	reason: string,
-	options?: { rule_id?: string; created_by?: string; duration_minutes?: number },
+	options?: { rule_id?: string; created_by?: BanSource; duration_minutes?: number },
 ): Promise<BanRow> {
 	const expiresAt = options?.duration_minutes
 		? sql`now() + make_interval(mins => ${options.duration_minutes}::int)`
