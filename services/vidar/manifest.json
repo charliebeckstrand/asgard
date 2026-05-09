@@ -1,6 +1,7 @@
 {
 	"name": "vidar",
 	"port": 4001,
+	"database": { "name": "vidar", "role": "vidar", "password": "vidar" },
 	"vars": {
 		"DATABASE_URL": { "type": "value", "default": "postgres://vidar:vidar@localhost:5432/vidar" },
 		"VIDAR_API_KEY": { "type": "secret" }

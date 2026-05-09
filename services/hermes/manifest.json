@@ -1,6 +1,7 @@
 {
 	"name": "hermes",
 	"port": 4002,
+	"database": { "name": "hermes", "role": "hermes", "password": "hermes" },
 	"vars": {
 		"DATABASE_URL": { "type": "value", "default": "postgres://hermes:hermes@localhost:5432/hermes" },
 		"SECRET_KEY": { "type": "ref", "service": "bifrost", "key": "SECRET_KEY" },

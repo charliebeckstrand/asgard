@@ -1,3 +1,9 @@
+export {
+	type BootstrapOptions,
+	type BootstrapResult,
+	bootstrapDatabases,
+	type DatabaseSpec,
+} from './bootstrap.js'
 export { createDatabase, createDatabaseClient, type Db, NoRowsError, type Queryable } from './db.js'
 export {
 	getMigrationStatus,

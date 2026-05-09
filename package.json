@@ -19,14 +19,15 @@
 	"scripts": {
 		"prepare": "lefthook install",
 		"build": "turbo run build",
-		"predev": "docker compose -f docker-compose.dev.yml up -d",
+		"predev": "docker compose -f docker-compose.dev.yml up -d --wait && pnpm db:bootstrap",
 		"dev": "hlidskjalf",
+		"db:bootstrap": "POSTGRES_ADMIN_URL=postgres://heimdall:heimdall@localhost:5432/postgres pnpm --filter saga run bootstrap",
 		"test:coverage": "turbo run test:coverage",
 		"lint": "biome check packages/ services/",
 		"lint:fix": "biome check --write packages/ services/",
 		"format": "biome format --write packages/ services/",
-		"env:init": "tsx scripts/init-env.ts",
-		"env:rotate": "tsx scripts/init-env.ts --rotate"
+		"env:init": "pnpm --filter grid run sync-env",
+		"env:rotate": "pnpm --filter grid run sync-env -- --rotate"
 	},
 	"dependencies": {
 		"hlidskjalf": "0.2.8"
