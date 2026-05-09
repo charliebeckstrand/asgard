@@ -12,6 +12,13 @@ export function createHermesApp() {
 		title: 'Hermes',
 		description: '',
 		port: env.PORT,
+		cors: { origin: env.CORS_ORIGIN },
+	})
+
+	app.openAPIRegistry.registerComponent('securitySchemes', 'Bearer', {
+		type: 'http',
+		scheme: 'bearer',
+		bearerFormat: 'JWT',
 	})
 
 	const routes = app.route('/hermes', health).route('/hermes/chat', chatRoutes)

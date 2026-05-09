@@ -50,6 +50,7 @@ const listChatsRoute = createRoute({
 	method: 'get',
 	path: '/',
 	tags: ['Chat'],
+	security: [{ Bearer: [] }],
 	summary: 'List all chats',
 	responses: {
 		200: {
@@ -63,6 +64,7 @@ const getChatRoute = createRoute({
 	method: 'get',
 	path: '/{id}',
 	tags: ['Chat'],
+	security: [{ Bearer: [] }],
 	summary: 'Get a chat with messages',
 	request: {
 		params: ChatIdParamSchema,
@@ -83,6 +85,7 @@ const postMessageRoute = createRoute({
 	method: 'post',
 	path: '/{id}',
 	tags: ['Chat'],
+	security: [{ Bearer: [] }],
 	summary: 'Send a message and stream the agent response',
 	request: {
 		params: ChatIdParamSchema,
@@ -107,6 +110,7 @@ const deleteChatRoute = createRoute({
 	method: 'delete',
 	path: '/{id}',
 	tags: ['Chat'],
+	security: [{ Bearer: [] }],
 	summary: 'Delete a chat',
 	request: {
 		params: ChatIdParamSchema,
