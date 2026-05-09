@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
 	type DiscoveredManifest,
@@ -113,7 +113,7 @@ export function syncEnv(options: SyncEnvOptions = {}): SyncEnvResult {
 		throw new Error(`No service manifests found under ${workspaceRoot}`)
 	}
 
-	const cache = existsSync(secretsPath) ? loadSecrets(secretsPath) : {}
+	const cache = loadSecrets(secretsPath)
 
 	const secrets: Record<string, string> = options.rotate === true ? {} : { ...cache }
 

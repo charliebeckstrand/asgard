@@ -23,7 +23,7 @@ export function createApp(options: CreateAppOptions) {
 
 	app.use(trimTrailingSlash())
 
-	app.use('*', cors(options.cors ?? undefined))
+	app.use('*', cors(options.cors))
 	app.use('*', secureHeaders())
 	app.use('*', logger())
 	app.use('*', timing())
