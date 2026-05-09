@@ -1,4 +1,5 @@
 import { timingSafeEqual } from 'node:crypto'
+import type { MiddlewareHandler } from 'hono'
 import { bearerAuth } from 'hono/bearer-auth'
 
 export function timingSafeCompare(a: string, b: string): boolean {
@@ -8,7 +9,7 @@ export function timingSafeCompare(a: string, b: string): boolean {
 	return bufA.length === bufB.length && timingSafeEqual(bufA, bufB)
 }
 
-export function createBearerAuth(getToken: () => string | undefined) {
+export function createBearerAuth(getToken: () => string | undefined): MiddlewareHandler {
 	return bearerAuth({
 		verifyToken: (token) => {
 			const expected = getToken()

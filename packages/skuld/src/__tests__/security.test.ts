@@ -124,12 +124,26 @@ describe('BanSchema', () => {
 			ip: '192.168.1.1',
 			reason: 'Manual',
 			rule_id: null,
-			created_by: 'admin',
+			created_by: 'manual',
 			expires_at: null,
 			created_at: '2024-01-01T00:00:00Z',
 		})
 
 		expect(result.success).toBe(true)
+	})
+
+	it('rejects unknown created_by source', () => {
+		const result = BanSchema.safeParse({
+			id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+			ip: '192.168.1.1',
+			reason: 'Manual',
+			rule_id: null,
+			created_by: 'admin',
+			expires_at: null,
+			created_at: '2024-01-01T00:00:00Z',
+		})
+
+		expect(result.success).toBe(false)
 	})
 })
 

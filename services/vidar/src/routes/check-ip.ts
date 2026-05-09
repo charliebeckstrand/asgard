@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, jsonResponse } from 'grid'
-import { CheckIpResponseSchema } from 'skuld'
+import { CheckIpResponseSchema, IpAddressSchema } from 'skuld'
 import { isIpBanned } from '../handlers/bans.js'
 
 const checkIpRoute = createRoute({
@@ -13,10 +13,7 @@ const checkIpRoute = createRoute({
 	security: [{ Bearer: [] }],
 	request: {
 		query: z.object({
-			ip: z
-				.string()
-				.min(1)
-				.openapi({ description: 'IP address to check', example: '192.168.1.100' }),
+			ip: IpAddressSchema,
 		}),
 	},
 	responses: {

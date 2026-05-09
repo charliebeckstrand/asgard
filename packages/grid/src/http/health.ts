@@ -18,6 +18,8 @@ export const HealthResponseSchema = z
 	})
 	.openapi('HealthResponse')
 
+export type HealthResponse = z.infer<typeof HealthResponseSchema>
+
 type ServiceProbe = () => Promise<{ up: boolean }>
 
 interface CreateHealthRouteOptions {
@@ -49,7 +51,7 @@ function aggregateStatus(
 	return 'degraded'
 }
 
-export function createHealthRoute(options?: CreateHealthRouteOptions) {
+export function createHealthRoute(options?: CreateHealthRouteOptions): OpenAPIHono {
 	const healthRoute = createRoute({
 		method: 'get',
 		path: '/health',

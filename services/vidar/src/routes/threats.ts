@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, jsonResponse } from 'grid'
+import { IpAddressSchema } from 'skuld'
 import { listThreats } from '../handlers/threats.js'
 import { ThreatListSchema } from '../lib/schemas.js'
 
@@ -16,7 +17,7 @@ const listThreatsRoute = createRoute({
 				.enum(['true', 'false'])
 				.optional()
 				.openapi({ description: 'Filter by resolved status' }),
-			ip: z.string().optional().openapi({ description: 'Filter by IP address' }),
+			ip: IpAddressSchema.optional().openapi({ description: 'Filter by IP address' }),
 		}),
 	},
 	responses: {

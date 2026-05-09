@@ -1,35 +1,47 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { z } from 'zod'
 
-export interface ManifestVarValue {
-	type: 'value'
-	default?: string
-}
+const ManifestVarValueSchema = z.object({
+	type: z.literal('value'),
+	default: z.string().optional(),
+})
 
-export interface ManifestVarSecret {
-	type: 'secret'
-}
+const ManifestVarSecretSchema = z.object({
+	type: z.literal('secret'),
+})
 
-export interface ManifestVarRef {
-	type: 'ref'
-	service: string
-	key?: string
-}
+const ManifestVarRefSchema = z.object({
+	type: z.literal('ref'),
+	service: z.string(),
+	key: z.string().optional(),
+})
 
-export type ManifestVar = ManifestVarValue | ManifestVarSecret | ManifestVarRef
+const ManifestVarSchema = z.discriminatedUnion('type', [
+	ManifestVarValueSchema,
+	ManifestVarSecretSchema,
+	ManifestVarRefSchema,
+])
 
-export interface ManifestDatabase {
-	name: string
-	role: string
-	password: string
-}
+const ManifestDatabaseSchema = z.object({
+	name: z.string(),
+	role: z.string(),
+	password: z.string(),
+})
 
-export interface Manifest {
-	name: string
-	port: number
-	database?: ManifestDatabase
-	vars?: Record<string, ManifestVar>
-}
+const ManifestSchema = z.object({
+	name: z.string(),
+	port: z.number(),
+	database: ManifestDatabaseSchema.optional(),
+	vars: z.record(z.string(), ManifestVarSchema).optional(),
+})
+
+export type ManifestVarValue = z.infer<typeof ManifestVarValueSchema>
+export type ManifestVarSecret = z.infer<typeof ManifestVarSecretSchema>
+export type ManifestVarRef = z.infer<typeof ManifestVarRefSchema>
+export type ManifestVar = z.infer<typeof ManifestVarSchema>
+export type ManifestDatabase = z.infer<typeof ManifestDatabaseSchema>
+export type Manifest = z.infer<typeof ManifestSchema>
 
 export interface DiscoveredManifest {
 	manifest: Manifest
@@ -51,7 +63,14 @@ function walkUpFor(start: string, marker: string): string {
 }
 
 function readManifest(dir: string): Manifest {
-	return JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf-8')) as Manifest
+	const path = resolve(dir, 'manifest.json')
+	const parsed = ManifestSchema.safeParse(JSON.parse(readFileSync(path, 'utf-8')))
+
+	if (!parsed.success) {
+		throw new Error(`Invalid manifest at ${path}: ${parsed.error.message}`)
+	}
+
+	return parsed.data
 }
 
 export function getManifestPort(): number {

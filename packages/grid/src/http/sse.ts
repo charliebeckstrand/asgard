@@ -15,7 +15,7 @@ interface CreateSSEStreamOptions<T> {
 	keepAliveMs?: number
 }
 
-export function createSSEStream<T>(options: CreateSSEStreamOptions<T>) {
+export function createSSEStream<T>(options: CreateSSEStreamOptions<T>): (c: Context) => Response {
 	const { emitter, mapping, filter, keepAliveMs = 30_000 } = options
 
 	return (c: Context) => {

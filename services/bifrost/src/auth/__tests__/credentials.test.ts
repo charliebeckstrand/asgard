@@ -1,12 +1,13 @@
 import { hash } from '@node-rs/argon2'
+import type { User } from 'skuld'
 import { configure } from '../config.js'
 import { AuthError, authenticateUser, refreshTokenPair, registerUser } from '../credentials.js'
 import { signToken, verifyToken } from '../jwt.js'
-import type { CredentialsRow, UserRepository, UserRow } from '../types.js'
+import type { CredentialsRow, UserRepository } from '../types.js'
 
 const SECRET = 'a-test-secret-key-that-is-at-least-32-characters-long'
 
-const TEST_USER: UserRow = {
+const TEST_USER: User = {
 	id: 'user-123',
 	email: 'alice@example.com',
 	is_active: true,

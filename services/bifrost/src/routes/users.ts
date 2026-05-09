@@ -1,13 +1,15 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import { EmailSchema, PasswordSchema } from 'skuld'
+import { createListSchema, EmailSchema, IdSchema, PasswordSchema, toList, UserSchema } from 'skuld'
 import { getConfig, registerUser } from '../auth/index.js'
 import { requireSession, type SessionEnv } from '../middleware/session.js'
 
 const UserIdParamSchema = z.object({
-	id: z.string().uuid(),
+	id: IdSchema,
 })
+
+const UserListSchema = createListSchema(UserSchema, 'UserList')
 
 const CreateUserRequestSchema = z
 	.object({
@@ -24,23 +26,7 @@ const UpdateUserRequestSchema = z
 	})
 	.openapi('UpdateUserRequest')
 
-const UserResponseSchema = z
-	.object({
-		id: z.string(),
-		email: z.string(),
-		is_active: z.boolean(),
-		is_verified: z.boolean(),
-		created_at: z.string(),
-		updated_at: z.string(),
-	})
-	.openapi('UserResponse')
-
-const CreateUserResponseSchema = z
-	.object({
-		id: z.string(),
-		email: z.string(),
-	})
-	.openapi('CreateUserResponse')
+const CreateUserSchema = UserSchema.pick({ id: true, email: true }).openapi('CreateUserResponse')
 
 const listUsersRoute = createRoute({
 	method: 'get',
@@ -48,7 +34,7 @@ const listUsersRoute = createRoute({
 	tags: ['Users'],
 	summary: 'List all users',
 	responses: {
-		200: jsonResponse(z.array(UserResponseSchema), 'List of users'),
+		200: jsonResponse(UserListSchema, 'List of users'),
 	},
 })
 
@@ -62,7 +48,7 @@ const createUserRoute = createRoute({
 		body: jsonRequest(CreateUserRequestSchema),
 	},
 	responses: {
-		201: jsonResponse(CreateUserResponseSchema, 'User created'),
+		201: jsonResponse(CreateUserSchema, 'User created'),
 		400: errorResponse('Validation error'),
 		409: errorResponse('Email already registered'),
 	},
@@ -77,7 +63,7 @@ const getUserRoute = createRoute({
 		params: UserIdParamSchema,
 	},
 	responses: {
-		200: jsonResponse(UserResponseSchema, 'User found'),
+		200: jsonResponse(UserSchema, 'User found'),
 		404: errorResponse('User not found'),
 	},
 })
@@ -92,7 +78,7 @@ const updateUserRoute = createRoute({
 		body: jsonRequest(UpdateUserRequestSchema),
 	},
 	responses: {
-		200: jsonResponse(UserResponseSchema, 'User updated'),
+		200: jsonResponse(UserSchema, 'User updated'),
 		400: errorResponse('Validation error'),
 		404: errorResponse('User not found'),
 	},
@@ -123,7 +109,7 @@ usersRoutes.openapi(listUsersRoute, async (c) => {
 
 	const users = await userRepository.getUsers()
 
-	return c.json(users, 200)
+	return c.json(toList(users), 200)
 })
 
 usersRoutes.openapi(createUserRoute, async (c) => {

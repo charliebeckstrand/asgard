@@ -2,15 +2,18 @@ import { HTTPException } from 'grid'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
+import { z } from 'zod'
 import { refreshTokenPair } from '../auth/index.js'
 import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from '../auth/jwt.js'
 import { environment } from '../lib/env.js'
 
-export type SessionData = {
-	accessToken: string
-	refreshToken: string
-	expiresAt: number
-}
+const SessionPayloadSchema = z.object({
+	accessToken: z.string(),
+	refreshToken: z.string(),
+	expiresAt: z.number(),
+})
+
+export type SessionData = z.infer<typeof SessionPayloadSchema>
 
 export type SessionEnv = {
 	Variables: {
@@ -31,11 +34,9 @@ async function decodeSession(cookie: string, secret: string): Promise<SessionDat
 	try {
 		const payload = await verify(cookie, secret, 'HS256')
 
-		return {
-			accessToken: payload.accessToken as string,
-			refreshToken: payload.refreshToken as string,
-			expiresAt: payload.expiresAt as number,
-		}
+		const parsed = SessionPayloadSchema.safeParse(payload)
+
+		return parsed.success ? parsed.data : null
 	} catch {
 		return null
 	}

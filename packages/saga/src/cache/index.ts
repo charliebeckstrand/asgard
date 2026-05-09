@@ -23,7 +23,10 @@ interface State {
  * background, and exposes a `Cache` proxy whose methods await the
  * underlying connection. Mirrors `createDatabase` for symmetry.
  */
-export function createCache(getRedisUrl: () => string, options: CacheOptions = {}) {
+export function createCache(
+	getRedisUrl: () => string,
+	options: CacheOptions = {},
+): { cache: Cache; closeCache: () => Promise<void> } {
 	let state: State | null = null
 
 	const init = (): State => {

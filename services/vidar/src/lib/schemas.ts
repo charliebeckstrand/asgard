@@ -1,20 +1,18 @@
-import {
-	type CheckIpResponseSchema,
-	createListSchema,
-	IdSchema,
-	IpAddressSchema,
-	TimestampSchema,
-} from 'skuld'
+import { createListSchema, IdSchema, IpAddressSchema, TimestampSchema } from 'skuld'
 import { z } from 'zod'
 
-export type CheckIpResponse = z.infer<typeof CheckIpResponseSchema>
+export const RuleSeveritySchema = z
+	.enum(['low', 'medium', 'high'])
+	.openapi({ description: 'Rule / threat severity' })
+
+export type RuleSeverity = z.infer<typeof RuleSeveritySchema>
 
 export const ThreatSchema = z
 	.object({
 		id: IdSchema,
 		threat_type: z.string(),
-		severity: z.string(),
-		ip: z.string(),
+		severity: RuleSeveritySchema,
+		ip: IpAddressSchema,
 		details: z.record(z.string(), z.unknown()),
 		action_taken: z.string().nullable(),
 		resolved: z.boolean(),
@@ -33,7 +31,7 @@ export const RuleSchema = z
 		threshold: z.number(),
 		window_minutes: z.number(),
 		ban_duration_minutes: z.number(),
-		severity: z.enum(['low', 'medium', 'high']),
+		severity: RuleSeveritySchema,
 		enabled: z.boolean(),
 	})
 	.openapi('Rule')

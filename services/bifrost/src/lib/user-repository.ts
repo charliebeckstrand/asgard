@@ -1,11 +1,12 @@
 import { sql } from 'saga'
-import type { CredentialsRow, UserRepository, UserRow } from '../auth/types.js'
+import type { User } from 'skuld'
+import type { CredentialsRow, UserRepository } from '../auth/types.js'
 import { db } from './db.js'
 
 export function createUserRepository(): UserRepository {
 	return {
 		async insertUser(id, email, hashedPassword) {
-			return db.one<UserRow>(
+			return db.one<User>(
 				sql`
 					INSERT INTO users (id, email, hashed_password)
 					VALUES (${id}, ${email}, ${hashedPassword})
@@ -25,13 +26,13 @@ export function createUserRepository(): UserRepository {
 		},
 
 		async getUsers() {
-			return db.many<UserRow>(
+			return db.many<User>(
 				sql`SELECT id, email, is_active, is_verified, created_at, updated_at FROM users ORDER BY created_at`,
 			)
 		},
 
 		async getUserById(id) {
-			return db.first<UserRow>(
+			return db.first<User>(
 				sql`
 					SELECT id, email, is_active, is_verified, created_at, updated_at
 					FROM users
@@ -43,7 +44,7 @@ export function createUserRepository(): UserRepository {
 		async updateUser(id, data) {
 			const sets = sql.set(data)
 
-			return db.first<UserRow>(
+			return db.first<User>(
 				sql`
 					UPDATE users
 					SET ${sets}, updated_at = now()

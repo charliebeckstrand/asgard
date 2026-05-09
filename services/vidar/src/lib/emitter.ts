@@ -1,16 +1,8 @@
 import { EventEmitter } from 'node:events'
-
-export interface VidarEvent {
-	id: string
-	ip: string
-	event_type: string
-	details: Record<string, unknown>
-	service: string
-	created_at: string
-}
+import type { SecurityEvent } from 'skuld'
 
 export const eventEmitter = new EventEmitter()
 
-export function emitEvent(event: VidarEvent): void {
+export function emitEvent(event: SecurityEvent): void {
 	eventEmitter.emit('event', event)
 }

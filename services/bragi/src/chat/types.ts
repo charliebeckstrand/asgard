@@ -1,33 +1,49 @@
-export interface ChatRow {
-	id: string
-	user_id: string
-	created_at: string
-	updated_at: string
-}
+import { z } from '@hono/zod-openapi'
+import { IdSchema, TimestampSchema } from 'skuld'
 
-export interface ChatMessageRow {
-	id: string
-	chat_id: string
-	role: 'user' | 'agent'
-	type: string
-	content: string
-	created_at: string
-}
+export const ChatMessageRoleSchema = z.enum(['user', 'agent'])
+export type ChatMessageRole = z.infer<typeof ChatMessageRoleSchema>
 
-export interface ChatDetail extends ChatRow {
-	messages: ChatMessageRow[]
+export const ChatMessageTypeSchema = z.enum(['text'])
+export type ChatMessageType = z.infer<typeof ChatMessageTypeSchema>
+
+export const ChatMessageSchema = z
+	.object({
+		id: IdSchema,
+		chat_id: IdSchema,
+		role: ChatMessageRoleSchema,
+		type: ChatMessageTypeSchema,
+		content: z.string(),
+		created_at: TimestampSchema,
+	})
+	.openapi('ChatMessage')
+
+export type ChatMessage = z.infer<typeof ChatMessageSchema>
+
+export const ChatSchema = z
+	.object({
+		id: IdSchema,
+		created_at: TimestampSchema,
+		updated_at: TimestampSchema,
+	})
+	.openapi('Chat')
+
+export type Chat = z.infer<typeof ChatSchema>
+
+export interface ChatDetail extends Chat {
+	messages: ChatMessage[]
 }
 
 export interface ChatRepository {
-	getChats(userId: string): Promise<ChatRow[]>
+	getChats(userId: string): Promise<Chat[]>
 	getChatById(id: string, userId: string): Promise<ChatDetail | null>
-	insertChat(id: string, userId: string): Promise<ChatRow>
+	insertChat(id: string, userId: string): Promise<Chat>
 	insertMessage(
 		id: string,
 		chatId: string,
-		role: ChatMessageRow['role'],
-		type: string,
+		role: ChatMessageRole,
+		type: ChatMessageType,
 		content: string,
-	): Promise<ChatMessageRow>
+	): Promise<ChatMessage>
 	deleteChat(id: string, userId: string): Promise<boolean>
 }
