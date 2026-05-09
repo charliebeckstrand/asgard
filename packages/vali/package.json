@@ -9,7 +9,7 @@
 			"default": "./dist/fixtures.js"
 		},
 		"./containers": {
-			"types": "./src/containers/index.ts",
+			"types": "./src/containers.ts",
 			"default": "./dist/containers.js"
 		},
 		"./config": {
