@@ -3,7 +3,7 @@ import type { MiddlewareHandler } from 'hono'
 import { hc } from 'hono/client'
 import { HTTPException } from 'hono/http-exception'
 import type { Logger } from 'saga/log'
-import type { CheckIpResponse } from 'skuld'
+import { type CheckIpResponse, CheckIpResponseSchema } from 'skuld'
 
 import type { VidarApp } from './app.js'
 import { type CircuitBreaker, createCircuitBreaker } from './circuit-breaker.js'
@@ -63,7 +63,9 @@ async function checkIpBan(ip: string): Promise<CheckIpResponse | null> {
 		if (!res.ok && res.status >= 500) throw new Error(`Vidar returned ${res.status}`)
 		if (!res.ok) return null
 
-		return (await res.json()) as CheckIpResponse
+		const parsed = CheckIpResponseSchema.safeParse(await res.json())
+
+		return parsed.success ? parsed.data : null
 	})
 }
 
