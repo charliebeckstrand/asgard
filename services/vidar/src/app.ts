@@ -17,7 +17,7 @@ const HEALTH_PATH = `${BASE_PATH}/health`
 export function createVidarApp() {
 	const env = environment()
 
-	const { app, setup } = createApp({
+	const app = createApp({
 		basePath: BASE_PATH,
 		title: 'Vidar',
 		description: '',
@@ -32,7 +32,7 @@ export function createVidarApp() {
 		return auth(c, next)
 	})
 
-	const routes = app
+	return app
 		.route(BASE_PATH, health)
 		.route(BASE_PATH, events)
 		.route(BASE_PATH, checkIp)
@@ -41,10 +41,6 @@ export function createVidarApp() {
 		.route(BASE_PATH, rules)
 		.route(BASE_PATH, analyze)
 		.route(BASE_PATH, stream)
-
-	setup()
-
-	return routes
 }
 
 export type VidarApp = ReturnType<typeof createVidarApp>

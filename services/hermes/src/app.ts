@@ -7,7 +7,7 @@ import { health } from './routes/health.js'
 export function createHermesApp() {
 	const env = environment()
 
-	const { app, setup } = createApp({
+	const app = createApp({
 		basePath: '/hermes',
 		title: 'Hermes',
 		description: 'Chat and conversation service',
@@ -21,11 +21,7 @@ export function createHermesApp() {
 		bearerFormat: 'JWT',
 	})
 
-	const routes = app.route('/hermes', health).route('/hermes/chat', chatRoutes)
-
-	setup()
-
-	return routes
+	return app.route('/hermes', health).route('/hermes/chat', chatRoutes)
 }
 
 export type HermesApp = ReturnType<typeof createHermesApp>
