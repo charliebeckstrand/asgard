@@ -75,8 +75,6 @@ export function getRules(): Rule[] {
 }
 
 export async function evaluateRules(ip: string, eventType: string): Promise<void> {
-	const knownIp = ip && ip !== 'unknown' ? ip : null
-
 	const matchingRules = PREDEFINED_RULES.filter((r) => r.enabled && r.event_type === eventType)
 
 	for (const rule of matchingRules) {
@@ -97,10 +95,8 @@ export async function evaluateRules(ip: string, eventType: string): Promise<void
 				action_taken: `Banned for ${formatDuration(rule.ban_duration_minutes)}`,
 			})
 
-			const ipPart = knownIp ? ` for IP ${knownIp}` : ''
-
 			console.log(
-				`[vidar] Rule "${rule.id}" triggered${ipPart} — banned for ${formatDuration(rule.ban_duration_minutes)}`,
+				`[vidar] Rule "${rule.id}" triggered for IP ${ip} — banned for ${formatDuration(rule.ban_duration_minutes)}`,
 			)
 		}
 	}
