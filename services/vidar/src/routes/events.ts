@@ -3,6 +3,7 @@ import { ingestEvent } from '../handlers/events.js'
 import {
 	errorResponse,
 	IngestEventSchema,
+	jsonRequest,
 	jsonResponse,
 	SecurityEventSchema,
 } from '../lib/schemas.js'
@@ -16,10 +17,7 @@ const ingestRoute = createRoute({
 		'Report a security event for monitoring. Events are stored and evaluated against predefined rules.',
 	security: [{ Bearer: [] }],
 	request: {
-		body: {
-			content: { 'application/json': { schema: IngestEventSchema } },
-			required: true,
-		},
+		body: jsonRequest(IngestEventSchema),
 	},
 	responses: {
 		201: jsonResponse(SecurityEventSchema, 'Event ingested'),

@@ -6,6 +6,7 @@ import {
 	BanSchema,
 	CreateBanSchema,
 	errorResponse,
+	jsonRequest,
 	jsonResponse,
 	MessageSchema,
 } from '../lib/schemas.js'
@@ -31,10 +32,7 @@ const createBanRoute = createRoute({
 	description: 'Create a manual IP ban. Optionally specify a duration; omit for a permanent ban.',
 	security: [{ Bearer: [] }],
 	request: {
-		body: {
-			content: { 'application/json': { schema: CreateBanSchema } },
-			required: true,
-		},
+		body: jsonRequest(CreateBanSchema),
 	},
 	responses: {
 		201: jsonResponse(BanSchema, 'Ban created'),

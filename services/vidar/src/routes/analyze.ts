@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
 import { HttpError } from 'grid'
-import { AnalyzeRequestSchema, errorResponse } from '../lib/schemas.js'
+import { AnalyzeRequestSchema, errorResponse, jsonRequest } from '../lib/schemas.js'
 
 const analyzeRoute = createRoute({
 	method: 'post',
@@ -11,10 +11,7 @@ const analyzeRoute = createRoute({
 		'Run AI-powered analysis on recent security events. Not yet implemented; returns 501.',
 	security: [{ Bearer: [] }],
 	request: {
-		body: {
-			content: { 'application/json': { schema: AnalyzeRequestSchema } },
-			required: true,
-		},
+		body: jsonRequest(AnalyzeRequestSchema),
 	},
 	responses: {
 		401: errorResponse('Unauthorized'),
