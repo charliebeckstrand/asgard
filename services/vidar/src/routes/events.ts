@@ -1,12 +1,7 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
+import { errorResponse, jsonRequest, jsonResponse } from 'grid'
+import { IngestEventSchema, SecurityEventSchema } from 'skuld'
 import { ingestEvent } from '../handlers/events.js'
-import {
-	errorResponse,
-	IngestEventSchema,
-	jsonRequest,
-	jsonResponse,
-	SecurityEventSchema,
-} from '../lib/schemas.js'
 
 const ingestRoute = createRoute({
 	method: 'post',

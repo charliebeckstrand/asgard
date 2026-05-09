@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { errorResponse, jsonResponse } from 'grid'
 import { listThreats } from '../handlers/threats.js'
-import { errorResponse, jsonResponse, ThreatListSchema } from '../lib/schemas.js'
+import { ThreatListSchema } from '../lib/schemas.js'
 
 const listThreatsRoute = createRoute({
 	method: 'get',

@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { errorResponse, jsonResponse } from 'grid'
+import { CheckIpResponseSchema } from 'skuld'
 import { isIpBanned } from '../handlers/bans.js'
-import { CheckIpResponseSchema, errorResponse, jsonResponse } from '../lib/schemas.js'
 
 const checkIpRoute = createRoute({
 	method: 'get',

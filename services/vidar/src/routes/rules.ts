@@ -1,6 +1,8 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
+import { errorResponse, jsonResponse } from 'grid'
+import { toList } from 'skuld'
 import { getRules } from '../handlers/rules.js'
-import { errorResponse, jsonResponse, RuleListSchema, toList } from '../lib/schemas.js'
+import { RuleListSchema } from '../lib/schemas.js'
 
 const listRulesRoute = createRoute({
 	method: 'get',

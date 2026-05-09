@@ -1,6 +1,6 @@
 import { type SqlFragment, sql } from 'saga'
+import { toList } from 'skuld'
 import { db } from '../lib/db.js'
-import { toList } from '../lib/schemas.js'
 
 export interface ThreatRow {
 	id: string
