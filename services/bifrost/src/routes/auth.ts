@@ -41,12 +41,9 @@ const RegisterRequestSchema = z
 	})
 	.openapi('RegisterRequest')
 
-const RegisterResponseSchema = z
-	.object({
-		id: z.string(),
-		email: z.string(),
-	})
-	.openapi('RegisterResponse')
+const RegisterResponseSchema = UserSchema.pick({ id: true, email: true }).openapi(
+	'RegisterResponse',
+)
 
 const loginRoute = createRoute({
 	method: 'post',

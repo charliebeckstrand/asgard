@@ -26,12 +26,7 @@ const UpdateUserRequestSchema = z
 	})
 	.openapi('UpdateUserRequest')
 
-const CreateUserSchema = z
-	.object({
-		id: z.string(),
-		email: z.string(),
-	})
-	.openapi('CreateUserResponse')
+const CreateUserSchema = UserSchema.pick({ id: true, email: true }).openapi('CreateUserResponse')
 
 const listUsersRoute = createRoute({
 	method: 'get',
