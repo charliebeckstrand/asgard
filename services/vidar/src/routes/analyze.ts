@@ -1,7 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
-import { getAnalyzer } from '../handlers/analyzer.js'
-import { environment } from '../lib/env.js'
-import { AnalyzeRequestSchema, AnalyzeResponseSchema, ErrorSchema } from '../lib/schemas.js'
+import { HttpError } from 'grid'
+import { AnalyzeRequestSchema, ErrorSchema } from '../lib/schemas.js'
 
 const analyzeRoute = createRoute({
 	method: 'post',
@@ -9,7 +8,7 @@ const analyzeRoute = createRoute({
 	tags: ['AI Analysis'],
 	summary: 'Trigger AI threat analysis',
 	description:
-		'Run AI-powered analysis on recent security events. Requires AI_ENABLED=true and a configured AI provider.',
+		'Run AI-powered analysis on recent security events. Not yet implemented; returns 501.',
 	security: [{ Bearer: [] }],
 	request: {
 		body: {
@@ -18,42 +17,19 @@ const analyzeRoute = createRoute({
 		},
 	},
 	responses: {
-		200: {
-			content: { 'application/json': { schema: AnalyzeResponseSchema } },
-			description: 'Analysis result',
-		},
 		401: {
 			content: { 'application/json': { schema: ErrorSchema } },
 			description: 'Unauthorized',
 		},
 		501: {
 			content: { 'application/json': { schema: ErrorSchema } },
-			description: 'AI analysis not enabled',
+			description: 'AI analysis not implemented',
 		},
 	},
 })
 
 const app = new OpenAPIHono()
 
-export const analyze = app.openapi(analyzeRoute, async (c) => {
-	const env = environment()
-
-	if (!env.AI_ENABLED) {
-		return c.json(
-			{
-				error: 'Not Implemented',
-				message: 'AI analysis is not enabled. Set AI_ENABLED=true and configure an AI provider.',
-				statusCode: 501,
-			},
-			501,
-		)
-	}
-
-	const { ip } = c.req.valid('json')
-
-	const analyzer = getAnalyzer()
-
-	const result = await analyzer.analyze({ ip })
-
-	return c.json(result, 200)
+export const analyze = app.openapi(analyzeRoute, () => {
+	throw new HttpError(501, 'AI analysis is not implemented', 'Not Implemented')
 })

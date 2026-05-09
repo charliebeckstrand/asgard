@@ -48,11 +48,3 @@ export const AnalyzeRequestSchema = z
 		ip: IpAddressSchema.optional(),
 	})
 	.openapi('AnalyzeRequest')
-
-export const AnalyzeResponseSchema = z
-	.object({
-		status: z.string(),
-		message: z.string(),
-		analysis: z.record(z.string(), z.unknown()).optional(),
-	})
-	.openapi('AnalyzeResponse')

@@ -1,4 +1,3 @@
-import { getAnalyzer } from '@/handlers/analyzer'
 import { getRules } from '@/handlers/rules'
 
 describe('getRules', () => {
@@ -60,23 +59,5 @@ describe('getRules', () => {
 		for (const rule of rules) {
 			expect(rule.enabled).toBe(true)
 		}
-	})
-})
-
-describe('getAnalyzer', () => {
-	it('returns an analyzer instance', () => {
-		const analyzer = getAnalyzer()
-
-		expect(analyzer).toBeDefined()
-		expect(analyzer.analyze).toBeTypeOf('function')
-	})
-
-	it('returns unavailable status from stub analyzer', async () => {
-		const analyzer = getAnalyzer()
-
-		const result = await analyzer.analyze({ ip: '1.2.3.4' })
-
-		expect(result.status).toBe('unavailable')
-		expect(result.message).toContain('not configured')
 	})
 })
