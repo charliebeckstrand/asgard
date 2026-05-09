@@ -1,4 +1,5 @@
 import type { Context, Env } from 'hono'
+import { errorBody } from './error-handler.js'
 
 type ValidationResult =
 	| { success: true }
@@ -10,14 +11,7 @@ export function validationHook<E extends Env>(
 ): Response | undefined {
 	if (result.success) return
 
-	const messages = result.error.issues.map((issue) => issue.message)
+	const message = result.error.issues.map((issue) => issue.message).join('; ')
 
-	return c.json(
-		{
-			error: 'Validation Error',
-			message: messages.join('; '),
-			statusCode: 400,
-		},
-		400,
-	)
+	return c.json(errorBody(400, message, 'Validation Error'), 400)
 }

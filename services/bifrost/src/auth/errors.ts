@@ -1,4 +1,4 @@
-import { HttpError } from 'grid'
+import { HTTPException } from 'grid'
 
 const AUTH_STATUS = {
 	invalid_credentials: 401,
@@ -9,11 +9,12 @@ const AUTH_STATUS = {
 
 export type AuthErrorCode = keyof typeof AUTH_STATUS
 
-export class AuthError extends HttpError {
+export class AuthError extends HTTPException {
 	constructor(
 		public readonly code: AuthErrorCode,
 		message: string,
 	) {
-		super(AUTH_STATUS[code], message, 'AuthError')
+		super(AUTH_STATUS[code], { message })
+		this.name = 'AuthError'
 	}
 }

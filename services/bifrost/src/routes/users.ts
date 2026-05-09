@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { errorResponse, HttpError, jsonRequest, jsonResponse, validationHook } from 'grid'
+import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import { EmailSchema, PasswordSchema } from 'skuld'
 import { getConfig, registerUser } from '../auth/index.js'
@@ -144,7 +144,7 @@ usersRoutes.openapi(getUserRoute, async (c) => {
 	const user = await userRepository.getUserById(id)
 
 	if (!user) {
-		throw new HttpError(404, 'User not found', 'Not Found')
+		throw new HTTPException(404, { message: 'User not found' })
 	}
 
 	return c.json(user, 200)
@@ -159,7 +159,7 @@ usersRoutes.openapi(updateUserRoute, async (c) => {
 	const user = await userRepository.updateUser(id, data)
 
 	if (!user) {
-		throw new HttpError(404, 'User not found', 'Not Found')
+		throw new HTTPException(404, { message: 'User not found' })
 	}
 
 	return c.json(user, 200)
@@ -173,7 +173,7 @@ usersRoutes.openapi(deleteUserRoute, async (c) => {
 	const deleted = await userRepository.deleteUser(id)
 
 	if (!deleted) {
-		throw new HttpError(404, 'User not found', 'Not Found')
+		throw new HTTPException(404, { message: 'User not found' })
 	}
 
 	return c.body(null, 204)

@@ -3,18 +3,21 @@ import { syncEnv } from '../env/sync.js'
 
 const args = process.argv.slice(2)
 
-const rotateFlag = args.find((a) => a.startsWith('--rotate'))
-const servicesFlag = args.find((a) => a.startsWith('--services='))
+function readFlag(name: string): string | true | undefined {
+	const flag = args.find((a) => a === `--${name}` || a.startsWith(`--${name}=`))
 
-const rotateMatch = rotateFlag?.match(/^--rotate(?:=(.+))?$/)
+	if (!flag) return undefined
+	if (flag === `--${name}`) return true
 
-const rotate: true | string[] | undefined = rotateMatch
-	? rotateMatch[1]
-		? rotateMatch[1].split(',')
-		: true
-	: undefined
+	return flag.slice(name.length + 3)
+}
 
-const services = servicesFlag?.match(/^--services=(.+)$/)?.[1].split(',')
+const rotateValue = readFlag('rotate')
+const servicesValue = readFlag('services')
+
+const rotate: true | string[] | undefined = rotateValue === true ? true : rotateValue?.split(',')
+
+const services = typeof servicesValue === 'string' ? servicesValue.split(',') : undefined
 
 const result = syncEnv({ rotate, services })
 

@@ -1,4 +1,4 @@
-import { HttpError } from 'grid'
+import { HTTPException } from 'grid'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { refreshTokenPair } from '../auth/index.js'
@@ -168,7 +168,7 @@ export function requireSession(): MiddlewareHandler<SessionEnv> {
 		const sessionData = c.get('session')
 
 		if (!sessionData) {
-			throw new HttpError(401, 'Not authenticated', 'Unauthorized')
+			throw new HTTPException(401, { message: 'Not authenticated' })
 		}
 
 		return next()

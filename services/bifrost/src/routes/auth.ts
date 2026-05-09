@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { errorResponse, HttpError, jsonRequest, jsonResponse, validationHook } from 'grid'
+import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import { EmailSchema, LoginPasswordSchema, MessageSchema, PasswordSchema } from 'skuld'
 import { authenticateUser, getConfig, registerUser } from '../auth/index.js'
@@ -160,7 +160,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 		const session = c.get('session')
 
 		if (!session) {
-			throw new HttpError(401, 'Not authenticated', 'Unauthorized')
+			throw new HTTPException(401, { message: 'Not authenticated' })
 		}
 
 		c.header('Cache-Control', 'private, max-age=60')
@@ -177,13 +177,13 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 		const session = c.get('session')
 
 		if (!session) {
-			throw new HttpError(401, 'Not authenticated', 'Unauthorized')
+			throw new HTTPException(401, { message: 'Not authenticated' })
 		}
 
 		const payload = await verifyToken(session.accessToken)
 
 		if (typeof payload.sub !== 'string') {
-			throw new HttpError(401, 'Not authenticated', 'Unauthorized')
+			throw new HTTPException(401, { message: 'Not authenticated' })
 		}
 
 		const { userRepository } = getConfig()
@@ -191,7 +191,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 		const user = await userRepository.getUserById(payload.sub)
 
 		if (!user) {
-			throw new HttpError(401, 'Not authenticated', 'Unauthorized')
+			throw new HTTPException(401, { message: 'Not authenticated' })
 		}
 
 		return c.json(user, 200)

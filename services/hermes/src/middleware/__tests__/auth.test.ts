@@ -1,5 +1,5 @@
-import { HttpError } from 'grid'
 import { Hono } from 'hono'
+import { HTTPException } from 'hono/http-exception'
 import { sign } from 'hono/jwt'
 import { type AuthEnv, requireAuth } from '../auth.js'
 
@@ -22,7 +22,7 @@ function makeApp() {
 	app.get('/', (c) => c.json({ userId: c.get('userId') }))
 
 	app.onError((err, c) => {
-		if (err instanceof HttpError) {
+		if (err instanceof HTTPException) {
 			return c.json({ error: err.name, message: err.message }, err.status)
 		}
 

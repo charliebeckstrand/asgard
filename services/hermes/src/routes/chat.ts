@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { errorResponse, HttpError, jsonRequest, jsonResponse, validationHook } from 'grid'
+import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { streamSSE } from 'hono/streaming'
 import { createChatRepository } from '../lib/chat-repository.js'
 import { type AuthEnv, requireAuth } from '../middleware/auth.js'
@@ -126,7 +126,7 @@ chatRoutes.openapi(getChatRoute, async (c) => {
 	const chat = await chatRepository.getChatById(id, userId)
 
 	if (!chat) {
-		throw new HttpError(404, 'Chat not found', 'Not Found')
+		throw new HTTPException(404, { message: 'Chat not found' })
 	}
 
 	return c.json(chat, 200)
@@ -190,7 +190,7 @@ chatRoutes.openapi(deleteChatRoute, async (c) => {
 	const deleted = await chatRepository.deleteChat(id, userId)
 
 	if (!deleted) {
-		throw new HttpError(404, 'Chat not found', 'Not Found')
+		throw new HTTPException(404, { message: 'Chat not found' })
 	}
 
 	return c.body(null, 204)

@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
-import { errorResponse, HttpError, jsonRequest } from 'grid'
+import { errorResponse, HTTPException, jsonRequest } from 'grid'
 import { AnalyzeRequestSchema } from '../lib/schemas.js'
 
 const analyzeRoute = createRoute({
@@ -22,5 +22,5 @@ const analyzeRoute = createRoute({
 const app = new OpenAPIHono()
 
 export const analyze = app.openapi(analyzeRoute, () => {
-	throw new HttpError(501, 'AI analysis is not implemented', 'Not Implemented')
+	throw new HTTPException(501, { message: 'AI analysis is not implemented' })
 })
