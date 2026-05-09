@@ -26,5 +26,5 @@ const app = new OpenAPIHono()
 export const rules = app.openapi(listRulesRoute, (c) => {
 	const allRules = getRules()
 
-	return c.json({ data: allRules }, 200)
+	return c.json({ data: allRules, total: allRules.length }, 200)
 })

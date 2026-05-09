@@ -40,11 +40,7 @@ export const RuleSchema = z
 	})
 	.openapi('Rule')
 
-export const RuleListSchema = z
-	.object({
-		data: z.array(RuleSchema),
-	})
-	.openapi('RuleList')
+export const RuleListSchema = createListSchema(RuleSchema, 'RuleList')
 
 export const AnalyzeRequestSchema = z
 	.object({
