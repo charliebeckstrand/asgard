@@ -19,7 +19,7 @@
 	"scripts": {
 		"prepare": "lefthook install",
 		"build": "turbo run build",
-		"predev": "docker compose -f docker-compose.dev.yml up -d --wait && pnpm db:bootstrap",
+		"predev": "(docker info >/dev/null 2>&1 || (echo 'Starting Docker...' && open -a Docker && until docker info >/dev/null 2>&1; do sleep 1; done)) && docker compose -f docker-compose.dev.yml up -d --wait && pnpm db:bootstrap",
 		"dev": "hlidskjalf",
 		"db:bootstrap": "POSTGRES_ADMIN_URL=postgres://heimdall:heimdall@localhost:5432/postgres pnpm --filter saga run bootstrap",
 		"test:coverage": "turbo run test:coverage",
