@@ -11,6 +11,7 @@ if (!adminUrl) {
 }
 
 const workspaceRoot = findWorkspaceRoot()
+
 const manifests = discoverManifests(workspaceRoot)
 
 const specs: DatabaseSpec[] = []

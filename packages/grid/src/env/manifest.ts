@@ -80,11 +80,13 @@ export function discoverManifests(workspaceRoot: string): Map<string, Discovered
 			if (!entry.isDirectory()) continue
 
 			const dir = resolve(root, entry.name)
+
 			const manifestPath = resolve(dir, 'manifest.json')
 
 			if (!existsSync(manifestPath)) continue
 
 			const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as Manifest
+
 			const name = manifest.name || entry.name
 
 			found.set(name, { manifest, dir })

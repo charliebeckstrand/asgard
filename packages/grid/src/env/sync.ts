@@ -104,6 +104,7 @@ function resolveVars(
 
 export function syncEnv(options: SyncEnvOptions = {}): SyncEnvResult {
 	const workspaceRoot = options.workspaceRoot ?? findWorkspaceRoot()
+
 	const secretsPath = resolve(workspaceRoot, '.secrets.json')
 
 	const manifests = discoverManifests(workspaceRoot)
@@ -113,7 +114,9 @@ export function syncEnv(options: SyncEnvOptions = {}): SyncEnvResult {
 	}
 
 	const cache = existsSync(secretsPath) ? loadSecrets(secretsPath) : {}
+
 	const secrets: Record<string, string> = options.rotate === true ? {} : { ...cache }
+
 	const rotated: string[] = []
 
 	if (Array.isArray(options.rotate)) {
@@ -147,6 +150,7 @@ export function syncEnv(options: SyncEnvOptions = {}): SyncEnvResult {
 	}
 
 	const filter = options.services ? new Set(options.services) : null
+
 	const written: string[] = []
 
 	for (const [serviceName, { manifest, dir }] of manifests) {

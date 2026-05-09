@@ -7,6 +7,7 @@ const rotateFlag = args.find((a) => a.startsWith('--rotate'))
 const servicesFlag = args.find((a) => a.startsWith('--services='))
 
 const rotateMatch = rotateFlag?.match(/^--rotate(?:=(.+))?$/)
+
 const rotate: true | string[] | undefined = rotateMatch
 	? rotateMatch[1]
 		? rotateMatch[1].split(',')
