@@ -1,9 +1,6 @@
 import { sql } from 'saga'
-import { type CheckIpResponse, toList } from 'skuld'
+import { type BanSource, type CheckIpResponse, toList } from 'skuld'
 import { db } from '../lib/db.js'
-
-/** Who created the ban — used in the audit trail. */
-export type BanSource = 'system' | 'manual' | 'vidar'
 
 export interface BanRow {
 	id: string

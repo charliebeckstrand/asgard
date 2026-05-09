@@ -1,10 +1,9 @@
 import { sql } from 'saga'
 import { db } from '../lib/db.js'
 import { logger } from '../lib/log.js'
+import type { RuleSeverity } from '../lib/schemas.js'
 import { createBan } from './bans.js'
 import { createThreat } from './threats.js'
-
-export type RuleSeverity = 'low' | 'medium' | 'high'
 
 export interface Rule {
 	id: string
