@@ -3,10 +3,10 @@ import type { MiddlewareHandler } from 'hono'
 import { hc } from 'hono/client'
 import { HTTPException } from 'hono/http-exception'
 import type { Logger } from 'saga/log'
+import type { CheckIpResponse } from 'skuld'
 
 import type { VidarApp } from './app.js'
 import { type CircuitBreaker, createCircuitBreaker } from './circuit-breaker.js'
-import type { CheckIpResponse } from './lib/schemas.js'
 import { createTokenBucket } from './rate-limit.js'
 
 interface VidarClientConfig {

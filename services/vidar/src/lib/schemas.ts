@@ -1,13 +1,5 @@
-import {
-	type CheckIpResponseSchema,
-	createListSchema,
-	IdSchema,
-	IpAddressSchema,
-	TimestampSchema,
-} from 'skuld'
+import { createListSchema, IdSchema, IpAddressSchema, TimestampSchema } from 'skuld'
 import { z } from 'zod'
-
-export type CheckIpResponse = z.infer<typeof CheckIpResponseSchema>
 
 export const ThreatSchema = z
 	.object({
