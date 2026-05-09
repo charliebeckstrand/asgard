@@ -31,6 +31,8 @@ export const IngestEventSchema = z
 	})
 	.openapi('IngestEvent')
 
+export type IngestEvent = z.infer<typeof IngestEventSchema>
+
 export const SecurityEventSchema = z
 	.object({
 		id: IdSchema,
@@ -42,6 +44,8 @@ export const SecurityEventSchema = z
 	})
 	.openapi('SecurityEvent')
 
+export type SecurityEvent = z.infer<typeof SecurityEventSchema>
+
 export const CheckIpResponseSchema = z
 	.object({
 		banned: z.boolean(),
@@ -49,6 +53,8 @@ export const CheckIpResponseSchema = z
 		expires_at: optionalTimestamp,
 	})
 	.openapi('CheckIpResponse')
+
+export type CheckIpResponse = z.infer<typeof CheckIpResponseSchema>
 
 export const CreateBanSchema = z
 	.object({
@@ -62,6 +68,8 @@ export const CreateBanSchema = z
 	})
 	.openapi('CreateBan')
 
+export type CreateBan = z.infer<typeof CreateBanSchema>
+
 export const BanSchema = z
 	.object({
 		id: IdSchema,
@@ -74,4 +82,8 @@ export const BanSchema = z
 	})
 	.openapi('Ban')
 
+export type Ban = z.infer<typeof BanSchema>
+
 export const BanListSchema = createListSchema(BanSchema, 'BanList')
+
+export type BanList = z.infer<typeof BanListSchema>
