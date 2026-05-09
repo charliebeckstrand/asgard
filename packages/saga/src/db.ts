@@ -112,7 +112,10 @@ interface State {
 	client: Db
 }
 
-export function createDatabase(getDatabaseUrl: () => string, options?: PoolOptions) {
+export function createDatabase(
+	getDatabaseUrl: () => string,
+	options?: PoolOptions,
+): { db: Db; closePool: () => Promise<void> } {
 	let state: State | null = null
 
 	const init = (): State => {

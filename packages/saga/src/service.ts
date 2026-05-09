@@ -1,6 +1,6 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createDatabase } from './db.js'
+import { createDatabase, type Db } from './db.js'
 import { runMigrations } from './migrate.js'
 import type { PoolOptions } from './pool.js'
 
@@ -8,7 +8,11 @@ export function bootstrapServiceDb(
 	name: string,
 	getDatabaseUrl: () => string,
 	options?: PoolOptions,
-) {
+): {
+	db: Db
+	closePool: () => Promise<void>
+	migrate: (callerModuleUrl: string) => Promise<void>
+} {
 	const { db, closePool } = createDatabase(getDatabaseUrl, options)
 
 	/**
