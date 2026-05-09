@@ -6,19 +6,19 @@ export function createChatRepository(): ChatRepository {
 	return {
 		async getChats(userId) {
 			return db.many<ChatRow>(
-				sql`SELECT id, user_id, created_at, updated_at FROM hrm_chats WHERE user_id = ${userId} ORDER BY updated_at DESC`,
+				sql`SELECT id, user_id, created_at, updated_at FROM brg_chats WHERE user_id = ${userId} ORDER BY updated_at DESC`,
 			)
 		},
 
 		async getChatById(id, userId) {
 			const chat = await db.first<ChatRow>(
-				sql`SELECT id, user_id, created_at, updated_at FROM hrm_chats WHERE id = ${id} AND user_id = ${userId}`,
+				sql`SELECT id, user_id, created_at, updated_at FROM brg_chats WHERE id = ${id} AND user_id = ${userId}`,
 			)
 
 			if (!chat) return null
 
 			const messages = await db.many<ChatMessageRow>(
-				sql`SELECT id, chat_id, role, type, content, created_at FROM hrm_chat_messages WHERE chat_id = ${id} ORDER BY created_at`,
+				sql`SELECT id, chat_id, role, type, content, created_at FROM brg_chat_messages WHERE chat_id = ${id} ORDER BY created_at`,
 			)
 
 			return { ...chat, messages }
@@ -26,19 +26,19 @@ export function createChatRepository(): ChatRepository {
 
 		async insertChat(id, userId) {
 			return db.one<ChatRow>(
-				sql`INSERT INTO hrm_chats (id, user_id) VALUES (${id}, ${userId}) RETURNING id, user_id, created_at, updated_at`,
+				sql`INSERT INTO brg_chats (id, user_id) VALUES (${id}, ${userId}) RETURNING id, user_id, created_at, updated_at`,
 			)
 		},
 
 		async insertMessage(id, chatId, role, type, content) {
 			return db.tx<ChatMessageRow>(async (tx) => {
 				const row = await tx.one<ChatMessageRow>(
-					sql`INSERT INTO hrm_chat_messages (id, chat_id, role, type, content)
+					sql`INSERT INTO brg_chat_messages (id, chat_id, role, type, content)
 						VALUES (${id}, ${chatId}, ${role}, ${type}, ${content})
 						RETURNING id, chat_id, role, type, content, created_at`,
 				)
 
-				await tx.exec(sql`UPDATE hrm_chats SET updated_at = now() WHERE id = ${chatId}`)
+				await tx.exec(sql`UPDATE brg_chats SET updated_at = now() WHERE id = ${chatId}`)
 
 				return row
 			})
@@ -46,7 +46,7 @@ export function createChatRepository(): ChatRepository {
 
 		async deleteChat(id, userId) {
 			const count = await db.exec(
-				sql`DELETE FROM hrm_chats WHERE id = ${id} AND user_id = ${userId}`,
+				sql`DELETE FROM brg_chats WHERE id = ${id} AND user_id = ${userId}`,
 			)
 
 			return count > 0
