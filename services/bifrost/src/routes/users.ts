@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import { EmailSchema, PasswordSchema } from 'skuld'
+import { EmailSchema, PasswordSchema, UserSchema } from 'skuld'
 import { getConfig, registerUser } from '../auth/index.js'
 import { requireSession, type SessionEnv } from '../middleware/session.js'
 
@@ -24,18 +24,7 @@ const UpdateUserRequestSchema = z
 	})
 	.openapi('UpdateUserRequest')
 
-const UserResponseSchema = z
-	.object({
-		id: z.string(),
-		email: z.string(),
-		is_active: z.boolean(),
-		is_verified: z.boolean(),
-		created_at: z.string(),
-		updated_at: z.string(),
-	})
-	.openapi('UserResponse')
-
-const CreateUserResponseSchema = z
+const CreateUserSchema = z
 	.object({
 		id: z.string(),
 		email: z.string(),
@@ -48,7 +37,7 @@ const listUsersRoute = createRoute({
 	tags: ['Users'],
 	summary: 'List all users',
 	responses: {
-		200: jsonResponse(z.array(UserResponseSchema), 'List of users'),
+		200: jsonResponse(z.array(UserSchema), 'List of users'),
 	},
 })
 
@@ -62,7 +51,7 @@ const createUserRoute = createRoute({
 		body: jsonRequest(CreateUserRequestSchema),
 	},
 	responses: {
-		201: jsonResponse(CreateUserResponseSchema, 'User created'),
+		201: jsonResponse(CreateUserSchema, 'User created'),
 		400: errorResponse('Validation error'),
 		409: errorResponse('Email already registered'),
 	},
@@ -77,7 +66,7 @@ const getUserRoute = createRoute({
 		params: UserIdParamSchema,
 	},
 	responses: {
-		200: jsonResponse(UserResponseSchema, 'User found'),
+		200: jsonResponse(UserSchema, 'User found'),
 		404: errorResponse('User not found'),
 	},
 })
@@ -92,7 +81,7 @@ const updateUserRoute = createRoute({
 		body: jsonRequest(UpdateUserRequestSchema),
 	},
 	responses: {
-		200: jsonResponse(UserResponseSchema, 'User updated'),
+		200: jsonResponse(UserSchema, 'User updated'),
 		400: errorResponse('Validation error'),
 		404: errorResponse('User not found'),
 	},

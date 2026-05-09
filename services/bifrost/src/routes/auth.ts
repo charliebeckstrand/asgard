@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import { EmailSchema, LoginPasswordSchema, MessageSchema, PasswordSchema } from 'skuld'
+import { EmailSchema, LoginPasswordSchema, MessageSchema, PasswordSchema, UserSchema } from 'skuld'
 import { authenticateUser, getConfig, registerUser } from '../auth/index.js'
 import { ACCESS_TOKEN_TTL_SECONDS, verifyToken } from '../auth/jwt.js'
 import { environment } from '../lib/env.js'
@@ -32,17 +32,6 @@ const SessionResponseSchema = z
 		expiresAt: z.number(),
 	})
 	.openapi('SessionResponse')
-
-const AuthUserResponseSchema = z
-	.object({
-		id: z.string(),
-		email: z.string(),
-		is_active: z.boolean(),
-		is_verified: z.boolean(),
-		created_at: z.string(),
-		updated_at: z.string(),
-	})
-	.openapi('AuthUserResponse')
 
 const RegisterRequestSchema = z
 	.object({
@@ -120,7 +109,7 @@ const userRoute = createRoute({
 	summary: 'Get authenticated user',
 	description: "Returns the current authenticated user's details.",
 	responses: {
-		200: jsonResponse(AuthUserResponseSchema, 'Authenticated user'),
+		200: jsonResponse(UserSchema, 'Authenticated user'),
 		401: errorResponse('Not authenticated'),
 	},
 })
