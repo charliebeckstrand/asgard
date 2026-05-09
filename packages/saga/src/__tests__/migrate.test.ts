@@ -176,4 +176,16 @@ describe('runMigrations', () => {
 
 		expect(txCalls).toEqual(['tx:start', 'tx:end'])
 	})
+
+	it('acquires a transactional advisory lock before applying each migration', async () => {
+		await writeFile(join(migrationsDir, '0001_test.sql'), 'CREATE TABLE test (id INT)')
+
+		const { db, execCalls } = createMockDb({ appliedMigrations: [] })
+
+		await runMigrations(db, migrationsDir)
+
+		const lockCall = execCalls.find((s) => s.includes('pg_advisory_xact_lock'))
+
+		expect(lockCall).toBeDefined()
+	})
 })
