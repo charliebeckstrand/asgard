@@ -82,6 +82,34 @@ describe('syncEnv', () => {
 		await tmp.cleanup()
 	})
 
+	it('rotates every cached secret when rotate is true', async () => {
+		const tmp = await createTempDir('grid-sync-')
+
+		await writeFile(join(tmp.path, 'pnpm-workspace.yaml'), '')
+
+		await writeManifest(tmp.path, 'services', 'alpha', {
+			name: 'alpha',
+			port: 4000,
+			vars: { TOKEN: { type: 'secret' }, OTHER: { type: 'secret' } },
+		})
+
+		syncEnv({ workspaceRoot: tmp.path })
+
+		const before = await readEnv(join(tmp.path, 'services/alpha/.env'))
+
+		const result = syncEnv({ workspaceRoot: tmp.path, rotate: true })
+
+		expect(result.rotated.sort()).toEqual(['alpha:OTHER', 'alpha:TOKEN'])
+		expect(result.generated.sort()).toEqual(['alpha:OTHER', 'alpha:TOKEN'])
+
+		const after = await readEnv(join(tmp.path, 'services/alpha/.env'))
+
+		expect(after.TOKEN).not.toBe(before.TOKEN)
+		expect(after.OTHER).not.toBe(before.OTHER)
+
+		await tmp.cleanup()
+	})
+
 	it('rotates a single named secret when rotate is an array', async () => {
 		const tmp = await createTempDir('grid-sync-')
 

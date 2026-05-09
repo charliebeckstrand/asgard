@@ -7,7 +7,6 @@ export interface DatabaseSpec {
 }
 
 export interface BootstrapOptions {
-	/** Total seconds to wait for postgres to accept connections. Default: 30. */
 	connectTimeoutSeconds?: number
 }
 
@@ -37,9 +36,9 @@ async function connectWithRetry(adminUrl: string, timeoutSeconds: number): Promi
 		}
 	}
 
-	throw new Error(
-		`Could not connect to postgres within ${timeoutSeconds}s: ${(lastError as Error)?.message ?? 'unknown error'}`,
-	)
+	const message = lastError instanceof Error ? lastError.message : 'unknown error'
+
+	throw new Error(`Could not connect to postgres within ${timeoutSeconds}s: ${message}`)
 }
 
 function quoteIdentifier(value: string): string {

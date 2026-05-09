@@ -36,16 +36,22 @@ export interface DiscoveredManifest {
 	dir: string
 }
 
-export function getManifestPort(): number {
-	let dir = process.cwd()
+function walkUpFor(start: string, marker: string): string {
+	let dir = start
 
-	while (!existsSync(resolve(dir, 'manifest.json'))) {
+	while (!existsSync(resolve(dir, marker))) {
 		const parent = resolve(dir, '..')
 
-		if (parent === dir) throw new Error('manifest.json not found')
+		if (parent === dir) throw new Error(`${marker} not found`)
 
 		dir = parent
 	}
+
+	return dir
+}
+
+export function getManifestPort(): number {
+	const dir = walkUpFor(process.cwd(), 'manifest.json')
 
 	const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf-8'))
 
@@ -53,17 +59,7 @@ export function getManifestPort(): number {
 }
 
 export function findWorkspaceRoot(start: string = process.cwd()): string {
-	let dir = start
-
-	while (!existsSync(resolve(dir, 'pnpm-workspace.yaml'))) {
-		const parent = resolve(dir, '..')
-
-		if (parent === dir) throw new Error('pnpm-workspace.yaml not found')
-
-		dir = parent
-	}
-
-	return dir
+	return walkUpFor(start, 'pnpm-workspace.yaml')
 }
 
 const MANIFEST_DIRS = ['apps', 'services']
@@ -87,9 +83,7 @@ export function discoverManifests(workspaceRoot: string): Map<string, Discovered
 
 			const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as Manifest
 
-			const name = manifest.name || entry.name
-
-			found.set(name, { manifest, dir })
+			found.set(manifest.name, { manifest, dir })
 		}
 	}
 
