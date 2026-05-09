@@ -30,6 +30,16 @@ function toConfig(fragment: SqlFragment): { text: string; values: unknown[] } {
 }
 
 function createQueryable(executor: { query: Pool['query'] | PoolClient['query'] }): Queryable {
+	async function firstRow<T extends QueryResultRow>(fragment: SqlFragment): Promise<T> {
+		const { rows } = await executor.query<T>(toConfig(fragment))
+
+		if (rows.length === 0) {
+			throw new NoRowsError(fragment.text)
+		}
+
+		return rows[0]
+	}
+
 	return {
 		async query<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null> {
 			const { rows } = await executor.query<T>(toConfig(fragment))
@@ -37,15 +47,7 @@ function createQueryable(executor: { query: Pool['query'] | PoolClient['query'] 
 			return rows[0] ?? null
 		},
 
-		async get<T extends QueryResultRow>(fragment: SqlFragment): Promise<T> {
-			const { rows } = await executor.query<T>(toConfig(fragment))
-
-			if (rows.length === 0) {
-				throw new NoRowsError(fragment.text)
-			}
-
-			return rows[0]
-		},
+		get: firstRow,
 
 		async many<T extends QueryResultRow>(fragment: SqlFragment): Promise<T[]> {
 			const { rows } = await executor.query<T>(toConfig(fragment))
@@ -60,16 +62,7 @@ function createQueryable(executor: { query: Pool['query'] | PoolClient['query'] 
 		},
 
 		async val<T>(fragment: SqlFragment): Promise<T> {
-			const { rows } = await executor.query<Record<string, T>>(toConfig(fragment))
-
-			if (rows.length === 0) {
-				throw new NoRowsError(fragment.text)
-			}
-
-			const firstRow = rows[0]
-			const keys = Object.keys(firstRow)
-
-			return firstRow[keys[0]]
+			return Object.values(await firstRow<Record<string, T>>(fragment))[0]
 		},
 	}
 }
