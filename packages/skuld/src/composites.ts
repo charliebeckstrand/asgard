@@ -37,6 +37,12 @@ export function createListSchema<T extends z.ZodType>(itemSchema: T, name: strin
 		.openapi(name)
 }
 
+/** Wrap rows in the { data, total } envelope produced by createListSchema. */
+export const toList = <T>(items: T[]): { data: T[]; total: number } => ({
+	data: items,
+	total: items.length,
+})
+
 export const DateRangeSchema = z.object({
 	from: z.iso.datetime().optional().openapi({ description: 'Start of date range (ISO 8601)' }),
 	to: z.iso.datetime().optional().openapi({ description: 'End of date range (ISO 8601)' }),
