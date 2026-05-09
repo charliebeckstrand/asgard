@@ -53,13 +53,11 @@ describe('heimdall config', () => {
 		configure({
 			userRepository: mockRepo,
 			secretKey: 'a'.repeat(32),
-			apiKey: 'test-api-key',
 			onSecurityEvent: onEvent,
 		})
 
 		const config = getConfig()
 
-		expect(config.apiKey).toBe('test-api-key')
 		expect(config.onSecurityEvent).toBe(onEvent)
 	})
 })

@@ -2,8 +2,7 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { HttpError, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import { EmailSchema, ErrorSchema, PasswordSchema } from 'skuld'
-import { getConfig } from '../auth/index.js'
-import { handleRegisterUser } from '../handlers/register.js'
+import { getConfig, registerUser } from '../auth/index.js'
 import { requireSession, type SessionEnv } from '../middleware/session.js'
 
 const UserIdParamSchema = z.object({
@@ -168,7 +167,9 @@ usersRoutes.openapi(createUserRoute, async (c) => {
 
 	const ip = getIpAddress(c)
 
-	return handleRegisterUser(c, email, password, ip)
+	const user = await registerUser(email, password, ip)
+
+	return c.json({ id: user.id, email: user.email }, 201)
 })
 
 usersRoutes.openapi(getUserRoute, async (c) => {

@@ -2,9 +2,8 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { HttpError, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import { EmailSchema, ErrorSchema, LoginPasswordSchema, MessageSchema, PasswordSchema } from 'skuld'
-import { authenticateUser, getConfig } from '../auth/index.js'
+import { authenticateUser, getConfig, registerUser } from '../auth/index.js'
 import { ACCESS_TOKEN_TTL_SECONDS, verifyToken } from '../auth/jwt.js'
-import { handleRegisterUser } from '../handlers/register.js'
 import { environment } from '../lib/env.js'
 import {
 	clearSessionCookie,
@@ -169,10 +168,6 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 	.openapi(loginRoute, async (c) => {
 		const env = environment()
 
-		if (!env.SESSION_SECRET) {
-			throw new Error('SESSION_SECRET is not configured')
-		}
-
 		const { email, password } = c.req.valid('json')
 
 		const ip = getIpAddress(c)
@@ -245,5 +240,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 
 		const ip = getIpAddress(c)
 
-		return handleRegisterUser(c, email, password, ip)
+		const user = await registerUser(email, password, ip)
+
+		return c.json({ id: user.id, email: user.email }, 201)
 	})

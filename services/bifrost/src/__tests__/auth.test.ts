@@ -4,45 +4,31 @@ vi.stubEnv('SESSION_SECRET', MOCK_SECRET)
 vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
 vi.stubEnv('SECRET_KEY', 'test-secret-key-that-is-at-least-32-chars')
 
-// Use vi.hoisted so mock values are available when vi.mock is hoisted
-const { MockAuthError, mockAuthenticateUser, mockRegisterUser, mockVerifyToken, mockGetUserById } =
-	vi.hoisted(() => {
-		const AUTH_STATUS: Record<string, number> = {
-			invalid_credentials: 401,
-			account_inactive: 403,
-			email_exists: 409,
-			invalid_token: 401,
-		}
-
-		class MockAuthError extends Error {
-			code: string
-			status: number
-			constructor(code: string, message: string) {
-				super(message)
-				this.code = code
-				this.status = AUTH_STATUS[code] ?? 500
-				this.name = 'AuthError'
-			}
-		}
-		return {
-			MockAuthError,
-			mockAuthenticateUser: vi.fn(),
-			mockRegisterUser: vi.fn(),
-			mockVerifyToken: vi.fn(),
-			mockGetUserById: vi.fn(),
-		}
-	})
-
-vi.mock('../auth/index.js', () => ({
-	configure: vi.fn(),
-	getConfig: () => ({
-		userRepository: { getUserById: (...args: unknown[]) => mockGetUserById(...args) },
+const { mockAuthenticateUser, mockRegisterUser, mockVerifyToken, mockGetUserById } = vi.hoisted(
+	() => ({
+		mockAuthenticateUser: vi.fn(),
+		mockRegisterUser: vi.fn(),
+		mockVerifyToken: vi.fn(),
+		mockGetUserById: vi.fn(),
 	}),
-	authenticateUser: (...args: unknown[]) => mockAuthenticateUser(...args),
-	registerUser: (...args: unknown[]) => mockRegisterUser(...args),
-	AuthError: MockAuthError,
-	refreshTokenPair: vi.fn(),
-}))
+)
+
+import { AuthError } from '../auth/errors.js'
+
+vi.mock('../auth/index.js', async () => {
+	const errors = await vi.importActual<typeof import('../auth/errors.js')>('../auth/errors.js')
+
+	return {
+		configure: vi.fn(),
+		getConfig: () => ({
+			userRepository: { getUserById: (...args: unknown[]) => mockGetUserById(...args) },
+		}),
+		authenticateUser: (...args: unknown[]) => mockAuthenticateUser(...args),
+		registerUser: (...args: unknown[]) => mockRegisterUser(...args),
+		AuthError: errors.AuthError,
+		refreshTokenPair: vi.fn(),
+	}
+})
 
 vi.mock('../auth/jwt.js', () => ({
 	verifyToken: (...args: unknown[]) => mockVerifyToken(...args),
@@ -137,7 +123,7 @@ describe('Auth routes', () => {
 
 		it('returns 401 on invalid credentials', async () => {
 			mockAuthenticateUser.mockRejectedValueOnce(
-				new MockAuthError('invalid_credentials', 'Incorrect email or password'),
+				new AuthError('invalid_credentials', 'Incorrect email or password'),
 			)
 
 			const res = await app.request('/auth/login', {
@@ -151,7 +137,7 @@ describe('Auth routes', () => {
 
 		it('returns 403 when account is inactive', async () => {
 			mockAuthenticateUser.mockRejectedValueOnce(
-				new MockAuthError('account_inactive', 'Account is inactive'),
+				new AuthError('account_inactive', 'Account is inactive'),
 			)
 
 			const res = await app.request('/auth/login', {
@@ -326,7 +312,7 @@ describe('Auth routes', () => {
 
 		it('returns 409 when email already exists', async () => {
 			mockRegisterUser.mockRejectedValueOnce(
-				new MockAuthError('email_exists', 'Email already registered'),
+				new AuthError('email_exists', 'Email already registered'),
 			)
 
 			const res = await app.request('/auth/register', {
