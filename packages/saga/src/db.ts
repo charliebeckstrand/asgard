@@ -133,10 +133,6 @@ export function createDatabase(getDatabaseUrl: () => string, options?: PoolOptio
 	return {
 		db,
 
-		getPool() {
-			return init().pool
-		},
-
 		async closePool() {
 			if (state) {
 				await state.pool.end()

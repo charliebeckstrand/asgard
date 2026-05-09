@@ -7,7 +7,7 @@ export function bootstrapServiceDb(
 	getDatabaseUrl: () => string,
 	options?: PoolOptions,
 ) {
-	const { db, getPool, closePool } = createDatabase(getDatabaseUrl, options)
+	const { db, closePool } = createDatabase(getDatabaseUrl, options)
 
 	async function migrate(migrationsDir: string): Promise<void> {
 		const result = await runMigrations(db, migrationsDir)
@@ -17,5 +17,5 @@ export function bootstrapServiceDb(
 		}
 	}
 
-	return { closePool, db, getPool, migrate }
+	return { closePool, db, migrate }
 }

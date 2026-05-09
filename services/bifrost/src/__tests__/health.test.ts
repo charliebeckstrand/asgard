@@ -16,9 +16,9 @@ vi.mock('vidar/client', () => ({
 }))
 
 vi.mock('../lib/db.js', () => ({
-	getPool: vi.fn().mockReturnValue({
-		query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
-	}),
+	db: {
+		ping: vi.fn().mockResolvedValue(true),
+	},
 }))
 
 import { testClient } from 'hono/testing'
