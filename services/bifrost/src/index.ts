@@ -1,5 +1,3 @@
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
 import { setupLifecycle } from 'grid/server-lifecycle'
 import { configure as configureVidar, reportEvent } from 'vidar/client'
@@ -11,8 +9,7 @@ import { createUserRepository } from './lib/user-repository.js'
 
 const env = environment()
 
-const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'migrations')
-await migrate(migrationsDir)
+await migrate(import.meta.url)
 
 configureVidar({
 	vidarUrl: env.VIDAR_URL,

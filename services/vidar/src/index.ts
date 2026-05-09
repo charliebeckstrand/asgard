@@ -1,7 +1,5 @@
 export type { VidarApp } from './app.js'
 
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
 import { setupLifecycle } from 'grid/server-lifecycle'
 import { createVidarApp } from './app.js'
@@ -11,8 +9,7 @@ import { environment } from './lib/env.js'
 
 const env = environment()
 
-const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'migrations')
-await migrate(migrationsDir)
+await migrate(import.meta.url)
 
 const app = createVidarApp()
 
