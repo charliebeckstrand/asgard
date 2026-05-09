@@ -1,6 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import type { Db } from './db.js'
 import { sql } from './sql.js'
 
@@ -47,15 +46,11 @@ async function readMigrationFiles(migrationsDir: string): Promise<string[]> {
 	return files.filter((f) => f.endsWith('.sql')).sort()
 }
 
-const sagaMigrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'migrations')
-
-export async function runMigrations(db: Db, migrationsDir?: string): Promise<MigrationResult> {
-	const dir = migrationsDir ?? sagaMigrationsDir
-
+export async function runMigrations(db: Db, migrationsDir: string): Promise<MigrationResult> {
 	await ensureSagaSchema(db)
 
 	const applied = new Set((await getAppliedMigrations(db)).map((r) => r.name))
-	const files = await readMigrationFiles(dir)
+	const files = await readMigrationFiles(migrationsDir)
 
 	const result: MigrationResult = { applied: [], skipped: [] }
 
@@ -66,7 +61,7 @@ export async function runMigrations(db: Db, migrationsDir?: string): Promise<Mig
 			continue
 		}
 
-		const content = await readFile(join(dir, file), 'utf-8')
+		const content = await readFile(join(migrationsDir, file), 'utf-8')
 
 		await db.tx(async (tx) => {
 			await tx.exec(sql.raw(content))
