@@ -4,14 +4,13 @@ vi.stubEnv('SESSION_SECRET', MOCK_SECRET)
 vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
 vi.stubEnv('SECRET_KEY', 'test-secret-key-that-is-at-least-32-chars')
 
-const { mockAuthenticateUser, mockRegisterUser, mockVerifyToken, mockGetUserById } = vi.hoisted(
-	() => ({
+const { mockAuthenticateUser, mockRegisterUser, mockVerifyAccessToken, mockGetUserById } =
+	vi.hoisted(() => ({
 		mockAuthenticateUser: vi.fn(),
 		mockRegisterUser: vi.fn(),
-		mockVerifyToken: vi.fn(),
+		mockVerifyAccessToken: vi.fn(),
 		mockGetUserById: vi.fn(),
-	}),
-)
+	}))
 
 import { AuthError } from '../auth/errors.js'
 
@@ -31,7 +30,7 @@ vi.mock('../auth/index.js', async () => {
 })
 
 vi.mock('../auth/jwt.js', () => ({
-	verifyAccessToken: (...args: unknown[]) => mockVerifyToken(...args),
+	verifyAccessToken: (...args: unknown[]) => mockVerifyAccessToken(...args),
 	ACCESS_TOKEN_TTL_SECONDS: 30 * 60,
 	REFRESH_TOKEN_TTL_SECONDS: 7 * 24 * 60 * 60,
 }))
@@ -69,7 +68,7 @@ describe('Auth routes', () => {
 	beforeEach(() => {
 		mockAuthenticateUser.mockReset()
 		mockRegisterUser.mockReset()
-		mockVerifyToken.mockReset()
+		mockVerifyAccessToken.mockReset()
 		mockGetUserById.mockReset()
 	})
 
@@ -238,7 +237,7 @@ describe('Auth routes', () => {
 
 			expect(cookie).toBeDefined()
 
-			mockVerifyToken.mockResolvedValueOnce({ sub: 'user-123', type: 'access' })
+			mockVerifyAccessToken.mockResolvedValueOnce({ sub: 'user-123', type: 'access' })
 
 			const mockUser = {
 				id: 'user-123',
@@ -260,7 +259,7 @@ describe('Auth routes', () => {
 			const body = await res.json()
 
 			expect(body).toEqual(mockUser)
-			expect(mockVerifyToken).toHaveBeenCalledWith('at_test123')
+			expect(mockVerifyAccessToken).toHaveBeenCalledWith('at_test123')
 			expect(mockGetUserById).toHaveBeenCalledWith('user-123')
 		})
 
@@ -279,7 +278,7 @@ describe('Auth routes', () => {
 
 			const cookie = getCookieFromResponse(loginRes)
 
-			mockVerifyToken.mockResolvedValueOnce({ sub: 'user-deleted', type: 'access' })
+			mockVerifyAccessToken.mockResolvedValueOnce({ sub: 'user-deleted', type: 'access' })
 			mockGetUserById.mockResolvedValueOnce(null)
 
 			const res = await app.request('/auth/user', {
