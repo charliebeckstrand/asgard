@@ -47,7 +47,7 @@ export function createUserRepository(): UserRepository {
 			return db.first<User>(
 				sql`
 					UPDATE users
-					SET ${sets}, updated_at = now()
+					${sets}
 					WHERE id = ${id}
 					RETURNING id, email, is_active, is_verified, created_at, updated_at
 				`,

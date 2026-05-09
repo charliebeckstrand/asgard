@@ -1,8 +1,7 @@
-const SECRET_KEY = 'test-secret-key-that-is-at-least-32-chars-long'
+import { signTestAccessToken, signTestRefreshToken } from 'vali/auth'
+import { stubServiceEnv, TEST_SECRET_KEY } from 'vali/env'
 
-vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
-vi.stubEnv('SECRET_KEY', SECRET_KEY)
-vi.stubEnv('CORS_ORIGIN', 'http://localhost:3000')
+stubServiceEnv()
 
 const { mockChatRepo } = vi.hoisted(() => ({
 	mockChatRepo: {
@@ -23,7 +22,6 @@ vi.mock('../lib/db.js', () => ({
 	closePool: vi.fn(),
 }))
 
-import { sign } from 'hono/jwt'
 import { createBragiApp } from '../app.js'
 
 type ErrorResponse = { error: string; message: string; statusCode: number }
@@ -35,22 +33,9 @@ type OpenAPISpec = {
 	components?: { securitySchemes?: Record<string, { type: string; scheme: string }> }
 }
 
-async function makeAccessToken(overrides: Record<string, unknown> = {}): Promise<string> {
-	const now = Math.floor(Date.now() / 1000)
+const TEST_USER = 'user-123'
 
-	return sign(
-		{
-			sub: 'user-123',
-			iss: 'heimdall',
-			type: 'access',
-			iat: now,
-			exp: now + 3600,
-			...overrides,
-		},
-		SECRET_KEY,
-		'HS256',
-	)
-}
+const accessToken = (): Promise<string> => signTestAccessToken(TEST_SECRET_KEY, { sub: TEST_USER })
 
 const app = createBragiApp()
 
@@ -113,11 +98,9 @@ describe('chat routes', () => {
 	})
 
 	it('rejects requests with a token signed by a different key', async () => {
-		const token = await sign(
-			{ sub: 'user-123', iss: 'heimdall', type: 'access' },
-			'a-different-secret-also-32-chars-long',
-			'HS256',
-		)
+		const token = await signTestAccessToken('a-different-secret-also-32-chars-long', {
+			sub: TEST_USER,
+		})
 
 		const res = await app.request('/bragi/chat', {
 			headers: { Authorization: `Bearer ${token}` },
@@ -127,7 +110,7 @@ describe('chat routes', () => {
 	})
 
 	it('rejects refresh tokens', async () => {
-		const token = await makeAccessToken({ type: 'refresh' })
+		const token = await signTestRefreshToken(TEST_SECRET_KEY, { sub: TEST_USER })
 
 		const res = await app.request('/bragi/chat', {
 			headers: { Authorization: `Bearer ${token}` },
@@ -145,7 +128,7 @@ describe('chat routes', () => {
 			},
 		])
 
-		const token = await makeAccessToken()
+		const token = await accessToken()
 
 		const res = await app.request('/bragi/chat', {
 			headers: { Authorization: `Bearer ${token}` },
@@ -153,13 +136,13 @@ describe('chat routes', () => {
 
 		expect(res.status).toBe(200)
 
-		expect(mockChatRepo.getChats).toHaveBeenCalledWith('user-123')
+		expect(mockChatRepo.getChats).toHaveBeenCalledWith(TEST_USER)
 	})
 
 	it('returns 404 when fetching a chat the user does not own', async () => {
 		mockChatRepo.getChatById.mockResolvedValueOnce(null)
 
-		const token = await makeAccessToken()
+		const token = await accessToken()
 
 		const res = await app.request('/bragi/chat/00000000-0000-4000-8000-000000000001', {
 			headers: { Authorization: `Bearer ${token}` },
@@ -177,7 +160,7 @@ describe('chat routes', () => {
 	it('returns 404 when deleting a missing chat', async () => {
 		mockChatRepo.deleteChat.mockResolvedValueOnce(false)
 
-		const token = await makeAccessToken()
+		const token = await accessToken()
 
 		const res = await app.request('/bragi/chat/00000000-0000-4000-8000-000000000001', {
 			method: 'DELETE',
@@ -190,7 +173,7 @@ describe('chat routes', () => {
 	it('returns 204 when deleting an owned chat', async () => {
 		mockChatRepo.deleteChat.mockResolvedValueOnce(true)
 
-		const token = await makeAccessToken()
+		const token = await accessToken()
 
 		const res = await app.request('/bragi/chat/00000000-0000-4000-8000-000000000001', {
 			method: 'DELETE',
@@ -201,7 +184,7 @@ describe('chat routes', () => {
 
 		expect(mockChatRepo.deleteChat).toHaveBeenCalledWith(
 			'00000000-0000-4000-8000-000000000001',
-			'user-123',
+			TEST_USER,
 		)
 	})
 })
