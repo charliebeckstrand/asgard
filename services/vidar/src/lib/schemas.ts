@@ -1,5 +1,5 @@
 import {
-	CheckIpResponseSchema,
+	type CheckIpResponseSchema,
 	createListSchema,
 	IdSchema,
 	IpAddressSchema,
