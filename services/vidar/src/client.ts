@@ -5,17 +5,12 @@ import { HTTPException } from 'hono/http-exception'
 
 import type { VidarApp } from './app.js'
 import { type CircuitBreaker, createCircuitBreaker } from './circuit-breaker.js'
+import type { CheckIpResponse } from './lib/schemas.js'
 import { createTokenBucket } from './rate-limit.js'
 
 interface VidarClientConfig {
 	vidarUrl?: string
 	vidarApiKey?: string
-}
-
-interface BanCheckResult {
-	banned: boolean
-	reason?: string
-	expires_at?: string
 }
 
 let _client: ReturnType<typeof hc<VidarApp>> | null = null
@@ -31,7 +26,7 @@ export function configure(config: VidarClientConfig): void {
 	_breaker = config.vidarUrl ? createCircuitBreaker('vidar') : null
 }
 
-async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
+async function checkIpBan(ip: string): Promise<CheckIpResponse | null> {
 	const client = _client
 	const breaker = _breaker
 
@@ -50,7 +45,7 @@ async function checkIpBan(ip: string): Promise<BanCheckResult | null> {
 
 			if (!res.ok) return null
 
-			return (await res.json()) as BanCheckResult
+			return (await res.json()) as CheckIpResponse
 		})
 	} catch {
 		// Vidar is unreachable or circuit is open — fail open so auth still works

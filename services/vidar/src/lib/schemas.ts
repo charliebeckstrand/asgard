@@ -1,4 +1,17 @@
-import { createListSchema, IdSchema, IpAddressSchema, TimestampSchema } from 'skuld'
+import {
+	BanListSchema,
+	BanSchema,
+	CheckIpResponseSchema,
+	CreateBanSchema,
+	createListSchema,
+	ErrorSchema,
+	IdSchema,
+	IngestEventSchema,
+	IpAddressSchema,
+	MessageSchema,
+	SecurityEventSchema,
+	TimestampSchema,
+} from 'skuld'
 import { z } from 'zod'
 
 export {
@@ -10,7 +23,9 @@ export {
 	IngestEventSchema,
 	MessageSchema,
 	SecurityEventSchema,
-} from 'skuld'
+}
+
+export type CheckIpResponse = z.infer<typeof CheckIpResponseSchema>
 
 export const ThreatSchema = z
 	.object({

@@ -1,5 +1,6 @@
 import { sql } from 'saga'
 import { db } from '../lib/db.js'
+import type { CheckIpResponse } from '../lib/schemas.js'
 
 /** Who created the ban — used in the audit trail. */
 export type BanSource = 'system' | 'manual' | 'vidar'
@@ -14,14 +15,12 @@ export interface BanRow {
 	created_at: string
 }
 
-export async function isIpBanned(
-	ip: string,
-): Promise<{ banned: boolean; reason?: string; expires_at?: string }> {
-	const row = await db.query<BanRow>(
+export async function isIpBanned(ip: string): Promise<CheckIpResponse> {
+	const row = await db.query<Pick<BanRow, 'reason' | 'expires_at'>>(
 		sql`
-			SELECT reason, expires_at 
+			SELECT reason, expires_at
 			FROM vdr_bans
-		 	WHERE ip = ${ip} 
+		 	WHERE ip = ${ip}
 			AND (expires_at IS NULL OR expires_at > now())
 		 	LIMIT 1
 		`,
