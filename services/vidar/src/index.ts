@@ -6,8 +6,10 @@ import { createVidarApp } from './app.js'
 import { cleanExpiredBans } from './handlers/bans.js'
 import { closePool, migrate } from './lib/db.js'
 import { environment } from './lib/env.js'
+import { logger } from './lib/log.js'
 
 const env = environment()
+const log = logger()
 
 await migrate(import.meta.url)
 
@@ -17,7 +19,7 @@ const CLEANUP_INTERVAL_MS = 3_600_000 // 1 hour
 
 const cleanupTimer = setInterval(() => {
 	cleanExpiredBans().catch((err) => {
-		console.error('[vidar] Failed to clean expired bans:', err)
+		log.error({ err }, 'failed to clean expired bans')
 	})
 }, CLEANUP_INTERVAL_MS)
 
@@ -27,8 +29,7 @@ const server = serve(
 		port: env.PORT,
 	},
 	(info) => {
-		console.log(`Vidar running on http://localhost:${info.port}`)
-		console.log(`API docs available at http://localhost:${info.port}/vidar/docs`)
+		log.info({ port: info.port, docs: '/vidar/docs' }, 'vidar listening')
 	},
 )
 

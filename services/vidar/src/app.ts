@@ -1,6 +1,7 @@
 import { createApp } from 'grid'
 
 import { environment } from './lib/env.js'
+import { logger } from './lib/log.js'
 import { apiKeyAuth } from './middleware/api-key.js'
 import { analyze } from './routes/analyze.js'
 import { bans } from './routes/bans.js'
@@ -22,6 +23,7 @@ export function createVidarApp() {
 		title: 'Vidar',
 		description: '',
 		port: env.PORT,
+		logger: logger(),
 	})
 
 	const auth = apiKeyAuth()
