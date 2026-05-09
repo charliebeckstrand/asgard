@@ -22,7 +22,6 @@ configureVidar({
 configure({
 	userRepository: createUserRepository(),
 	secretKey: env.SECRET_KEY,
-	apiKey: env.HEIMDALL_API_KEY,
 	onSecurityEvent: (event) => reportEvent(event.type, event.ip, event.details ?? {}, 'heimdall'),
 })
 

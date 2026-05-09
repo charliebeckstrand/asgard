@@ -1,10 +1,9 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { validationHook } from 'grid'
+import { HttpError, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import { EmailSchema, ErrorSchema, LoginPasswordSchema, PasswordSchema } from 'skuld'
-import { authenticateUser, getConfig } from '../auth/index.js'
-import { verifyToken } from '../auth/jwt.js'
-import { handleRegisterUser } from '../handlers/register.js'
+import { EmailSchema, ErrorSchema, LoginPasswordSchema, MessageSchema, PasswordSchema } from 'skuld'
+import { authenticateUser, getConfig, registerUser } from '../auth/index.js'
+import { ACCESS_TOKEN_TTL_SECONDS, verifyToken } from '../auth/jwt.js'
 import { environment } from '../lib/env.js'
 import {
 	clearSessionCookie,
@@ -59,8 +58,6 @@ const RegisterResponseSchema = z
 		email: z.string(),
 	})
 	.openapi('RegisterResponse')
-
-const MessageSchema = z.object({ message: z.string() }).openapi('AuthMessage')
 
 const loginRoute = createRoute({
 	method: 'post',
@@ -171,10 +168,6 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 	.openapi(loginRoute, async (c) => {
 		const env = environment()
 
-		if (!env.SESSION_SECRET) {
-			throw new Error('SESSION_SECRET is not configured')
-		}
-
 		const { email, password } = c.req.valid('json')
 
 		const ip = getIpAddress(c)
@@ -184,7 +177,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 		const sessionData: SessionData = {
 			accessToken: tokens.access_token,
 			refreshToken: tokens.refresh_token,
-			expiresAt: Math.floor(Date.now() / 1000) + 30 * 60,
+			expiresAt: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS,
 		}
 
 		await setSessionCookie(c, sessionData, env.SESSION_SECRET)
@@ -206,7 +199,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 		const session = c.get('session')
 
 		if (!session) {
-			return c.json({ error: 'Unauthorized', message: 'Not authenticated', statusCode: 401 }, 401)
+			throw new HttpError(401, 'Not authenticated', 'Unauthorized')
 		}
 
 		c.header('Cache-Control', 'private, max-age=60')
@@ -223,17 +216,21 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 		const session = c.get('session')
 
 		if (!session) {
-			return c.json({ error: 'Unauthorized', message: 'Not authenticated', statusCode: 401 }, 401)
+			throw new HttpError(401, 'Not authenticated', 'Unauthorized')
 		}
 
 		const payload = await verifyToken(session.accessToken)
 
+		if (typeof payload.sub !== 'string') {
+			throw new HttpError(401, 'Not authenticated', 'Unauthorized')
+		}
+
 		const { userRepository } = getConfig()
 
-		const user = await userRepository.getUserById(payload.sub as string)
+		const user = await userRepository.getUserById(payload.sub)
 
 		if (!user) {
-			return c.json({ error: 'Unauthorized', message: 'Not authenticated', statusCode: 401 }, 401)
+			throw new HttpError(401, 'Not authenticated', 'Unauthorized')
 		}
 
 		return c.json(user, 200)
@@ -243,5 +240,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 
 		const ip = getIpAddress(c)
 
-		return handleRegisterUser(c, email, password, ip)
+		const user = await registerUser(email, password, ip)
+
+		return c.json({ id: user.id, email: user.email }, 201)
 	})

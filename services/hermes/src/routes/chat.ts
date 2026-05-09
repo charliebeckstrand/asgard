@@ -1,11 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { validationHook } from 'grid'
+import { HttpError, validationHook } from 'grid'
 import { streamSSE } from 'hono/streaming'
 import { ErrorSchema } from 'skuld'
-import { verifyToken } from '../auth/jwt.js'
 import { createChatRepository } from '../lib/chat-repository.js'
-import { requireSession, type SessionEnv } from '../middleware/session.js'
+import { type AuthEnv, requireAuth } from '../middleware/auth.js'
 
 const chatRepository = createChatRepository()
 
@@ -51,6 +50,7 @@ const listChatsRoute = createRoute({
 	method: 'get',
 	path: '/',
 	tags: ['Chat'],
+	security: [{ Bearer: [] }],
 	summary: 'List all chats',
 	responses: {
 		200: {
@@ -64,6 +64,7 @@ const getChatRoute = createRoute({
 	method: 'get',
 	path: '/{id}',
 	tags: ['Chat'],
+	security: [{ Bearer: [] }],
 	summary: 'Get a chat with messages',
 	request: {
 		params: ChatIdParamSchema,
@@ -84,6 +85,7 @@ const postMessageRoute = createRoute({
 	method: 'post',
 	path: '/{id}',
 	tags: ['Chat'],
+	security: [{ Bearer: [] }],
 	summary: 'Send a message and stream the agent response',
 	request: {
 		params: ChatIdParamSchema,
@@ -108,6 +110,7 @@ const deleteChatRoute = createRoute({
 	method: 'delete',
 	path: '/{id}',
 	tags: ['Chat'],
+	security: [{ Bearer: [] }],
 	summary: 'Delete a chat',
 	request: {
 		params: ChatIdParamSchema,
@@ -123,24 +126,12 @@ const deleteChatRoute = createRoute({
 	},
 })
 
-async function getUserId(c: {
-	get: (key: 'session') => { accessToken: string } | null
-}): Promise<string> {
-	const session = c.get('session')
+const chatRoutes = new OpenAPIHono<AuthEnv>({ defaultHook: validationHook })
 
-	if (!session) throw new Error('No session')
-
-	const payload = await verifyToken(session.accessToken)
-
-	return payload.sub as string
-}
-
-const chatRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
-
-chatRoutes.use('*', requireSession())
+chatRoutes.use('*', requireAuth())
 
 chatRoutes.openapi(listChatsRoute, async (c) => {
-	const userId = await getUserId(c)
+	const userId = c.get('userId')
 
 	const chats = await chatRepository.getChats(userId)
 
@@ -149,12 +140,12 @@ chatRoutes.openapi(listChatsRoute, async (c) => {
 
 chatRoutes.openapi(getChatRoute, async (c) => {
 	const { id } = c.req.valid('param')
-	const userId = await getUserId(c)
+	const userId = c.get('userId')
 
 	const chat = await chatRepository.getChatById(id, userId)
 
 	if (!chat) {
-		return c.json({ error: 'Not Found', message: 'Chat not found', statusCode: 404 }, 404)
+		throw new HttpError(404, 'Chat not found', 'Not Found')
 	}
 
 	return c.json(chat, 200)
@@ -163,7 +154,7 @@ chatRoutes.openapi(getChatRoute, async (c) => {
 chatRoutes.openapi(postMessageRoute, async (c) => {
 	const { id: chatId } = c.req.valid('param')
 	const { content } = c.req.valid('json')
-	const userId = await getUserId(c)
+	const userId = c.get('userId')
 
 	const existingChat = await chatRepository.getChatById(chatId, userId)
 
@@ -213,12 +204,12 @@ chatRoutes.openapi(postMessageRoute, async (c) => {
 
 chatRoutes.openapi(deleteChatRoute, async (c) => {
 	const { id } = c.req.valid('param')
-	const userId = await getUserId(c)
+	const userId = c.get('userId')
 
 	const deleted = await chatRepository.deleteChat(id, userId)
 
 	if (!deleted) {
-		return c.json({ error: 'Not Found', message: 'Chat not found', statusCode: 404 }, 404)
+		throw new HttpError(404, 'Chat not found', 'Not Found')
 	}
 
 	return c.body(null, 204)

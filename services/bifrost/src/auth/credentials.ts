@@ -1,32 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import { hash, verify } from '@node-rs/argon2'
-import { HttpError } from 'grid'
 import { getConfig } from './config.js'
+import { AuthError } from './errors.js'
 import { signToken, verifyToken } from './jwt.js'
 import type { UserRow } from './types.js'
+
+export { AuthError } from './errors.js'
 
 export interface TokenPair {
 	access_token: string
 	refresh_token: string
 	token_type: 'bearer'
-}
-
-const AUTH_STATUS = {
-	invalid_credentials: 401,
-	account_inactive: 403,
-	email_exists: 409,
-	invalid_token: 401,
-} as const
-
-type AuthErrorCode = keyof typeof AUTH_STATUS
-
-export class AuthError extends HttpError {
-	constructor(
-		public readonly code: AuthErrorCode,
-		message: string,
-	) {
-		super(AUTH_STATUS[code], message, 'AuthError')
-	}
 }
 
 // Pre-compute a dummy hash for timing-safe login.

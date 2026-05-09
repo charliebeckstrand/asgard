@@ -1,7 +1,8 @@
+import { HttpError } from 'grid'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
-import { HTTPException } from 'hono/http-exception'
 import { refreshTokenPair } from '../auth/index.js'
+import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from '../auth/jwt.js'
 import { environment } from '../lib/env.js'
 
 export type SessionData = {
@@ -20,10 +21,7 @@ const COOKIE_NAME = 'bifrost_session'
 
 const REFRESH_BUFFER_SECONDS = 30
 
-/**
- * Encodes session data into a base64 cookie value.
- * Uses a signed HMAC to prevent tampering.
- */
+// HMAC signature prevents tampering with the cookie value.
 async function encodeSession(data: SessionData, secret: string): Promise<string> {
 	const payload = JSON.stringify(data)
 
@@ -44,10 +42,7 @@ async function encodeSession(data: SessionData, secret: string): Promise<string>
 	return btoa(JSON.stringify({ payload, sig }))
 }
 
-/**
- * Decodes and verifies a session cookie value.
- * Returns null if the cookie is missing, malformed, or tampered with.
- */
+// Returns null on any decode/verify failure so callers can fall back to "no session".
 async function decodeSession(cookie: string, secret: string): Promise<SessionData | null> {
 	try {
 		const { payload, sig } = JSON.parse(atob(cookie)) as { payload: string; sig: string }
@@ -86,7 +81,7 @@ async function refreshAccessToken(sessionData: SessionData): Promise<SessionData
 			return {
 				accessToken: tokens.access_token,
 				refreshToken: tokens.refresh_token,
-				expiresAt: Math.floor(Date.now() / 1000) + 30 * 60,
+				expiresAt: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS,
 			}
 		} catch {
 			return null
@@ -114,7 +109,7 @@ export async function setSessionCookie(
 		secure: true,
 		sameSite: 'Lax',
 		path: '/',
-		maxAge: 60 * 60 * 24 * 7,
+		maxAge: REFRESH_TOKEN_TTL_SECONDS,
 	})
 }
 
@@ -122,19 +117,9 @@ export function clearSessionCookie(c: Context): void {
 	deleteCookie(c, COOKIE_NAME, { path: '/' })
 }
 
-/**
- * Session middleware reads the session cookie, refreshes the access token
- * if needed, and sets `c.get("session")` with the current session data.
- */
 export function session(): MiddlewareHandler<SessionEnv> {
 	return async (c: Context<SessionEnv>, next) => {
 		const env = environment()
-
-		if (!env.SESSION_SECRET) {
-			c.set('session', null)
-
-			return next()
-		}
 
 		const cookie = getCookie(c, COOKIE_NAME)
 
@@ -154,7 +139,6 @@ export function session(): MiddlewareHandler<SessionEnv> {
 			return next()
 		}
 
-		// Refresh if approaching expiry (30s buffer)
 		const now = Math.floor(Date.now() / 1000)
 
 		if (sessionData.expiresAt - now < REFRESH_BUFFER_SECONDS) {
@@ -179,17 +163,12 @@ export function session(): MiddlewareHandler<SessionEnv> {
 	}
 }
 
-/**
- * Requires an active session. Use after `session()` middleware.
- * For routes that need a valid Bearer token from the session,
- * this injects the Authorization header.
- */
 export function requireSession(): MiddlewareHandler<SessionEnv> {
 	return async (c: Context<SessionEnv>, next) => {
 		const sessionData = c.get('session')
 
 		if (!sessionData) {
-			throw new HTTPException(401, { message: 'Not authenticated' })
+			throw new HttpError(401, 'Not authenticated', 'Unauthorized')
 		}
 
 		return next()

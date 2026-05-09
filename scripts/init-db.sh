@@ -9,4 +9,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     DO $$ BEGIN CREATE ROLE vidar WITH LOGIN PASSWORD 'vidar'; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
     SELECT 'CREATE DATABASE vidar OWNER vidar' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vidar')\gexec
+
+    DO $$ BEGIN CREATE ROLE hermes WITH LOGIN PASSWORD 'hermes'; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+    SELECT 'CREATE DATABASE hermes OWNER hermes' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'hermes')\gexec
 EOSQL
