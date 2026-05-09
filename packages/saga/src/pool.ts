@@ -29,7 +29,3 @@ export function createPool(databaseUrl: string, options?: PoolOptions): Pool {
 		ssl: requiresSsl ? { rejectUnauthorized: false } : false,
 	})
 }
-
-export async function closePool(pool: Pool): Promise<void> {
-	await pool.end()
-}

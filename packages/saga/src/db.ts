@@ -23,19 +23,22 @@ export interface Queryable {
 export interface Db extends Queryable {
 	tx<T>(fn: (tx: Queryable) => Promise<T>): Promise<T>
 	ping(): Promise<boolean>
-	pool: Pool
+}
+
+function toConfig(fragment: SqlFragment): { text: string; values: unknown[] } {
+	return { text: fragment.text, values: [...fragment.values] }
 }
 
 function createQueryable(executor: { query: Pool['query'] | PoolClient['query'] }): Queryable {
 	return {
 		async query<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null> {
-			const { rows } = await executor.query<T>(fragment as never)
+			const { rows } = await executor.query<T>(toConfig(fragment))
 
 			return rows[0] ?? null
 		},
 
 		async get<T extends QueryResultRow>(fragment: SqlFragment): Promise<T> {
-			const { rows } = await executor.query<T>(fragment as never)
+			const { rows } = await executor.query<T>(toConfig(fragment))
 
 			if (rows.length === 0) {
 				throw new NoRowsError(fragment.text)
@@ -45,19 +48,19 @@ function createQueryable(executor: { query: Pool['query'] | PoolClient['query'] 
 		},
 
 		async many<T extends QueryResultRow>(fragment: SqlFragment): Promise<T[]> {
-			const { rows } = await executor.query<T>(fragment as never)
+			const { rows } = await executor.query<T>(toConfig(fragment))
 
 			return rows
 		},
 
 		async exec(fragment: SqlFragment): Promise<number> {
-			const { rowCount } = await executor.query(fragment as never)
+			const { rowCount } = await executor.query(toConfig(fragment))
 
 			return rowCount ?? 0
 		},
 
 		async val<T>(fragment: SqlFragment): Promise<T> {
-			const { rows } = await executor.query<Record<string, T>>(fragment as never)
+			const { rows } = await executor.query<Record<string, T>>(toConfig(fragment))
 
 			if (rows.length === 0) {
 				throw new NoRowsError(fragment.text)
@@ -76,7 +79,6 @@ export function createDatabaseClient(pool: Pool): Db {
 
 	return {
 		...queryable,
-		pool,
 
 		async ping(): Promise<boolean> {
 			try {
@@ -112,22 +114,26 @@ export function createDatabaseClient(pool: Pool): Db {
 	}
 }
 
-export function createDatabase(getDatabaseUrl: () => string, options?: PoolOptions) {
-	let pool: Pool | null = null
-	let client: Db | null = null
+interface State {
+	pool: Pool
+	client: Db
+}
 
-	const init = (): Db => {
-		if (!client) {
-			pool = createPool(getDatabaseUrl(), options)
-			client = createDatabaseClient(pool)
+export function createDatabase(getDatabaseUrl: () => string, options?: PoolOptions) {
+	let state: State | null = null
+
+	const init = (): State => {
+		if (!state) {
+			const pool = createPool(getDatabaseUrl(), options)
+			state = { pool, client: createDatabaseClient(pool) }
 		}
 
-		return client
+		return state
 	}
 
 	const db = new Proxy({} as Db, {
 		get(_, prop) {
-			return init()[prop as keyof Db]
+			return init().client[prop as keyof Db]
 		},
 	})
 
@@ -139,11 +145,10 @@ export function createDatabase(getDatabaseUrl: () => string, options?: PoolOptio
 		},
 
 		async closePool() {
-			if (pool) {
-				await pool.end()
+			if (state) {
+				await state.pool.end()
 
-				pool = null
-				client = null
+				state = null
 			}
 		},
 	}

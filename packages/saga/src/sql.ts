@@ -8,6 +8,10 @@ export interface SqlFragment {
 	readonly values: unknown[]
 }
 
+function fragment(text: string, values: unknown[]): SqlFragment {
+	return { [SQL_FRAGMENT]: true, text, values }
+}
+
 function escapeIdentifier(name: string): string {
 	return Client.prototype.escapeIdentifier.call(null as never, name)
 }
@@ -23,21 +27,7 @@ function reNumber(text: string, offset: number): string {
 }
 
 function normalizeWhitespace(text: string): string {
-	const lines = text.split('\n')
-
-	while (lines[0]?.trim() === '') {
-		lines.shift()
-	}
-
-	while (lines.at(-1)?.trim() === '') {
-		lines.pop()
-	}
-
-	if (lines.length === 0) {
-		return ''
-	}
-
-	return lines.map((line) => line.trim()).join(' ')
+	return text.replace(/\s+/g, ' ').trim()
 }
 
 function sql(strings: TemplateStringsArray, ...params: unknown[]): SqlFragment {
@@ -63,7 +53,7 @@ function sql(strings: TemplateStringsArray, ...params: unknown[]): SqlFragment {
 		}
 	}
 
-	return { [SQL_FRAGMENT]: true, text: normalizeWhitespace(textParts.join('')), values }
+	return fragment(normalizeWhitespace(textParts.join('')), values)
 }
 
 /**
@@ -72,12 +62,12 @@ function sql(strings: TemplateStringsArray, ...params: unknown[]): SqlFragment {
  * trusted SQL — never pass user input.
  */
 sql.raw = function raw(value: string): SqlFragment {
-	return { [SQL_FRAGMENT]: true, text: value, values: [] }
+	return fragment(value, [])
 }
 
 sql.join = function join(fragments: SqlFragment[], separator = ', '): SqlFragment {
 	if (fragments.length === 0) {
-		return { [SQL_FRAGMENT]: true, text: '', values: [] }
+		return fragment('', [])
 	}
 
 	const textParts: string[] = []
@@ -94,21 +84,21 @@ sql.join = function join(fragments: SqlFragment[], separator = ', '): SqlFragmen
 		values.push(...fragments[i].values)
 	}
 
-	return { [SQL_FRAGMENT]: true, text: textParts.join(''), values }
+	return fragment(textParts.join(''), values)
 }
 
 sql.json = function json(value: unknown): SqlFragment {
-	return { [SQL_FRAGMENT]: true, text: '$1', values: [JSON.stringify(value)] }
+	return fragment('$1', [JSON.stringify(value)])
 }
 
 sql.and = function and(conditions: SqlFragment[]): SqlFragment {
 	if (conditions.length === 0) {
-		return { [SQL_FRAGMENT]: true, text: '', values: [] }
+		return fragment('', [])
 	}
 
 	const joined = sql.join(conditions, ' AND ')
 
-	return { [SQL_FRAGMENT]: true, text: `WHERE ${joined.text}`, values: joined.values }
+	return fragment(`WHERE ${joined.text}`, joined.values)
 }
 
 sql.values = function values(rows: unknown[][]): SqlFragment {
@@ -132,17 +122,17 @@ sql.values = function values(rows: unknown[][]): SqlFragment {
 		textParts.push(`(${placeholders.join(', ')})`)
 	}
 
-	return { [SQL_FRAGMENT]: true, text: textParts.join(', '), values: allValues }
+	return fragment(textParts.join(', '), allValues)
 }
 
 sql.or = function or(conditions: SqlFragment[]): SqlFragment {
 	if (conditions.length === 0) {
-		return { [SQL_FRAGMENT]: true, text: '', values: [] }
+		return fragment('', [])
 	}
 
 	const joined = sql.join(conditions, ' OR ')
 
-	return { [SQL_FRAGMENT]: true, text: `(${joined.text})`, values: joined.values }
+	return fragment(`(${joined.text})`, joined.values)
 }
 
 sql.set = function set(obj: Record<string, unknown>): SqlFragment {
@@ -168,11 +158,7 @@ sql.insert = function insert(table: string, data: Record<string, unknown>): SqlF
 
 	const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ')
 
-	return {
-		[SQL_FRAGMENT]: true,
-		text: `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`,
-		values: Object.values(data),
-	}
+	return fragment(`INSERT INTO ${table} (${columns}) VALUES (${placeholders})`, Object.values(data))
 }
 
 export { sql }
