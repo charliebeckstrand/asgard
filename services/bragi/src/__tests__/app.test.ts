@@ -24,7 +24,7 @@ vi.mock('../lib/db.js', () => ({
 }))
 
 import { sign } from 'hono/jwt'
-import { createHermesApp } from '../app.js'
+import { createBragiApp } from '../app.js'
 
 type ErrorResponse = { error: string; message: string; statusCode: number }
 
@@ -52,27 +52,27 @@ async function makeAccessToken(overrides: Record<string, unknown> = {}): Promise
 	)
 }
 
-const app = createHermesApp()
+const app = createBragiApp()
 
 beforeEach(() => {
 	vi.clearAllMocks()
 })
 
 describe('service metadata', () => {
-	it('GET /hermes returns service metadata', async () => {
-		const res = await app.request('/hermes')
+	it('GET /bragi returns service metadata', async () => {
+		const res = await app.request('/bragi')
 
 		expect(res.status).toBe(200)
 
 		const body = (await res.json()) as { service: string; openApi: string; docs: string }
 
-		expect(body.service).toBe('hermes')
-		expect(body.openApi).toBe('/hermes/openapi.json')
-		expect(body.docs).toBe('/hermes/docs')
+		expect(body.service).toBe('bragi')
+		expect(body.openApi).toBe('/bragi/openapi.json')
+		expect(body.docs).toBe('/bragi/docs')
 	})
 
-	it('GET /hermes/health returns healthy when DB ping succeeds', async () => {
-		const res = await app.request('/hermes/health')
+	it('GET /bragi/health returns healthy when DB ping succeeds', async () => {
+		const res = await app.request('/bragi/health')
 
 		expect(res.status).toBe(200)
 
@@ -88,13 +88,13 @@ describe('service metadata', () => {
 
 describe('OpenAPI', () => {
 	it('exposes Bearer security scheme', async () => {
-		const res = await app.request('/hermes/openapi.json')
+		const res = await app.request('/bragi/openapi.json')
 
 		expect(res.status).toBe(200)
 
 		const spec = (await res.json()) as OpenAPISpec
 
-		expect(spec.info.title).toBe('Hermes')
+		expect(spec.info.title).toBe('Bragi')
 		expect(spec.components?.securitySchemes?.Bearer).toEqual({
 			type: 'http',
 			scheme: 'bearer',
@@ -105,7 +105,7 @@ describe('OpenAPI', () => {
 
 describe('chat routes', () => {
 	it('rejects requests without a Bearer token', async () => {
-		const res = await app.request('/hermes/chat')
+		const res = await app.request('/bragi/chat')
 
 		expect(res.status).toBe(401)
 	})
@@ -117,7 +117,7 @@ describe('chat routes', () => {
 			'HS256',
 		)
 
-		const res = await app.request('/hermes/chat', {
+		const res = await app.request('/bragi/chat', {
 			headers: { Authorization: `Bearer ${token}` },
 		})
 
@@ -127,7 +127,7 @@ describe('chat routes', () => {
 	it('rejects refresh tokens', async () => {
 		const token = await makeAccessToken({ type: 'refresh' })
 
-		const res = await app.request('/hermes/chat', {
+		const res = await app.request('/bragi/chat', {
 			headers: { Authorization: `Bearer ${token}` },
 		})
 
@@ -145,7 +145,7 @@ describe('chat routes', () => {
 
 		const token = await makeAccessToken()
 
-		const res = await app.request('/hermes/chat', {
+		const res = await app.request('/bragi/chat', {
 			headers: { Authorization: `Bearer ${token}` },
 		})
 
@@ -158,7 +158,7 @@ describe('chat routes', () => {
 
 		const token = await makeAccessToken()
 
-		const res = await app.request('/hermes/chat/00000000-0000-4000-8000-000000000001', {
+		const res = await app.request('/bragi/chat/00000000-0000-4000-8000-000000000001', {
 			headers: { Authorization: `Bearer ${token}` },
 		})
 
@@ -175,7 +175,7 @@ describe('chat routes', () => {
 
 		const token = await makeAccessToken()
 
-		const res = await app.request('/hermes/chat/00000000-0000-4000-8000-000000000001', {
+		const res = await app.request('/bragi/chat/00000000-0000-4000-8000-000000000001', {
 			method: 'DELETE',
 			headers: { Authorization: `Bearer ${token}` },
 		})
@@ -188,7 +188,7 @@ describe('chat routes', () => {
 
 		const token = await makeAccessToken()
 
-		const res = await app.request('/hermes/chat/00000000-0000-4000-8000-000000000001', {
+		const res = await app.request('/bragi/chat/00000000-0000-4000-8000-000000000001', {
 			method: 'DELETE',
 			headers: { Authorization: `Bearer ${token}` },
 		})
@@ -203,7 +203,7 @@ describe('chat routes', () => {
 
 describe('error handling', () => {
 	it('returns 404 for unknown routes', async () => {
-		const res = await app.request('/hermes/unknown')
+		const res = await app.request('/bragi/unknown')
 
 		expect(res.status).toBe(404)
 

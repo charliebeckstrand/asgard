@@ -3,6 +3,7 @@ import { csrf } from 'hono/csrf'
 import { createVidar } from 'vidar/client'
 
 import { environment } from './lib/env.js'
+import { logger } from './lib/log.js'
 import { session } from './middleware/session.js'
 import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
@@ -17,6 +18,7 @@ export function createBifrostApp() {
 		description: '',
 		port: env.PORT,
 		cors: { origin: env.CORS_ORIGIN, credentials: true },
+		logger: logger(),
 	})
 
 	app.use('*', session())

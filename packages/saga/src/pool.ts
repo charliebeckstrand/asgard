@@ -1,9 +1,15 @@
 import { Pool } from 'pg'
+import type { Logger } from './log/index.js'
 
 export interface PoolOptions {
 	max?: number
 	idleTimeoutMillis?: number
 	connectionTimeoutMillis?: number
+	/**
+	 * Structured logger for pool-internal events. When set, idle-client
+	 * errors are reported here; otherwise they fall back to console.error.
+	 */
+	logger?: Logger
 }
 
 /**
@@ -34,7 +40,11 @@ export function createPool(databaseUrl: string, options?: PoolOptions): Pool {
 	// Idle clients can disconnect (network blip, DB restart). Without a listener,
 	// node-postgres surfaces the error as an uncaught exception and crashes.
 	pool.on('error', (err) => {
-		console.error('[saga] idle client error:', err.message)
+		if (options?.logger) {
+			options.logger.error({ err }, 'idle client error')
+		} else {
+			console.error('[saga] idle client error:', err.message)
+		}
 	})
 
 	return pool

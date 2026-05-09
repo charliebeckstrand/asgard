@@ -1,5 +1,5 @@
 {
-	"name": "hermes",
+	"name": "bragi",
 	"version": "0.1.0",
 	"description": "Chat and conversation service",
 	"type": "module",
@@ -10,7 +10,7 @@
 		}
 	},
 	"scripts": {
-		"env:init": "grid-sync-env --services=hermes",
+		"env:init": "grid-sync-env --services=bragi",
 		"dev": "tsx watch --env-file=.env src/index.ts",
 		"build": "tsup",
 		"start": "node dist/index.js",

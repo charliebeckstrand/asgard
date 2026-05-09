@@ -1,6 +1,7 @@
 import { sql } from 'saga'
 import { db } from '../lib/db.js'
 import { emitEvent } from '../lib/emitter.js'
+import { logger } from '../lib/log.js'
 import { evaluateRules } from './rules.js'
 
 export interface SecurityEventRow {
@@ -30,7 +31,7 @@ export async function ingestEvent(event: {
 
 	// Evaluate rules asynchronously — don't block the response
 	evaluateRules(event.ip, event.event_type).catch((err) => {
-		console.error(`[vidar] Rule evaluation failed for IP ${event.ip}:`, err)
+		logger().error({ err, ip: event.ip }, 'rule evaluation failed')
 	})
 
 	return row

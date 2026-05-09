@@ -37,7 +37,7 @@ beforeEach(() => {
 		deleteUser: vi.fn().mockResolvedValue(true),
 	}
 
-	configure({ userRepository: mockRepo, secretKey: SECRET })
+	configure({ userRepository: mockRepo, keys: { current: SECRET } })
 })
 
 describe('AuthError', () => {
@@ -101,7 +101,7 @@ describe('authenticateUser', () => {
 	it('calls onSecurityEvent on failed login', async () => {
 		const onSecurityEvent = vi.fn()
 
-		configure({ userRepository: mockRepo, secretKey: SECRET, onSecurityEvent })
+		configure({ userRepository: mockRepo, keys: { current: SECRET }, onSecurityEvent })
 
 		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue(null)
 
@@ -175,7 +175,7 @@ describe('registerUser', () => {
 	it('calls onSecurityEvent on registration', async () => {
 		const onSecurityEvent = vi.fn()
 
-		configure({ userRepository: mockRepo, secretKey: SECRET, onSecurityEvent })
+		configure({ userRepository: mockRepo, keys: { current: SECRET }, onSecurityEvent })
 
 		await registerUser('new@example.com', 'password123', '1.2.3.4')
 

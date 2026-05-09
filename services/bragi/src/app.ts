@@ -1,18 +1,20 @@
 import { createApp } from 'grid'
 
 import { environment } from './lib/env.js'
+import { logger } from './lib/log.js'
 import { chatRoutes } from './routes/chat.js'
 import { health } from './routes/health.js'
 
-export function createHermesApp() {
+export function createBragiApp() {
 	const env = environment()
 
 	const app = createApp({
-		basePath: '/hermes',
-		title: 'Hermes',
+		basePath: '/bragi',
+		title: 'Bragi',
 		description: 'Chat and conversation service',
 		port: env.PORT,
 		cors: { origin: env.CORS_ORIGIN },
+		logger: logger(),
 	})
 
 	app.openAPIRegistry.registerComponent('securitySchemes', 'Bearer', {
@@ -21,7 +23,7 @@ export function createHermesApp() {
 		bearerFormat: 'JWT',
 	})
 
-	return app.route('/hermes', health).route('/hermes/chat', chatRoutes)
+	return app.route('/bragi', health).route('/bragi/chat', chatRoutes)
 }
 
-export type HermesApp = ReturnType<typeof createHermesApp>
+export type BragiApp = ReturnType<typeof createBragiApp>

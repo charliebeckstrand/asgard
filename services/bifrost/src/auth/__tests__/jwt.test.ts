@@ -14,7 +14,7 @@ const mockRepo: UserRepository = {
 }
 
 beforeAll(() => {
-	configure({ userRepository: mockRepo, secretKey: SECRET })
+	configure({ userRepository: mockRepo, keys: { current: SECRET } })
 })
 
 describe('signToken', () => {

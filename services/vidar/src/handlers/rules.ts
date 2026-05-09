@@ -1,5 +1,6 @@
 import { sql } from 'saga'
 import { db } from '../lib/db.js'
+import { logger } from '../lib/log.js'
 import { createBan } from './bans.js'
 import { createThreat } from './threats.js'
 
@@ -102,8 +103,14 @@ export async function evaluateRules(ip: string, eventType: string): Promise<void
 				action_taken: `Banned for ${formatDuration(rule.ban_duration_minutes)}`,
 			})
 
-			console.log(
-				`[vidar] Rule "${rule.id}" triggered for IP ${ip} — banned for ${formatDuration(rule.ban_duration_minutes)}`,
+			logger().warn(
+				{
+					ruleId: rule.id,
+					ruleName: rule.name,
+					ip,
+					banDurationMinutes: rule.ban_duration_minutes,
+				},
+				'rule triggered',
 			)
 		}
 	}

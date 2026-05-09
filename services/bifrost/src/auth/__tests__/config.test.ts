@@ -9,6 +9,8 @@ const mockRepo: UserRepository = {
 	deleteUser: vi.fn(),
 }
 
+const KEY = 'a'.repeat(32)
+
 describe('heimdall config', () => {
 	beforeEach(() => {
 		vi.resetModules()
@@ -20,29 +22,54 @@ describe('heimdall config', () => {
 		expect(() => getConfig()).toThrow('Heimdall not configured. Call configure() first.')
 	})
 
-	it('configure succeeds with valid secretKey', async () => {
+	it('configure succeeds with a valid current key', async () => {
 		const { configure, getConfig } = await import('../config.js')
 
 		configure({
 			userRepository: mockRepo,
-			secretKey: 'a'.repeat(32),
+			keys: { current: KEY },
 		})
 
 		const config = getConfig()
 
-		expect(config.secretKey).toBe('a'.repeat(32))
+		expect(config.keys.current).toBe(KEY)
+		expect(config.keys.previous).toBeUndefined()
 		expect(config.userRepository).toBe(mockRepo)
 	})
 
-	it('configure throws if secretKey is too short', async () => {
+	it('configure stores a previous key when provided', async () => {
+		const { configure, getConfig } = await import('../config.js')
+
+		const previous = 'b'.repeat(32)
+
+		configure({
+			userRepository: mockRepo,
+			keys: { current: KEY, previous },
+		})
+
+		expect(getConfig().keys.previous).toBe(previous)
+	})
+
+	it('configure throws if the current key is too short', async () => {
 		const { configure } = await import('../config.js')
 
 		expect(() =>
 			configure({
 				userRepository: mockRepo,
-				secretKey: 'short',
+				keys: { current: 'short' },
 			}),
-		).toThrow('Heimdall secretKey must be at least 32 characters')
+		).toThrow('Heimdall keys.current must be at least 32 characters')
+	})
+
+	it('configure throws if a provided previous key is too short', async () => {
+		const { configure } = await import('../config.js')
+
+		expect(() =>
+			configure({
+				userRepository: mockRepo,
+				keys: { current: KEY, previous: 'short' },
+			}),
+		).toThrow('Heimdall keys.previous must be at least 32 characters when set')
 	})
 
 	it('configure accepts optional fields', async () => {
@@ -52,12 +79,10 @@ describe('heimdall config', () => {
 
 		configure({
 			userRepository: mockRepo,
-			secretKey: 'a'.repeat(32),
+			keys: { current: KEY },
 			onSecurityEvent: onEvent,
 		})
 
-		const config = getConfig()
-
-		expect(config.onSecurityEvent).toBe(onEvent)
+		expect(getConfig().onSecurityEvent).toBe(onEvent)
 	})
 })

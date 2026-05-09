@@ -3,6 +3,7 @@ export {
 	type AccessTokenPayload,
 	InvalidTokenError,
 	type JWTPayload,
+	type JwtKeys,
 	REFRESH_TOKEN_TTL_SECONDS,
 	signToken,
 	TOKEN_ISSUER,

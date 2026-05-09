@@ -2,6 +2,7 @@ import { getIpAddress } from 'grid/middleware'
 import type { MiddlewareHandler } from 'hono'
 import { hc } from 'hono/client'
 import { HTTPException } from 'hono/http-exception'
+import type { Logger } from 'saga/log'
 
 import type { VidarApp } from './app.js'
 import { type CircuitBreaker, createCircuitBreaker } from './circuit-breaker.js'
@@ -11,6 +12,12 @@ import { createTokenBucket } from './rate-limit.js'
 interface VidarClientConfig {
 	vidarUrl?: string
 	vidarApiKey?: string
+	/**
+	 * When set, the circuit breaker reports state transitions through this
+	 * logger instead of console.{warn,info}. Pass the consuming service's
+	 * logger so breaker events share its `service` binding.
+	 */
+	logger?: Logger
 }
 
 type VidarClient = ReturnType<typeof hc<VidarApp>>
@@ -25,7 +32,7 @@ export function configure(config: VidarClientConfig): void {
 			})
 		: null
 
-	_breaker = config.vidarUrl ? createCircuitBreaker('vidar') : null
+	_breaker = config.vidarUrl ? createCircuitBreaker('vidar', { logger: config.logger }) : null
 }
 
 /**
