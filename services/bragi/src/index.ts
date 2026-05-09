@@ -5,8 +5,10 @@ import { setupLifecycle } from 'grid/server-lifecycle'
 import { createBragiApp } from './app.js'
 import { closePool, migrate } from './lib/db.js'
 import { environment } from './lib/env.js'
+import { logger } from './lib/log.js'
 
 const env = environment()
+const log = logger()
 
 await migrate(import.meta.url)
 
@@ -18,8 +20,7 @@ const server = serve(
 		port: env.PORT,
 	},
 	(info) => {
-		console.log(`Bragi running on http://localhost:${info.port}`)
-		console.log(`API docs available at http://localhost:${info.port}/bragi/docs`)
+		log.info({ port: info.port, docs: '/bragi/docs' }, 'bragi listening')
 	},
 )
 
