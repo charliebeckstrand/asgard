@@ -7,7 +7,7 @@ function readFlag(name: string): string | true | undefined {
 	const flag = args.find((a) => a === `--${name}` || a.startsWith(`--${name}=`))
 
 	if (!flag) return undefined
-	
+
 	if (flag === `--${name}`) return true
 
 	return flag.slice(name.length + 3)

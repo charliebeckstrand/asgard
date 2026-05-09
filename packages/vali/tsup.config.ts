@@ -3,7 +3,7 @@ import { defineConfig } from 'tsup'
 export default defineConfig({
 	entry: {
 		fixtures: 'src/fixtures.ts',
-		containers: 'src/containers/index.ts',
+		containers: 'src/containers.ts',
 		config: 'src/config.ts',
 	},
 	format: ['esm'],
