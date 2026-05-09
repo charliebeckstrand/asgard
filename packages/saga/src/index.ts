@@ -12,4 +12,5 @@ export {
 	runMigrations,
 } from './migrate.js'
 export type { PoolOptions } from './pool.js'
+export { bootstrapServiceDb } from './service.js'
 export { type SqlFragment, sql } from './sql.js'

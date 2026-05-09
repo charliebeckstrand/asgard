@@ -1,13 +1,7 @@
-import { createDatabase, runMigrations } from 'saga'
+import { bootstrapServiceDb } from 'saga'
 import { environment } from './env.js'
 
-export const { closePool, db, getPool } = createDatabase(() => environment().DATABASE_URL)
-
-export async function migrate(migrationsDir: string): Promise<void> {
-	await runMigrations(db)
-	const result = await runMigrations(db, migrationsDir)
-
-	if (result.applied.length > 0) {
-		console.log(`[hermes] Applied migrations: ${result.applied.join(', ')}`)
-	}
-}
+export const { closePool, db, getPool, migrate } = bootstrapServiceDb(
+	'hermes',
+	() => environment().DATABASE_URL,
+)

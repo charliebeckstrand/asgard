@@ -10,6 +10,10 @@
 			"types": "./src/index.ts",
 			"default": "./dist/index.js"
 		},
+		"./auth": {
+			"types": "./src/entry/auth.ts",
+			"default": "./dist/auth.js"
+		},
 		"./middleware": {
 			"types": "./src/entry/middleware.ts",
 			"default": "./dist/middleware.js"
