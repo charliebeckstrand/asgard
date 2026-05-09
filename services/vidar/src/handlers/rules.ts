@@ -3,6 +3,8 @@ import { db } from '../lib/db.js'
 import { createBan } from './bans.js'
 import { createThreat } from './threats.js'
 
+export type RuleSeverity = 'low' | 'medium' | 'high'
+
 export interface Rule {
 	id: string
 	name: string
@@ -11,6 +13,7 @@ export interface Rule {
 	threshold: number
 	window_minutes: number
 	ban_duration_minutes: number
+	severity: RuleSeverity
 	enabled: boolean
 	/** For credential stuffing: minimum distinct accounts targeted */
 	distinct_accounts?: number
@@ -25,6 +28,7 @@ const PREDEFINED_RULES: Rule[] = [
 		threshold: 10,
 		window_minutes: 15,
 		ban_duration_minutes: 60,
+		severity: 'medium',
 		enabled: true,
 	},
 	{
@@ -35,6 +39,7 @@ const PREDEFINED_RULES: Rule[] = [
 		threshold: 5,
 		window_minutes: 30,
 		ban_duration_minutes: 1440,
+		severity: 'high',
 		enabled: true,
 	},
 	{
@@ -45,6 +50,7 @@ const PREDEFINED_RULES: Rule[] = [
 		threshold: 20,
 		window_minutes: 10,
 		ban_duration_minutes: 120,
+		severity: 'medium',
 		enabled: true,
 	},
 	{
@@ -55,6 +61,7 @@ const PREDEFINED_RULES: Rule[] = [
 		threshold: 15,
 		window_minutes: 30,
 		ban_duration_minutes: 1440,
+		severity: 'high',
 		enabled: true,
 		distinct_accounts: 10,
 	},
@@ -89,7 +96,7 @@ export async function evaluateRules(ip: string, eventType: string): Promise<void
 
 			await createThreat({
 				threat_type: rule.id,
-				severity: rule.ban_duration_minutes >= 1440 ? 'high' : 'medium',
+				severity: rule.severity,
 				ip,
 				details: { rule_id: rule.id, rule_name: rule.name },
 				action_taken: `Banned for ${formatDuration(rule.ban_duration_minutes)}`,

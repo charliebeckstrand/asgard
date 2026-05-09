@@ -36,6 +36,7 @@ export const RuleSchema = z
 		threshold: z.number(),
 		window_minutes: z.number(),
 		ban_duration_minutes: z.number(),
+		severity: z.enum(['low', 'medium', 'high']),
 		enabled: z.boolean(),
 	})
 	.openapi('Rule')
