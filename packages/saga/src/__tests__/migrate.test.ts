@@ -148,9 +148,23 @@ describe('runMigrations', () => {
 
 		await runMigrations(db, migrationsDir)
 
-		expect(execCalls[0]).toContain('CREATE SCHEMA IF NOT EXISTS saga')
+		expect(execCalls.some((s) => s.includes('CREATE SCHEMA IF NOT EXISTS saga'))).toBe(true)
+		expect(execCalls.some((s) => s.includes('CREATE TABLE IF NOT EXISTS saga.migrations'))).toBe(
+			true,
+		)
+	})
 
-		expect(execCalls[1]).toContain('CREATE TABLE IF NOT EXISTS saga.migrations')
+	it('serializes schema bootstrap under the advisory lock', async () => {
+		const { db, execCalls } = createMockDb({ appliedMigrations: [] })
+
+		await runMigrations(db, migrationsDir)
+
+		const lockIdx = execCalls.findIndex((s) => s.includes('pg_advisory_xact_lock'))
+		const schemaIdx = execCalls.findIndex((s) => s.includes('CREATE SCHEMA IF NOT EXISTS saga'))
+
+		expect(lockIdx).toBeGreaterThanOrEqual(0)
+		expect(schemaIdx).toBeGreaterThanOrEqual(0)
+		expect(lockIdx).toBeLessThan(schemaIdx)
 	})
 
 	it('runs each migration inside a transaction', async () => {
@@ -174,7 +188,8 @@ describe('runMigrations', () => {
 
 		await runMigrations(db, migrationsDir)
 
-		expect(txCalls).toEqual(['tx:start', 'tx:end'])
+		// One tx for schema bootstrap, one per applied migration.
+		expect(txCalls).toEqual(['tx:start', 'tx:end', 'tx:start', 'tx:end'])
 	})
 
 	it('acquires a transactional advisory lock before applying each migration', async () => {

@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { Db } from './db.js'
+import type { Db, Queryable } from './db.js'
 import { sql } from './sql.js'
 
 interface MigrationRecord {
@@ -20,12 +20,12 @@ export interface MigrationResult {
  */
 const MIGRATION_LOCK_KEY = 0x53616761
 
-async function ensureSagaSchema(db: Db): Promise<void> {
-	await db.exec(sql`
+async function ensureSagaSchema(q: Queryable): Promise<void> {
+	await q.exec(sql`
 		CREATE SCHEMA IF NOT EXISTS saga
 	`)
 
-	await db.exec(sql`
+	await q.exec(sql`
 		CREATE TABLE IF NOT EXISTS saga.migrations (
 			id SERIAL PRIMARY KEY,
 			name TEXT NOT NULL UNIQUE,
@@ -49,7 +49,15 @@ async function readMigrationFiles(migrationsDir: string): Promise<string[]> {
 }
 
 export async function runMigrations(db: Db, migrationsDir: string): Promise<MigrationResult> {
-	await ensureSagaSchema(db)
+	// Serialize schema bootstrap under the same advisory lock as per-migration
+	// application. CREATE SCHEMA IF NOT EXISTS doesn't actually serialize at
+	// the pg_namespace catalog level — under concurrent boots two transactions
+	// can both pass the existence check and then race the unique constraint.
+	await db.tx(async (tx) => {
+		await tx.exec(sql`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK_KEY}::bigint)`)
+
+		await ensureSagaSchema(tx)
+	})
 
 	const applied = new Set((await getAppliedMigrations(db)).map((r) => r.name))
 	const files = await readMigrationFiles(migrationsDir)
