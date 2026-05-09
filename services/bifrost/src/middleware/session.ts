@@ -1,6 +1,7 @@
 import { HTTPException } from 'grid'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
+import { sign, verify } from 'hono/jwt'
 import { refreshTokenPair } from '../auth/index.js'
 import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from '../auth/jwt.js'
 import { environment } from '../lib/env.js'
@@ -21,49 +22,20 @@ const COOKIE_NAME = 'bifrost_session'
 
 const REFRESH_BUFFER_SECONDS = 30
 
-// HMAC signature prevents tampering with the cookie value.
 async function encodeSession(data: SessionData, secret: string): Promise<string> {
-	const payload = JSON.stringify(data)
-
-	const encoder = new TextEncoder()
-
-	const key = await crypto.subtle.importKey(
-		'raw',
-		encoder.encode(secret),
-		{ name: 'HMAC', hash: 'SHA-256' },
-		false,
-		['sign'],
-	)
-
-	const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload))
-
-	const sig = btoa(String.fromCharCode(...new Uint8Array(signature)))
-
-	return btoa(JSON.stringify({ payload, sig }))
+	return sign({ ...data }, secret, 'HS256')
 }
 
 // Returns null on any decode/verify failure so callers can fall back to "no session".
 async function decodeSession(cookie: string, secret: string): Promise<SessionData | null> {
 	try {
-		const { payload, sig } = JSON.parse(atob(cookie)) as { payload: string; sig: string }
+		const payload = await verify(cookie, secret, 'HS256')
 
-		const encoder = new TextEncoder()
-
-		const key = await crypto.subtle.importKey(
-			'raw',
-			encoder.encode(secret),
-			{ name: 'HMAC', hash: 'SHA-256' },
-			false,
-			['verify'],
-		)
-
-		const sigBytes = Uint8Array.from(atob(sig), (c) => c.charCodeAt(0))
-
-		const valid = await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(payload))
-
-		if (!valid) return null
-
-		return JSON.parse(payload) as SessionData
+		return {
+			accessToken: payload.accessToken as string,
+			refreshToken: payload.refreshToken as string,
+			expiresAt: payload.expiresAt as number,
+		}
 	} catch {
 		return null
 	}
