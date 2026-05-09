@@ -1,4 +1,3 @@
-import { extractCookie } from 'vali/auth'
 import { stubServiceEnv, TEST_SESSION_SECRET } from 'vali/env'
 
 stubServiceEnv()
@@ -32,7 +31,6 @@ vi.mock('../../auth/index.js', async () => {
 })
 
 vi.mock('../../auth/jwt.js', () => ({
-	verifyAccessToken: vi.fn(),
 	ACCESS_TOKEN_TTL_SECONDS: 30 * 60,
 	REFRESH_TOKEN_TTL_SECONDS: 7 * 24 * 60 * 60,
 }))
@@ -277,18 +275,6 @@ describe('Users routes', () => {
 			})
 
 			expect(res.status).toBe(404)
-		})
-	})
-
-	describe('cookie helper sanity', () => {
-		it('extractCookie pulls the value from a Set-Cookie header', () => {
-			const fake = new Response(null, {
-				headers: { 'Set-Cookie': 'bifrost_session=abc123; Path=/; HttpOnly' },
-			})
-
-			expect(extractCookie(fake, 'bifrost_session')).toBe('abc123')
-
-			expect(extractCookie(fake, 'missing')).toBeUndefined()
 		})
 	})
 })

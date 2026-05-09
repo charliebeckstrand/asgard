@@ -30,7 +30,6 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.unstubAllGlobals()
-	vi.useRealTimers()
 })
 
 describe('createVidar middleware', () => {
@@ -150,12 +149,12 @@ describe('createVidar middleware', () => {
 
 			expect(blocked.status).toBe(429)
 
-			// Wait a tick for the fire-and-forget reportEvent to attempt its fetch.
-			await new Promise((r) => setTimeout(r, 10))
-
-			const reportCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/vidar/events'))
-
-			expect(reportCall).toBeDefined()
+			// Fire-and-forget reportEvent eventually hits /vidar/events.
+			await vi.waitFor(() => {
+				expect(
+					fetchMock.mock.calls.find(([url]) => String(url).includes('/vidar/events')),
+				).toBeDefined()
+			})
 		})
 	})
 })
@@ -184,13 +183,15 @@ describe('reportEvent', () => {
 
 		reportEvent('login_failed', '1.2.3.4', { user_id: 'u1' }, 'bifrost')
 
-		await new Promise((r) => setTimeout(r, 10))
+		const call = await vi.waitFor(() => {
+			const found = fetchMock.mock.calls.find(([url]) => String(url).includes('/vidar/events'))
 
-		const call = fetchMock.mock.calls.find(([url]) => String(url).includes('/vidar/events'))
+			expect(found).toBeDefined()
 
-		expect(call).toBeDefined()
+			return found as [unknown, RequestInit]
+		})
 
-		const [, init] = call as [unknown, RequestInit]
+		const [, init] = call
 
 		expect(init.method).toBe('POST')
 
