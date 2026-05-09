@@ -12,6 +12,7 @@ export function bootstrapServiceDb(
 	async function migrate(migrationsDir: string): Promise<void> {
 		// First call (no dir) bootstraps saga's own migrations table.
 		await runMigrations(db)
+
 		const result = await runMigrations(db, migrationsDir)
 
 		if (result.applied.length > 0) {
