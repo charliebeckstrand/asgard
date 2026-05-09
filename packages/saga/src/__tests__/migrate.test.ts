@@ -21,8 +21,6 @@ function createMockDb(state: { appliedMigrations: string[] }) {
 	}
 
 	const db: Db = {
-		pool: {} as Db['pool'],
-
 		async query() {
 			return null
 		},

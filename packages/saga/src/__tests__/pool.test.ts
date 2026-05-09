@@ -69,6 +69,16 @@ describe('createPool', () => {
 		)
 	})
 
+	it('disables SSL when sslmode=disable', () => {
+		createPool('postgres://user:pass@host:5432/db?sslmode=disable')
+
+		expect(MockedPool).toHaveBeenCalledWith(
+			expect.objectContaining({
+				ssl: false,
+			}),
+		)
+	})
+
 	it('uses default pool options', () => {
 		createPool('postgres://user:pass@host:5432/db')
 

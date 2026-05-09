@@ -15,7 +15,8 @@ export interface PoolOptions {
 export function createPool(databaseUrl: string, options?: PoolOptions): Pool {
 	const url = new URL(databaseUrl)
 
-	const requiresSsl = url.searchParams.has('sslmode')
+	const sslmode = url.searchParams.get('sslmode')
+	const requiresSsl = sslmode !== null && sslmode !== 'disable'
 
 	return new Pool({
 		host: url.hostname,
