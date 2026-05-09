@@ -4,7 +4,7 @@ import { Pool } from 'pg'
 import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
 import { createTempDir } from 'vali/fixtures'
 import { createDatabaseClient } from '../db.js'
-import { getMigrationStatus, runMigrations } from '../migrate.js'
+import { runMigrations } from '../migrate.js'
 
 let testDb: TestDatabase
 let pool: Pool
@@ -132,37 +132,6 @@ describeWithDocker('runMigrations (integration)', () => {
 		const { rows } = await pool.query('SELECT name FROM saga.migrations ORDER BY name')
 
 		expect(rows).toEqual([{ name: '0001_tracked.sql' }])
-
-		await tmp.cleanup()
-	})
-})
-
-describeWithDocker('getMigrationStatus (integration)', () => {
-	beforeEach(async () => {
-		await pool.query('DROP SCHEMA IF EXISTS saga CASCADE')
-	})
-
-	it('returns applied and pending migrations', async () => {
-		const tmp = await createTempDir('saga-migrate-')
-
-		await writeFile(join(tmp.path, '0001_applied.sql'), 'CREATE TABLE status_test (id INT)')
-
-		const db = createDatabaseClient(pool)
-
-		// Apply only the first migration
-		await runMigrations(db, tmp.path)
-
-		// Add a second migration file after the first run
-		await writeFile(
-			join(tmp.path, '0002_pending.sql'),
-			'ALTER TABLE status_test ADD COLUMN val TEXT',
-		)
-
-		const status = await getMigrationStatus(db, tmp.path)
-
-		expect(status.applied).toHaveLength(1)
-		expect(status.applied[0].name).toBe('0001_applied.sql')
-		expect(status.pending).toEqual(['0002_pending.sql'])
 
 		await tmp.cleanup()
 	})

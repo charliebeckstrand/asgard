@@ -48,7 +48,6 @@ export type TestDatabase = {
  * @example
  * ```ts
  * import { startPostgres } from 'vali/containers'
- * import { createDatabaseClient } from 'saga'
  * import { Pool } from 'pg'
  *
  * let testDb: TestDatabase

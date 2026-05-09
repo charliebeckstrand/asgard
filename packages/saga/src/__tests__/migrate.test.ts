@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Db, Queryable } from '../db.js'
-import { getMigrationStatus, runMigrations } from '../migrate.js'
+import { runMigrations } from '../migrate.js'
 
 function createMockDb(state: { appliedMigrations: string[] }) {
 	const execCalls: string[] = []
@@ -29,11 +29,11 @@ function createMockDb(state: { appliedMigrations: string[] }) {
 			throw new Error('Unexpected one call')
 		},
 
-		async many() {
+		async many<T>() {
 			return state.appliedMigrations.map((name) => ({
 				name,
 				applied_at: '2026-01-01T00:00:00Z',
-			}))
+			})) as T[]
 		},
 
 		async exec(fragment) {
@@ -50,6 +50,10 @@ function createMockDb(state: { appliedMigrations: string[] }) {
 			const result = await fn(mockTx)
 
 			return result
+		},
+
+		async ping() {
+			return true
 		},
 	}
 
@@ -171,47 +175,5 @@ describe('runMigrations', () => {
 		await runMigrations(db, migrationsDir)
 
 		expect(txCalls).toEqual(['tx:start', 'tx:end'])
-	})
-})
-
-describe('getMigrationStatus', () => {
-	it('returns applied and pending migrations', async () => {
-		await writeFile(join(migrationsDir, '0001_create_users.sql'), 'CREATE TABLE users (id INT)')
-		await writeFile(join(migrationsDir, '0002_add_email.sql'), 'ALTER TABLE users ADD email TEXT')
-		await writeFile(join(migrationsDir, '0003_add_name.sql'), 'ALTER TABLE users ADD name TEXT')
-
-		const { db } = createMockDb({ appliedMigrations: ['0001_create_users.sql'] })
-
-		const status = await getMigrationStatus(db, migrationsDir)
-
-		expect(status.applied).toEqual([
-			{ name: '0001_create_users.sql', applied_at: '2026-01-01T00:00:00Z' },
-		])
-
-		expect(status.pending).toEqual(['0002_add_email.sql', '0003_add_name.sql'])
-	})
-
-	it('shows all as pending when none applied', async () => {
-		await writeFile(join(migrationsDir, '0001_test.sql'), 'SELECT 1')
-
-		const { db } = createMockDb({ appliedMigrations: [] })
-
-		const status = await getMigrationStatus(db, migrationsDir)
-
-		expect(status.applied).toEqual([])
-
-		expect(status.pending).toEqual(['0001_test.sql'])
-	})
-
-	it('shows none pending when all applied', async () => {
-		await writeFile(join(migrationsDir, '0001_test.sql'), 'SELECT 1')
-
-		const { db } = createMockDb({ appliedMigrations: ['0001_test.sql'] })
-
-		const status = await getMigrationStatus(db, migrationsDir)
-
-		expect(status.applied).toEqual([{ name: '0001_test.sql', applied_at: '2026-01-01T00:00:00Z' }])
-
-		expect(status.pending).toEqual([])
 	})
 })

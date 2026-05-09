@@ -13,11 +13,6 @@ export interface MigrationResult {
 	skipped: string[]
 }
 
-export interface MigrationStatus {
-	applied: MigrationRecord[]
-	pending: string[]
-}
-
 async function ensureSagaSchema(db: Db): Promise<void> {
 	await db.exec(sql`
 		CREATE SCHEMA IF NOT EXISTS saga
@@ -76,16 +71,4 @@ export async function runMigrations(db: Db, migrationsDir: string): Promise<Migr
 	}
 
 	return result
-}
-
-export async function getMigrationStatus(db: Db, migrationsDir: string): Promise<MigrationStatus> {
-	await ensureSagaSchema(db)
-
-	const applied = await getAppliedMigrations(db)
-	const appliedNames = new Set(applied.map((r) => r.name))
-
-	const files = await readMigrationFiles(migrationsDir)
-	const pending = files.filter((f) => !appliedNames.has(f))
-
-	return { applied, pending }
 }

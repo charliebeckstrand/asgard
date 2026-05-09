@@ -42,7 +42,7 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 		it('returns the first row from a real database', async () => {
 			const db = createDatabaseClient(pool)
 
-			const result = await db.first<{ id: number; name: string }>(
+			const result = await db.first<{ id: number; name: string; email: string }>(
 				sql`
 					SELECT *
 					FROM users
