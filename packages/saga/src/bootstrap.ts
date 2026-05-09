@@ -1,3 +1,4 @@
+import { setTimeout } from 'node:timers/promises'
 import { Client } from 'pg'
 
 export interface DatabaseSpec {
@@ -32,7 +33,7 @@ async function connectWithRetry(adminUrl: string, timeoutSeconds: number): Promi
 
 			await client.end().catch(() => {})
 
-			await new Promise((r) => setTimeout(r, 500))
+			await setTimeout(500)
 		}
 	}
 
