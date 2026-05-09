@@ -29,7 +29,6 @@ export interface LoggerOptions {
  */
 export function createLogger(options: LoggerOptions): Logger {
 	const config = {
-		name: options.service,
 		level: options.level ?? 'info',
 		base: { service: options.service },
 		formatters: {
