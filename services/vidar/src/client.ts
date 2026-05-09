@@ -9,7 +9,7 @@ import type { VidarApp } from './app.js'
 import { type CircuitBreaker, createCircuitBreaker } from './circuit-breaker.js'
 import { createTokenBucket } from './rate-limit.js'
 
-interface VidarClientConfig {
+export interface VidarClientConfig {
 	vidarUrl?: string
 	vidarApiKey?: string
 	/**
