@@ -1,4 +1,6 @@
 import { execSync } from 'node:child_process'
+import { readdir, readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql'
 import { vi } from 'vitest'
 
@@ -116,4 +118,49 @@ export async function startPostgresWithEnv(
 
 		await testDb.stop()
 	}
+}
+
+/**
+ * Minimal queryable interface compatible with `pg.Pool`, `pg.Client`, and
+ * saga's `db`. Only `query(sql)` is required — the helper passes raw SQL
+ * strings and ignores the return value.
+ */
+export interface MigrationsClient {
+	query(sql: string): Promise<unknown>
+}
+
+/**
+ * Apply every `*.sql` file in `migrationsDir` to `client`, in lexicographic
+ * order. Designed for fresh test databases — no migration tracking, no
+ * advisory locks. Each file is executed as one statement, so files may
+ * contain multiple statements separated by semicolons.
+ *
+ * Returns the list of applied filenames in the order they were applied.
+ *
+ * @example
+ * ```ts
+ * import { Pool } from 'pg'
+ * import { applyMigrations, startPostgres } from 'vali/containers'
+ *
+ * const testDb = await startPostgres()
+ * const pool = new Pool({ connectionString: testDb.connectionUri })
+ *
+ * await applyMigrations(pool, new URL('../../migrations', import.meta.url).pathname)
+ * ```
+ */
+export async function applyMigrations(
+	client: MigrationsClient,
+	migrationsDir: string,
+): Promise<string[]> {
+	const entries = await readdir(migrationsDir)
+
+	const files = entries.filter((f) => f.endsWith('.sql')).sort()
+
+	for (const file of files) {
+		const sql = await readFile(join(migrationsDir, file), 'utf-8')
+
+		await client.query(sql)
+	}
+
+	return files
 }
