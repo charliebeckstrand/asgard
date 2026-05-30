@@ -8,6 +8,7 @@ import { environment } from './lib/env.js'
 import { logger } from './lib/log.js'
 
 const env = environment()
+
 const log = logger()
 
 await migrate(import.meta.url)
@@ -20,7 +21,10 @@ const server = serve(
 		port: env.PORT,
 	},
 	(info) => {
-		log.info({ port: info.port, docs: '/bragi/docs' }, 'bragi listening')
+		log.info(
+			{ port: info.port, docs: '/bragi/docs' },
+			`bragi listening on http://localhost:${info.port}`,
+		)
 	},
 )
 

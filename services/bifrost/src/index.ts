@@ -33,7 +33,10 @@ const server = serve(
 		port: env.PORT,
 	},
 	(info) => {
-		log.info({ port: info.port, docs: '/api/docs' }, 'bifrost listening')
+		log.info(
+			{ port: info.port, docs: '/api/docs' },
+			`bifrost listening on http://localhost:${info.port}`,
+		)
 	},
 )
 

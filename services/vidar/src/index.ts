@@ -29,7 +29,10 @@ const server = serve(
 		port: env.PORT,
 	},
 	(info) => {
-		log.info({ port: info.port, docs: '/vidar/docs' }, 'vidar listening')
+		log.info(
+			{ port: info.port, docs: '/vidar/docs' },
+			`vidar listening on http://localhost:${info.port}`,
+		)
 	},
 )
 
