@@ -30,6 +30,6 @@
 		"env:rotate": "pnpm --filter grid run sync-env -- --rotate"
 	},
 	"dependencies": {
-		"hlidskjalf": "^0.4.0"
+		"hlidskjalf": "^0.4.1"
 	}
 }
