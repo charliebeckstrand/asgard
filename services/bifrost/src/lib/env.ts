@@ -16,6 +16,19 @@ export const environment = createEnvironment({
 	// Unset disables Vidar; login and register keep their local rate limits.
 	VIDAR_URL: z.string().optional(),
 	VIDAR_API_KEY: z.string().optional(),
+	// Header the edge sets to the client address (`do-connecting-ip` on App Platform).
+	// Unset keys rate limits on the socket address.
+	CLIENT_IP_HEADER: z
+		.string()
+		.optional()
+		.transform((v) => (v && v.length > 0 ? v : undefined)),
+	// Shared with Midgard, whose proxy forwards the browser address in `x-client-ip`.
+	// Unset trusts no proxy.
+	PROXY_SECRET: z
+		.string()
+		.optional()
+		.refine((v) => !v || v.length >= 32, 'PROXY_SECRET must be at least 32 characters when set')
+		.transform((v) => (v && v.length > 0 ? v : undefined)),
 	// Comma-separated, so each consuming app's origin can be allowed.
 	CORS_ORIGIN: z
 		.string()

@@ -1,4 +1,5 @@
 import { createApp } from 'grid'
+import { clientIp } from 'grid/middleware'
 import { csrf } from 'hono/csrf'
 import { createVidar } from 'vidar/client'
 
@@ -21,6 +22,7 @@ export function createBifrostApp() {
 		logger: logger(),
 	})
 
+	app.use('*', clientIp({ header: env.CLIENT_IP_HEADER, proxySecret: env.PROXY_SECRET }))
 	app.use('*', session())
 	app.use('*', csrf({ origin: env.CORS_ORIGIN }))
 
