@@ -42,9 +42,7 @@ The `vali` package centralizes the patterns that used to be duplicated. When you
 | You need… | Import from |
 |---|---|
 | Stub the standard service env (`SECRET_KEY`, `SESSION_SECRET`, `DATABASE_URL`, `CORS_ORIGIN`) | `stubServiceEnv` from `vali/env` |
-| Sign an HS256 access token matching grid's payload | `signTestAccessToken` from `vali/auth` |
 | The same secret you stubbed (so signing and verification line up) | `TEST_SECRET_KEY` / `TEST_SESSION_SECRET` from `vali/env` |
-| Read a single cookie out of a Hono `Response` | `extractCookie` from `vali/auth` |
 | Start a Postgres testcontainer + apply migrations from disk | `startPostgres` + `applyMigrations` from `vali/containers` |
 | Skip a suite when Docker is unavailable | `isDockerAvailable() ? describe : describe.skip` |
 
