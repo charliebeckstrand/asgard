@@ -13,7 +13,12 @@ export const environment = createEnvironment({
 		)
 		.transform((v) => (v && v.length > 0 ? v : undefined)),
 	SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
-	VIDAR_URL: z.string().default('http://localhost:4001'),
+	// Unset disables Vidar; login and register keep their local rate limits.
+	VIDAR_URL: z.string().optional(),
 	VIDAR_API_KEY: z.string().optional(),
-	CORS_ORIGIN: z.string().default('http://localhost:3000'),
+	// Comma-separated, so each consuming app's origin can be allowed.
+	CORS_ORIGIN: z
+		.string()
+		.default('http://localhost:3000')
+		.transform((v) => v.split(',')),
 })
