@@ -2,7 +2,7 @@ version: 2
 
 updates:
   - package-ecosystem: npm
-    directory: /services/bifrost
+    directory: /
     schedule:
       interval: weekly
       day: monday
