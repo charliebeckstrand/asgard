@@ -16,5 +16,9 @@ export const environment = createEnvironment({
 	// Unset disables Vidar; login and register keep their local rate limits.
 	VIDAR_URL: z.string().optional(),
 	VIDAR_API_KEY: z.string().optional(),
-	CORS_ORIGIN: z.string().default('http://localhost:3000'),
+	// Comma-separated, so each consuming app's origin can be allowed.
+	CORS_ORIGIN: z
+		.string()
+		.default('http://localhost:3000')
+		.transform((v) => v.split(',')),
 })
