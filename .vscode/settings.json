@@ -1,5 +1,5 @@
 {
-	"js/ts.tsdk.path": "node_modules/typescript/lib",
+	"typescript.native-preview.tsdk": "./node_modules/typescript",
 	"editor.defaultFormatter": "biomejs.biome",
 	"editor.formatOnSave": true,
 	"editor.codeActionsOnSave": {

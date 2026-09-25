@@ -8,49 +8,8 @@ on:
     workflow_call:
 
 jobs:
-    changes:
-        name: Detect changes
-        runs-on: ubuntu-latest
-        outputs:
-            skuld: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' }}
-            vali: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.vali == 'true' }}
-            grid: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.grid == 'true' || steps.filter.outputs.skuld == 'true' }}
-            bifrost: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' || steps.filter.outputs.grid == 'true' || steps.filter.outputs.bifrost == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.vidar == 'true' }}
-            saga: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' || steps.filter.outputs.saga == 'true' || steps.filter.outputs.vali == 'true' }}
-            vidar: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' || steps.filter.outputs.grid == 'true' || steps.filter.outputs.vidar == 'true' || steps.filter.outputs.saga == 'true' }}
-            bragi: ${{ steps.filter.outputs.shared == 'true' || steps.filter.outputs.skuld == 'true' || steps.filter.outputs.grid == 'true' || steps.filter.outputs.bragi == 'true' || steps.filter.outputs.saga == 'true' }}
-        steps:
-            - uses: actions/checkout@v6
-              with:
-                  persist-credentials: true
-                  fetch-depth: 0
-            - uses: dorny/paths-filter@v3
-              id: filter
-              with:
-                  filters: |
-                      shared:
-                        - '**'
-                        - '!packages/**'
-                        - '!services/**'
-                      skuld:
-                        - 'packages/skuld/**'
-                      bifrost:
-                        - 'services/bifrost/**'
-                      saga:
-                        - 'packages/saga/**'
-                      vali:
-                        - 'packages/vali/**'
-                      grid:
-                        - 'packages/grid/**'
-                      vidar:
-                        - 'services/vidar/**'
-                      bragi:
-                        - 'services/bragi/**'
-
-    skuld:
-        name: Skuld (Schemas)
-        needs: changes
-        if: needs.changes.outputs.skuld == 'true'
+    ci:
+        name: Lint, typecheck, test and build
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v6
@@ -59,126 +18,21 @@ jobs:
 
             - uses: actions/setup-node@v6
               with:
-                  node-version: 22
+                  node-version-file: .nvmrc
                   cache: pnpm
                   cache-dependency-path: pnpm-lock.yaml
 
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test build --filter=skuld
-
-    vali:
-        name: Vali (Testing)
-        needs: changes
-        if: needs.changes.outputs.vali == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v6
-
-            - uses: pnpm/action-setup@v4
-
-            - uses: actions/setup-node@v6
+            # Turbo hashes every task against its inputs and dependencies, so
+            # unchanged packages replay from this cache instead of rerunning.
+            - uses: actions/cache@v4
               with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
+                  path: .turbo/cache
+                  key: turbo-${{ runner.os }}-${{ github.sha }}
+                  restore-keys: turbo-${{ runner.os }}-
 
             - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test build --filter=vali
 
-    grid:
-        name: Grid (Middleware)
-        needs: changes
-        if: needs.changes.outputs.grid == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v6
+            - run: pnpm turbo run lint typecheck test build
 
-            - uses: pnpm/action-setup@v4
-
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test build --filter=grid
-
-    bifrost:
-        name: Bifrost (API)
-        needs: changes
-        if: needs.changes.outputs.bifrost == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v6
-
-            - uses: pnpm/action-setup@v4
-
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test --filter=bifrost
-            - run: pnpm turbo run build --filter=bifrost...
-
-    saga:
-        name: Saga (Database)
-        needs: changes
-        if: needs.changes.outputs.saga == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v6
-
-            - uses: pnpm/action-setup@v4
-
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test build --filter=saga
-
-    vidar:
-        name: Vidar (Security)
-        needs: changes
-        if: needs.changes.outputs.vidar == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v6
-
-            - uses: pnpm/action-setup@v4
-
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test --filter=vidar
-            - run: pnpm turbo run build --filter=vidar...
-
-    bragi:
-        name: Bragi (Chat)
-        needs: changes
-        if: needs.changes.outputs.bragi == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v6
-
-            - uses: pnpm/action-setup@v4
-
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test --filter=bragi
-            - run: pnpm turbo run build --filter=bragi...
+            # Keep the saved cache from growing without bound.
+            - run: find .turbo/cache -type f -mtime +7 -delete

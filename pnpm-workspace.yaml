@@ -2,5 +2,9 @@ packages:
   - "packages/*"
   - "services/*"
 
-ignoredBuiltDependencies:
-  - esbuild
+allowBuilds:
+  lefthook: true
+  cpu-features: false
+  esbuild: false
+  protobufjs: false
+  ssh2: false

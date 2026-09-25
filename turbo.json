@@ -1,5 +1,6 @@
 {
-    "$schema": "https://turbo.build/schema.json",
+    "$schema": "https://turborepo.com/schema.json",
+    "globalDependencies": ["tsconfig.base.json", "tsup.config.ts", "biome.json"],
     "tasks": {
         "//#env:init": {
             "cache": false
@@ -9,7 +10,7 @@
         },
         "build": {
             "dependsOn": ["^build"],
-            "inputs": ["src/**", "tsconfig.json", "package.json"],
+            "inputs": ["$TURBO_DEFAULT$", "!src/**/__tests__/**", "!src/**/*.test.ts"],
             "outputs": ["dist/**"]
         },
         "dev": {
@@ -17,8 +18,9 @@
             "cache": false,
             "persistent": true
         },
-        "lint": {
-            "dependsOn": ["^build"]
+        "lint": {},
+        "typecheck": {
+            "dependsOn": ["^typecheck"]
         },
         "test": {
             "dependsOn": ["^build"]

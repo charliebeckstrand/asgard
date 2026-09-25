@@ -10,10 +10,9 @@ export default defineConfig({
 		'server-lifecycle': 'src/entry/server-lifecycle.ts',
 	},
 	format: ['esm'],
-	target: 'node22',
+	target: 'node24',
 	outDir: 'dist',
 	clean: true,
-	dts: true,
 	sourcemap: true,
 	splitting: false,
 })

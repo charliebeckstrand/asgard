@@ -1,7 +1,7 @@
-ARG NODE_VERSION=22
+ARG NODE_VERSION=24
 
 FROM node:${NODE_VERSION}-alpine AS base
-RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
+RUN npm install -g pnpm@12.6.0
 
 # Extract just the package.json files from services/ and packages/ for dependency installation.
 # This layer is cached independently so code changes don't re-trigger pnpm install.

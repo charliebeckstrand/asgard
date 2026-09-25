@@ -30,10 +30,11 @@
 		"lint:fix": "biome check --config-path=../.. --write .",
 		"format": "biome format --config-path=../.. --write .",
 		"test": "vitest run",
+		"typecheck": "tsc",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage"
 	},
-	"packageManager": "pnpm@10.29.3",
+	"packageManager": "pnpm@12.6.0",
 	"dependencies": {
 		"pg": "^8.16.0",
 		"pino": "^9.5.0",
@@ -44,13 +45,13 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
-		"@types/node": "^25.3.3",
+		"@types/node": "^24.13.6",
 		"@types/pg": "^8.11.0",
 		"grid": "workspace:*",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
-		"typescript": "^5.9.3",
+		"typescript": "^7.0.2",
 		"vali": "workspace:*",
-		"vitest": "^4.0.18"
+		"vitest": "^5.0.1"
 	}
 }

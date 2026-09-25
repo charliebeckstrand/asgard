@@ -1,4 +1,4 @@
-import { type DestinationStream, type Level, type Logger, pino } from 'pino'
+import { type DestinationStream, type Level, type LevelWithSilent, type Logger, pino } from 'pino'
 
 export type { Logger, Level }
 
@@ -6,7 +6,7 @@ export interface LoggerOptions {
 	/** Service name; emitted as the `service` binding on every log line. */
 	service: string
 	/** Minimum level emitted. Defaults to `info`. */
-	level?: Level
+	level?: LevelWithSilent
 	/**
 	 * When true, routes output through pino-pretty for human-readable dev
 	 * logs. Leave off in production — JSON-per-line is the contract for log

@@ -7,10 +7,9 @@ export default defineConfig({
 		log: 'src/log/index.ts',
 	},
 	format: ['esm'],
-	target: 'node22',
+	target: 'node24',
 	outDir: 'dist',
 	clean: true,
-	dts: true,
 	sourcemap: true,
 	splitting: false,
 })
