@@ -1,8 +1,8 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { errorResponse, jsonResponse } from 'grid'
-import { IpAddressSchema } from 'skuld'
-import { listThreats } from '../handlers/threats.js'
-import { ThreatListSchema } from '../lib/schemas.js'
+import { errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
+import { IdSchema, IpAddressSchema } from 'skuld'
+import { listThreats, setThreatResolved } from '../handlers/threats.js'
+import { ResolveThreatSchema, ThreatListSchema, ThreatSchema } from '../lib/schemas.js'
 
 const listThreatsRoute = createRoute({
 	method: 'get',
@@ -26,15 +26,46 @@ const listThreatsRoute = createRoute({
 	},
 })
 
+const resolveThreatRoute = createRoute({
+	method: 'patch',
+	path: '/threats/{id}',
+	tags: ['Threats'],
+	summary: 'Resolve or reopen a threat',
+	description: 'Marks a threat as handled, or reopens it.',
+	security: [{ Bearer: [] }],
+	request: {
+		params: z.object({ id: IdSchema }),
+		body: jsonRequest(ResolveThreatSchema),
+	},
+	responses: {
+		200: jsonResponse(ThreatSchema, 'Threat updated'),
+		401: errorResponse('Unauthorized'),
+		404: errorResponse('Threat not found'),
+	},
+})
+
 const app = new OpenAPIHono()
 
-export const threats = app.openapi(listThreatsRoute, async (c) => {
-	const { resolved, ip } = c.req.valid('query')
+export const threats = app
+	.openapi(listThreatsRoute, async (c) => {
+		const { resolved, ip } = c.req.valid('query')
 
-	const result = await listThreats({
-		resolved: resolved !== undefined ? resolved === 'true' : undefined,
-		ip,
+		const result = await listThreats({
+			resolved: resolved !== undefined ? resolved === 'true' : undefined,
+			ip,
+		})
+
+		return c.json(result, 200)
 	})
+	.openapi(resolveThreatRoute, async (c) => {
+		const { id } = c.req.valid('param')
+		const { resolved } = c.req.valid('json')
 
-	return c.json(result, 200)
-})
+		const threat = await setThreatResolved(id, resolved)
+
+		if (!threat) {
+			throw new HTTPException(404, { message: `No threat found with id ${id}` })
+		}
+
+		return c.json(threat, 200)
+	})

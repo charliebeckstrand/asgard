@@ -1,4 +1,10 @@
-import { createListSchema, IdSchema, IpAddressSchema, TimestampSchema } from 'skuld'
+import {
+	createListSchema,
+	IdSchema,
+	IpAddressSchema,
+	SecurityEventSchema,
+	TimestampSchema,
+} from 'skuld'
 import { z } from 'zod'
 
 export const RuleSeveritySchema = z
@@ -21,6 +27,14 @@ export const ThreatSchema = z
 	.openapi('Threat')
 
 export const ThreatListSchema = createListSchema(ThreatSchema, 'ThreatList')
+
+export const ResolveThreatSchema = z
+	.object({
+		resolved: z.boolean().openapi({ description: 'Whether the threat has been handled' }),
+	})
+	.openapi('ResolveThreat')
+
+export const SecurityEventListSchema = createListSchema(SecurityEventSchema, 'SecurityEventList')
 
 export const RuleSchema = z
 	.object({

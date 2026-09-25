@@ -1,5 +1,5 @@
-import { sql } from 'saga'
-import type { IngestEvent, SecurityEvent } from 'skuld'
+import { type SqlFragment, sql } from 'saga'
+import { type IngestEvent, type SecurityEvent, toList } from 'skuld'
 import { db } from '../lib/db.js'
 import { emitEvent } from '../lib/emitter.js'
 import { logger } from '../lib/log.js'
@@ -22,6 +22,33 @@ export async function ingestEvent(event: IngestEvent): Promise<SecurityEvent> {
 	})
 
 	return row
+}
+
+export async function listEvents(options: {
+	ip?: string
+	event_type?: string
+	limit: number
+}): Promise<{ data: SecurityEvent[]; total: number }> {
+	const conditions: SqlFragment[] = []
+
+	if (options.ip) {
+		conditions.push(sql`ip = ${options.ip}`)
+	}
+
+	if (options.event_type) {
+		conditions.push(sql`event_type = ${options.event_type}`)
+	}
+
+	const rows = await db.many<SecurityEvent>(
+		sql`
+			SELECT *
+			FROM vdr_security_events ${sql.where(conditions)}
+			ORDER BY created_at DESC
+			LIMIT ${options.limit}
+		`,
+	)
+
+	return toList(rows)
 }
 
 /** Events far outside every rule window only grow the table. */
