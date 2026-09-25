@@ -32,6 +32,7 @@
 		"lint:fix": "biome check --config-path=../.. --write .",
 		"format": "biome format --config-path=../.. --write .",
 		"test": "vitest run",
+		"typecheck": "tsc",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage"
 	},
@@ -44,8 +45,8 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
-		"@types/node": "^25.3.3",
+		"@types/node": "^24.13.6",
 		"tsup": "^8.5.1",
-		"typescript": "^5.9.3"
+		"typescript": "^7.0.2"
 	}
 }

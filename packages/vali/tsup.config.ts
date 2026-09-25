@@ -9,10 +9,9 @@ export default defineConfig({
 		env: 'src/env.ts',
 	},
 	format: ['esm'],
-	target: 'node22',
+	target: 'node24',
 	outDir: 'dist',
 	clean: true,
-	dts: true,
 	sourcemap: true,
 	splitting: false,
 })
