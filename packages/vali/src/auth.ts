@@ -37,32 +37,13 @@ export function signTestAccessToken(
 	secret: string,
 	options: BaseTokenOptions = {},
 ): Promise<string> {
-	return signTestToken(secret, 'access', options)
-}
-
-/**
- * Sign an HS256 refresh token with the same payload shape grid produces.
- * Useful for testing that endpoints reject refresh tokens where access is required.
- */
-export function signTestRefreshToken(
-	secret: string,
-	options: BaseTokenOptions = {},
-): Promise<string> {
-	return signTestToken(secret, 'refresh', options)
-}
-
-function signTestToken(
-	secret: string,
-	type: 'access' | 'refresh',
-	options: BaseTokenOptions,
-): Promise<string> {
 	const now = options.iat ?? Math.floor(Date.now() / 1000)
 
 	return sign(
 		{
 			sub: options.sub ?? 'user-test',
 			iss: options.iss ?? TEST_TOKEN_ISSUER,
-			type,
+			type: 'access',
 			iat: now,
 			exp: options.exp ?? now + 3600,
 			...options.claims,

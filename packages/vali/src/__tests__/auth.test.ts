@@ -1,10 +1,5 @@
 import { verify } from 'hono/jwt'
-import {
-	extractCookie,
-	signTestAccessToken,
-	signTestRefreshToken,
-	TEST_TOKEN_ISSUER,
-} from '../auth.js'
+import { extractCookie, signTestAccessToken, TEST_TOKEN_ISSUER } from '../auth.js'
 
 const SECRET = 'test-secret-that-is-at-least-32-chars-long'
 
@@ -41,16 +36,6 @@ describe('signTestAccessToken', () => {
 		const token = await signTestAccessToken(SECRET, { exp: past })
 
 		await expect(verify(token, SECRET, 'HS256')).rejects.toThrow()
-	})
-})
-
-describe('signTestRefreshToken', () => {
-	it('produces a refresh-typed token', async () => {
-		const token = await signTestRefreshToken(SECRET, { sub: 'u1' })
-
-		const payload = await verify(token, SECRET, 'HS256')
-
-		expect(payload.type).toBe('refresh')
 	})
 })
 

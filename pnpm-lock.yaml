@@ -416,61 +416,6 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1(@types/node@24.13.6)(@vitest/coverage-v8@5.0.1)(vite@7.3.1(@types/node@24.13.6)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.2))
 
-  services/bragi:
-    dependencies:
-      '@hono/node-server':
-        specifier: ^1.19.11
-        version: 1.19.11(hono@4.12.5)
-      '@hono/swagger-ui':
-        specifier: ^0.6.0
-        version: 0.6.0(hono@4.12.5)
-      '@hono/zod-openapi':
-        specifier: ^1.2.2
-        version: 1.2.2(hono@4.12.5)(zod@4.3.6)
-      grid:
-        specifier: workspace:*
-        version: link:../../packages/grid
-      hono:
-        specifier: ^4.12.5
-        version: 4.12.5
-      saga:
-        specifier: workspace:*
-        version: link:../../packages/saga
-      skuld:
-        specifier: workspace:*
-        version: link:../../packages/skuld
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.4.6
-        version: 2.4.6
-      '@types/node':
-        specifier: ^24.13.6
-        version: 24.13.6
-      '@types/pg':
-        specifier: ^8.11.0
-        version: 8.18.0
-      pg:
-        specifier: ^8.16.0
-        version: 8.20.0
-      tsup:
-        specifier: ^8.5.1
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.8)(supports-color@10.2.2)(tsx@4.21.0)(typescript@7.0.2)(yaml@2.8.2)
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vali:
-        specifier: workspace:*
-        version: link:../../packages/vali
-      vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@24.13.6)(@vitest/coverage-v8@5.0.1)(vite@7.3.1(@types/node@24.13.6)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.2))
-
   services/vidar:
     dependencies:
       '@hono/node-server':
@@ -4703,11 +4648,11 @@ snapshots:
   vite@7.3.1(@types/node@24.13.6)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
       esbuild: 0.27.3
-      fdir: 6.5.0(picomatch@4.0.3)
-      picomatch: 4.0.3
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
       postcss: 8.5.8
       rollup: 4.59.0
-      tinyglobby: 0.2.15
+      tinyglobby: 0.2.17
     optionalDependencies:
       '@types/node': 24.13.6
       fsevents: 2.3.3
@@ -4719,11 +4664,11 @@ snapshots:
   vite@7.3.1(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
       esbuild: 0.27.3
-      fdir: 6.5.0(picomatch@4.0.3)
-      picomatch: 4.0.3
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
       postcss: 8.5.8
       rollup: 4.59.0
-      tinyglobby: 0.2.15
+      tinyglobby: 0.2.17
     optionalDependencies:
       '@types/node': 25.3.5
       fsevents: 2.3.3
