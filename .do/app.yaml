@@ -15,11 +15,15 @@ domains:
     type: PRIMARY
     zone: ivoryimage.dev
 
+# Binds the existing managed cluster, so the data outlives the app. Binding
+# also adds the app to the cluster's trusted sources.
 databases:
-  - name: bifrost-db
+  - name: asgard-db
     engine: PG
-    version: '16'
-    production: false
+    version: '18'
+    production: true
+    cluster_name: app-60313cef-8ae5-4240-9538-6a5b4fc46c0f
+    db_name: defaultdb
 
 ingress:
   rules:
@@ -47,7 +51,7 @@ services:
         value: bifrost
       - key: DATABASE_URL
         scope: RUN_TIME
-        value: ${bifrost-db.DATABASE_URL}
+        value: ${asgard-db.DATABASE_URL}
       - key: SECRET_KEY
         scope: RUN_TIME
         type: SECRET
