@@ -55,16 +55,9 @@ jobs:
         steps:
             - uses: actions/checkout@v6
 
-            - uses: pnpm/action-setup@v4
+            - uses: ./.github/actions/setup
 
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test build --filter=skuld
+            - run: pnpm turbo run lint typecheck test build --filter=skuld
 
     vali:
         name: Vali (Testing)
@@ -74,16 +67,9 @@ jobs:
         steps:
             - uses: actions/checkout@v6
 
-            - uses: pnpm/action-setup@v4
+            - uses: ./.github/actions/setup
 
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test build --filter=vali
+            - run: pnpm turbo run lint typecheck test build --filter=vali
 
     grid:
         name: Grid (Middleware)
@@ -93,16 +79,9 @@ jobs:
         steps:
             - uses: actions/checkout@v6
 
-            - uses: pnpm/action-setup@v4
+            - uses: ./.github/actions/setup
 
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test build --filter=grid
+            - run: pnpm turbo run lint typecheck test build --filter=grid
 
     bifrost:
         name: Bifrost (API)
@@ -112,16 +91,9 @@ jobs:
         steps:
             - uses: actions/checkout@v6
 
-            - uses: pnpm/action-setup@v4
+            - uses: ./.github/actions/setup
 
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test --filter=bifrost
+            - run: pnpm turbo run lint typecheck test --filter=bifrost
             - run: pnpm turbo run build --filter=bifrost...
 
     saga:
@@ -132,16 +104,9 @@ jobs:
         steps:
             - uses: actions/checkout@v6
 
-            - uses: pnpm/action-setup@v4
+            - uses: ./.github/actions/setup
 
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test build --filter=saga
+            - run: pnpm turbo run lint typecheck test build --filter=saga
 
     vidar:
         name: Vidar (Security)
@@ -151,16 +116,9 @@ jobs:
         steps:
             - uses: actions/checkout@v6
 
-            - uses: pnpm/action-setup@v4
+            - uses: ./.github/actions/setup
 
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test --filter=vidar
+            - run: pnpm turbo run lint typecheck test --filter=vidar
             - run: pnpm turbo run build --filter=vidar...
 
     bragi:
@@ -171,14 +129,7 @@ jobs:
         steps:
             - uses: actions/checkout@v6
 
-            - uses: pnpm/action-setup@v4
+            - uses: ./.github/actions/setup
 
-            - uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm turbo run lint test --filter=bragi
+            - run: pnpm turbo run lint typecheck test --filter=bragi
             - run: pnpm turbo run build --filter=bragi...

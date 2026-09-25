@@ -1,0 +1,22 @@
+name: Setup
+description: Install pnpm, Node (from .nvmrc) and dependencies, and restore the Turborepo cache
+
+runs:
+    using: composite
+    steps:
+        - uses: pnpm/action-setup@v4
+
+        - uses: actions/setup-node@v6
+          with:
+              node-version-file: .nvmrc
+              cache: pnpm
+              cache-dependency-path: pnpm-lock.yaml
+
+        - uses: actions/cache@v4
+          with:
+              path: .turbo/cache
+              key: turbo-${{ runner.os }}-${{ github.job }}-${{ github.sha }}
+              restore-keys: turbo-${{ runner.os }}-${{ github.job }}-
+
+        - run: pnpm install --frozen-lockfile
+          shell: bash
