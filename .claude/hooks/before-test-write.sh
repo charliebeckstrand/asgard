@@ -22,7 +22,7 @@ case "$file_path" in
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
-    "additionalContext": "Test file detected. Invoke the `test-quality` skill before proceeding to apply Asgard's test conventions: blank lines between expects, vi.hoisted before source imports, prefer vali utilities (vali/auth, vali/env, vali/containers) over hand-rolled helpers, and use vi.waitFor instead of setTimeout for async assertions."
+    "additionalContext": "Test file detected. Invoke the `test-quality` skill before proceeding to apply Asgard's test conventions: blank lines between expects, vi.hoisted before source imports, prefer vali utilities (vali/env, vali/containers) over hand-rolled helpers, and use vi.waitFor instead of setTimeout for async assertions."
   }
 }
 JSON

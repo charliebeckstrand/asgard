@@ -1,7 +1,7 @@
 {
 	"name": "saga",
 	"version": "0.1.0",
-	"description": "Data toolkit — Postgres pool, SQL builder, migrations, Redis primitives, and structured logging",
+	"description": "Data toolkit — Postgres pool, SQL builder, migrations, and structured logging",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./src/index.ts",
@@ -9,10 +9,6 @@
 		".": {
 			"types": "./src/index.ts",
 			"default": "./dist/index.js"
-		},
-		"./cache": {
-			"types": "./src/cache/index.ts",
-			"default": "./dist/cache.js"
 		},
 		"./log": {
 			"types": "./src/log/index.ts",
@@ -38,10 +34,7 @@
 	"dependencies": {
 		"pg": "^8.16.0",
 		"pino": "^9.5.0",
-		"pino-pretty": "^11.3.0",
-		"redis": "^5.5.0",
-		"skuld": "workspace:*",
-		"zod": "^4.3.6"
+		"pino-pretty": "^11.3.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",

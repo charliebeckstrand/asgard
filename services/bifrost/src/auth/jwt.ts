@@ -8,20 +8,11 @@ import {
 	type JWTPayload,
 	REFRESH_TOKEN_TTL_SECONDS,
 	type RefreshTokenPayload,
-	TOKEN_ISSUER,
 	type TokenType,
 } from 'grid/auth'
 import { getConfig } from './config.js'
 
-export {
-	ACCESS_TOKEN_TTL_SECONDS,
-	type AccessTokenPayload,
-	type JWTPayload,
-	REFRESH_TOKEN_TTL_SECONDS,
-	type RefreshTokenPayload,
-	TOKEN_ISSUER,
-	type TokenType,
-}
+export { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS }
 
 export function signToken(sub: string, type: TokenType): Promise<string> {
 	return gridSignToken(sub, type, getConfig().keys)

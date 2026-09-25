@@ -5,7 +5,6 @@ export default defineConfig({
 		fixtures: 'src/fixtures.ts',
 		containers: 'src/containers.ts',
 		config: 'src/config.ts',
-		auth: 'src/auth.ts',
 		env: 'src/env.ts',
 	},
 	format: ['esm'],

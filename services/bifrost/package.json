@@ -1,7 +1,7 @@
 {
 	"name": "bifrost",
 	"version": "0.1.0",
-	"description": "API gateway and BFF bridging services",
+	"description": "Authentication service — registration, login, sessions, and users",
 	"type": "module",
 	"exports": {
 		".": {
@@ -20,18 +20,15 @@
 		"test": "vitest run",
 		"typecheck": "tsc",
 		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage",
-		"generate:client": "openapi-typescript openapi.json -o src/client/schema.d.ts"
+		"test:coverage": "vitest run --coverage"
 	},
 	"packageManager": "pnpm@12.6.0",
 	"dependencies": {
 		"@hono/node-server": "^1.19.11",
-		"@hono/swagger-ui": "^0.6.0",
 		"@hono/zod-openapi": "^1.2.2",
 		"@node-rs/argon2": "^2.0.2",
 		"grid": "workspace:*",
 		"hono": "^4.12.5",
-		"ms": "^2.1.3",
 		"saga": "workspace:*",
 		"skuld": "workspace:*",
 		"vidar": "workspace:*",
@@ -39,10 +36,8 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
-		"@types/ms": "^2.1.0",
 		"@types/node": "^24.13.6",
 		"@types/pg": "^8.11.0",
-		"openapi-typescript": "^7.13.0",
 		"pg": "^8.16.0",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",

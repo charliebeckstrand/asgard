@@ -3,7 +3,6 @@ import { defineConfig } from 'tsup'
 export default defineConfig({
 	entry: {
 		index: 'src/index.ts',
-		cache: 'src/cache/index.ts',
 		log: 'src/log/index.ts',
 	},
 	format: ['esm'],
