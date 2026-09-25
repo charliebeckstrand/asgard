@@ -28,5 +28,7 @@ jobs:
                   SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
               with:
                   token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+                  # Only applies when the app is created; moving it later is done in DO.
+                  project_id: ${{ vars.DIGITALOCEAN_PROJECT_ID }}
                   print_build_logs: true
                   print_deploy_logs: true
