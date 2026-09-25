@@ -23,3 +23,11 @@ export async function ingestEvent(event: IngestEvent): Promise<SecurityEvent> {
 
 	return row
 }
+
+/** Events far outside every rule window only grow the table. */
+export async function purgeOldEvents(retentionDays: number): Promise<number> {
+	return db.exec(sql`
+		DELETE FROM vdr_security_events
+		WHERE created_at < now() - make_interval(days => ${retentionDays}::int)
+	`)
+}
