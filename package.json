@@ -6,7 +6,7 @@
 		"node": ">=24"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.6",
+		"@biomejs/biome": "^2.5.14",
 		"@vitest/coverage-v8": "^5.0.1",
 		"lefthook": "^2.1.4",
 		"tsup": "^8.5.1",
