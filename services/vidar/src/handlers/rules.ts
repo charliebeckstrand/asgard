@@ -2,7 +2,7 @@ import { sql } from 'saga'
 import { db } from '../lib/db.js'
 import { logger } from '../lib/log.js'
 import type { RuleSeverity } from '../lib/schemas.js'
-import { createBan } from './bans.js'
+import { createBan, isIpBanned } from './bans.js'
 import { createThreat } from './threats.js'
 
 export interface Rule {
@@ -87,34 +87,61 @@ export async function evaluateRules(ip: string, eventType: string): Promise<void
 	for (const rule of matchingRules) {
 		const triggered = await checkRule(ip, rule)
 
-		if (triggered) {
-			await createBan(ip, rule.name, {
-				rule_id: rule.id,
-				created_by: 'vidar',
-				duration_minutes: rule.ban_duration_minutes,
-			})
+		if (!triggered) continue
 
-			await createThreat({
-				threat_type: rule.id,
-				severity: rule.severity,
+		const banned = await banUnlessAlreadyLonger(ip, rule)
+
+		await createThreat({
+			threat_type: rule.id,
+			severity: rule.severity,
+			ip,
+			details: { rule_id: rule.id, rule_name: rule.name },
+			action_taken: banned
+				? `Banned for ${formatDuration(rule.ban_duration_minutes)}`
+				: 'Already banned for longer',
+		})
+
+		logger().warn(
+			{
+				ruleId: rule.id,
+				ruleName: rule.name,
 				ip,
-				details: { rule_id: rule.id, rule_name: rule.name },
-				action_taken: `Banned for ${formatDuration(rule.ban_duration_minutes)}`,
-			})
-
-			logger().warn(
-				{
-					ruleId: rule.id,
-					ruleName: rule.name,
-					ip,
-					banDurationMinutes: rule.ban_duration_minutes,
-				},
-				'rule triggered',
-			)
-		}
+				banDurationMinutes: banned ? rule.ban_duration_minutes : undefined,
+			},
+			'rule triggered',
+		)
 	}
 }
 
+/**
+ * Ban the IP for the rule's duration, unless an active ban already outlasts
+ * it — a rule must never shorten a longer or permanent ban.
+ */
+async function banUnlessAlreadyLonger(ip: string, rule: Rule): Promise<boolean> {
+	const current = await isIpBanned(ip)
+
+	if (current.banned) {
+		if (!current.expires_at) return false
+
+		const ruleExpiry = Date.now() + rule.ban_duration_minutes * 60_000
+
+		if (new Date(current.expires_at).getTime() >= ruleExpiry) return false
+	}
+
+	await createBan(ip, rule.name, {
+		rule_id: rule.id,
+		created_by: 'vidar',
+		duration_minutes: rule.ban_duration_minutes,
+	})
+
+	return true
+}
+
+/**
+ * Counts matching events inside the rule's window, ignoring events already
+ * counted towards an earlier trigger of the same rule (its latest threat),
+ * so one burst can't trigger the rule again once a ban expires.
+ */
 async function checkRule(ip: string, rule: Rule): Promise<boolean> {
 	const row = await db.one<{ event_count: number; account_count: number }>(
 		sql`SELECT
@@ -123,7 +150,11 @@ async function checkRule(ip: string, rule: Rule): Promise<boolean> {
 		 FROM vdr_security_events
 		 WHERE ip = ${ip}
 		   AND event_type = ${rule.event_type}
-		   AND created_at > now() - make_interval(mins => ${rule.window_minutes}::int)`,
+		   AND created_at > now() - make_interval(mins => ${rule.window_minutes}::int)
+		   AND created_at > COALESCE(
+		     (SELECT max(created_at) FROM vdr_threats WHERE ip = ${ip} AND threat_type = ${rule.id}),
+		     '-infinity'
+		   )`,
 	)
 
 	if (row.event_count < rule.threshold) return false

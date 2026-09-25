@@ -55,3 +55,14 @@ export async function listThreats(options?: {
 
 	return toList(rows)
 }
+
+export async function setThreatResolved(id: string, resolved: boolean): Promise<ThreatRow | null> {
+	return db.first<ThreatRow>(
+		sql`
+			UPDATE vdr_threats
+			SET resolved = ${resolved}
+			WHERE id = ${id}
+			RETURNING *
+		`,
+	)
+}

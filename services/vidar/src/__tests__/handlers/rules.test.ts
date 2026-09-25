@@ -1,6 +1,7 @@
-const { mockDbOne, mockCreateBan, mockCreateThreat } = vi.hoisted(() => ({
+const { mockDbOne, mockCreateBan, mockIsIpBanned, mockCreateThreat } = vi.hoisted(() => ({
 	mockDbOne: vi.fn(),
 	mockCreateBan: vi.fn(),
+	mockIsIpBanned: vi.fn(),
 	mockCreateThreat: vi.fn(),
 }))
 
@@ -11,6 +12,7 @@ vi.mock('../../lib/db.js', () => ({
 
 vi.mock('../../handlers/bans.js', () => ({
 	createBan: (...args: unknown[]) => mockCreateBan(...args),
+	isIpBanned: (...args: unknown[]) => mockIsIpBanned(...args),
 }))
 
 vi.mock('../../handlers/threats.js', () => ({
@@ -29,6 +31,7 @@ beforeEach(() => {
 	vi.clearAllMocks()
 
 	mockCreateBan.mockResolvedValue({})
+	mockIsIpBanned.mockResolvedValue({ banned: false })
 	mockCreateThreat.mockResolvedValue({})
 })
 
@@ -149,6 +152,52 @@ describe('evaluateRules', () => {
 			)?.[0] as { action_taken: string }
 
 			expect(threatArg.action_taken).toMatch(/^Banned for \d+h$/)
+		})
+	})
+
+	describe('existing bans', () => {
+		const r = rule('rate_limit_abuse')
+
+		it('does not replace a permanent ban', async () => {
+			mockDbOne.mockResolvedValue({ event_count: r.threshold, account_count: 0 })
+
+			mockIsIpBanned.mockResolvedValue({ banned: true, reason: 'Manual ban' })
+
+			await evaluateRules(IP, 'rate_limited')
+
+			expect(mockCreateBan).not.toHaveBeenCalled()
+
+			expect(mockCreateThreat).toHaveBeenCalledWith(
+				expect.objectContaining({ threat_type: r.id, action_taken: 'Already banned for longer' }),
+			)
+		})
+
+		it('does not shorten a longer ban', async () => {
+			mockDbOne.mockResolvedValue({ event_count: r.threshold, account_count: 0 })
+
+			const longer = new Date(Date.now() + (r.ban_duration_minutes + 60) * 60_000)
+
+			mockIsIpBanned.mockResolvedValue({ banned: true, expires_at: longer.toISOString() })
+
+			await evaluateRules(IP, 'rate_limited')
+
+			expect(mockCreateBan).not.toHaveBeenCalled()
+		})
+
+		it('extends a shorter ban', async () => {
+			mockDbOne.mockResolvedValue({ event_count: r.threshold, account_count: 0 })
+
+			const shorter = new Date(Date.now() + 5 * 60_000)
+
+			mockIsIpBanned.mockResolvedValue({ banned: true, expires_at: shorter.toISOString() })
+
+			await evaluateRules(IP, 'rate_limited')
+
+			expect(mockCreateBan).toHaveBeenCalledWith(
+				IP,
+				r.name,
+				expect.objectContaining({ duration_minutes: r.ban_duration_minutes }),
+			)
 		})
 	})
 })
