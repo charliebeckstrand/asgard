@@ -19,7 +19,7 @@ WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY --from=manifests /tmp/manifests/services/ ./services/
 COPY --from=manifests /tmp/manifests/packages/ ./packages/
-RUN pnpm install --frozen-lockfile --filter ${SERVICE}...
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter ${SERVICE}...
 COPY tsup.config.ts tsconfig.base.json ./
 COPY services/ ./services/
 COPY packages/ ./packages/
@@ -32,7 +32,7 @@ WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY --from=manifests /tmp/manifests/services/ ./services/
 COPY --from=manifests /tmp/manifests/packages/ ./packages/
-RUN pnpm install --frozen-lockfile --prod --filter ${SERVICE}...
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter ${SERVICE}...
 COPY --from=build /app/services/ ./services/
 COPY --from=build /app/packages/ ./packages/
 
