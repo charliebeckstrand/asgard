@@ -1,0 +1,32 @@
+name: Deploy
+
+on:
+    push:
+        branches: [main]
+
+concurrency:
+    group: deploy-production
+    cancel-in-progress: false
+
+jobs:
+    ci:
+        uses: ./.github/workflows/ci.yml
+
+    deploy:
+        name: Deploy to DigitalOcean
+        needs: ci
+        runs-on: ubuntu-latest
+        environment: production
+        steps:
+            - uses: actions/checkout@v6
+
+            # Creates the app from .do/app.yaml on the first run, then updates
+            # it and waits for the deployment to go live.
+            - uses: digitalocean/app_action/deploy@v2
+              env:
+                  SECRET_KEY: ${{ secrets.SECRET_KEY }}
+                  SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+              with:
+                  token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+                  print_build_logs: true
+                  print_deploy_logs: true
