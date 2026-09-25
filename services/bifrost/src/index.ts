@@ -22,7 +22,7 @@ configureVidar({
 configure({
 	userRepository: createUserRepository(),
 	keys: { current: env.SECRET_KEY, previous: env.PREVIOUS_SECRET_KEY },
-	onSecurityEvent: (event) => reportEvent(event.type, event.ip, event.details ?? {}, 'heimdall'),
+	onSecurityEvent: (event) => reportEvent(event.type, event.ip, event.details ?? {}, 'bifrost'),
 })
 
 const app = createBifrostApp()
