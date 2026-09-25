@@ -23,7 +23,7 @@ jobs:
 
             # Turbo hashes every task against its inputs and dependencies, so
             # unchanged packages replay from this cache instead of rerunning.
-            - uses: actions/cache@v4
+            - uses: actions/cache@v6
               with:
                   path: .turbo/cache
                   key: turbo-${{ runner.os }}-${{ github.sha }}
