@@ -9,5 +9,6 @@ coverage/
 .turbo/
 .vscode/*
 !.vscode/settings.json
+!.vscode/extensions.json
 .secrets.json
 CLAUDE.local.md

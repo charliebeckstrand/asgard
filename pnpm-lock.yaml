@@ -188,6 +188,9 @@ importers:
       turbo:
         specifier: ^2.11.3
         version: 2.11.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
 
   packages/grid:
     dependencies:
