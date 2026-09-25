@@ -23,7 +23,7 @@
 		"test:coverage": "vitest run --coverage",
 		"generate:client": "openapi-typescript openapi.json -o src/client/schema.d.ts"
 	},
-	"packageManager": "pnpm@10.29.3",
+	"packageManager": "pnpm@12.6.0",
 	"dependencies": {
 		"@hono/node-server": "^1.19.11",
 		"@hono/swagger-ui": "^0.6.0",
