@@ -24,7 +24,7 @@ jobs:
             # it and waits for the deployment to go live.
             - uses: digitalocean/app_action/deploy@v2
               env:
-                  PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
+                  CLIENT_IP_SECRET: ${{ secrets.CLIENT_IP_SECRET }}
               with:
                   token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
                   # Only applies when the app is created; moving it later is done in DO.

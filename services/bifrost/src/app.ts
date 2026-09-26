@@ -23,7 +23,8 @@ export function createBifrostApp() {
 		logger: logger(),
 	})
 
-	app.use('*', clientIp({ header: env.CLIENT_IP_HEADER, proxySecret: env.PROXY_SECRET }))
+	// App Platform overwrites `do-connecting-ip` with the client address on every request.
+	app.use('*', clientIp({ header: 'do-connecting-ip', secret: env.CLIENT_IP_SECRET }))
 	app.use('*', session())
 	app.use('*', csrf({ origin: env.CORS_ORIGIN }))
 

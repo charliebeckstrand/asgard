@@ -3,8 +3,7 @@
 	"port": 4000,
 	"vars": {
 		"DATABASE_URL": { "type": "value", "default": "postgres://heimdall:heimdall@localhost:5432/bifrost" },
-		"CLIENT_IP_HEADER": { "type": "value", "default": "" },
-		"PROXY_SECRET": { "type": "value", "default": "" },
+		"CLIENT_IP_SECRET": { "type": "value", "default": "" },
 		"PASSKEY_DOMAIN": { "type": "value", "default": "localhost" },
 		"VIDAR_URL": { "type": "ref", "service": "vidar" },
 		"VIDAR_API_KEY": { "type": "ref", "service": "vidar", "key": "VIDAR_API_KEY" }

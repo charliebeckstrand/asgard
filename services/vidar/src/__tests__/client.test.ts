@@ -1,3 +1,4 @@
+import { clientIp } from 'grid/middleware'
 import { Hono } from 'hono'
 import { configure, createVidar, reportEvent } from '@/client'
 
@@ -5,6 +6,8 @@ const VIDAR_URL = 'http://vidar.test'
 
 function makeApp() {
 	const app = new Hono()
+
+	app.use('*', clientIp({ header: 'do-connecting-ip' }))
 
 	app.use('*', createVidar({ rate: 100, burst: 100, route: '/test', service: 'unit' }))
 
@@ -50,6 +53,8 @@ describe('createVidar middleware', () => {
 
 		it('still applies local rate limiting', async () => {
 			const app = new Hono()
+
+			app.use('*', clientIp({ header: 'do-connecting-ip' }))
 
 			app.use('*', createVidar({ rate: 0, burst: 1, service: 'unit' }))
 
@@ -138,6 +143,8 @@ describe('createVidar middleware', () => {
 			fetchMock.mockResolvedValue(jsonResponse({ banned: false }))
 
 			const app = new Hono()
+
+			app.use('*', clientIp({ header: 'do-connecting-ip' }))
 
 			app.use('*', createVidar({ rate: 0, burst: 1, route: '/test', service: 'unit' }))
 

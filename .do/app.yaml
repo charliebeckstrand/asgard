@@ -62,17 +62,12 @@ services:
       - key: PASSKEY_DOMAIN
         scope: RUN_TIME
         value: ivoryimage.dev
-      # App Platform overwrites this header with the client address on every
-      # request, so clients can't spoof it.
-      - key: CLIENT_IP_HEADER
-        scope: RUN_TIME
-        value: do-connecting-ip
-      # Shared with Midgard, whose server forwards the browser address. The
-      # PROXY_SECRET repo secret must be set before this deploys.
-      - key: PROXY_SECRET
+      # Shared with Midgard, whose server forwards the browser address. Bifrost
+      # won't start without it.
+      - key: CLIENT_IP_SECRET
         scope: RUN_TIME
         type: SECRET
-        value: ${PROXY_SECRET}
+        value: ${CLIENT_IP_SECRET}
 
 # Applies bifrost's pending migrations before each deploy. If it fails, the
 # deploy stops and the running version keeps serving.
