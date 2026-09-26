@@ -37,7 +37,7 @@
 		"pino-pretty": "^11.3.0"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.6",
+		"@biomejs/biome": "^2.5.14",
 		"@types/node": "^24.13.6",
 		"@types/pg": "^8.11.0",
 		"grid": "workspace:*",
