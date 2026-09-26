@@ -12,6 +12,8 @@ export {
 	ConnectionStatusSchema,
 	type HealthStatus,
 	HealthStatusSchema,
+	type UserRole,
+	UserRoleSchema,
 } from './enums.js'
 
 // Primitives — reusable atomic schema building blocks
