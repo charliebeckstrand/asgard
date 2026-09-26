@@ -59,15 +59,18 @@ export function createSessionRepository(): SessionRepository {
 					`,
 				)
 
+				// Keeps the new session and the newest others. `now()` is when the transaction
+				// began, so a sign-in that waited on the lock can look older than the one it
+				// waited for; the new session is kept by id, never by its age.
 				await tx.exec(
 					sql`
 						DELETE FROM sessions
-						WHERE user_id = ${userId}
+						WHERE user_id = ${userId} AND id <> ${id}
 						AND id NOT IN (
 							SELECT id FROM sessions
-							WHERE user_id = ${userId} AND expires_at > now()
+							WHERE user_id = ${userId} AND id <> ${id} AND expires_at > now()
 							ORDER BY created_at DESC, id
-							LIMIT ${limit}
+							LIMIT ${limit - 1}
 						)
 					`,
 				)
