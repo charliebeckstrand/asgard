@@ -9,6 +9,8 @@ const {
 	mockFindSession,
 	mockDeleteSession,
 	mockDeleteUserSessions,
+	mockCreateSignInOptions,
+	mockAuthenticatePasskey,
 } = vi.hoisted(() => ({
 	mockAuthenticateUser: vi.fn(),
 	mockRegisterUser: vi.fn(),
@@ -16,6 +18,8 @@ const {
 	mockFindSession: vi.fn(),
 	mockDeleteSession: vi.fn(),
 	mockDeleteUserSessions: vi.fn(),
+	mockCreateSignInOptions: vi.fn(),
+	mockAuthenticatePasskey: vi.fn(),
 }))
 
 import { AuthError } from '../auth/errors.js'
@@ -34,6 +38,8 @@ vi.mock('../auth/index.js', async () => {
 		findSession: (...args: unknown[]) => mockFindSession(...args),
 		deleteSession: (...args: unknown[]) => mockDeleteSession(...args),
 		deleteUserSessions: (...args: unknown[]) => mockDeleteUserSessions(...args),
+		createSignInOptions: (...args: unknown[]) => mockCreateSignInOptions(...args),
+		authenticatePasskey: (...args: unknown[]) => mockAuthenticatePasskey(...args),
 	}
 })
 
@@ -148,6 +154,20 @@ describe('Auth routes', () => {
 			expect(mockCreateSession).not.toHaveBeenCalled()
 		})
 
+		it('returns 403 when an admin uses a password', async () => {
+			mockAuthenticateUser.mockRejectedValueOnce(
+				new AuthError('passkey_required', 'Admins sign in with a passkey'),
+			)
+
+			const res = await login()
+
+			expect(res.status).toBe(403)
+
+			expect(await res.json()).toMatchObject({ message: 'Admins sign in with a passkey' })
+
+			expect(mockCreateSession).not.toHaveBeenCalled()
+		})
+
 		it('returns 403 when the account is inactive', async () => {
 			mockAuthenticateUser.mockRejectedValueOnce(
 				new AuthError('account_inactive', 'Account is inactive'),
@@ -166,6 +186,80 @@ describe('Auth routes', () => {
 			expect(res.status).toBe(400)
 
 			expect(mockAuthenticateUser).not.toHaveBeenCalled()
+		})
+	})
+
+	describe('POST /auth/login/options', () => {
+		it('returns the sign-in options', async () => {
+			mockCreateSignInOptions.mockResolvedValueOnce({ challenge: 'abc', rpId: 'localhost' })
+
+			const res = await app.request('/auth/login/options', {
+				method: 'POST',
+				headers: { Origin: ORIGIN },
+			})
+
+			expect(res.status).toBe(200)
+
+			expect(await res.json()).toEqual({ challenge: 'abc', rpId: 'localhost' })
+		})
+	})
+
+	describe('POST /auth/login/passkey', () => {
+		const credential = {
+			id: 'credential-1',
+			rawId: 'credential-1',
+			type: 'public-key',
+			response: { clientDataJSON: 'x', authenticatorData: 'y', signature: 'z' },
+			clientExtensionResults: {},
+		}
+
+		function passkeyLogin(headers: Record<string, string> = {}, body: unknown = credential) {
+			return app.request('/auth/login/passkey', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN, ...headers },
+				body: JSON.stringify(body),
+			})
+		}
+
+		it('starts a session like a password login', async () => {
+			mockAuthenticatePasskey.mockResolvedValueOnce(USER_ID)
+
+			const res = await passkeyLogin(cookie('old-token'))
+
+			expect(res.status).toBe(200)
+
+			expect(await res.json()).toEqual(session)
+
+			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, 'old-token')
+
+			expect(res.headers.get('set-cookie')).toContain('__Host-session=new-token')
+		})
+
+		it('passes the credential and the client IP to authenticatePasskey', async () => {
+			mockAuthenticatePasskey.mockResolvedValueOnce(USER_ID)
+
+			await passkeyLogin({ 'do-connecting-ip': '203.0.113.7' })
+
+			expect(mockAuthenticatePasskey).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'credential-1' }),
+				'203.0.113.7',
+			)
+		})
+
+		it('returns 401 for an unrecognized passkey', async () => {
+			mockAuthenticatePasskey.mockRejectedValueOnce(
+				new AuthError('invalid_credentials', 'Passkey not recognized'),
+			)
+
+			expect((await passkeyLogin()).status).toBe(401)
+
+			expect(mockCreateSession).not.toHaveBeenCalled()
+		})
+
+		it('rejects a body that is not a credential', async () => {
+			expect((await passkeyLogin({}, { id: 'credential-1' })).status).toBe(400)
+
+			expect(mockAuthenticatePasskey).not.toHaveBeenCalled()
 		})
 	})
 

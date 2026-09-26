@@ -18,7 +18,7 @@ export function createUserRepository(): UserRepository {
 		async getCredentialsByEmail(email) {
 			return db.first<CredentialsRow>(
 				sql`
-					SELECT id, hashed_password, is_active
+					SELECT id, hashed_password, is_active, role
 					FROM users
 					WHERE email = ${email}
 				`,
