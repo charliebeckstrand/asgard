@@ -25,6 +25,7 @@ import {
 } from '../passkeys.js'
 import type {
 	MfaRepository,
+	OAuthRepository,
 	PasskeyRepository,
 	SessionRepository,
 	StoredPasskey,
@@ -91,6 +92,8 @@ beforeEach(() => {
 		mfaRepository: {} as MfaRepository,
 		passkeys,
 		mfa: { issuer: 'localhost' },
+		oauthRepository: {} as OAuthRepository,
+		oauth: {},
 		onSecurityEvent,
 	})
 })

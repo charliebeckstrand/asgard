@@ -28,7 +28,9 @@ export async function authenticateUser(
 
 	const passwordOk = await verify(hashToVerify, password)
 
-	if (!creds || !passwordOk) {
+	// An account made with GitHub or Google has no password, and the dummy hash
+	// must never let one in.
+	if (!creds?.hashed_password || !passwordOk) {
 		if (ip)
 			getConfig().onSecurityEvent?.({
 				type: 'login_failed',

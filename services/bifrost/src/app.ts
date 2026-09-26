@@ -9,6 +9,7 @@ import { session } from './middleware/session.js'
 import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
 import { mfaRoutes } from './routes/mfa.js'
+import { oauthRoutes } from './routes/oauth.js'
 import { passkeysRoutes } from './routes/passkeys.js'
 import { usersRoutes } from './routes/users.js'
 
@@ -36,6 +37,11 @@ export function createBifrostApp() {
 	const loginLimit = createVidar({ rate: 2, burst: 5, route: '/auth/login', service: 'bifrost' })
 
 	app.use('/auth/login/*', (c, next) => (c.req.method === 'POST' ? loginLimit(c, next) : next()))
+	// Each start stores a state row and each callback calls the provider.
+	const oauthLimit = createVidar({ rate: 2, burst: 5, route: '/auth/oauth', service: 'bifrost' })
+
+	app.use('/auth/oauth/:provider/start', oauthLimit)
+	app.use('/auth/oauth/:provider/callback', oauthLimit)
 	app.use(
 		'/auth/register',
 		createVidar({ rate: 2, burst: 5, route: '/auth/register', service: 'bifrost' }),
@@ -45,6 +51,7 @@ export function createBifrostApp() {
 		.route('/auth', authRoutes)
 		.route('/auth/passkeys', passkeysRoutes)
 		.route('/auth/mfa', mfaRoutes)
+		.route('/auth/oauth', oauthRoutes)
 		.route('/api', health)
 		.route('/api/users', usersRoutes)
 }

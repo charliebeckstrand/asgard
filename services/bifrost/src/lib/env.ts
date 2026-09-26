@@ -1,6 +1,11 @@
 import { createEnvironment } from 'grid/environment'
 import { z } from 'zod'
 
+const optionalValue = z
+	.string()
+	.optional()
+	.transform((v) => (v && v.length > 0 ? v : undefined))
+
 const clientIpSecret = z.string().min(32, 'CLIENT_IP_SECRET must be at least 32 characters')
 
 export const environment = createEnvironment({
@@ -30,6 +35,12 @@ export const environment = createEnvironment({
 			'MFA_ENCRYPTION_KEY must be at least 32 characters when set',
 		)
 		.transform((v) => (v && v.length > 0 ? v : undefined)),
+	// OAuth clients for signing in with GitHub and Google. A provider without both
+	// values is off.
+	OAUTH_GITHUB_CLIENT_ID: optionalValue,
+	OAUTH_GITHUB_CLIENT_SECRET: optionalValue,
+	OAUTH_GOOGLE_CLIENT_ID: optionalValue,
+	OAUTH_GOOGLE_CLIENT_SECRET: optionalValue,
 	// Comma-separated, so each consuming app's origin can be allowed.
 	CORS_ORIGIN: z
 		.string()

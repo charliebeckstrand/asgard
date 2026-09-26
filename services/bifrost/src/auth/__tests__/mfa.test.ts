@@ -27,6 +27,7 @@ import { hashToken } from '../sessions.js'
 import { encryptSecret, totpCode, totpStep } from '../totp.js'
 import type {
 	MfaRepository,
+	OAuthRepository,
 	PasskeyRepository,
 	SessionRepository,
 	UserRepository,
@@ -62,6 +63,8 @@ function setUp(key?: string) {
 		mfaRepository,
 		passkeys: { domain: 'ivoryimage.dev', origins: ['https://admin.ivoryimage.dev'] },
 		mfa: { key, issuer: 'ivoryimage.dev' },
+		oauthRepository: {} as OAuthRepository,
+		oauth: {},
 		onSecurityEvent,
 	})
 }
