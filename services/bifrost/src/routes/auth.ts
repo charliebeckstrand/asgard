@@ -104,7 +104,7 @@ const secondFactorOptionsRoute = createRoute({
 	description: 'Needs the `__Host-mfa` cookie from `/login`.',
 	responses: {
 		200: jsonResponse(PasskeyOptionsSchema, 'Authentication options'),
-		401: errorResponse('Sign in again'),
+		410: errorResponse('No live sign-in: sign in again'),
 	},
 })
 
@@ -120,8 +120,9 @@ const secondFactorRoute = createRoute({
 	},
 	responses: {
 		200: jsonResponse(SessionSchema, 'Login successful'),
-		401: errorResponse('Not accepted, or sign in again'),
+		401: errorResponse('Not accepted'),
 		403: errorResponse('Account inactive'),
+		410: errorResponse('No live sign-in, or no attempts left: sign in again'),
 	},
 })
 

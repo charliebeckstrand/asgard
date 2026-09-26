@@ -258,13 +258,13 @@ describe('Auth routes', () => {
 			expect(mockCreateSecondFactorOptions).toHaveBeenCalledWith(USER_ID)
 		})
 
-		it('returns 401 without a ticket', async () => {
+		it('returns 410 without a ticket', async () => {
 			const res = await app.request('/auth/login/mfa/options', {
 				method: 'POST',
 				headers: { Origin: ORIGIN },
 			})
 
-			expect(res.status).toBe(401)
+			expect(res.status).toBe(410)
 
 			expect(mockFindLoginTicket).not.toHaveBeenCalled()
 		})
@@ -322,8 +322,8 @@ describe('Auth routes', () => {
 			expect(mockCreateSession).not.toHaveBeenCalled()
 		})
 
-		it('returns 401 without a ticket', async () => {
-			expect((await secondStep({ totp: '123456' }, { Cookie: '' })).status).toBe(401)
+		it('returns 410 without a ticket', async () => {
+			expect((await secondStep({ totp: '123456' }, { Cookie: '' })).status).toBe(410)
 
 			expect(mockCompleteLoginTicket).not.toHaveBeenCalled()
 		})
