@@ -17,6 +17,11 @@ domains:
 
 # Binds the existing managed cluster, so the data outlives the app. Binding
 # also adds the app to the cluster's trusted sources.
+#
+# The cluster is bound twice, once for each user. The migrate job connects as
+# the admin user, which owns the tables and can change them. The service
+# connects as `bifrost`, which can only read and write rows, so a flaw in the
+# service can't change the schema.
 databases:
   - name: asgard-db
     engine: PG
@@ -24,6 +29,13 @@ databases:
     production: true
     cluster_name: app-60313cef-8ae5-4240-9538-6a5b4fc46c0f
     db_name: defaultdb
+  - name: bifrost-db
+    engine: PG
+    version: '18'
+    production: true
+    cluster_name: app-60313cef-8ae5-4240-9538-6a5b4fc46c0f
+    db_name: defaultdb
+    db_user: bifrost
 
 ingress:
   rules:
@@ -51,10 +63,10 @@ services:
         value: bifrost
       - key: DATABASE_URL
         scope: RUN_TIME
-        value: ${asgard-db.DATABASE_URL}
+        value: ${bifrost-db.DATABASE_URL}
       - key: DATABASE_CA_CERT
         scope: RUN_TIME
-        value: ${asgard-db.CA_CERT}
+        value: ${bifrost-db.CA_CERT}
       - key: CORS_ORIGIN
         scope: RUN_TIME
         value: https://admin.ivoryimage.dev,https://places.ivoryimage.dev
