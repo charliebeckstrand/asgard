@@ -2,7 +2,7 @@ import { HTTPException } from 'grid'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import type { Session } from 'skuld'
-import { findSession, SESSION_TTL_SECONDS } from '../auth/index.js'
+import { findSession, SESSION_TTL_SECONDS, TICKET_TTL_SECONDS } from '../auth/index.js'
 
 export type SessionEnv = {
 	Variables: {
@@ -31,6 +31,29 @@ export function setSessionCookie(c: Context, token: string): void {
 
 export function clearSessionCookie(c: Context): void {
 	deleteCookie(c, COOKIE_NAME, { prefix: 'host', secure: true, path: '/' })
+}
+
+// A sign-in waiting on its second factor holds `__Host-mfa`, with the same
+// attributes as the session cookie.
+const TICKET_COOKIE_NAME = 'mfa'
+
+export function getLoginTicket(c: Context): string | undefined {
+	return getCookie(c, TICKET_COOKIE_NAME, 'host')
+}
+
+export function setLoginTicketCookie(c: Context, token: string): void {
+	setCookie(c, TICKET_COOKIE_NAME, token, {
+		prefix: 'host',
+		httpOnly: true,
+		secure: true,
+		sameSite: 'Lax',
+		path: '/',
+		maxAge: TICKET_TTL_SECONDS,
+	})
+}
+
+export function clearLoginTicketCookie(c: Context): void {
+	deleteCookie(c, TICKET_COOKIE_NAME, { prefix: 'host', secure: true, path: '/' })
 }
 
 /**

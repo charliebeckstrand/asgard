@@ -17,12 +17,14 @@ import {
 	authenticatePasskey,
 	CHALLENGE_TTL_SECONDS,
 	createRegistrationOptions,
+	createSecondFactorOptions,
 	createSignInOptions,
 	deletePasskey,
 	getPasskeys,
 	registerPasskey,
 } from '../passkeys.js'
 import type {
+	MfaRepository,
 	PasskeyRepository,
 	SessionRepository,
 	StoredPasskey,
@@ -86,7 +88,9 @@ beforeEach(() => {
 		userRepository,
 		sessionRepository: {} as SessionRepository,
 		passkeyRepository,
+		mfaRepository: {} as MfaRepository,
 		passkeys,
+		mfa: { issuer: 'localhost' },
 		onSecurityEvent,
 	})
 })
@@ -204,6 +208,28 @@ describe('createSignInOptions', () => {
 	})
 })
 
+describe('createSecondFactorOptions', () => {
+	it("names the user's passkeys and stores a challenge with no user", async () => {
+		webauthn.generateAuthenticationOptions.mockResolvedValue({ challenge: 'second-step' })
+
+		await createSecondFactorOptions(USER_ID)
+
+		expect(passkeyRepository.getPasskeys).toHaveBeenCalledWith(USER_ID)
+
+		expect(webauthn.generateAuthenticationOptions).toHaveBeenCalledWith({
+			rpID: 'ivoryimage.dev',
+			userVerification: 'required',
+			allowCredentials: [{ id: 'credential-1', transports: ['internal'] }],
+		})
+
+		expect(passkeyRepository.createChallenge).toHaveBeenCalledWith(
+			'second-step',
+			null,
+			expect.any(Date),
+		)
+	})
+})
+
 describe('authenticatePasskey', () => {
 	const verified = { verified: true, authenticationInfo: { newCounter: 5 } }
 
@@ -282,7 +308,7 @@ describe('getPasskeys', () => {
 describe('deletePasskey', () => {
 	it.each([
 		['not_found', 'passkey_not_found'],
-		['last_admin_passkey', 'last_admin_passkey'],
+		['last_admin_factor', 'last_admin_factor'],
 	] as const)('turns %s into the %s error', async (result, code) => {
 		vi.mocked(passkeyRepository.deletePasskey).mockResolvedValue(result)
 

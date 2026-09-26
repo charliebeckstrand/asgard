@@ -8,6 +8,7 @@ import { logger } from './lib/log.js'
 import { session } from './middleware/session.js'
 import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
+import { mfaRoutes } from './routes/mfa.js'
 import { passkeysRoutes } from './routes/passkeys.js'
 import { usersRoutes } from './routes/users.js'
 
@@ -28,11 +29,13 @@ export function createBifrostApp() {
 	app.use('*', session())
 	app.use('*', csrf({ origin: env.CORS_ORIGIN }))
 
-	// Also covers `/auth/login` itself, so a passkey sign-in shares the password budget.
-	app.use(
-		'/auth/login/*',
-		createVidar({ rate: 2, burst: 5, route: '/auth/login', service: 'bifrost' }),
-	)
+	// Also covers `/auth/login` itself, so passkey sign-ins and second steps share the
+	// password budget. Only a POST tries a credential. The GET and the DELETE of a
+	// pending sign-in check a 256-bit ticket, and a page guard calls the GET from
+	// the server of the app, so they stay out of the budget.
+	const loginLimit = createVidar({ rate: 2, burst: 5, route: '/auth/login', service: 'bifrost' })
+
+	app.use('/auth/login/*', (c, next) => (c.req.method === 'POST' ? loginLimit(c, next) : next()))
 	app.use(
 		'/auth/register',
 		createVidar({ rate: 2, burst: 5, route: '/auth/register', service: 'bifrost' }),
@@ -41,6 +44,7 @@ export function createBifrostApp() {
 	return app
 		.route('/auth', authRoutes)
 		.route('/auth/passkeys', passkeysRoutes)
+		.route('/auth/mfa', mfaRoutes)
 		.route('/api', health)
 		.route('/api/users', usersRoutes)
 }

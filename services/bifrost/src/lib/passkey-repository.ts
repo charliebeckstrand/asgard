@@ -2,6 +2,7 @@ import { sql } from 'saga'
 import type { Passkey } from 'skuld'
 import type { PasskeyRepository, StoredPasskey } from '../auth/types.js'
 import { db } from './db.js'
+import { removeSecondFactor } from './mfa-repository.js'
 
 interface PasskeyRow extends Omit<StoredPasskey, 'counter'> {
 	// BIGINT arrives as a string.
@@ -45,30 +46,14 @@ export function createPasskeyRepository(): PasskeyRepository {
 		},
 
 		async deletePasskey(id, userId) {
-			return db.tx(async (tx) => {
-				// Serializes deletes for one user, so two can't both remove "not the last" passkey.
-				const user = await tx.first<{ role: string }>(
-					sql`SELECT role FROM users WHERE id = ${userId} FOR UPDATE`,
-				)
-
-				const owned = await tx.first(
+			return db.tx((tx) =>
+				removeSecondFactor(
+					tx,
+					userId,
 					sql`SELECT 1 FROM passkeys WHERE id = ${id} AND user_id = ${userId}`,
-				)
-
-				if (!owned) return 'not_found'
-
-				if (user?.role === 'admin') {
-					const count = await tx.val<number>(
-						sql`SELECT count(*)::int FROM passkeys WHERE user_id = ${userId}`,
-					)
-
-					if (count <= 1) return 'last_admin_passkey'
-				}
-
-				await tx.exec(sql`DELETE FROM passkeys WHERE id = ${id}`)
-
-				return 'deleted'
-			})
+					sql`DELETE FROM passkeys WHERE id = ${id}`,
+				),
+			)
 		},
 
 		async createChallenge(id, userId, expiresAt) {

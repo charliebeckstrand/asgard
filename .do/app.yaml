@@ -68,6 +68,12 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: ${CLIENT_IP_SECRET}
+      # Encrypts authenticator-app secrets. Unset turns authenticator apps off;
+      # changing it breaks every authenticator app already added.
+      - key: MFA_ENCRYPTION_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${MFA_ENCRYPTION_KEY}
 
 # Applies bifrost's pending migrations before each deploy. If it fails, the
 # deploy stops and the running version keeps serving.

@@ -20,6 +20,16 @@ export const environment = createEnvironment({
 		process.env.NODE_ENV === 'production' ? clientIpSecret : clientIpSecret.optional(),
 	// The domain passkeys belong to. Every CORS origin must be on it or a subdomain of it.
 	PASSKEY_DOMAIN: z.string().default('localhost'),
+	// Encrypts authenticator-app secrets. Unset turns authenticator apps off. Changing
+	// it breaks every authenticator app already added.
+	MFA_ENCRYPTION_KEY: z
+		.string()
+		.optional()
+		.refine(
+			(v) => !v || v.length >= 32,
+			'MFA_ENCRYPTION_KEY must be at least 32 characters when set',
+		)
+		.transform((v) => (v && v.length > 0 ? v : undefined)),
 	// Comma-separated, so each consuming app's origin can be allowed.
 	CORS_ORIGIN: z
 		.string()

@@ -188,9 +188,9 @@ describe('Passkeys routes', () => {
 		expect(mockDeletePasskey).toHaveBeenCalledWith(USER_ID, 'credential-1')
 	})
 
-	it("returns 409 for an admin's last passkey", async () => {
+	it("returns 409 for an admin's last second factor", async () => {
 		mockDeletePasskey.mockRejectedValueOnce(
-			new AuthError('last_admin_passkey', 'An admin must keep at least one passkey'),
+			new AuthError('last_admin_factor', 'An admin must keep a passkey or an authenticator app'),
 		)
 
 		const res = await app.request('/auth/passkeys/credential-1', { method: 'DELETE', headers })

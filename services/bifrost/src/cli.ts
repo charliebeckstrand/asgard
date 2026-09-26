@@ -6,10 +6,11 @@ import { db } from './lib/db.js'
 //   node dist/cli.js demote <email>
 
 const messages = {
-	promoted: 'is now an admin. They sign in with their passkey.',
+	promoted: 'is now an admin. They sign in with two steps.',
 	demoted: 'is no longer an admin.',
 	not_found: 'has no account.',
-	no_passkey: 'has no passkey. They must add one before they can be an admin.',
+	no_second_factor:
+		'has no passkey or authenticator app. They must add one before they can be an admin.',
 } as const
 
 const [command, email] = process.argv.slice(2)

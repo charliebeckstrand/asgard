@@ -87,6 +87,29 @@ export async function createSignInOptions(): Promise<PublicKeyCredentialRequestO
 	return options
 }
 
+/**
+ * Starts the passkey step of a sign-in that passed its password. Unlike
+ * {@link createSignInOptions}, it names the user's passkeys, so the browser asks
+ * only for those.
+ */
+export async function createSecondFactorOptions(
+	userId: string,
+): Promise<PublicKeyCredentialRequestOptionsJSON> {
+	const { passkeyRepository, passkeys } = getConfig()
+
+	const existing = await passkeyRepository.getPasskeys(userId)
+
+	const options = await generateAuthenticationOptions({
+		rpID: passkeys.domain,
+		userVerification: 'required',
+		allowCredentials: existing.map(({ id, transports }) => ({ id, transports })),
+	})
+
+	await passkeyRepository.createChallenge(options.challenge, null, challengeExpiry())
+
+	return options
+}
+
 /** Verifies a passkey sign-in and returns the user's id. */
 export async function authenticatePasskey(
 	response: AuthenticationResponseJSON,
@@ -142,8 +165,8 @@ export async function deletePasskey(userId: string, id: string): Promise<void> {
 		throw new AuthError('passkey_not_found', 'Passkey not found')
 	}
 
-	if (result === 'last_admin_passkey') {
-		throw new AuthError('last_admin_passkey', 'An admin must keep at least one passkey')
+	if (result === 'last_admin_factor') {
+		throw new AuthError('last_admin_factor', 'An admin must keep a passkey or an authenticator app')
 	}
 }
 

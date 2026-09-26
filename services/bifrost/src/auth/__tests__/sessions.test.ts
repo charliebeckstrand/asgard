@@ -11,7 +11,12 @@ import {
 	requireRecentSignIn,
 	SESSION_TTL_SECONDS,
 } from '../sessions.js'
-import type { PasskeyRepository, SessionRepository, UserRepository } from '../types.js'
+import type {
+	MfaRepository,
+	PasskeyRepository,
+	SessionRepository,
+	UserRepository,
+} from '../types.js'
 
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
@@ -46,6 +51,8 @@ beforeEach(() => {
 		sessionRepository,
 		passkeyRepository: {} as PasskeyRepository,
 		passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
+		mfaRepository: {} as MfaRepository,
+		mfa: { issuer: 'localhost' },
 	})
 })
 

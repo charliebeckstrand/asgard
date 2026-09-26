@@ -145,7 +145,7 @@ describeWithDocker('createPasskeyRepository (integration)', () => {
 
 			await makeAdmin(adminId)
 
-			expect(await passkeys.deletePasskey(id, adminId)).toBe('last_admin_passkey')
+			expect(await passkeys.deletePasskey(id, adminId)).toBe('last_admin_factor')
 
 			expect(await passkeys.findPasskey(id)).not.toBeNull()
 		})
@@ -171,7 +171,7 @@ describeWithDocker('createPasskeyRepository (integration)', () => {
 
 			const results = await Promise.all(ids.map((id) => passkeys.deletePasskey(id, adminId)))
 
-			expect(results.sort()).toEqual(['deleted', 'last_admin_passkey'])
+			expect(results.sort()).toEqual(['deleted', 'last_admin_factor'])
 
 			expect(await passkeys.getPasskeys(adminId)).toHaveLength(1)
 		})
@@ -254,10 +254,10 @@ describeWithDocker('admins (integration)', () => {
 		expect(rows).toHaveLength(0)
 	})
 
-	it("won't promote a user without a passkey", async () => {
+	it("won't promote a user without a second factor", async () => {
 		const userId = await insertUser('bob@x.dev')
 
-		expect(await admins.promote('bob@x.dev')).toBe('no_passkey')
+		expect(await admins.promote('bob@x.dev')).toBe('no_second_factor')
 
 		expect(await role(userId)).toBe('user')
 	})

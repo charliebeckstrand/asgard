@@ -4,6 +4,7 @@ import { configure } from '../config.js'
 import { AuthError, authenticateUser, registerUser } from '../credentials.js'
 import type {
 	CredentialsRow,
+	MfaRepository,
 	PasskeyRepository,
 	SessionRepository,
 	UserRepository,
@@ -56,6 +57,8 @@ beforeEach(() => {
 		sessionRepository: mockSessionRepo,
 		passkeyRepository: {} as PasskeyRepository,
 		passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
+		mfaRepository: {} as MfaRepository,
+		mfa: { issuer: 'localhost' },
 	})
 })
 
@@ -114,7 +117,7 @@ describe('authenticateUser', () => {
 		}
 	})
 
-	it('refuses a password for an admin, even when it is correct', async () => {
+	it('accepts a correct password for an admin', async () => {
 		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
@@ -122,12 +125,12 @@ describe('authenticateUser', () => {
 			role: 'admin',
 		})
 
-		const err = await authenticateUser('alice@example.com', 'correct-password').catch((e) => e)
-
-		expect((err as AuthError).code).toBe('passkey_required')
+		await expect(authenticateUser('alice@example.com', 'correct-password')).resolves.toBe(
+			TEST_USER.id,
+		)
 	})
 
-	it('reports invalid_credentials, not passkey_required, for an admin with a wrong password', async () => {
+	it('reports invalid_credentials for an admin with a wrong password', async () => {
 		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
@@ -148,6 +151,8 @@ describe('authenticateUser', () => {
 			sessionRepository: mockSessionRepo,
 			passkeyRepository: {} as PasskeyRepository,
 			passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
+			mfaRepository: {} as MfaRepository,
+			mfa: { issuer: 'localhost' },
 			onSecurityEvent,
 		})
 
@@ -211,6 +216,8 @@ describe('registerUser', () => {
 			sessionRepository: mockSessionRepo,
 			passkeyRepository: {} as PasskeyRepository,
 			passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
+			mfaRepository: {} as MfaRepository,
+			mfa: { issuer: 'localhost' },
 			onSecurityEvent,
 		})
 

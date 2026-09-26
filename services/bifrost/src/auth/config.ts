@@ -1,4 +1,9 @@
-import type { PasskeyRepository, SessionRepository, UserRepository } from './types.js'
+import type {
+	MfaRepository,
+	PasskeyRepository,
+	SessionRepository,
+	UserRepository,
+} from './types.js'
 
 export type AuthSecurityEventType = 'login_failed' | 'registration'
 
@@ -12,8 +17,14 @@ export interface Config {
 	userRepository: UserRepository
 	sessionRepository: SessionRepository
 	passkeyRepository: PasskeyRepository
+	mfaRepository: MfaRepository
 	/** The domain passkeys belong to, and the origins allowed to use them. */
 	passkeys: { domain: string; origins: string[] }
+	/**
+	 * `key` encrypts authenticator-app secrets; unset turns authenticator apps off.
+	 * `issuer` names the account in the app.
+	 */
+	mfa: { key?: string; issuer: string }
 	onSecurityEvent?: (event: AuthSecurityEvent) => void
 }
 

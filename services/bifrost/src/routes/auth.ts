@@ -12,18 +12,30 @@ import {
 	UserSchema,
 } from 'skuld'
 import {
+	AuthError,
 	authenticatePasskey,
 	authenticateUser,
+	completeLoginTicket,
+	createLoginTicket,
+	createSecondFactorOptions,
 	createSession,
 	createSignInOptions,
+	deleteLoginTicket,
 	deleteSession,
 	deleteUserSessions,
+	findLoginTicket,
+	getFactors,
 	registerUser,
+	type SecondFactorProof,
+	secondFactorMethods,
 } from '../auth/index.js'
 import {
+	clearLoginTicketCookie,
 	clearSessionCookie,
+	getLoginTicket,
 	getSessionToken,
 	type SessionEnv,
+	setLoginTicketCookie,
 	setSessionCookie,
 } from '../middleware/session.js'
 import { PasskeyCredentialSchema, PasskeyOptionsSchema } from './passkeys.js'
@@ -47,20 +59,95 @@ const RegisterResponseSchema = UserSchema.pick({ id: true, email: true }).openap
 	'RegisterResponse',
 )
 
+const SecondFactorRequiredSchema = z
+	.object({
+		methods: z
+			.array(z.enum(['passkey', 'totp', 'recovery_code']))
+			.openapi({ description: 'The ways the user can finish signing in' }),
+	})
+	.openapi('SecondFactorRequired')
+
+const SecondFactorRequestSchema = z
+	.union([
+		z.object({
+			totp: z.string().max(16).openapi({ description: 'Code from the authenticator app' }),
+		}),
+		z.object({
+			recovery_code: z.string().max(64).openapi({ description: 'An unused recovery code' }),
+		}),
+		z.object({ passkey: PasskeyCredentialSchema }),
+	])
+	.openapi('SecondFactorRequest')
+
 const loginRoute = createRoute({
 	method: 'post',
 	path: '/login',
 	tags: ['Auth'],
 	summary: 'Login with email and password',
 	description:
-		'Authenticates credentials, starts a session and sets its cookie. A session the browser still holds is replaced.',
+		'Authenticates credentials, starts a session and sets its cookie. A session the browser still holds is replaced. When the user has two-step sign-in on, answers 202 and sets the `__Host-mfa` cookie instead; `/login/mfa` finishes the sign-in.',
 	request: {
 		body: jsonRequest(LoginRequestSchema),
 	},
 	responses: {
 		200: jsonResponse(SessionSchema, 'Login successful'),
+		202: jsonResponse(SecondFactorRequiredSchema, 'Second step needed'),
 		401: errorResponse('Invalid credentials'),
-		403: errorResponse('Account inactive, or an admin, who signs in with a passkey'),
+		403: errorResponse('Account inactive'),
+	},
+})
+
+const pendingSignInRoute = createRoute({
+	method: 'get',
+	path: '/login/mfa',
+	tags: ['Auth'],
+	summary: 'Get the sign-in that waits on its second step',
+	description:
+		'Returns the methods that can finish the sign-in in the `__Host-mfa` cookie, without spending an attempt. A page of the second step calls it to guard itself.',
+	responses: {
+		200: jsonResponse(SecondFactorRequiredSchema, 'Second step needed'),
+		410: errorResponse('No live sign-in: sign in again'),
+	},
+})
+
+const cancelSignInRoute = createRoute({
+	method: 'delete',
+	path: '/login/mfa',
+	tags: ['Auth'],
+	summary: 'Cancel the sign-in that waits on its second step',
+	description: 'Deletes the ticket in the `__Host-mfa` cookie, if any, and clears the cookie.',
+	responses: {
+		204: { description: 'Sign-in canceled' },
+	},
+})
+
+const secondFactorOptionsRoute = createRoute({
+	method: 'post',
+	path: '/login/mfa/options',
+	tags: ['Auth'],
+	summary: 'Start the passkey step of a sign-in',
+	description: 'Needs the `__Host-mfa` cookie from `/login`.',
+	responses: {
+		200: jsonResponse(PasskeyOptionsSchema, 'Authentication options'),
+		410: errorResponse('No live sign-in: sign in again'),
+	},
+})
+
+const secondFactorRoute = createRoute({
+	method: 'post',
+	path: '/login/mfa',
+	tags: ['Auth'],
+	summary: 'Finish a sign-in with its second step',
+	description:
+		'Checks an authenticator-app code, a recovery code, or a passkey against the sign-in in the `__Host-mfa` cookie, then starts a session like `/login`. Each try spends one of five attempts.',
+	request: {
+		body: jsonRequest(SecondFactorRequestSchema),
+	},
+	responses: {
+		200: jsonResponse(SessionSchema, 'Login successful'),
+		401: errorResponse('Not accepted'),
+		403: errorResponse('Account inactive'),
+		410: errorResponse('No live sign-in, or no attempts left: sign in again'),
 	},
 })
 
@@ -151,11 +238,73 @@ async function signIn(c: Context, userId: string) {
 	return session
 }
 
+function requireLoginTicket(c: Context): string {
+	const token = getLoginTicket(c)
+
+	if (!token) {
+		throw new AuthError('sign_in_expired', 'Sign in again')
+	}
+
+	return token
+}
+
 export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
 	.openapi(loginRoute, async (c) => {
 		const { email, password } = c.req.valid('json')
 
 		const userId = await authenticateUser(email, password, getIpAddress(c))
+
+		const methods = secondFactorMethods(await getFactors(userId))
+
+		// A ticket from an earlier password step ends, so each browser holds one.
+		const earlier = getLoginTicket(c)
+
+		if (earlier) await deleteLoginTicket(earlier)
+
+		if (methods.length > 0) {
+			setLoginTicketCookie(c, await createLoginTicket(userId))
+
+			return c.json({ methods }, 202)
+		}
+
+		if (earlier) clearLoginTicketCookie(c)
+
+		return c.json(await signIn(c, userId), 200)
+	})
+	.openapi(pendingSignInRoute, async (c) => {
+		const userId = await findLoginTicket(requireLoginTicket(c))
+
+		const methods = secondFactorMethods(await getFactors(userId))
+
+		// The user removed the last factor in another session: nothing can finish this sign-in.
+		if (methods.length === 0) {
+			throw new AuthError('sign_in_expired', 'Sign in again')
+		}
+
+		c.header('Cache-Control', 'private, no-store')
+
+		return c.json({ methods }, 200)
+	})
+	.openapi(cancelSignInRoute, async (c) => {
+		const token = getLoginTicket(c)
+
+		if (token) await deleteLoginTicket(token)
+
+		clearLoginTicketCookie(c)
+
+		return c.body(null, 204)
+	})
+	.openapi(secondFactorOptionsRoute, async (c) => {
+		const userId = await findLoginTicket(requireLoginTicket(c))
+
+		return c.json(await createSecondFactorOptions(userId), 200)
+	})
+	.openapi(secondFactorRoute, async (c) => {
+		const proof = c.req.valid('json') as SecondFactorProof
+
+		const userId = await completeLoginTicket(requireLoginTicket(c), proof, getIpAddress(c))
+
+		clearLoginTicketCookie(c)
 
 		return c.json(await signIn(c, userId), 200)
 	})

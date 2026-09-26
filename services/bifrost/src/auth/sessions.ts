@@ -61,13 +61,14 @@ export function deleteExpiredSessions(): Promise<number> {
 }
 
 /**
- * Passkey changes need a session started in the last ten minutes, so a stolen
- * session can't add a passkey of its own and keep the account.
+ * Changes to how a user signs in need a session started in the last ten minutes,
+ * so a stolen session can't add a passkey or an authenticator app of its own and
+ * keep the account.
  */
 export function requireRecentSignIn(session: Session): void {
 	const age = Date.now() - new Date(session.created_at).getTime()
 
 	if (age > RECENT_SIGN_IN_SECONDS * 1000) {
-		throw new AuthError('sign_in_again', 'Sign in again to change your passkeys')
+		throw new AuthError('sign_in_again', 'Sign in again to change how you sign in')
 	}
 }

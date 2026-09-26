@@ -2,9 +2,28 @@ export type { Config } from './config.js'
 export { configure, getConfig } from './config.js'
 export { AuthError, authenticateUser, registerUser } from './credentials.js'
 export {
+	completeLoginTicket,
+	confirmTotp,
+	createLoginTicket,
+	deleteExpiredTickets,
+	deleteLoginTicket,
+	deleteTotp,
+	findLoginTicket,
+	generateRecoveryCodes,
+	getFactors,
+	MAX_TICKET_ATTEMPTS,
+	RECOVERY_CODE_COUNT,
+	type SecondFactorMethod,
+	type SecondFactorProof,
+	secondFactorMethods,
+	startTotpSetup,
+	TICKET_TTL_SECONDS,
+} from './mfa.js'
+export {
 	authenticatePasskey,
 	CHALLENGE_TTL_SECONDS,
 	createRegistrationOptions,
+	createSecondFactorOptions,
 	createSignInOptions,
 	deleteExpiredChallenges,
 	deletePasskey,
@@ -25,8 +44,11 @@ export {
 } from './sessions.js'
 export type {
 	CredentialsRow,
+	Factors,
+	MfaRepository,
 	PasskeyRepository,
 	SessionRepository,
 	StoredPasskey,
+	StoredTotp,
 	UserRepository,
 } from './types.js'
