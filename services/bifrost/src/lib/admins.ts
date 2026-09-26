@@ -36,3 +36,31 @@ export async function demote(email: string): Promise<'demoted' | 'not_found'> {
 
 	return updated ? 'demoted' : 'not_found'
 }
+
+/**
+ * Removes every second factor of the user, for one who lost them all, and ends
+ * their sessions and pending sign-ins. They then sign in with the password
+ * alone. An admin keeps the role, but the admin routes stay closed until they
+ * add a new factor.
+ */
+export function resetSecondFactors(email: string): Promise<'reset' | 'not_found'> {
+	return db.tx(async (tx) => {
+		const user = await tx.first<{ id: string }>(
+			sql`SELECT id FROM users WHERE email = ${email.trim().toLowerCase()} FOR UPDATE`,
+		)
+
+		if (!user) return 'not_found'
+
+		await tx.exec(sql`DELETE FROM passkeys WHERE user_id = ${user.id}`)
+
+		await tx.exec(sql`DELETE FROM totp_secrets WHERE user_id = ${user.id}`)
+
+		await tx.exec(sql`DELETE FROM recovery_codes WHERE user_id = ${user.id}`)
+
+		await tx.exec(sql`DELETE FROM login_tickets WHERE user_id = ${user.id}`)
+
+		await tx.exec(sql`DELETE FROM sessions WHERE user_id = ${user.id}`)
+
+		return 'reset'
+	})
+}

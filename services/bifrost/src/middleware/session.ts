@@ -2,7 +2,13 @@ import { HTTPException } from 'grid'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import type { Session } from 'skuld'
-import { findSession, SESSION_TTL_SECONDS, TICKET_TTL_SECONDS } from '../auth/index.js'
+import {
+	findSession,
+	getFactors,
+	SESSION_TTL_SECONDS,
+	secondFactorMethods,
+	TICKET_TTL_SECONDS,
+} from '../auth/index.js'
 
 export type SessionEnv = {
 	Variables: {
@@ -88,6 +94,11 @@ export function requireSession(c: Context<SessionEnv>): Session {
 	return current
 }
 
+/**
+ * Lets only an admin with a second factor through. An admin has one from
+ * `promote` on, and can't remove the last one. `reset-mfa` removes them all, and
+ * the admin then gets the admin routes back when they add a new one.
+ */
 export function requireAdmin(): MiddlewareHandler<SessionEnv> {
 	return async (c, next) => {
 		const current = c.get('session')
@@ -98,6 +109,12 @@ export function requireAdmin(): MiddlewareHandler<SessionEnv> {
 
 		if (current.user.role !== 'admin') {
 			throw new HTTPException(403, { message: 'Admin role required' })
+		}
+
+		if (secondFactorMethods(await getFactors(current.user.id)).length === 0) {
+			throw new HTTPException(403, {
+				message: 'Add a passkey or an authenticator app to use the admin pages',
+			})
 		}
 
 		return next()
