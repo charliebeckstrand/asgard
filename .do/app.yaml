@@ -80,7 +80,9 @@ jobs:
       deploy_on_push: false
     dockerfile_path: Dockerfile
     instance_size_slug: apps-s-1vcpu-0.5gb
-    run_command: pnpm --filter bifrost exec saga migrate
+    # Plain node, not pnpm: pnpm checks the install before running a command and
+    # tries to reinstall the image's production-only dependencies, which fails.
+    run_command: node packages/saga/bin/saga.js migrate --dir services/bifrost/migrations
     envs:
       - key: SERVICE
         scope: BUILD_TIME
