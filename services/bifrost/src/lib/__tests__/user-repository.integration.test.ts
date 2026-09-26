@@ -104,6 +104,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 				id,
 				hashed_password: 'hashed-pw',
 				is_active: true,
+				role: 'user',
 			})
 		})
 

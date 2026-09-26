@@ -127,6 +127,20 @@ describeWithDocker('createSessionRepository (integration)', () => {
 			expect(await sessionIds(userId)).toHaveLength(2)
 		})
 
+		it('keeps the new session when another looks newer', async () => {
+			const userId = await insertUser()
+
+			// A sign-in that began later but committed first, while this one waited on the lock.
+			await pool.query(
+				"INSERT INTO sessions (id, user_id, created_at, expires_at) VALUES ('later', $1, now() + interval '1 second', now() + interval '1 day')",
+				[userId],
+			)
+
+			const id = await openSession(userId, { limit: 1 })
+
+			expect(await sessionIds(userId)).toEqual([id])
+		})
+
 		it("never touches another user's sessions", async () => {
 			const alice = await insertUser()
 			const bob = await insertUser()

@@ -8,6 +8,7 @@ import { logger } from './lib/log.js'
 import { session } from './middleware/session.js'
 import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
+import { passkeysRoutes } from './routes/passkeys.js'
 import { usersRoutes } from './routes/users.js'
 
 export function createBifrostApp() {
@@ -26,8 +27,9 @@ export function createBifrostApp() {
 	app.use('*', session())
 	app.use('*', csrf({ origin: env.CORS_ORIGIN }))
 
+	// Also covers `/auth/login` itself, so a passkey sign-in shares the password budget.
 	app.use(
-		'/auth/login',
+		'/auth/login/*',
 		createVidar({ rate: 2, burst: 5, route: '/auth/login', service: 'bifrost' }),
 	)
 	app.use(
@@ -35,7 +37,11 @@ export function createBifrostApp() {
 		createVidar({ rate: 2, burst: 5, route: '/auth/register', service: 'bifrost' }),
 	)
 
-	return app.route('/auth', authRoutes).route('/api', health).route('/api/users', usersRoutes)
+	return app
+		.route('/auth', authRoutes)
+		.route('/auth/passkeys', passkeysRoutes)
+		.route('/api', health)
+		.route('/api/users', usersRoutes)
 }
 
 export type BifrostApp = ReturnType<typeof createBifrostApp>
