@@ -7,8 +7,6 @@ const {
 	mockStartOAuth,
 	mockCompleteOAuth,
 	mockGetFactors,
-	mockCreateLoginTicket,
-	mockDeleteLoginTicket,
 	mockCreateSession,
 	mockEnabledProviders,
 	mockGetIdentities,
@@ -18,8 +16,6 @@ const {
 	mockStartOAuth: vi.fn(),
 	mockCompleteOAuth: vi.fn(),
 	mockGetFactors: vi.fn(),
-	mockCreateLoginTicket: vi.fn(),
-	mockDeleteLoginTicket: vi.fn(),
 	mockCreateSession: vi.fn(),
 	mockEnabledProviders: vi.fn(),
 	mockGetIdentities: vi.fn(),
@@ -46,13 +42,10 @@ vi.mock('../../auth/index.js', async () => {
 		requireRecentSignIn: sessions.requireRecentSignIn,
 		secondFactorMethods: mfa.secondFactorMethods,
 		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
-		TICKET_TTL_SECONDS: 5 * 60,
 		findSession: (...args: unknown[]) => mockFindSession(...args),
 		startOAuth: (...args: unknown[]) => mockStartOAuth(...args),
 		completeOAuth: (...args: unknown[]) => mockCompleteOAuth(...args),
 		getFactors: (...args: unknown[]) => mockGetFactors(...args),
-		createLoginTicket: (...args: unknown[]) => mockCreateLoginTicket(...args),
-		deleteLoginTicket: (...args: unknown[]) => mockDeleteLoginTicket(...args),
 		createSession: (...args: unknown[]) => mockCreateSession(...args),
 		enabledProviders: (...args: unknown[]) => mockEnabledProviders(...args),
 		getIdentities: (...args: unknown[]) => mockGetIdentities(...args),
@@ -94,11 +87,12 @@ const app = createBifrostApp()
 // The Midgard app forwards `/auth/*` with its own host in `x-forwarded-host`.
 const viaApp = { 'x-forwarded-host': 'localhost:3000' }
 
-function signedIn(createdAt = new Date().toISOString()) {
+function signedIn(createdAt = new Date().toISOString(), twoStep = true) {
 	mockFindSession.mockResolvedValue({
 		id: 'session-hash',
 		created_at: createdAt,
 		expires_at: '2099-01-01T00:00:00.000Z',
+		two_step: twoStep,
 		user: {
 			id: USER_ID,
 			email: 'alice@example.com',
@@ -139,8 +133,6 @@ describe('OAuth routes', () => {
 		mockGetFactors.mockResolvedValue({ passkeys: 0, totp: false, recovery_codes: 0 })
 
 		mockCreateSession.mockResolvedValue({ token: 'session-token', session: {} })
-
-		mockCreateLoginTicket.mockResolvedValue('ticket-token')
 	})
 
 	describe('GET /auth/oauth/providers', () => {
@@ -248,6 +240,20 @@ describe('OAuth routes', () => {
 
 				expect(mockStartOAuth).not.toHaveBeenCalled()
 			})
+
+			it('asks for the second step', async () => {
+				signedIn(undefined, false)
+
+				mockGetFactors.mockResolvedValue({ passkeys: 1, totp: false, recovery_codes: 0 })
+
+				const res = await app.request('/auth/oauth/google/start?link=1', {
+					headers: { ...viaApp, Cookie: '__Host-session=token' },
+				})
+
+				expect(res.headers.get('Location')).toBe('/account?error=second_step_required')
+
+				expect(mockStartOAuth).not.toHaveBeenCalled()
+			})
 		})
 	})
 
@@ -261,7 +267,7 @@ describe('OAuth routes', () => {
 
 			expect(mockCompleteOAuth).toHaveBeenCalledWith('google', 'the-state', 'the-code', 'unknown')
 
-			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, undefined)
+			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, { replacing: undefined })
 
 			expect(cookies(res).some((c) => c.startsWith('__Host-session=session-token'))).toBe(true)
 
@@ -270,22 +276,14 @@ describe('OAuth routes', () => {
 			expect(limited).toContain('GET /auth/oauth/google/callback')
 		})
 
-		it('holds the sign-in for its second step when the user has one', async () => {
+		it('starts a one-step session when the user has a second factor', async () => {
 			mockGetFactors.mockResolvedValue({ passkeys: 1, totp: false, recovery_codes: 0 })
 
 			const res = await callback('code=the-code&state=the-state')
 
-			expect(res.headers.get('Location')).toBe('/login/verify')
+			expect(res.headers.get('Location')).toBe('/users')
 
-			expect(mockCreateSession).not.toHaveBeenCalled()
-
-			expect(cookies(res).some((c) => c.startsWith('__Host-mfa=ticket-token'))).toBe(true)
-		})
-
-		it('ends an earlier ticket of the browser', async () => {
-			await callback('code=the-code&state=the-state', '__Host-oauth=the-state; __Host-mfa=earlier')
-
-			expect(mockDeleteLoginTicket).toHaveBeenCalledWith('earlier')
+			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, { replacing: undefined })
 		})
 
 		it('goes to the return path after connecting an account', async () => {
@@ -374,6 +372,23 @@ describe('OAuth routes', () => {
 			})
 
 			expect(res.status).toBe(403)
+
+			expect(mockUnlinkIdentity).not.toHaveBeenCalled()
+		})
+
+		it('asks for the second step to disconnect', async () => {
+			signedIn(undefined, false)
+
+			mockGetFactors.mockResolvedValue({ passkeys: 1, totp: false, recovery_codes: 0 })
+
+			const res = await app.request('/auth/oauth/identities/github', {
+				method: 'DELETE',
+				headers,
+			})
+
+			expect(res.status).toBe(403)
+
+			expect(await res.json()).toMatchObject({ code: 'second_step_required' })
 
 			expect(mockUnlinkIdentity).not.toHaveBeenCalled()
 		})

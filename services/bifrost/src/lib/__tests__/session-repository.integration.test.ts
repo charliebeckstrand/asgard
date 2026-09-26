@@ -55,10 +55,13 @@ async function insertUser() {
 	return (await users.insertUser(`${randomUUID()}@x.dev`, 'h')).id
 }
 
-async function openSession(userId: string, options: { replacing?: string; limit?: number } = {}) {
+async function openSession(
+	userId: string,
+	options: { replacing?: string; limit?: number; twoStep?: boolean } = {},
+) {
 	const id = randomUUID()
 
-	await sessions.createSession(id, userId, inADay(), { limit: 10, ...options })
+	await sessions.createSession(id, userId, inADay(), { limit: 10, twoStep: false, ...options })
 
 	return id
 }
@@ -81,13 +84,24 @@ describeWithDocker('createSessionRepository (integration)', () => {
 
 			const id = randomUUID()
 
-			const session = await sessions.createSession(id, userId, inADay(), { limit: 10 })
+			const session = await sessions.createSession(id, userId, inADay(), {
+				limit: 10,
+				twoStep: false,
+			})
 
 			expect(session.id).toBe(id)
+
+			expect(session.two_step).toBe(false)
 
 			expect(session.user.id).toBe(userId)
 
 			expect(session.user.role).toBe('user')
+		})
+
+		it('starts a session past its second step', async () => {
+			const id = await openSession(await insertUser(), { twoStep: true })
+
+			expect((await sessions.findSession(id))?.two_step).toBe(true)
 		})
 
 		it('deletes the session it replaces', async () => {
@@ -181,6 +195,48 @@ describeWithDocker('createSessionRepository (integration)', () => {
 			await pool.query(`UPDATE users SET role = 'admin' WHERE id = $1`, [userId])
 
 			expect((await sessions.findSession(id))?.user.role).toBe('admin')
+		})
+	})
+
+	describe('passSecondStep', () => {
+		it('marks the session as past its second step and clears its wrong tries', async () => {
+			const id = await openSession(await insertUser())
+
+			await sessions.failSecondStep(id, 5)
+
+			await sessions.passSecondStep(id)
+
+			expect((await sessions.findSession(id))?.two_step).toBe(true)
+
+			const { rows } = await pool.query('SELECT failed_steps FROM sessions WHERE id = $1', [id])
+
+			expect(rows[0].failed_steps).toBe(0)
+		})
+	})
+
+	describe('failSecondStep', () => {
+		it('keeps the session until the wrong tries reach the limit', async () => {
+			const id = await openSession(await insertUser())
+
+			expect(await sessions.failSecondStep(id, 2)).toBe(false)
+
+			expect(await sessions.findSession(id)).not.toBeNull()
+
+			expect(await sessions.failSecondStep(id, 2)).toBe(true)
+
+			expect(await sessions.findSession(id)).toBeNull()
+		})
+
+		it('lets concurrent wrong tries end the session only once', async () => {
+			const id = await openSession(await insertUser())
+
+			const ended = await Promise.all(
+				Array.from({ length: 10 }, () => sessions.failSecondStep(id, 5)),
+			)
+
+			expect(ended.filter(Boolean)).toHaveLength(1)
+
+			expect(await sessions.findSession(id)).toBeNull()
 		})
 	})
 

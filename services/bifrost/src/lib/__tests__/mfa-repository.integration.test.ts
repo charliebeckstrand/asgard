@@ -55,8 +55,6 @@ beforeEach(async () => {
 	await pool.query('TRUNCATE users CASCADE')
 })
 
-const inAMinute = () => new Date(Date.now() + 60_000)
-
 const secret = new Uint8Array([1, 2, 3])
 
 async function insertUser(email = `${randomUUID()}@x.dev`) {
@@ -227,60 +225,6 @@ describeWithDocker('createMfaRepository (integration)', () => {
 			expect(await mfa.useRecoveryCode(bob, 'a')).toBe(false)
 		})
 	})
-
-	describe('login tickets', () => {
-		it('spends one attempt per use, up to the limit', async () => {
-			const userId = await insertUser()
-
-			await mfa.createTicket('t1', userId, inAMinute())
-
-			for (let i = 0; i < 3; i++) {
-				expect(await mfa.useTicketAttempt('t1', 3)).toBe(userId)
-			}
-
-			expect(await mfa.useTicketAttempt('t1', 3)).toBeNull()
-
-			expect(await mfa.findTicket('t1', 3)).toBeNull()
-		})
-
-		it('finds a live ticket without spending an attempt', async () => {
-			const userId = await insertUser()
-
-			await mfa.createTicket('t1', userId, inAMinute())
-
-			expect(await mfa.findTicket('t1', 1)).toBe(userId)
-
-			expect(await mfa.useTicketAttempt('t1', 1)).toBe(userId)
-		})
-
-		it('never uses an expired or deleted ticket', async () => {
-			const userId = await insertUser()
-
-			await mfa.createTicket('old', userId, new Date(Date.now() - 1000))
-
-			await mfa.createTicket('gone', userId, inAMinute())
-
-			await mfa.deleteTicket('gone')
-
-			expect(await mfa.useTicketAttempt('old', 5)).toBeNull()
-
-			expect(await mfa.useTicketAttempt('gone', 5)).toBeNull()
-
-			expect(await mfa.deleteExpiredTickets()).toBe(1)
-		})
-
-		it('lets concurrent tries spend no more than the limit', async () => {
-			const userId = await insertUser()
-
-			await mfa.createTicket('t1', userId, inAMinute())
-
-			const results = await Promise.all(
-				Array.from({ length: 10 }, () => mfa.useTicketAttempt('t1', 5)),
-			)
-
-			expect(results.filter(Boolean)).toHaveLength(5)
-		})
-	})
 })
 
 describeWithDocker('admins (integration)', () => {
@@ -292,7 +236,7 @@ describeWithDocker('admins (integration)', () => {
 		expect(await admins.promote('carol@x.dev')).toBe('promoted')
 	})
 
-	it('resets every second factor, session, and pending sign-in of an admin', async () => {
+	it('resets every second factor and session of an admin', async () => {
 		const adminId = await insertUser('dave@x.dev')
 
 		await addTotp(adminId)
@@ -305,8 +249,6 @@ describeWithDocker('admins (integration)', () => {
 		})
 
 		await mfa.replaceRecoveryCodes(adminId, ['a'])
-
-		await mfa.createTicket('t1', adminId, inAMinute())
 
 		await makeAdmin(adminId)
 
@@ -322,8 +264,6 @@ describeWithDocker('admins (integration)', () => {
 		expect(await admins.resetSecondFactors('Dave@x.dev')).toBe('reset')
 
 		expect(await mfa.getFactors(adminId)).toEqual({ passkeys: 0, totp: false, recovery_codes: 0 })
-
-		expect(await mfa.findTicket('t1', 5)).toBeNull()
 
 		expect(
 			(await pool.query('SELECT 1 FROM sessions WHERE user_id = $1', [adminId])).rowCount,

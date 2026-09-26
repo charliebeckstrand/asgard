@@ -7,16 +7,12 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import {
 	AuthError,
 	completeOAuth,
-	createLoginTicket,
 	createSession,
-	deleteLoginTicket,
 	enabledProviders,
-	getFactors,
 	getIdentities,
 	OAuthFailure,
 	requireRecentSignIn,
 	safeReturnTo,
-	secondFactorMethods,
 	startOAuth,
 	unlinkIdentity,
 } from '../auth/index.js'
@@ -26,12 +22,10 @@ import { OAUTH_PROVIDERS, OAUTH_STATE_TTL_SECONDS } from '../auth/oauth.js'
 import { environment } from '../lib/env.js'
 import { logger } from '../lib/log.js'
 import {
-	clearLoginTicketCookie,
-	getLoginTicket,
 	getSessionToken,
+	requireSecondStep,
 	requireSession,
 	type SessionEnv,
-	setLoginTicketCookie,
 	setSessionCookie,
 } from '../middleware/session.js'
 
@@ -136,27 +130,9 @@ function sameState(cookie: string | undefined, query: string | undefined): boole
 	return a.length === b.length && timingSafeEqual(a, b)
 }
 
-/**
- * Signs the user in, or holds the sign-in for its second step like a password
- * would. Returns the path to go to.
- */
+/** Signs the user in with a one-step session, like a password would. Returns the path to go to. */
 async function finishSignIn(c: Context, userId: string, returnTo: string): Promise<string> {
-	const methods = secondFactorMethods(await getFactors(userId))
-
-	// A ticket from an earlier first step ends, so each browser holds one.
-	const earlier = getLoginTicket(c)
-
-	if (earlier) await deleteLoginTicket(earlier)
-
-	if (methods.length > 0) {
-		setLoginTicketCookie(c, await createLoginTicket(userId))
-
-		return '/login/verify'
-	}
-
-	if (earlier) clearLoginTicketCookie(c)
-
-	const { token } = await createSession(userId, getSessionToken(c))
+	const { token } = await createSession(userId, { replacing: getSessionToken(c) })
 
 	setSessionCookie(c, token)
 
@@ -173,7 +149,7 @@ export const oauthRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validation
 		return c.json({ identities: await getIdentities(user.id) }, 200)
 	})
 	.openapi(unlinkIdentityRoute, async (c) => {
-		const session = requireSession(c)
+		const session = await requireSecondStep(c)
 
 		requireRecentSignIn(session)
 
@@ -209,7 +185,7 @@ oauthRoutes.get('/:provider/start', async (c) => {
 		let linkUserId: string | undefined
 
 		if (linking) {
-			const session = requireSession(c)
+			const session = await requireSecondStep(c)
 
 			requireRecentSignIn(session)
 

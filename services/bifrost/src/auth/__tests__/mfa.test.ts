@@ -7,23 +7,19 @@ vi.mock('../passkeys.js', () => ({
 }))
 
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
-import type { User } from 'skuld'
+import type { Session, User } from 'skuld'
 import type { Mock } from 'vitest'
 import { type AuthSecurityEvent, configure } from '../config.js'
 import {
-	completeLoginTicket,
 	confirmTotp,
-	createLoginTicket,
-	deleteLoginTicket,
 	deleteTotp,
-	findLoginTicket,
 	generateRecoveryCodes,
-	MAX_TICKET_ATTEMPTS,
+	MAX_FAILED_STEPS,
 	RECOVERY_CODE_COUNT,
 	secondFactorMethods,
 	startTotpSetup,
+	verifySession,
 } from '../mfa.js'
-import { hashToken } from '../sessions.js'
 import { encryptSecret, totpCode, totpStep } from '../totp.js'
 import type {
 	MfaRepository,
@@ -47,18 +43,29 @@ const user: User = {
 	updated_at: '2026-01-01T00:00:00.000Z',
 }
 
+const session: Session = {
+	id: 'session-1',
+	created_at: '2026-01-01T00:00:00.000Z',
+	expires_at: '2026-01-31T00:00:00.000Z',
+	two_step: false,
+	user,
+}
+
 const secret = Buffer.from('12345678901234567890')
 
 let mfaRepository: { [K in keyof MfaRepository]: Mock<MfaRepository[K]> }
 
-let userRepository: UserRepository
+let sessionRepository: Pick<
+	{ [K in keyof SessionRepository]: Mock<SessionRepository[K]> },
+	'passSecondStep' | 'failSecondStep'
+>
 
 let onSecurityEvent: Mock<(event: AuthSecurityEvent) => void>
 
 function setUp(key?: string) {
 	configure({
-		userRepository,
-		sessionRepository: {} as SessionRepository,
+		userRepository: {} as UserRepository,
+		sessionRepository: sessionRepository as unknown as SessionRepository,
 		passkeyRepository: {} as PasskeyRepository,
 		mfaRepository,
 		passkeys: { domain: 'ivoryimage.dev', origins: ['https://admin.ivoryimage.dev'] },
@@ -83,14 +90,12 @@ beforeEach(() => {
 		deleteTotp: vi.fn().mockResolvedValue('deleted'),
 		replaceRecoveryCodes: vi.fn(),
 		useRecoveryCode: vi.fn().mockResolvedValue(true),
-		createTicket: vi.fn(),
-		useTicketAttempt: vi.fn().mockResolvedValue(USER_ID),
-		findTicket: vi.fn().mockResolvedValue(USER_ID),
-		deleteTicket: vi.fn(),
-		deleteExpiredTickets: vi.fn(),
 	}
 
-	userRepository = { getUserById: vi.fn().mockResolvedValue(user) } as unknown as UserRepository
+	sessionRepository = {
+		passSecondStep: vi.fn(),
+		failSecondStep: vi.fn().mockResolvedValue(false),
+	}
 
 	onSecurityEvent = vi.fn()
 
@@ -109,87 +114,48 @@ describe('secondFactorMethods', () => {
 	})
 })
 
-describe('createLoginTicket', () => {
-	it('stores only the hash of the token, for five minutes', async () => {
-		const before = Date.now()
-
-		const token = await createLoginTicket(USER_ID)
-
-		const [id, userId, expiresAt] = mfaRepository.createTicket.mock.calls[0] ?? []
-
-		expect(id).toBe(hashToken(token))
-
-		expect(userId).toBe(USER_ID)
-
-		expect((expiresAt as Date).getTime() - before).toBeGreaterThanOrEqual(5 * 60 * 1000)
-
-		expect((expiresAt as Date).getTime() - before).toBeLessThan(5 * 60 * 1000 + 1000)
-	})
-})
-
-describe('findLoginTicket', () => {
-	it('returns the user without spending an attempt', async () => {
-		await expect(findLoginTicket('token')).resolves.toBe(USER_ID)
-
-		expect(mfaRepository.findTicket).toHaveBeenCalledWith(hashToken('token'), MAX_TICKET_ATTEMPTS)
-
-		expect(mfaRepository.useTicketAttempt).not.toHaveBeenCalled()
-	})
-
-	it('asks to sign in again for a spent ticket', async () => {
-		mfaRepository.findTicket.mockResolvedValueOnce(null)
-
-		await expect(findLoginTicket('token')).rejects.toMatchObject({ code: 'sign_in_expired' })
-	})
-})
-
-describe('deleteLoginTicket', () => {
-	it('deletes the ticket by the hash of its token', async () => {
-		await deleteLoginTicket('token')
-
-		expect(mfaRepository.deleteTicket).toHaveBeenCalledWith(hashToken('token'))
-	})
-})
-
-describe('completeLoginTicket', () => {
-	it('accepts a current authenticator code and records its step', async () => {
-		await expect(
-			completeLoginTicket('token', { totp: totpCode(secret, totpStep()) }),
-		).resolves.toBe(USER_ID)
-
-		expect(mfaRepository.useTicketAttempt).toHaveBeenCalledWith(
-			hashToken('token'),
-			MAX_TICKET_ATTEMPTS,
-		)
+describe('verifySession', () => {
+	it('passes the session with a current authenticator code and records its step', async () => {
+		await verifySession(session, { totp: totpCode(secret, totpStep()) })
 
 		expect(mfaRepository.useTotpStep).toHaveBeenCalledWith(USER_ID, expect.any(Number))
 
-		expect(mfaRepository.deleteTicket).toHaveBeenCalledWith(hashToken('token'))
+		expect(sessionRepository.passSecondStep).toHaveBeenCalledWith('session-1')
+
+		expect(sessionRepository.failSecondStep).not.toHaveBeenCalled()
 	})
 
 	it('refuses a replayed authenticator code', async () => {
 		mfaRepository.useTotpStep.mockResolvedValueOnce(false)
 
 		await expect(
-			completeLoginTicket('token', { totp: totpCode(secret, totpStep()) }),
-		).rejects.toMatchObject({ code: 'invalid_credentials' })
+			verifySession(session, { totp: totpCode(secret, totpStep()) }),
+		).rejects.toMatchObject({ code: 'code_rejected' })
 
-		expect(mfaRepository.deleteTicket).not.toHaveBeenCalled()
+		expect(sessionRepository.passSecondStep).not.toHaveBeenCalled()
 	})
 
-	it('refuses a wrong authenticator code and reports it', async () => {
+	it('counts a wrong authenticator code against the session and reports it', async () => {
 		const wrong = totpCode(secret, totpStep() + 5)
 
-		await expect(
-			completeLoginTicket('token', { totp: wrong }, '203.0.113.7'),
-		).rejects.toMatchObject({
-			code: 'invalid_credentials',
+		await expect(verifySession(session, { totp: wrong }, '203.0.113.7')).rejects.toMatchObject({
+			code: 'code_rejected',
 		})
+
+		expect(sessionRepository.failSecondStep).toHaveBeenCalledWith('session-1', MAX_FAILED_STEPS)
 
 		expect(onSecurityEvent).toHaveBeenCalledWith({
 			type: 'login_failed',
 			ip: '203.0.113.7',
 			details: { user_id: USER_ID, method: 'totp' },
+		})
+	})
+
+	it('asks to sign in again when a wrong try ends the session', async () => {
+		sessionRepository.failSecondStep.mockResolvedValueOnce(true)
+
+		await expect(verifySession(session, { totp: '000000' })).rejects.toMatchObject({
+			code: 'sign_in_expired',
 		})
 	})
 
@@ -201,16 +167,16 @@ describe('completeLoginTicket', () => {
 		})
 
 		await expect(
-			completeLoginTicket('token', { totp: totpCode(secret, totpStep()) }),
-		).rejects.toMatchObject({ code: 'invalid_credentials' })
+			verifySession(session, { totp: totpCode(secret, totpStep()) }),
+		).rejects.toMatchObject({ code: 'code_rejected' })
 	})
 
 	it('uses a recovery code whatever its case and dashes', async () => {
-		await completeLoginTicket('token', { recovery_code: 'ABCDE-FGHJK' })
+		await verifySession(session, { recovery_code: 'ABCDE-FGHJK' })
 
 		const [, lower] = mfaRepository.useRecoveryCode.mock.calls[0] ?? []
 
-		await completeLoginTicket('token', { recovery_code: 'abcdefghjk' })
+		await verifySession(session, { recovery_code: 'abcdefghjk' })
 
 		expect(mfaRepository.useRecoveryCode.mock.calls[1]?.[1]).toBe(lower)
 	})
@@ -218,9 +184,9 @@ describe('completeLoginTicket', () => {
 	it('refuses a used or unknown recovery code', async () => {
 		mfaRepository.useRecoveryCode.mockResolvedValueOnce(false)
 
-		await expect(
-			completeLoginTicket('token', { recovery_code: 'abcde-fghjk' }),
-		).rejects.toMatchObject({ code: 'invalid_credentials' })
+		await expect(verifySession(session, { recovery_code: 'abcde-fghjk' })).rejects.toMatchObject({
+			code: 'code_rejected',
+		})
 	})
 
 	it("accepts the user's own passkey", async () => {
@@ -228,7 +194,9 @@ describe('completeLoginTicket', () => {
 
 		const passkey = { id: 'credential-1' } as AuthenticationResponseJSON
 
-		await expect(completeLoginTicket('token', { passkey })).resolves.toBe(USER_ID)
+		await verifySession(session, { passkey })
+
+		expect(sessionRepository.passSecondStep).toHaveBeenCalledWith('session-1')
 	})
 
 	it("refuses another user's passkey", async () => {
@@ -236,8 +204,8 @@ describe('completeLoginTicket', () => {
 
 		const passkey = { id: 'credential-9' } as AuthenticationResponseJSON
 
-		await expect(completeLoginTicket('token', { passkey })).rejects.toMatchObject({
-			code: 'invalid_credentials',
+		await expect(verifySession(session, { passkey })).rejects.toMatchObject({
+			code: 'code_rejected',
 		})
 	})
 
@@ -246,27 +214,19 @@ describe('completeLoginTicket', () => {
 
 		const passkey = { id: 'credential-1' } as AuthenticationResponseJSON
 
-		await expect(completeLoginTicket('token', { passkey })).rejects.toMatchObject({
-			code: 'invalid_credentials',
+		await expect(verifySession(session, { passkey })).rejects.toMatchObject({
+			code: 'code_rejected',
 		})
 	})
 
-	it('asks to sign in again when the ticket is spent or expired', async () => {
-		mfaRepository.useTicketAttempt.mockResolvedValueOnce(null)
+	it('refuses a user without a second factor', async () => {
+		mfaRepository.getFactors.mockResolvedValueOnce({ passkeys: 0, totp: false, recovery_codes: 0 })
 
-		await expect(completeLoginTicket('token', { totp: '123456' })).rejects.toMatchObject({
-			code: 'sign_in_expired',
+		await expect(verifySession(session, { totp: '123456' })).rejects.toMatchObject({
+			code: 'no_second_factor',
 		})
 
-		expect(mfaRepository.getTotp).not.toHaveBeenCalled()
-	})
-
-	it('refuses an account deactivated during the sign-in', async () => {
-		vi.mocked(userRepository.getUserById).mockResolvedValueOnce({ ...user, is_active: false })
-
-		await expect(
-			completeLoginTicket('token', { totp: totpCode(secret, totpStep()) }),
-		).rejects.toMatchObject({ code: 'account_inactive' })
+		expect(sessionRepository.failSecondStep).not.toHaveBeenCalled()
 	})
 })
 

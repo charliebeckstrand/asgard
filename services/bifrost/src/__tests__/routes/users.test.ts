@@ -2,31 +2,31 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
 
-const { mockUserRepository, mockFindSession, mockDeleteUserSessions, mockGetFactors } = vi.hoisted(
-	() => ({
-		mockUserRepository: {
-			getUsers: vi.fn(),
-			getUserById: vi.fn(),
-			setUserActive: vi.fn(),
-			insertUser: vi.fn(),
-			getCredentialsByEmail: vi.fn(),
-		},
-		mockFindSession: vi.fn(),
-		mockDeleteUserSessions: vi.fn(),
-		mockGetFactors: vi.fn(),
-	}),
-)
-
-vi.mock('../../auth/index.js', () => ({
-	configure: vi.fn(),
-	getConfig: () => ({ userRepository: mockUserRepository }),
-	SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
-	findSession: (...args: unknown[]) => mockFindSession(...args),
-	deleteUserSessions: (...args: unknown[]) => mockDeleteUserSessions(...args),
-	getFactors: (...args: unknown[]) => mockGetFactors(...args),
-	secondFactorMethods: (factors: { passkeys: number; totp: boolean }) =>
-		factors.passkeys > 0 || factors.totp ? ['passkey'] : [],
+const { mockUserRepository, mockFindSession, mockDeleteUserSessions } = vi.hoisted(() => ({
+	mockUserRepository: {
+		getUsers: vi.fn(),
+		getUserById: vi.fn(),
+		setUserActive: vi.fn(),
+		insertUser: vi.fn(),
+		getCredentialsByEmail: vi.fn(),
+	},
+	mockFindSession: vi.fn(),
+	mockDeleteUserSessions: vi.fn(),
 }))
+
+vi.mock('../../auth/index.js', async () => {
+	const errors =
+		await vi.importActual<typeof import('../../auth/errors.js')>('../../auth/errors.js')
+
+	return {
+		configure: vi.fn(),
+		getConfig: () => ({ userRepository: mockUserRepository }),
+		AuthError: errors.AuthError,
+		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
+		findSession: (...args: unknown[]) => mockFindSession(...args),
+		deleteUserSessions: (...args: unknown[]) => mockDeleteUserSessions(...args),
+	}
+})
 
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
@@ -62,11 +62,12 @@ const sampleUser = {
 
 const sampleAdmin = { ...sampleUser, id: ADMIN_ID, email: 'admin@example.com', role: 'admin' }
 
-function signedInAs(user: typeof sampleUser) {
+function signedInAs(user: typeof sampleUser, { twoStep = true } = {}) {
 	mockFindSession.mockResolvedValue({
 		id: 'session-hash',
 		created_at: '2026-09-26T00:00:00.000Z',
 		expires_at: '2026-10-26T00:00:00.000Z',
+		two_step: twoStep,
 		user,
 	})
 }
@@ -90,8 +91,6 @@ describe('Users routes', () => {
 		vi.resetAllMocks()
 
 		signedInAs(sampleAdmin)
-
-		mockGetFactors.mockResolvedValue({ passkeys: 1, totp: false, recovery_codes: 0 })
 	})
 
 	describe('access', () => {
@@ -133,8 +132,8 @@ describe('Users routes', () => {
 			['GET', '/api/users'],
 			['GET', `/api/users/${USER_ID}`],
 			['PATCH', `/api/users/${USER_ID}`],
-		] as const)('returns 403 for %s %s when the admin has no second factor', async (method, path) => {
-			mockGetFactors.mockResolvedValue({ passkeys: 0, totp: false, recovery_codes: 0 })
+		] as const)('returns 403 for %s %s before the second step', async (method, path) => {
+			signedInAs(sampleAdmin, { twoStep: false })
 
 			const res = await app.request(path, {
 				method,
@@ -144,11 +143,7 @@ describe('Users routes', () => {
 
 			expect(res.status).toBe(403)
 
-			expect(await res.json()).toMatchObject({
-				message: 'Add a passkey or an authenticator app to use the admin pages',
-			})
-
-			expect(mockGetFactors).toHaveBeenCalledWith(ADMIN_ID)
+			expect(await res.json()).toMatchObject({ code: 'second_step_required' })
 
 			expect(mockUserRepository.getUsers).not.toHaveBeenCalled()
 

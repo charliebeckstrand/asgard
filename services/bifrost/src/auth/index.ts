@@ -2,22 +2,17 @@ export type { Config, OAuthClient } from './config.js'
 export { configure, getConfig } from './config.js'
 export { AuthError, authenticateUser, registerUser } from './credentials.js'
 export {
-	completeLoginTicket,
 	confirmTotp,
-	createLoginTicket,
-	deleteExpiredTickets,
-	deleteLoginTicket,
 	deleteTotp,
-	findLoginTicket,
 	generateRecoveryCodes,
 	getFactors,
-	MAX_TICKET_ATTEMPTS,
+	MAX_FAILED_STEPS,
 	RECOVERY_CODE_COUNT,
 	type SecondFactorMethod,
 	type SecondFactorProof,
 	secondFactorMethods,
 	startTotpSetup,
-	TICKET_TTL_SECONDS,
+	verifySession,
 } from './mfa.js'
 export {
 	completeOAuth,
@@ -52,6 +47,7 @@ export {
 	findSession,
 	hashToken,
 	MAX_SESSIONS_PER_USER,
+	passSecondStep,
 	RECENT_SIGN_IN_SECONDS,
 	requireRecentSignIn,
 	SESSION_TTL_SECONDS,

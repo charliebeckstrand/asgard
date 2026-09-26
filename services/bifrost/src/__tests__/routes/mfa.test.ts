@@ -10,6 +10,7 @@ const {
 	mockDeleteTotp,
 	mockGenerateRecoveryCodes,
 	mockRequireRecentSignIn,
+	mockPassSecondStep,
 } = vi.hoisted(() => ({
 	mockFindSession: vi.fn(),
 	mockGetFactors: vi.fn(),
@@ -18,6 +19,7 @@ const {
 	mockDeleteTotp: vi.fn(),
 	mockGenerateRecoveryCodes: vi.fn(),
 	mockRequireRecentSignIn: vi.fn(),
+	mockPassSecondStep: vi.fn(),
 }))
 
 import { AuthError } from '../../auth/errors.js'
@@ -41,6 +43,7 @@ vi.mock('../../auth/index.js', async () => {
 		deleteTotp: (...args: unknown[]) => mockDeleteTotp(...args),
 		generateRecoveryCodes: (...args: unknown[]) => mockGenerateRecoveryCodes(...args),
 		requireRecentSignIn: (...args: unknown[]) => mockRequireRecentSignIn(...args),
+		passSecondStep: (...args: unknown[]) => mockPassSecondStep(...args),
 	}
 })
 
@@ -67,6 +70,7 @@ const session = {
 	id: 'session-hash',
 	created_at: '2026-09-26T00:00:00.000Z',
 	expires_at: '2026-10-26T00:00:00.000Z',
+	two_step: true,
 	user: {
 		id: USER_ID,
 		email: 'alice@example.com',
@@ -136,6 +140,35 @@ describe('MFA routes', () => {
 		expect(mockGenerateRecoveryCodes).not.toHaveBeenCalled()
 	})
 
+	it.each([
+		['POST', '/auth/mfa/totp/setup', undefined],
+		['POST', '/auth/mfa/totp', { code: '123456' }],
+		['DELETE', '/auth/mfa/totp', undefined],
+		['POST', '/auth/mfa/recovery-codes', undefined],
+	] as const)('asks for the second step on %s %s', async (method, path, body) => {
+		mockFindSession.mockResolvedValue({ ...session, two_step: false })
+
+		mockGetFactors.mockResolvedValue({ passkeys: 1, totp: false, recovery_codes: 0 })
+
+		const res = await app.request(path, {
+			method,
+			headers,
+			body: body ? JSON.stringify(body) : undefined,
+		})
+
+		expect(res.status).toBe(403)
+
+		expect(await res.json()).toMatchObject({ code: 'second_step_required' })
+
+		expect(mockStartTotpSetup).not.toHaveBeenCalled()
+
+		expect(mockConfirmTotp).not.toHaveBeenCalled()
+
+		expect(mockDeleteTotp).not.toHaveBeenCalled()
+
+		expect(mockGenerateRecoveryCodes).not.toHaveBeenCalled()
+	})
+
 	it('shows your second factors and whether two-step sign-in is on', async () => {
 		mockGetFactors.mockResolvedValueOnce({ passkeys: 0, totp: true, recovery_codes: 8 })
 
@@ -190,6 +223,24 @@ describe('MFA routes', () => {
 		expect(res.status).toBe(204)
 
 		expect(mockConfirmTotp).toHaveBeenCalledWith(USER_ID, '123456')
+
+		expect(mockPassSecondStep).toHaveBeenCalledWith('session-hash')
+	})
+
+	it('lets a user without a second factor turn on their first authenticator app', async () => {
+		mockFindSession.mockResolvedValue({ ...session, two_step: false })
+
+		mockGetFactors.mockResolvedValue({ passkeys: 0, totp: false, recovery_codes: 0 })
+
+		const res = await app.request('/auth/mfa/totp', {
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ code: '123456' }),
+		})
+
+		expect(res.status).toBe(204)
+
+		expect(mockPassSecondStep).toHaveBeenCalledWith('session-hash')
 	})
 
 	it('returns 400 for a wrong confirmation code', async () => {

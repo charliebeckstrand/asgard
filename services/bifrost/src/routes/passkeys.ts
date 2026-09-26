@@ -6,10 +6,11 @@ import {
 	createRegistrationOptions,
 	deletePasskey,
 	getPasskeys,
+	passSecondStep,
 	registerPasskey,
 	requireRecentSignIn,
 } from '../auth/index.js'
-import { requireSession, type SessionEnv } from '../middleware/session.js'
+import { requireSecondStep, requireSession, type SessionEnv } from '../middleware/session.js'
 
 // A user manages only their own passkeys; no one else can add or remove them.
 
@@ -104,7 +105,7 @@ passkeysRoutes.openapi(listPasskeysRoute, async (c) => {
 })
 
 passkeysRoutes.openapi(registrationOptionsRoute, async (c) => {
-	const session = requireSession(c)
+	const session = await requireSecondStep(c)
 
 	requireRecentSignIn(session)
 
@@ -112,17 +113,22 @@ passkeysRoutes.openapi(registrationOptionsRoute, async (c) => {
 })
 
 passkeysRoutes.openapi(addPasskeyRoute, async (c) => {
-	const session = requireSession(c)
+	const session = await requireSecondStep(c)
 
 	requireRecentSignIn(session)
 
 	const credential = c.req.valid('json') as unknown as RegistrationResponseJSON
 
-	return c.json(await registerPasskey(session.user.id, credential), 201)
+	const passkey = await registerPasskey(session.user.id, credential)
+
+	// A first factor has no second step to pass, so adding it is one.
+	await passSecondStep(session.id)
+
+	return c.json(passkey, 201)
 })
 
 passkeysRoutes.openapi(deletePasskeyRoute, async (c) => {
-	const session = requireSession(c)
+	const session = await requireSecondStep(c)
 
 	requireRecentSignIn(session)
 

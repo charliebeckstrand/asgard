@@ -149,43 +149,5 @@ export function createMfaRepository(): MfaRepository {
 
 			return deleted > 0
 		},
-
-		async createTicket(id, userId, expiresAt) {
-			await db.exec(
-				sql`INSERT INTO login_tickets (id, user_id, expires_at) VALUES (${id}, ${userId}, ${expiresAt})`,
-			)
-		},
-
-		async useTicketAttempt(id, maxAttempts) {
-			const row = await db.first<{ user_id: string }>(
-				sql`
-					UPDATE login_tickets
-					SET attempts = attempts + 1
-					WHERE id = ${id} AND attempts < ${maxAttempts} AND expires_at > now()
-					RETURNING user_id
-				`,
-			)
-
-			return row?.user_id ?? null
-		},
-
-		async findTicket(id, maxAttempts) {
-			return db.val<string | null>(
-				sql`
-					SELECT (
-						SELECT user_id FROM login_tickets
-						WHERE id = ${id} AND attempts < ${maxAttempts} AND expires_at > now()
-					)
-				`,
-			)
-		},
-
-		async deleteTicket(id) {
-			await db.exec(sql`DELETE FROM login_tickets WHERE id = ${id}`)
-		},
-
-		async deleteExpiredTickets() {
-			return db.exec(sql`DELETE FROM login_tickets WHERE expires_at <= now()`)
-		},
 	}
 }

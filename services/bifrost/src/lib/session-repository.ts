@@ -7,6 +7,7 @@ interface SessionRow {
 	id: string
 	created_at: string
 	expires_at: string
+	two_step: boolean
 	user_id: string
 	email: string
 	is_active: boolean
@@ -17,7 +18,7 @@ interface SessionRow {
 }
 
 const selectSession = sql`
-	SELECT s.id, s.created_at, s.expires_at,
+	SELECT s.id, s.created_at, s.expires_at, s.two_step,
 		u.id AS user_id, u.email, u.is_active, u.is_verified, u.role,
 		u.created_at AS user_created_at, u.updated_at AS user_updated_at
 	FROM sessions s
@@ -29,6 +30,7 @@ function toSession(row: SessionRow): Session {
 		id: row.id,
 		created_at: row.created_at,
 		expires_at: row.expires_at,
+		two_step: row.two_step,
 		user: {
 			id: row.user_id,
 			email: row.email,
@@ -43,7 +45,7 @@ function toSession(row: SessionRow): Session {
 
 export function createSessionRepository(): SessionRepository {
 	return {
-		async createSession(id, userId, expiresAt, { replacing, limit }) {
+		async createSession(id, userId, expiresAt, { replacing, limit, twoStep }) {
 			return db.tx(async (tx) => {
 				// Serializes concurrent sign-ins of one user, so the cap holds.
 				await tx.exec(sql`SELECT 1 FROM users WHERE id = ${userId} FOR UPDATE`)
@@ -54,8 +56,8 @@ export function createSessionRepository(): SessionRepository {
 
 				await tx.exec(
 					sql`
-						INSERT INTO sessions (id, user_id, expires_at)
-						VALUES (${id}, ${userId}, ${expiresAt})
+						INSERT INTO sessions (id, user_id, expires_at, two_step)
+						VALUES (${id}, ${userId}, ${expiresAt}, ${twoStep})
 					`,
 				)
 
@@ -85,6 +87,28 @@ export function createSessionRepository(): SessionRepository {
 			)
 
 			return row ? toSession(row) : null
+		},
+
+		async passSecondStep(id) {
+			await db.exec(sql`UPDATE sessions SET two_step = true, failed_steps = 0 WHERE id = ${id}`)
+		},
+
+		async failSecondStep(id, limit) {
+			return db.tx(async (tx) => {
+				const row = await tx.first<{ failed_steps: number }>(
+					sql`
+						UPDATE sessions SET failed_steps = failed_steps + 1
+						WHERE id = ${id}
+						RETURNING failed_steps
+					`,
+				)
+
+				if (!row || row.failed_steps < limit) return false
+
+				await tx.exec(sql`DELETE FROM sessions WHERE id = ${id}`)
+
+				return true
+			})
 		},
 
 		async deleteSession(id) {
