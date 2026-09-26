@@ -34,17 +34,32 @@ export function createBifrostApp() {
 	// password budget. Only a POST tries a credential. The GET and the DELETE of a
 	// pending sign-in check a 256-bit ticket, and a page guard calls the GET from
 	// the server of the app, so they stay out of the budget.
-	const loginLimit = createVidar({ rate: 2, burst: 5, route: '/auth/login', service: 'bifrost' })
+	// Ten tries, then one every six seconds per address.
+	const loginLimit = createVidar({
+		rate: 1 / 6,
+		burst: 10,
+		route: '/auth/login',
+		service: 'bifrost',
+	})
 
 	app.use('/auth/login/*', (c, next) => (c.req.method === 'POST' ? loginLimit(c, next) : next()))
-	// Each start stores a state row and each callback calls the provider.
-	const oauthLimit = createVidar({ rate: 2, burst: 5, route: '/auth/oauth', service: 'bifrost' })
+
+	// Each start stores a state row, and each callback calls the provider and can
+	// make an account. Ten tries, then one every six seconds per address.
+	const oauthLimit = createVidar({
+		rate: 1 / 6,
+		burst: 10,
+		route: '/auth/oauth',
+		service: 'bifrost',
+	})
 
 	app.use('/auth/oauth/:provider/start', oauthLimit)
 	app.use('/auth/oauth/:provider/callback', oauthLimit)
+
+	// Three accounts, then one a minute per address, so no one can fill the database.
 	app.use(
 		'/auth/register',
-		createVidar({ rate: 2, burst: 5, route: '/auth/register', service: 'bifrost' }),
+		createVidar({ rate: 1 / 60, burst: 3, route: '/auth/register', service: 'bifrost' }),
 	)
 
 	return app
