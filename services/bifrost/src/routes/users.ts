@@ -1,17 +1,12 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
-import { getIpAddress } from 'grid/middleware'
-import {
-	createListSchema,
-	EmailSchema,
-	IdSchema,
-	PasswordSchema,
-	toList,
-	UserRoleSchema,
-	UserSchema,
-} from 'skuld'
-import { getConfig, registerUser } from '../auth/index.js'
+import { createListSchema, IdSchema, toList, UserSchema } from 'skuld'
+import { deleteUserSessions, getConfig } from '../auth/index.js'
 import { requireAdmin, type SessionEnv } from '../middleware/session.js'
+
+// Admins manage an account's standing, never its credentials: no passwords,
+// no email, no roles. They also can't act on other admins; admins are made
+// and unmade by the operator.
 
 const UserIdParamSchema = z.object({
 	id: IdSchema,
@@ -19,23 +14,11 @@ const UserIdParamSchema = z.object({
 
 const UserListSchema = createListSchema(UserSchema, 'UserList')
 
-const CreateUserRequestSchema = z
-	.object({
-		email: EmailSchema,
-		password: PasswordSchema,
-		name: z.string().min(1).optional(),
-	})
-	.openapi('CreateUserRequest')
-
 const UpdateUserRequestSchema = z
 	.object({
-		email: EmailSchema.optional(),
-		is_active: z.boolean().optional(),
-		role: UserRoleSchema.optional(),
+		is_active: z.boolean(),
 	})
 	.openapi('UpdateUserRequest')
-
-const CreateUserSchema = UserSchema.pick({ id: true, email: true }).openapi('CreateUserResponse')
 
 const listUsersRoute = createRoute({
 	method: 'get',
@@ -44,22 +27,6 @@ const listUsersRoute = createRoute({
 	summary: 'List all users',
 	responses: {
 		200: jsonResponse(UserListSchema, 'List of users'),
-	},
-})
-
-const createUserRoute = createRoute({
-	method: 'post',
-	path: '/',
-	tags: ['Users'],
-	summary: 'Create a new user account',
-	description: '',
-	request: {
-		body: jsonRequest(CreateUserRequestSchema),
-	},
-	responses: {
-		201: jsonResponse(CreateUserSchema, 'User created'),
-		400: errorResponse('Validation error'),
-		409: errorResponse('Email already registered'),
 	},
 })
 
@@ -78,10 +45,11 @@ const getUserRoute = createRoute({
 })
 
 const updateUserRoute = createRoute({
-	method: 'put',
+	method: 'patch',
 	path: '/{id}',
 	tags: ['Users'],
-	summary: 'Update a user',
+	summary: 'Deactivate or reactivate a user',
+	description: 'Deactivating signs the user out everywhere. Admin accounts cannot be changed.',
 	request: {
 		params: UserIdParamSchema,
 		body: jsonRequest(UpdateUserRequestSchema),
@@ -89,22 +57,7 @@ const updateUserRoute = createRoute({
 	responses: {
 		200: jsonResponse(UserSchema, 'User updated'),
 		400: errorResponse('Validation error'),
-		404: errorResponse('User not found'),
-	},
-})
-
-const deleteUserRoute = createRoute({
-	method: 'delete',
-	path: '/{id}',
-	tags: ['Users'],
-	summary: 'Delete a user',
-	request: {
-		params: UserIdParamSchema,
-	},
-	responses: {
-		204: {
-			description: 'User deleted',
-		},
+		403: errorResponse('Admin accounts cannot be changed'),
 		404: errorResponse('User not found'),
 	},
 })
@@ -119,16 +72,6 @@ usersRoutes.openapi(listUsersRoute, async (c) => {
 	const users = await userRepository.getUsers()
 
 	return c.json(toList(users), 200)
-})
-
-usersRoutes.openapi(createUserRoute, async (c) => {
-	const { email, password } = c.req.valid('json')
-
-	const ip = getIpAddress(c)
-
-	const user = await registerUser(email, password, ip)
-
-	return c.json({ id: user.id, email: user.email }, 201)
 })
 
 usersRoutes.openapi(getUserRoute, async (c) => {
@@ -147,31 +90,32 @@ usersRoutes.openapi(getUserRoute, async (c) => {
 
 usersRoutes.openapi(updateUserRoute, async (c) => {
 	const { id } = c.req.valid('param')
-	const data = c.req.valid('json')
+
+	const { is_active } = c.req.valid('json')
 
 	const { userRepository } = getConfig()
 
-	const user = await userRepository.updateUser(id, data)
+	const target = await userRepository.getUserById(id)
+
+	if (!target) {
+		throw new HTTPException(404, { message: 'User not found' })
+	}
+
+	if (target.role === 'admin') {
+		throw new HTTPException(403, { message: 'Admin accounts cannot be changed' })
+	}
+
+	const user = await userRepository.setUserActive(id, is_active)
 
 	if (!user) {
-		throw new HTTPException(404, { message: 'User not found' })
+		throw new HTTPException(403, { message: 'Admin accounts cannot be changed' })
+	}
+
+	if (!is_active) {
+		await deleteUserSessions(id)
 	}
 
 	return c.json(user, 200)
-})
-
-usersRoutes.openapi(deleteUserRoute, async (c) => {
-	const { id } = c.req.valid('param')
-
-	const { userRepository } = getConfig()
-
-	const deleted = await userRepository.deleteUser(id)
-
-	if (!deleted) {
-		throw new HTTPException(404, { message: 'User not found' })
-	}
-
-	return c.body(null, 204)
 })
 
 export { usersRoutes }

@@ -41,23 +41,15 @@ export function createUserRepository(): UserRepository {
 			)
 		},
 
-		async updateUser(id, data) {
-			const sets = sql.set(data)
-
+		async setUserActive(id, isActive) {
 			return db.first<User>(
 				sql`
 					UPDATE users
-					${sets}
-					WHERE id = ${id}
+					SET is_active = ${isActive}
+					WHERE id = ${id} AND role = 'user'
 					RETURNING id, email, is_active, is_verified, role, created_at, updated_at
 				`,
 			)
-		},
-
-		async deleteUser(id) {
-			const count = await db.exec(sql`DELETE FROM users WHERE id = ${id}`)
-
-			return count > 0
 		},
 	}
 }

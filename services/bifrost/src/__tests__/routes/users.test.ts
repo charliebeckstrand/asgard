@@ -1,44 +1,25 @@
-import { stubServiceEnv, TEST_SESSION_SECRET } from 'vali/env'
+import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
 
-const { mockUserRepository, mockSessionRepository, mockRegisterUser } = vi.hoisted(() => ({
+const { mockUserRepository, mockFindSession, mockDeleteUserSessions } = vi.hoisted(() => ({
 	mockUserRepository: {
 		getUsers: vi.fn(),
 		getUserById: vi.fn(),
-		updateUser: vi.fn(),
-		deleteUser: vi.fn(),
+		setUserActive: vi.fn(),
 		insertUser: vi.fn(),
 		getCredentialsByEmail: vi.fn(),
 	},
-	mockSessionRepository: {
-		getSessionUser: vi.fn(),
-	},
-	mockRegisterUser: vi.fn(),
+	mockFindSession: vi.fn(),
+	mockDeleteUserSessions: vi.fn(),
 }))
 
-import { AuthError } from '../../auth/errors.js'
-
-vi.mock('../../auth/index.js', async () => {
-	const errors =
-		await vi.importActual<typeof import('../../auth/errors.js')>('../../auth/errors.js')
-
-	return {
-		configure: vi.fn(),
-		getConfig: () => ({
-			userRepository: mockUserRepository,
-			sessionRepository: mockSessionRepository,
-		}),
-		registerUser: (...args: unknown[]) => mockRegisterUser(...args),
-		AuthError: errors.AuthError,
-		authenticateUser: vi.fn(),
-		refreshTokenPair: vi.fn(),
-	}
-})
-
-vi.mock('../../auth/jwt.js', () => ({
-	ACCESS_TOKEN_TTL_SECONDS: 30 * 60,
-	REFRESH_TOKEN_TTL_SECONDS: 7 * 24 * 60 * 60,
+vi.mock('../../auth/index.js', () => ({
+	configure: vi.fn(),
+	getConfig: () => ({ userRepository: mockUserRepository }),
+	SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
+	findSession: (...args: unknown[]) => mockFindSession(...args),
+	deleteUserSessions: (...args: unknown[]) => mockDeleteUserSessions(...args),
 }))
 
 vi.mock('vidar/client', () => ({
@@ -55,34 +36,17 @@ vi.mock('../../lib/db.js', () => ({
 }))
 
 import { createBifrostApp } from '../../app.js'
-import { _encodeSession, type SessionData } from '../../middleware/session.js'
 
 const ORIGIN = 'http://localhost:3000'
 
 const app = createBifrostApp()
 
-async function withSession(
-	overrides: Partial<SessionData> = {},
-): Promise<{ Cookie: string; Origin: string }> {
-	const sessionData: SessionData = {
-		sessionId: '00000000-0000-4000-8000-00000000000a',
-		accessToken: 'at_test',
-		refreshToken: 'rt_test',
-		expiresAt: Math.floor(Date.now() / 1000) + 3600,
-		...overrides,
-	}
-
-	const cookie = await _encodeSession(sessionData, TEST_SESSION_SECRET)
-
-	return { Cookie: `bifrost_session=${cookie}`, Origin: ORIGIN }
-}
-
-const VALID_ID = '00000000-0000-4000-8000-000000000001'
+const USER_ID = '00000000-0000-4000-8000-000000000001'
 
 const ADMIN_ID = '00000000-0000-4000-8000-000000000002'
 
 const sampleUser = {
-	id: VALID_ID,
+	id: USER_ID,
 	email: 'user@example.com',
 	is_active: true,
 	is_verified: false,
@@ -91,25 +55,48 @@ const sampleUser = {
 	updated_at: '2026-01-01T00:00:00.000Z',
 }
 
+const sampleAdmin = { ...sampleUser, id: ADMIN_ID, email: 'admin@example.com', role: 'admin' }
+
+function signedInAs(user: typeof sampleUser) {
+	mockFindSession.mockResolvedValue({
+		id: 'session-hash',
+		created_at: '2026-09-26T00:00:00.000Z',
+		expires_at: '2026-10-26T00:00:00.000Z',
+		user,
+	})
+}
+
+const headers = {
+	'Content-Type': 'application/json',
+	Cookie: '__Host-session=token',
+	Origin: ORIGIN,
+}
+
+function setActive(id: string, is_active: boolean) {
+	return app.request(`/api/users/${id}`, {
+		method: 'PATCH',
+		headers,
+		body: JSON.stringify({ is_active }),
+	})
+}
+
 describe('Users routes', () => {
 	beforeEach(() => {
-		vi.clearAllMocks()
+		vi.resetAllMocks()
 
-		mockSessionRepository.getSessionUser.mockResolvedValue({ id: ADMIN_ID, role: 'admin' })
+		signedInAs(sampleAdmin)
 	})
 
-	describe('authentication gate', () => {
+	describe('access', () => {
 		it.each([
 			['GET', '/api/users'],
-			['GET', `/api/users/${VALID_ID}`],
-			['PUT', `/api/users/${VALID_ID}`],
-			['DELETE', `/api/users/${VALID_ID}`],
-			['POST', '/api/users'],
+			['GET', `/api/users/${USER_ID}`],
+			['PATCH', `/api/users/${USER_ID}`],
 		] as const)('returns 401 for %s %s without a session', async (method, path) => {
 			const res = await app.request(path, {
 				method,
 				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
-				body: method === 'GET' || method === 'DELETE' ? undefined : JSON.stringify({}),
+				body: method === 'GET' ? undefined : JSON.stringify({ is_active: false }),
 			})
 
 			expect(res.status).toBe(401)
@@ -117,38 +104,36 @@ describe('Users routes', () => {
 
 		it.each([
 			['GET', '/api/users'],
-			['GET', `/api/users/${VALID_ID}`],
-			['PUT', `/api/users/${VALID_ID}`],
-			['DELETE', `/api/users/${VALID_ID}`],
-			['POST', '/api/users'],
+			['GET', `/api/users/${USER_ID}`],
+			['PATCH', `/api/users/${USER_ID}`],
 		] as const)('returns 403 for %s %s when the user is not an admin', async (method, path) => {
-			mockSessionRepository.getSessionUser.mockResolvedValue({ id: VALID_ID, role: 'user' })
+			signedInAs(sampleUser)
 
 			const res = await app.request(path, {
 				method,
-				headers: { 'Content-Type': 'application/json', ...(await withSession()) },
-				body: method === 'GET' || method === 'DELETE' ? undefined : JSON.stringify({}),
+				headers,
+				body: method === 'GET' ? undefined : JSON.stringify({ is_active: false }),
 			})
 
 			expect(res.status).toBe(403)
 
 			expect(mockUserRepository.getUsers).not.toHaveBeenCalled()
 
-			expect(mockUserRepository.updateUser).not.toHaveBeenCalled()
-
-			expect(mockUserRepository.deleteUser).not.toHaveBeenCalled()
-
-			expect(mockRegisterUser).not.toHaveBeenCalled()
+			expect(mockUserRepository.setUserActive).not.toHaveBeenCalled()
 		})
 
-		it('returns 401 when the session has been revoked', async () => {
-			mockSessionRepository.getSessionUser.mockResolvedValue(null)
-
-			const res = await app.request('/api/users', {
-				headers: await withSession(),
+		it.each([
+			['POST', '/api/users'],
+			['PUT', `/api/users/${USER_ID}`],
+			['DELETE', `/api/users/${USER_ID}`],
+		] as const)('offers no %s %s', async (method, path) => {
+			const res = await app.request(path, {
+				method,
+				headers,
+				body: method === 'DELETE' ? undefined : JSON.stringify({}),
 			})
 
-			expect(res.status).toBe(401)
+			expect(res.status).toBe(404)
 		})
 	})
 
@@ -156,17 +141,11 @@ describe('Users routes', () => {
 		it('returns the list wrapped in toList shape', async () => {
 			mockUserRepository.getUsers.mockResolvedValueOnce([sampleUser])
 
-			const res = await app.request('/api/users', {
-				headers: await withSession(),
-			})
+			const res = await app.request('/api/users', { headers })
 
 			expect(res.status).toBe(200)
 
-			const body = (await res.json()) as { data: (typeof sampleUser)[]; total: number }
-
-			expect(body.total).toBe(1)
-
-			expect(body.data).toEqual([sampleUser])
+			expect(await res.json()).toEqual({ data: [sampleUser], total: 1 })
 		})
 	})
 
@@ -174,183 +153,104 @@ describe('Users routes', () => {
 		it('returns the user when found', async () => {
 			mockUserRepository.getUserById.mockResolvedValueOnce(sampleUser)
 
-			const res = await app.request(`/api/users/${VALID_ID}`, {
-				headers: await withSession(),
-			})
+			const res = await app.request(`/api/users/${USER_ID}`, { headers })
 
 			expect(res.status).toBe(200)
 
 			expect(await res.json()).toEqual(sampleUser)
-
-			expect(mockUserRepository.getUserById).toHaveBeenCalledWith(VALID_ID)
 		})
 
 		it('returns 404 when not found', async () => {
 			mockUserRepository.getUserById.mockResolvedValueOnce(null)
 
-			const res = await app.request(`/api/users/${VALID_ID}`, {
-				headers: await withSession(),
-			})
+			const res = await app.request(`/api/users/${USER_ID}`, { headers })
 
 			expect(res.status).toBe(404)
 		})
 
-		it('returns 400 for non-uuid id', async () => {
-			const res = await app.request('/api/users/not-a-uuid', {
-				headers: await withSession(),
-			})
+		it('returns 400 for a non-uuid id', async () => {
+			const res = await app.request('/api/users/not-a-uuid', { headers })
 
 			expect(res.status).toBe(400)
-
-			expect(mockUserRepository.getUserById).not.toHaveBeenCalled()
 		})
 	})
 
-	describe('POST /api/users', () => {
-		it('creates a user and returns 201', async () => {
-			mockRegisterUser.mockResolvedValueOnce(sampleUser)
-
-			const res = await app.request('/api/users', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', ...(await withSession()) },
-				body: JSON.stringify({ email: 'new@example.com', password: 'password1234' }),
-			})
-
-			expect(res.status).toBe(201)
-
-			const body = (await res.json()) as { id: string; email: string }
-
-			expect(body).toEqual({ id: sampleUser.id, email: sampleUser.email })
-
-			expect(mockRegisterUser).toHaveBeenCalledWith(
-				'new@example.com',
-				'password1234',
-				expect.any(String),
-			)
-		})
-
-		it('returns 409 when registerUser reports email_exists', async () => {
-			mockRegisterUser.mockRejectedValueOnce(
-				new AuthError('email_exists', 'Email already registered'),
-			)
-
-			const res = await app.request('/api/users', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', ...(await withSession()) },
-				body: JSON.stringify({ email: 'dup@example.com', password: 'password1234' }),
-			})
-
-			expect(res.status).toBe(409)
-		})
-
-		it('returns 400 for invalid email', async () => {
-			const res = await app.request('/api/users', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', ...(await withSession()) },
-				body: JSON.stringify({ email: 'not-an-email', password: 'password1234' }),
-			})
-
-			expect(res.status).toBe(400)
-
-			expect(mockRegisterUser).not.toHaveBeenCalled()
-		})
-	})
-
-	describe('PUT /api/users/:id', () => {
-		it('updates and returns the user', async () => {
+	describe('PATCH /api/users/:id', () => {
+		it('deactivates a user and signs them out everywhere', async () => {
 			const updated = { ...sampleUser, is_active: false }
 
-			mockUserRepository.updateUser.mockResolvedValueOnce(updated)
+			mockUserRepository.getUserById.mockResolvedValueOnce(sampleUser)
 
-			const res = await app.request(`/api/users/${VALID_ID}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json', ...(await withSession()) },
-				body: JSON.stringify({ is_active: false }),
-			})
+			mockUserRepository.setUserActive.mockResolvedValueOnce(updated)
+
+			const res = await setActive(USER_ID, false)
 
 			expect(res.status).toBe(200)
 
 			expect(await res.json()).toEqual(updated)
 
-			expect(mockUserRepository.updateUser).toHaveBeenCalledWith(VALID_ID, { is_active: false })
+			expect(mockUserRepository.setUserActive).toHaveBeenCalledWith(USER_ID, false)
+
+			expect(mockDeleteUserSessions).toHaveBeenCalledWith(USER_ID)
 		})
 
-		it('changes the role', async () => {
-			const updated = { ...sampleUser, role: 'admin' }
+		it('reactivates a user without touching sessions', async () => {
+			mockUserRepository.getUserById.mockResolvedValueOnce({ ...sampleUser, is_active: false })
 
-			mockUserRepository.updateUser.mockResolvedValueOnce(updated)
+			mockUserRepository.setUserActive.mockResolvedValueOnce(sampleUser)
 
-			const res = await app.request(`/api/users/${VALID_ID}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json', ...(await withSession()) },
-				body: JSON.stringify({ role: 'admin' }),
-			})
+			const res = await setActive(USER_ID, true)
 
 			expect(res.status).toBe(200)
 
-			expect(mockUserRepository.updateUser).toHaveBeenCalledWith(VALID_ID, { role: 'admin' })
+			expect(mockDeleteUserSessions).not.toHaveBeenCalled()
 		})
 
-		it('returns 400 for an unknown role', async () => {
-			const res = await app.request(`/api/users/${VALID_ID}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json', ...(await withSession()) },
-				body: JSON.stringify({ role: 'owner' }),
+		it('refuses to change another admin', async () => {
+			mockUserRepository.getUserById.mockResolvedValueOnce({
+				...sampleAdmin,
+				id: USER_ID,
 			})
 
-			expect(res.status).toBe(400)
+			const res = await setActive(USER_ID, false)
 
-			expect(mockUserRepository.updateUser).not.toHaveBeenCalled()
+			expect(res.status).toBe(403)
+
+			expect(mockUserRepository.setUserActive).not.toHaveBeenCalled()
+		})
+
+		it('refuses to change the signed-in admin', async () => {
+			mockUserRepository.getUserById.mockResolvedValueOnce(sampleAdmin)
+
+			const res = await setActive(ADMIN_ID, false)
+
+			expect(res.status).toBe(403)
+
+			expect(mockUserRepository.setUserActive).not.toHaveBeenCalled()
 		})
 
 		it('returns 404 when the user is missing', async () => {
-			mockUserRepository.updateUser.mockResolvedValueOnce(null)
+			mockUserRepository.getUserById.mockResolvedValueOnce(null)
 
-			const res = await app.request(`/api/users/${VALID_ID}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json', ...(await withSession()) },
-				body: JSON.stringify({ is_active: false }),
-			})
+			const res = await setActive(USER_ID, false)
 
 			expect(res.status).toBe(404)
 		})
 
-		it('returns 400 for invalid email override', async () => {
-			const res = await app.request(`/api/users/${VALID_ID}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json', ...(await withSession()) },
-				body: JSON.stringify({ email: 'not-an-email' }),
+		it.each([
+			['email', { email: 'new@example.com' }],
+			['role', { role: 'admin' }],
+			['password', { password: 'password123' }],
+		])('rejects a body that only changes %s', async (_, body) => {
+			const res = await app.request(`/api/users/${USER_ID}`, {
+				method: 'PATCH',
+				headers,
+				body: JSON.stringify(body),
 			})
 
 			expect(res.status).toBe(400)
 
-			expect(mockUserRepository.updateUser).not.toHaveBeenCalled()
-		})
-	})
-
-	describe('DELETE /api/users/:id', () => {
-		it('returns 204 on successful delete', async () => {
-			mockUserRepository.deleteUser.mockResolvedValueOnce(true)
-
-			const res = await app.request(`/api/users/${VALID_ID}`, {
-				method: 'DELETE',
-				headers: await withSession(),
-			})
-
-			expect(res.status).toBe(204)
-
-			expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(VALID_ID)
-		})
-
-		it('returns 404 when the user does not exist', async () => {
-			mockUserRepository.deleteUser.mockResolvedValueOnce(false)
-
-			const res = await app.request(`/api/users/${VALID_ID}`, {
-				method: 'DELETE',
-				headers: await withSession(),
-			})
-
-			expect(res.status).toBe(404)
+			expect(mockUserRepository.setUserActive).not.toHaveBeenCalled()
 		})
 	})
 })

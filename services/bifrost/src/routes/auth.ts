@@ -1,19 +1,24 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import { EmailSchema, LoginPasswordSchema, MessageSchema, PasswordSchema, UserSchema } from 'skuld'
+import {
+	EmailSchema,
+	LoginPasswordSchema,
+	MessageSchema,
+	PasswordSchema,
+	SessionSchema,
+	UserSchema,
+} from 'skuld'
 import {
 	authenticateUser,
-	getConfig,
+	createSession,
+	deleteSession,
+	deleteUserSessions,
 	registerUser,
-	revokeSession,
-	revokeUserSessions,
 } from '../auth/index.js'
-import { ACCESS_TOKEN_TTL_SECONDS, verifyAccessToken } from '../auth/jwt.js'
-import { environment } from '../lib/env.js'
 import {
 	clearSessionCookie,
-	type SessionData,
+	getSessionToken,
 	type SessionEnv,
 	setSessionCookie,
 } from '../middleware/session.js'
@@ -24,20 +29,6 @@ const LoginRequestSchema = z
 		password: LoginPasswordSchema,
 	})
 	.openapi('LoginRequest')
-
-const LoginResponseSchema = z
-	.object({
-		access_token: z.string(),
-		token_type: z.literal('bearer'),
-	})
-	.openapi('LoginResponse')
-
-const SessionResponseSchema = z
-	.object({
-		authenticated: z.literal(true),
-		expiresAt: z.number(),
-	})
-	.openapi('SessionResponse')
 
 const RegisterRequestSchema = z
 	.object({
@@ -56,12 +47,13 @@ const loginRoute = createRoute({
 	path: '/login',
 	tags: ['Auth'],
 	summary: 'Login with email and password',
-	description: 'Authenticates credentials and sets a session cookie.',
+	description:
+		'Authenticates credentials, starts a session and sets its cookie. A session the browser still holds is replaced.',
 	request: {
 		body: jsonRequest(LoginRequestSchema),
 	},
 	responses: {
-		200: jsonResponse(LoginResponseSchema, 'Login successful'),
+		200: jsonResponse(SessionSchema, 'Login successful'),
 		401: errorResponse('Invalid credentials'),
 		403: errorResponse('Account inactive'),
 	},
@@ -71,21 +63,33 @@ const logoutRoute = createRoute({
 	method: 'post',
 	path: '/logout',
 	tags: ['Auth'],
-	summary: 'Logout and clear session',
-	description: 'Revokes the current session and clears its cookie.',
+	summary: 'Logout',
+	description: 'Deletes the current session and clears its cookie.',
 	responses: {
 		200: jsonResponse(MessageSchema, 'Logged out'),
 	},
 })
 
-const logoutAllRoute = createRoute({
-	method: 'post',
-	path: '/logout-all',
+const sessionRoute = createRoute({
+	method: 'get',
+	path: '/session',
 	tags: ['Auth'],
-	summary: 'Logout everywhere',
-	description: 'Revokes every session of the authenticated user, on all devices.',
+	summary: 'Get current session',
+	description: 'Returns the current session and its user, or 401.',
 	responses: {
-		200: jsonResponse(MessageSchema, 'Logged out everywhere'),
+		200: jsonResponse(SessionSchema, 'Active session'),
+		401: errorResponse('Not authenticated'),
+	},
+})
+
+const deleteOtherSessionsRoute = createRoute({
+	method: 'delete',
+	path: '/sessions',
+	tags: ['Auth'],
+	summary: 'Sign out other devices',
+	description: 'Deletes every session of the current user except this one.',
+	responses: {
+		204: { description: 'Other sessions deleted' },
 		401: errorResponse('Not authenticated'),
 	},
 })
@@ -106,125 +110,55 @@ const registerRoute = createRoute({
 	},
 })
 
-const sessionRoute = createRoute({
-	method: 'get',
-	path: '/session',
-	tags: ['Auth'],
-	summary: 'Get current session',
-	description: 'Returns session info if authenticated, 401 otherwise.',
-	responses: {
-		200: jsonResponse(SessionResponseSchema, 'Active session'),
-		401: errorResponse('Not authenticated'),
-	},
-})
-
-const userRoute = createRoute({
-	method: 'get',
-	path: '/user',
-	tags: ['Auth'],
-	summary: 'Get authenticated user',
-	description: "Returns the current authenticated user's details.",
-	responses: {
-		200: jsonResponse(UserSchema, 'Authenticated user'),
-		401: errorResponse('Not authenticated'),
-	},
-})
-
 export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
 	.openapi(loginRoute, async (c) => {
-		const env = environment()
-
 		const { email, password } = c.req.valid('json')
 
-		const ip = getIpAddress(c)
+		const userId = await authenticateUser(email, password, getIpAddress(c))
 
-		const tokens = await authenticateUser(email, password, ip)
+		const { token, session } = await createSession(userId, getSessionToken(c))
 
-		const sessionData: SessionData = {
-			sessionId: tokens.session_id,
-			accessToken: tokens.access_token,
-			refreshToken: tokens.refresh_token,
-			expiresAt: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS,
-		}
+		setSessionCookie(c, token)
 
-		await setSessionCookie(c, sessionData, env.SESSION_SECRET)
-
-		return c.json(
-			{
-				access_token: tokens.access_token,
-				token_type: 'bearer' as const,
-			},
-			200,
-		)
+		return c.json(session, 200)
 	})
 	.openapi(logoutRoute, async (c) => {
-		const session = c.get('session')
+		const current = c.get('session')
 
-		if (session) {
-			await revokeSession(session.sessionId)
+		if (current) {
+			await deleteSession(current.id)
 		}
 
 		clearSessionCookie(c)
 
 		return c.json({ message: 'Logged out' }, 200)
 	})
-	.openapi(logoutAllRoute, async (c) => {
-		const session = c.get('session')
-
-		if (!session) {
-			throw new HTTPException(401, { message: 'Not authenticated' })
-		}
-
-		await revokeUserSessions(session.userId)
-
-		clearSessionCookie(c)
-
-		return c.json({ message: 'Logged out everywhere' }, 200)
-	})
 	.openapi(sessionRoute, async (c) => {
-		const session = c.get('session')
+		const current = c.get('session')
 
-		if (!session) {
+		if (!current) {
 			throw new HTTPException(401, { message: 'Not authenticated' })
 		}
 
-		c.header('Cache-Control', 'private, max-age=60')
+		c.header('Cache-Control', 'private, no-store')
 
-		return c.json(
-			{
-				authenticated: true as const,
-				expiresAt: session.expiresAt,
-			},
-			200,
-		)
+		return c.json(current, 200)
 	})
-	.openapi(userRoute, async (c) => {
-		const session = c.get('session')
+	.openapi(deleteOtherSessionsRoute, async (c) => {
+		const current = c.get('session')
 
-		if (!session) {
+		if (!current) {
 			throw new HTTPException(401, { message: 'Not authenticated' })
 		}
 
-		const payload = await verifyAccessToken(session.accessToken).catch(() => {
-			throw new HTTPException(401, { message: 'Not authenticated' })
-		})
+		await deleteUserSessions(current.user.id, current.id)
 
-		const { userRepository } = getConfig()
-
-		const user = await userRepository.getUserById(payload.sub)
-
-		if (!user) {
-			throw new HTTPException(401, { message: 'Not authenticated' })
-		}
-
-		return c.json(user, 200)
+		return c.body(null, 204)
 	})
 	.openapi(registerRoute, async (c) => {
 		const { email, password } = c.req.valid('json')
 
-		const ip = getIpAddress(c)
-
-		const user = await registerUser(email, password, ip)
+		const user = await registerUser(email, password, getIpAddress(c))
 
 		return c.json({ id: user.id, email: user.email }, 201)
 	})

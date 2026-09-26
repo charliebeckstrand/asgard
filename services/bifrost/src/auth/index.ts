@@ -1,17 +1,14 @@
+export type { Config } from './config.js'
 export { configure, getConfig } from './config.js'
-export type { TokenPair } from './credentials.js'
+export { AuthError, authenticateUser, registerUser } from './credentials.js'
 export {
-	AuthError,
-	authenticateUser,
-	refreshTokenPair,
-	registerUser,
-	revokeSession,
-	revokeUserSessions,
-} from './credentials.js'
-export type {
-	CredentialsRow,
-	SessionRepository,
-	SessionRow,
-	SessionUser,
-	UserRepository,
-} from './types.js'
+	createSession,
+	deleteExpiredSessions,
+	deleteSession,
+	deleteUserSessions,
+	findSession,
+	hashToken,
+	MAX_SESSIONS_PER_USER,
+	SESSION_TTL_SECONDS,
+} from './sessions.js'
+export type { CredentialsRow, SessionRepository, UserRepository } from './types.js'

@@ -56,121 +56,173 @@ beforeEach(async () => {
 	await pool.query('TRUNCATE users CASCADE')
 })
 
-const inAWeek = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+const inADay = () => new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-async function openSession(userId?: string) {
-	const user = userId ?? (await users.insertUser(randomUUID(), `${randomUUID()}@x.dev`, 'h')).id
+async function insertUser() {
+	return (await users.insertUser(randomUUID(), `${randomUUID()}@x.dev`, 'h')).id
+}
 
+async function openSession(userId: string, options: { replacing?: string; limit?: number } = {}) {
 	const id = randomUUID()
-	const jti = randomUUID()
 
-	await sessions.createSession(id, user, jti, inAWeek())
+	await sessions.createSession(id, userId, inADay(), { limit: 10, ...options })
 
-	return { id, jti, userId: user }
+	return id
+}
+
+async function sessionIds(userId: string) {
+	const { rows } = await pool.query<{ id: string }>(
+		'SELECT id FROM sessions WHERE user_id = $1 ORDER BY created_at',
+		[userId],
+	)
+
+	return rows.map((r) => r.id)
 }
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 
 describeWithDocker('createSessionRepository (integration)', () => {
-	describe('getSessionUser', () => {
-		it('returns the user of a live session', async () => {
-			const { id, userId } = await openSession()
+	describe('createSession', () => {
+		it('returns the session with its user', async () => {
+			const userId = await insertUser()
 
-			expect(await sessions.getSessionUser(id)).toEqual({ id: userId, role: 'user' })
+			const id = randomUUID()
+
+			const session = await sessions.createSession(id, userId, inADay(), { limit: 10 })
+
+			expect(session.id).toBe(id)
+
+			expect(session.user.id).toBe(userId)
+
+			expect(session.user.role).toBe('user')
 		})
 
-		it('returns null once the session is revoked', async () => {
-			const { id } = await openSession()
+		it('deletes the session it replaces', async () => {
+			const userId = await insertUser()
 
-			await sessions.revokeSession(id)
+			const old = await openSession(userId)
 
-			expect(await sessions.getSessionUser(id)).toBeNull()
+			const next = await openSession(userId, { replacing: old })
+
+			expect(await sessionIds(userId)).toEqual([next])
 		})
 
-		it('returns null once the user is deactivated', async () => {
-			const { id, userId } = await openSession()
+		it('keeps only the newest sessions up to the limit', async () => {
+			const userId = await insertUser()
 
-			await users.updateUser(userId, { is_active: false })
+			const first = await openSession(userId, { limit: 2 })
+			const second = await openSession(userId, { limit: 2 })
+			const third = await openSession(userId, { limit: 2 })
 
-			expect(await sessions.getSessionUser(id)).toBeNull()
+			expect(await sessionIds(userId)).toEqual([second, third])
+
+			expect(await sessionIds(userId)).not.toContain(first)
 		})
 
-		it('returns null once the session expires', async () => {
-			const { id } = await openSession()
+		it('holds the limit under concurrent sign-ins', async () => {
+			const userId = await insertUser()
+
+			await Promise.all(Array.from({ length: 5 }, () => openSession(userId, { limit: 2 })))
+
+			expect(await sessionIds(userId)).toHaveLength(2)
+		})
+
+		it("never touches another user's sessions", async () => {
+			const alice = await insertUser()
+			const bob = await insertUser()
+
+			const bobs = await openSession(bob, { limit: 1 })
+
+			await openSession(alice, { limit: 1 })
+
+			expect(await sessionIds(bob)).toEqual([bobs])
+		})
+	})
+
+	describe('findSession', () => {
+		it('finds a live session', async () => {
+			const userId = await insertUser()
+
+			const id = await openSession(userId)
+
+			expect((await sessions.findSession(id))?.user.id).toBe(userId)
+		})
+
+		it('ignores an expired session', async () => {
+			const id = await openSession(await insertUser())
 
 			await pool.query("UPDATE sessions SET expires_at = now() - interval '1 second'")
 
-			expect(await sessions.getSessionUser(id)).toBeNull()
+			expect(await sessions.findSession(id)).toBeNull()
+		})
+
+		it('ignores the session of a deactivated user', async () => {
+			const userId = await insertUser()
+
+			const id = await openSession(userId)
+
+			await users.setUserActive(userId, false)
+
+			expect(await sessions.findSession(id)).toBeNull()
+		})
+
+		it('reflects a role change at once', async () => {
+			const userId = await insertUser()
+
+			const id = await openSession(userId)
+
+			await pool.query(`UPDATE users SET role = 'admin' WHERE id = $1`, [userId])
+
+			expect((await sessions.findSession(id))?.user.role).toBe('admin')
 		})
 	})
 
-	describe('rotateSession', () => {
-		it('swaps the jti and remembers the previous one', async () => {
-			const { id, jti } = await openSession()
+	describe('deleteUserSessions', () => {
+		it('deletes every session but the one to keep', async () => {
+			const userId = await insertUser()
 
-			const next = randomUUID()
-
-			expect(await sessions.rotateSession(id, jti, next, inAWeek())).toBe(true)
-
-			const row = await sessions.getSession(id)
-
-			expect(row?.refresh_jti).toBe(next)
-
-			expect(row?.previous_jti).toBe(jti)
-
-			expect(row?.rotated_at).toBeInstanceOf(Date)
-		})
-
-		it('refuses a stale jti', async () => {
-			const { id, jti } = await openSession()
-
-			await sessions.rotateSession(id, jti, randomUUID(), inAWeek())
-
-			expect(await sessions.rotateSession(id, jti, randomUUID(), inAWeek())).toBe(false)
-		})
-
-		it('refuses a revoked session', async () => {
-			const { id, jti } = await openSession()
-
-			await sessions.revokeSession(id)
-
-			expect(await sessions.rotateSession(id, jti, randomUUID(), inAWeek())).toBe(false)
-		})
-	})
-
-	describe('revokeUserSessions', () => {
-		it("revokes only that user's sessions", async () => {
-			const first = await openSession()
-			const second = await openSession(first.userId)
-			const other = await openSession()
-
-			await sessions.revokeUserSessions(first.userId)
-
-			expect(await sessions.getSessionUser(first.id)).toBeNull()
-
-			expect(await sessions.getSessionUser(second.id)).toBeNull()
-
-			expect(await sessions.getSessionUser(other.id)).not.toBeNull()
-		})
-	})
-
-	describe('createSession', () => {
-		it("prunes the user's revoked sessions", async () => {
-			const { id, userId } = await openSession()
-
-			await sessions.revokeSession(id)
+			const keep = await openSession(userId)
 
 			await openSession(userId)
 
-			expect(await sessions.getSession(id)).toBeNull()
+			await sessions.deleteUserSessions(userId, { except: keep })
+
+			expect(await sessionIds(userId)).toEqual([keep])
+		})
+
+		it('deletes all of them without an exception', async () => {
+			const userId = await insertUser()
+
+			await openSession(userId)
+
+			await sessions.deleteUserSessions(userId)
+
+			expect(await sessionIds(userId)).toEqual([])
 		})
 	})
 
+	it('deleteExpiredSessions removes only expired rows', async () => {
+		const userId = await insertUser()
+
+		const expired = await openSession(userId)
+		const live = await openSession(userId)
+
+		await pool.query("UPDATE sessions SET expires_at = now() - interval '1 second' WHERE id = $1", [
+			expired,
+		])
+
+		expect(await sessions.deleteExpiredSessions()).toBe(1)
+
+		expect(await sessionIds(userId)).toEqual([live])
+	})
+
 	it('drops sessions when the user is deleted', async () => {
-		const { id, userId } = await openSession()
+		const userId = await insertUser()
 
-		await users.deleteUser(userId)
+		await openSession(userId)
 
-		expect(await sessions.getSession(id)).toBeNull()
+		await pool.query('DELETE FROM users WHERE id = $1', [userId])
+
+		expect(await sessionIds(userId)).toEqual([])
 	})
 })
