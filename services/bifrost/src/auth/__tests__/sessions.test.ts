@@ -7,9 +7,11 @@ import {
 	findSession,
 	hashToken,
 	MAX_SESSIONS_PER_USER,
+	RECENT_SIGN_IN_SECONDS,
+	requireRecentSignIn,
 	SESSION_TTL_SECONDS,
 } from '../sessions.js'
-import type { SessionRepository, UserRepository } from '../types.js'
+import type { PasskeyRepository, SessionRepository, UserRepository } from '../types.js'
 
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
@@ -39,7 +41,12 @@ beforeEach(() => {
 		deleteExpiredSessions: vi.fn(),
 	}
 
-	configure({ userRepository: {} as UserRepository, sessionRepository })
+	configure({
+		userRepository: {} as UserRepository,
+		sessionRepository,
+		passkeyRepository: {} as PasskeyRepository,
+		passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
+	})
 })
 
 describe('hashToken', () => {
@@ -110,5 +117,22 @@ describe('deleteUserSessions', () => {
 		expect(sessionRepository.deleteUserSessions).toHaveBeenCalledWith(USER_ID, {
 			except: 'current',
 		})
+	})
+})
+
+describe('requireRecentSignIn', () => {
+	const startedAgo = (seconds: number): Session => ({
+		...session,
+		created_at: new Date(Date.now() - seconds * 1000).toISOString(),
+	})
+
+	it('allows a session started within the window', () => {
+		expect(() => requireRecentSignIn(startedAgo(RECENT_SIGN_IN_SECONDS - 5))).not.toThrow()
+	})
+
+	it('asks an older session to sign in again', () => {
+		expect(() => requireRecentSignIn(startedAgo(RECENT_SIGN_IN_SECONDS + 5))).toThrow(
+			expect.objectContaining({ code: 'sign_in_again', status: 403 }),
+		)
 	})
 })

@@ -2,13 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Pool } from 'pg'
-import { createDatabaseClient, type Db } from 'saga'
-import {
-	applyMigrations,
-	isDockerAvailable,
-	startPostgres,
-	type TestDatabase,
-} from 'vali/containers'
+import { createDb, type Db, migrate } from 'saga'
+import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
 import { stubServiceEnv } from 'vali/env'
 import type { SessionRepository, UserRepository } from '../../auth/types.js'
 
@@ -29,15 +24,11 @@ beforeAll(async () => {
 
 	pool = new Pool({ connectionString: testDb.connectionUri })
 
-	await applyMigrations(pool, migrationsDir)
+	await migrate({ url: testDb.connectionUri }, migrationsDir)
 
-	db = createDatabaseClient(pool)
+	db = createDb(() => ({ url: testDb.connectionUri }))
 
-	vi.doMock('../db.js', () => ({
-		db,
-		closePool: vi.fn().mockResolvedValue(undefined),
-		migrate: vi.fn().mockResolvedValue(undefined),
-	}))
+	vi.doMock('../db.js', () => ({ db }))
 
 	users = (await import('../user-repository.js')).createUserRepository()
 
@@ -45,6 +36,8 @@ beforeAll(async () => {
 }, 60_000)
 
 afterAll(async () => {
+	await db?.close()
+
 	await pool?.end()
 
 	await testDb?.stop()
@@ -59,7 +52,7 @@ beforeEach(async () => {
 const inADay = () => new Date(Date.now() + 24 * 60 * 60 * 1000)
 
 async function insertUser() {
-	return (await users.insertUser(randomUUID(), `${randomUUID()}@x.dev`, 'h')).id
+	return (await users.insertUser(`${randomUUID()}@x.dev`, 'h')).id
 }
 
 async function openSession(userId: string, options: { replacing?: string; limit?: number } = {}) {
@@ -125,6 +118,20 @@ describeWithDocker('createSessionRepository (integration)', () => {
 			await Promise.all(Array.from({ length: 5 }, () => openSession(userId, { limit: 2 })))
 
 			expect(await sessionIds(userId)).toHaveLength(2)
+		})
+
+		it('keeps the new session when another looks newer', async () => {
+			const userId = await insertUser()
+
+			// A sign-in that began later but committed first, while this one waited on the lock.
+			await pool.query(
+				"INSERT INTO sessions (id, user_id, created_at, expires_at) VALUES ('later', $1, now() + interval '1 second', now() + interval '1 day')",
+				[userId],
+			)
+
+			const id = await openSession(userId, { limit: 1 })
+
+			expect(await sessionIds(userId)).toEqual([id])
 		})
 
 		it("never touches another user's sessions", async () => {

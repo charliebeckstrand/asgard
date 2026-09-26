@@ -16,6 +16,9 @@ export {
 	UserRoleSchema,
 } from './enums.js'
 
+// Passkey — a user's WebAuthn credential
+export { type Passkey, PasskeySchema } from './passkey.js'
+
 // Primitives — reusable atomic schema building blocks
 export {
 	type Email,

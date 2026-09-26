@@ -1,9 +1,9 @@
-import { bootstrapServiceDb } from 'saga'
+import { createDb } from 'saga'
 import { environment } from './env.js'
 import { logger } from './log.js'
 
-export const { closePool, db, migrate } = bootstrapServiceDb(
-	'bifrost',
-	() => environment().DATABASE_URL,
-	{ logger: logger() },
-)
+export const db = createDb(() => {
+	const env = environment()
+
+	return { url: env.DATABASE_URL, ca: env.DATABASE_CA_CERT, logger: logger() }
+})

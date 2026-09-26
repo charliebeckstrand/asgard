@@ -18,6 +18,8 @@
 		"dev": "tsx watch --env-file=.env src/index.ts",
 		"build": "tsup",
 		"start": "node dist/index.js",
+		"db:migrate": "saga migrate --env-file=.env",
+		"db:status": "saga status --env-file=.env",
 		"lint": "biome check --config-path=../.. .",
 		"lint:fix": "biome check --config-path=../.. --write .",
 		"format": "biome format --config-path=../.. --write .",

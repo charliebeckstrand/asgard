@@ -1,13 +1,14 @@
-import type { Session, User } from 'skuld'
+import type { Passkey, Session, User, UserRole } from 'skuld'
 
 export interface CredentialsRow {
 	id: string
 	hashed_password: string
 	is_active: boolean
+	role: UserRole
 }
 
 export interface UserRepository {
-	insertUser(id: string, email: string, hashedPassword: string): Promise<User>
+	insertUser(email: string, hashedPassword: string): Promise<User>
 	getCredentialsByEmail(email: string): Promise<CredentialsRow | null>
 	getUsers(): Promise<User[]>
 	getUserById(id: string): Promise<User | null>
@@ -31,4 +32,31 @@ export interface SessionRepository {
 	deleteSession(id: string): Promise<void>
 	deleteUserSessions(userId: string, options?: { except?: string }): Promise<void>
 	deleteExpiredSessions(): Promise<number>
+}
+
+/** A passkey with what a ceremony needs: its public key, signature counter and transports. */
+export interface StoredPasskey {
+	id: string
+	user_id: string
+	public_key: Uint8Array<ArrayBuffer>
+	counter: number
+	transports: string[]
+	created_at: string
+}
+
+export interface PasskeyRepository {
+	insertPasskey(
+		userId: string,
+		credential: { id: string; publicKey: Uint8Array; counter: number; transports: string[] },
+	): Promise<Passkey>
+	findPasskey(id: string): Promise<StoredPasskey | null>
+	getPasskeys(userId: string): Promise<StoredPasskey[]>
+	setCounter(id: string, counter: number): Promise<void>
+	/** Refuses to delete the last passkey of an admin. */
+	deletePasskey(id: string, userId: string): Promise<'deleted' | 'not_found' | 'last_admin_passkey'>
+	/** `userId` binds the challenge to adding a passkey; null means signing in. */
+	createChallenge(id: string, userId: string | null, expiresAt: Date): Promise<void>
+	/** Deletes the live challenge for `userId` and reports whether there was one. */
+	useChallenge(id: string, userId: string | null): Promise<boolean>
+	deleteExpiredChallenges(): Promise<number>
 }

@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import { hash, verify } from '@node-rs/argon2'
 import type { User } from 'skuld'
 import { getConfig } from './config.js'
@@ -44,6 +43,10 @@ export async function authenticateUser(
 		throw new AuthError('account_inactive', 'Account is inactive')
 	}
 
+	if (creds.role === 'admin') {
+		throw new AuthError('passkey_required', 'Admins sign in with a passkey')
+	}
+
 	return creds.id
 }
 
@@ -55,7 +58,7 @@ export async function registerUser(email: string, password: string, ip?: string)
 	const { userRepository } = getConfig()
 
 	try {
-		const user = await userRepository.insertUser(randomUUID(), normalizedEmail, hashedPassword)
+		const user = await userRepository.insertUser(normalizedEmail, hashedPassword)
 
 		if (ip)
 			getConfig().onSecurityEvent?.({

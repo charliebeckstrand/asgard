@@ -1,4 +1,4 @@
-import type { SessionRepository, UserRepository } from './types.js'
+import type { PasskeyRepository, SessionRepository, UserRepository } from './types.js'
 
 export type AuthSecurityEventType = 'login_failed' | 'registration'
 
@@ -11,6 +11,9 @@ export interface AuthSecurityEvent {
 export interface Config {
 	userRepository: UserRepository
 	sessionRepository: SessionRepository
+	passkeyRepository: PasskeyRepository
+	/** The domain passkeys belong to, and the origins allowed to use them. */
+	passkeys: { domain: string; origins: string[] }
 	onSecurityEvent?: (event: AuthSecurityEvent) => void
 }
 

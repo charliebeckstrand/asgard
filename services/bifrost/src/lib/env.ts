@@ -5,6 +5,11 @@ const clientIpSecret = z.string().min(32, 'CLIENT_IP_SECRET must be at least 32 
 
 export const environment = createEnvironment({
 	DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+	// PEM of the database server's CA. Unset encrypts without verifying the server.
+	DATABASE_CA_CERT: z
+		.string()
+		.optional()
+		.transform((v) => (v && v.length > 0 ? v : undefined)),
 	// Unset disables Vidar; login and register keep their local rate limits.
 	VIDAR_URL: z.string().optional(),
 	VIDAR_API_KEY: z.string().optional(),
@@ -13,6 +18,8 @@ export const environment = createEnvironment({
 	// every browser in one rate-limit bucket.
 	CLIENT_IP_SECRET:
 		process.env.NODE_ENV === 'production' ? clientIpSecret : clientIpSecret.optional(),
+	// The domain passkeys belong to. Every CORS origin must be on it or a subdomain of it.
+	PASSKEY_DOMAIN: z.string().default('localhost'),
 	// Comma-separated, so each consuming app's origin can be allowed.
 	CORS_ORIGIN: z
 		.string()
