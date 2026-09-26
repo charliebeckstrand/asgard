@@ -11,7 +11,6 @@ const { mockListEvents, mockSetThreatResolved } = vi.hoisted(() => ({
 
 vi.mock('../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
-	closePool: vi.fn(),
 }))
 
 vi.mock('../handlers/events.js', () => ({

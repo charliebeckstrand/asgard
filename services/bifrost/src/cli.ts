@@ -1,5 +1,5 @@
 import { demote, promote } from './lib/admins.js'
-import { closePool } from './lib/db.js'
+import { db } from './lib/db.js'
 
 // Operator commands, run where DATABASE_URL is set:
 //   node dist/cli.js promote <email>
@@ -27,6 +27,6 @@ const result = await run(email)
 
 console.log(`${email} ${messages[result]}`)
 
-await closePool()
+await db.close()
 
 process.exit(result === 'promoted' || result === 'demoted' ? 0 : 1)

@@ -1,6 +1,5 @@
 vi.mock('../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
-	closePool: vi.fn(),
 }))
 
 import { getRules } from '@/handlers/rules'

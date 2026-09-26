@@ -84,7 +84,6 @@ vi.mock('vidar/client', () => ({
 
 vi.mock('../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
-	closePool: vi.fn(),
 }))
 
 import { createBifrostApp } from '../app.js'

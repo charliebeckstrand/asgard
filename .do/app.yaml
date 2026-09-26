@@ -52,6 +52,9 @@ services:
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${asgard-db.DATABASE_URL}
+      - key: DATABASE_CA_CERT
+        scope: RUN_TIME
+        value: ${asgard-db.CA_CERT}
       - key: CORS_ORIGIN
         scope: RUN_TIME
         value: https://admin.ivoryimage.dev,https://places.ivoryimage.dev
@@ -76,3 +79,26 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: ${MFA_ENCRYPTION_KEY}
+
+# Applies bifrost's pending migrations before each deploy. If it fails, the
+# deploy stops and the running version keeps serving.
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY
+    github:
+      repo: charliebeckstrand/asgard
+      branch: main
+      deploy_on_push: false
+    dockerfile_path: Dockerfile
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    run_command: pnpm --filter bifrost exec saga migrate
+    envs:
+      - key: SERVICE
+        scope: BUILD_TIME
+        value: bifrost
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${asgard-db.DATABASE_URL}
+      - key: DATABASE_CA_CERT
+        scope: RUN_TIME
+        value: ${asgard-db.CA_CERT}

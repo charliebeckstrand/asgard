@@ -177,17 +177,13 @@ describe('registerUser', () => {
 	it('normalizes email before inserting', async () => {
 		await registerUser('  Bob@EXAMPLE.COM  ', 'password123')
 
-		expect(mockRepo.insertUser).toHaveBeenCalledWith(
-			expect.any(String),
-			'bob@example.com',
-			expect.any(String),
-		)
+		expect(mockRepo.insertUser).toHaveBeenCalledWith('bob@example.com', expect.any(String))
 	})
 
 	it('hashes the password with Argon2id', async () => {
 		await registerUser('bob@example.com', 'password123')
 
-		const hashed = vi.mocked(mockRepo.insertUser).mock.calls[0][2] as string
+		const hashed = vi.mocked(mockRepo.insertUser).mock.calls[0][1] as string
 
 		expect(hashed).toContain('$argon2')
 	})

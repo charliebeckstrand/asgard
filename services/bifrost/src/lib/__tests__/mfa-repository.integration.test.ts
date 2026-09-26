@@ -2,13 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Pool } from 'pg'
-import { createDatabaseClient, type Db } from 'saga'
-import {
-	applyMigrations,
-	isDockerAvailable,
-	startPostgres,
-	type TestDatabase,
-} from 'vali/containers'
+import { createDb, type Db, migrate } from 'saga'
+import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
 import { stubServiceEnv } from 'vali/env'
 import type { MfaRepository, PasskeyRepository, UserRepository } from '../../auth/types.js'
 
@@ -31,15 +26,11 @@ beforeAll(async () => {
 
 	pool = new Pool({ connectionString: testDb.connectionUri })
 
-	await applyMigrations(pool, migrationsDir)
+	await migrate({ url: testDb.connectionUri }, migrationsDir)
 
-	db = createDatabaseClient(pool)
+	db = createDb(() => ({ url: testDb.connectionUri }))
 
-	vi.doMock('../db.js', () => ({
-		db,
-		closePool: vi.fn().mockResolvedValue(undefined),
-		migrate: vi.fn().mockResolvedValue(undefined),
-	}))
+	vi.doMock('../db.js', () => ({ db }))
 
 	users = (await import('../user-repository.js')).createUserRepository()
 
@@ -51,6 +42,8 @@ beforeAll(async () => {
 }, 60_000)
 
 afterAll(async () => {
+	await db?.close()
+
 	await pool?.end()
 
 	await testDb?.stop()
@@ -67,7 +60,7 @@ const inAMinute = () => new Date(Date.now() + 60_000)
 const secret = new Uint8Array([1, 2, 3])
 
 async function insertUser(email = `${randomUUID()}@x.dev`) {
-	return (await users.insertUser(randomUUID(), email, 'h')).id
+	return (await users.insertUser(email, 'h')).id
 }
 
 async function addTotp(userId: string) {
