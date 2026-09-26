@@ -1,6 +1,6 @@
 import { stubServiceEnv } from 'vali/env'
 
-stubServiceEnv({ CLIENT_IP_HEADER: 'do-connecting-ip' })
+stubServiceEnv()
 
 const {
 	mockAuthenticateUser,

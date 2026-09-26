@@ -62,17 +62,12 @@ services:
       - key: PASSKEY_DOMAIN
         scope: RUN_TIME
         value: ivoryimage.dev
-      # App Platform overwrites this header with the client address on every
-      # request, so clients can't spoof it.
-      - key: CLIENT_IP_HEADER
-        scope: RUN_TIME
-        value: do-connecting-ip
-      # Shared with Midgard, whose server forwards the browser address. The
-      # PROXY_SECRET repo secret must be set before this deploys.
-      - key: PROXY_SECRET
+      # Shared with Midgard, whose server forwards the browser address. Bifrost
+      # won't start without it.
+      - key: CLIENT_IP_SECRET
         scope: RUN_TIME
         type: SECRET
-        value: ${PROXY_SECRET}
+        value: ${CLIENT_IP_SECRET}
       # Encrypts authenticator-app secrets. Unset turns authenticator apps off;
       # changing it breaks every authenticator app already added.
       - key: MFA_ENCRYPTION_KEY
@@ -91,7 +86,9 @@ jobs:
       deploy_on_push: false
     dockerfile_path: Dockerfile
     instance_size_slug: apps-s-1vcpu-0.5gb
-    run_command: pnpm --filter bifrost exec saga migrate
+    # Plain node, not pnpm: pnpm checks the install before running a command and
+    # tries to reinstall the image's production-only dependencies, which fails.
+    run_command: node packages/saga/bin/saga.js migrate --dir services/bifrost/migrations
     envs:
       - key: SERVICE
         scope: BUILD_TIME
