@@ -7,7 +7,7 @@ export interface CredentialsRow {
 }
 
 export interface UserRepository {
-	insertUser(id: string, email: string, hashedPassword: string): Promise<User>
+	insertUser(email: string, hashedPassword: string): Promise<User>
 	getCredentialsByEmail(email: string): Promise<CredentialsRow | null>
 	getUsers(): Promise<User[]>
 	getUserById(id: string): Promise<User | null>

@@ -5,11 +5,11 @@ import { db } from './db.js'
 
 export function createUserRepository(): UserRepository {
 	return {
-		async insertUser(id, email, hashedPassword) {
+		async insertUser(email, hashedPassword) {
 			return db.one<User>(
 				sql`
-					INSERT INTO users (id, email, hashed_password)
-					VALUES (${id}, ${email}, ${hashedPassword})
+					INSERT INTO users (email, hashed_password)
+					VALUES (${email}, ${hashedPassword})
 					RETURNING id, email, is_active, is_verified, role, created_at, updated_at
 				`,
 			)
