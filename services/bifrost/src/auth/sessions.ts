@@ -19,12 +19,13 @@ export function hashToken(token: string): string {
 
 /**
  * Starts a session for `userId`. When the browser still presents a session
- * (`replacingToken`), that one is deleted, so signing in again never leaves a
- * stray row behind.
+ * (`replacing`), that one is deleted, so signing in again never leaves a stray
+ * row behind. `twoStep` marks a sign-in that already passed a second step, such
+ * as a passkey.
  */
 export async function createSession(
 	userId: string,
-	replacingToken?: string,
+	{ replacing, twoStep = false }: { replacing?: string; twoStep?: boolean } = {},
 ): Promise<{ token: string; session: Session }> {
 	const token = randomBytes(32).toString('base64url')
 
@@ -35,8 +36,9 @@ export async function createSession(
 		userId,
 		expiresAt,
 		{
-			replacing: replacingToken ? hashToken(replacingToken) : undefined,
+			replacing: replacing ? hashToken(replacing) : undefined,
 			limit: MAX_SESSIONS_PER_USER,
+			twoStep,
 		},
 	)
 
@@ -45,6 +47,11 @@ export async function createSession(
 
 export function findSession(token: string): Promise<Session | null> {
 	return getConfig().sessionRepository.findSession(hashToken(token))
+}
+
+/** Marks the session as past its second step, for example when the user adds their first factor. */
+export function passSecondStep(id: string): Promise<void> {
+	return getConfig().sessionRepository.passSecondStep(id)
 }
 
 export function deleteSession(id: string): Promise<void> {

@@ -51,6 +51,8 @@ beforeEach(() => {
 		deleteSession: vi.fn(),
 		deleteUserSessions: vi.fn(),
 		deleteExpiredSessions: vi.fn(),
+		passSecondStep: vi.fn(),
+		failSecondStep: vi.fn(),
 	}
 
 	configure({

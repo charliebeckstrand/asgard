@@ -26,10 +26,14 @@ export interface SessionRepository {
 		id: string,
 		userId: string,
 		expiresAt: Date,
-		options: { replacing?: string; limit: number },
+		options: { replacing?: string; limit: number; twoStep: boolean },
 	): Promise<Session>
 	/** A live session: not expired, and its user is active. */
 	findSession(id: string): Promise<Session | null>
+	/** Marks the session as past its second step, and clears its failed tries. */
+	passSecondStep(id: string): Promise<void>
+	/** Counts a wrong second step. The `limit`th ends the session; returns whether it did. */
+	failSecondStep(id: string, limit: number): Promise<boolean>
 	deleteSession(id: string): Promise<void>
 	deleteUserSessions(userId: string, options?: { except?: string }): Promise<void>
 	deleteExpiredSessions(): Promise<number>
@@ -88,13 +92,6 @@ export interface MfaRepository {
 	deleteTotp(userId: string): Promise<'deleted' | 'not_found' | 'last_admin_factor'>
 	replaceRecoveryCodes(userId: string, hashes: string[]): Promise<void>
 	useRecoveryCode(userId: string, hash: string): Promise<boolean>
-	createTicket(id: string, userId: string, expiresAt: Date): Promise<void>
-	/** Spends one attempt of a live ticket and returns its user, or null when none is left. */
-	useTicketAttempt(id: string, maxAttempts: number): Promise<string | null>
-	/** The user of a live ticket with attempts left, without spending one. */
-	findTicket(id: string, maxAttempts: number): Promise<string | null>
-	deleteTicket(id: string): Promise<void>
-	deleteExpiredTickets(): Promise<number>
 }
 
 export type OAuthProvider = 'github' | 'google'

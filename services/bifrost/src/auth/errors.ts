@@ -6,6 +6,7 @@ const AUTH_STATUS = {
 	invalid_credentials: 401,
 	account_inactive: 403,
 	sign_in_again: 403,
+	second_step_required: 403,
 	passkey_not_found: 404,
 	totp_not_found: 404,
 	identity_not_found: 404,

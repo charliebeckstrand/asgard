@@ -5,6 +5,10 @@ export const ErrorSchema = z
 		error: z.string(),
 		message: z.string(),
 		statusCode: z.number(),
+		code: z
+			.string()
+			.optional()
+			.openapi({ description: 'A stable name for the error, when the service gives one' }),
 	})
 	.openapi('Error')
 

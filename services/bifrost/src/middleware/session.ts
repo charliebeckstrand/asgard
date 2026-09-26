@@ -3,11 +3,11 @@ import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import type { Session } from 'skuld'
 import {
+	AuthError,
 	findSession,
 	getFactors,
 	SESSION_TTL_SECONDS,
 	secondFactorMethods,
-	TICKET_TTL_SECONDS,
 } from '../auth/index.js'
 
 export type SessionEnv = {
@@ -37,29 +37,6 @@ export function setSessionCookie(c: Context, token: string): void {
 
 export function clearSessionCookie(c: Context): void {
 	deleteCookie(c, COOKIE_NAME, { prefix: 'host', secure: true, path: '/' })
-}
-
-// A sign-in waiting on its second factor holds `__Host-mfa`, with the same
-// attributes as the session cookie.
-const TICKET_COOKIE_NAME = 'mfa'
-
-export function getLoginTicket(c: Context): string | undefined {
-	return getCookie(c, TICKET_COOKIE_NAME, 'host')
-}
-
-export function setLoginTicketCookie(c: Context, token: string): void {
-	setCookie(c, TICKET_COOKIE_NAME, token, {
-		prefix: 'host',
-		httpOnly: true,
-		secure: true,
-		sameSite: 'Lax',
-		path: '/',
-		maxAge: TICKET_TTL_SECONDS,
-	})
-}
-
-export function clearLoginTicketCookie(c: Context): void {
-	deleteCookie(c, TICKET_COOKIE_NAME, { prefix: 'host', secure: true, path: '/' })
 }
 
 /**
@@ -95,26 +72,35 @@ export function requireSession(c: Context<SessionEnv>): Session {
 }
 
 /**
- * Lets only an admin with a second factor through. An admin has one from
- * `promote` on, and can't remove the last one. `reset-mfa` removes them all, and
- * the admin then gets the admin routes back when they add a new one.
+ * The current session, when it passed the second step, or a 403
+ * `second_step_required`. A user with no second factor yet passes, so they can
+ * add their first one. Guards every change to how a user signs in.
+ */
+export async function requireSecondStep(c: Context<SessionEnv>): Promise<Session> {
+	const current = requireSession(c)
+
+	if (current.two_step) return current
+
+	if (secondFactorMethods(await getFactors(current.user.id)).length === 0) return current
+
+	throw new AuthError('second_step_required', 'Confirm that it is you with a second step')
+}
+
+/**
+ * Lets only an admin through, on a session that passed the second step. Unlike
+ * {@link requireSecondStep}, it has no pass for a user without a second factor:
+ * after `reset-mfa`, the admin adds a new one, which passes the step.
  */
 export function requireAdmin(): MiddlewareHandler<SessionEnv> {
 	return async (c, next) => {
-		const current = c.get('session')
-
-		if (!current) {
-			throw new HTTPException(401, { message: 'Not authenticated' })
-		}
+		const current = requireSession(c)
 
 		if (current.user.role !== 'admin') {
 			throw new HTTPException(403, { message: 'Admin role required' })
 		}
 
-		if (secondFactorMethods(await getFactors(current.user.id)).length === 0) {
-			throw new HTTPException(403, {
-				message: 'Add a passkey or an authenticator app to use the admin pages',
-			})
+		if (!current.two_step) {
+			throw new AuthError('second_step_required', 'Confirm that it is you with a second step')
 		}
 
 		return next()

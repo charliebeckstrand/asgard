@@ -16,6 +16,16 @@ app.get('/http-exception', () => {
 	throw new HTTPException(422, { message: 'Validation failed' })
 })
 
+app.get('/error-with-code', () => {
+	const err = new Error('Confirm it is you') as Error & { status: number; code: string }
+
+	err.status = 403
+
+	err.code = 'second_step_required'
+
+	throw err
+})
+
 app.get('/unexpected-error', () => {
 	throw new Error('Something broke')
 })
@@ -57,6 +67,19 @@ describe('errorHandler', () => {
 		expect(body.message).toBe('Validation failed')
 
 		expect(body.statusCode).toBe(422)
+	})
+
+	it('names the error with its code when it has one', async () => {
+		const res = await app.request('/error-with-code')
+
+		expect(res.status).toBe(403)
+
+		expect(await res.json()).toEqual({
+			error: 'Forbidden',
+			message: 'Confirm it is you',
+			statusCode: 403,
+			code: 'second_step_required',
+		})
 	})
 
 	it('returns 500 with generic message for unexpected errors', async () => {

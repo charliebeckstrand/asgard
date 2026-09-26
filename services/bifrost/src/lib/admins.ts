@@ -57,8 +57,6 @@ export function resetSecondFactors(email: string): Promise<'reset' | 'not_found'
 
 		await tx.exec(sql`DELETE FROM recovery_codes WHERE user_id = ${user.id}`)
 
-		await tx.exec(sql`DELETE FROM login_tickets WHERE user_id = ${user.id}`)
-
 		await tx.exec(sql`DELETE FROM sessions WHERE user_id = ${user.id}`)
 
 		return 'reset'

@@ -30,10 +30,8 @@ export function createBifrostApp() {
 	app.use('*', session())
 	app.use('*', csrf({ origin: env.CORS_ORIGIN }))
 
-	// Also covers `/auth/login` itself, so passkey sign-ins and second steps share the
-	// password budget. Only a POST tries a credential. The GET and the DELETE of a
-	// pending sign-in check a 256-bit ticket, and a page guard calls the GET from
-	// the server of the app, so they stay out of the budget.
+	// Also covers `/auth/login` itself and the second step of a session, so passkey
+	// sign-ins and second steps share the password budget.
 	// Ten tries, then one every six seconds per address.
 	const loginLimit = createVidar({
 		rate: 1 / 6,
@@ -42,7 +40,8 @@ export function createBifrostApp() {
 		service: 'bifrost',
 	})
 
-	app.use('/auth/login/*', (c, next) => (c.req.method === 'POST' ? loginLimit(c, next) : next()))
+	app.use('/auth/login/*', loginLimit)
+	app.use('/auth/session/verify/*', loginLimit)
 
 	// Each start stores a state row, and each callback calls the provider and can
 	// make an account. Ten tries, then one every six seconds per address.

@@ -15,27 +15,20 @@ import {
 	AuthError,
 	authenticatePasskey,
 	authenticateUser,
-	completeLoginTicket,
-	createLoginTicket,
 	createSecondFactorOptions,
 	createSession,
 	createSignInOptions,
-	deleteLoginTicket,
 	deleteSession,
 	deleteUserSessions,
-	findLoginTicket,
-	getFactors,
 	registerUser,
 	type SecondFactorProof,
-	secondFactorMethods,
+	verifySession,
 } from '../auth/index.js'
 import {
-	clearLoginTicketCookie,
 	clearSessionCookie,
-	getLoginTicket,
 	getSessionToken,
+	requireSession,
 	type SessionEnv,
-	setLoginTicketCookie,
 	setSessionCookie,
 } from '../middleware/session.js'
 import { PasskeyCredentialSchema, PasskeyOptionsSchema } from './passkeys.js'
@@ -59,14 +52,6 @@ const RegisterResponseSchema = UserSchema.pick({ id: true, email: true }).openap
 	'RegisterResponse',
 )
 
-const SecondFactorRequiredSchema = z
-	.object({
-		methods: z
-			.array(z.enum(['passkey', 'totp', 'recovery_code']))
-			.openapi({ description: 'The ways the user can finish signing in' }),
-	})
-	.openapi('SecondFactorRequired')
-
 const SecondFactorRequestSchema = z
 	.union([
 		z.object({
@@ -85,69 +70,14 @@ const loginRoute = createRoute({
 	tags: ['Auth'],
 	summary: 'Login with email and password',
 	description:
-		'Authenticates credentials, starts a session and sets its cookie. A session the browser still holds is replaced. When the user has two-step sign-in on, answers 202 and sets the `__Host-mfa` cookie instead; `/login/mfa` finishes the sign-in.',
+		'Authenticates credentials, starts a one-step session and sets its cookie. A session the browser still holds is replaced. `/session/verify` takes the session past its second step.',
 	request: {
 		body: jsonRequest(LoginRequestSchema),
 	},
 	responses: {
 		200: jsonResponse(SessionSchema, 'Login successful'),
-		202: jsonResponse(SecondFactorRequiredSchema, 'Second step needed'),
 		401: errorResponse('Invalid credentials'),
 		403: errorResponse('Account inactive'),
-	},
-})
-
-const pendingSignInRoute = createRoute({
-	method: 'get',
-	path: '/login/mfa',
-	tags: ['Auth'],
-	summary: 'Get the sign-in that waits on its second step',
-	description:
-		'Returns the methods that can finish the sign-in in the `__Host-mfa` cookie, without spending an attempt. A page of the second step calls it to guard itself.',
-	responses: {
-		200: jsonResponse(SecondFactorRequiredSchema, 'Second step needed'),
-		410: errorResponse('No live sign-in: sign in again'),
-	},
-})
-
-const cancelSignInRoute = createRoute({
-	method: 'delete',
-	path: '/login/mfa',
-	tags: ['Auth'],
-	summary: 'Cancel the sign-in that waits on its second step',
-	description: 'Deletes the ticket in the `__Host-mfa` cookie, if any, and clears the cookie.',
-	responses: {
-		204: { description: 'Sign-in canceled' },
-	},
-})
-
-const secondFactorOptionsRoute = createRoute({
-	method: 'post',
-	path: '/login/mfa/options',
-	tags: ['Auth'],
-	summary: 'Start the passkey step of a sign-in',
-	description: 'Needs the `__Host-mfa` cookie from `/login`.',
-	responses: {
-		200: jsonResponse(PasskeyOptionsSchema, 'Authentication options'),
-		410: errorResponse('No live sign-in: sign in again'),
-	},
-})
-
-const secondFactorRoute = createRoute({
-	method: 'post',
-	path: '/login/mfa',
-	tags: ['Auth'],
-	summary: 'Finish a sign-in with its second step',
-	description:
-		'Checks an authenticator-app code, a recovery code, or a passkey against the sign-in in the `__Host-mfa` cookie, then starts a session like `/login`. Each try spends one of five attempts.',
-	request: {
-		body: jsonRequest(SecondFactorRequestSchema),
-	},
-	responses: {
-		200: jsonResponse(SessionSchema, 'Login successful'),
-		401: errorResponse('Not accepted'),
-		403: errorResponse('Account inactive'),
-		410: errorResponse('No live sign-in, or no attempts left: sign in again'),
 	},
 })
 
@@ -167,7 +97,7 @@ const passkeyLoginRoute = createRoute({
 	tags: ['Auth'],
 	summary: 'Login with a passkey',
 	description:
-		'Verifies the passkey against the challenge from `/login/options`, then starts a session like `/login`.',
+		'Verifies the passkey against the challenge from `/login/options`, then starts a session like `/login`. A passkey is a second step in itself, so the session starts past it.',
 	request: {
 		body: jsonRequest(PasskeyCredentialSchema),
 	},
@@ -213,6 +143,36 @@ const deleteOtherSessionsRoute = createRoute({
 	},
 })
 
+const verifyOptionsRoute = createRoute({
+	method: 'post',
+	path: '/session/verify/options',
+	tags: ['Auth'],
+	summary: 'Start a passkey second step',
+	description: 'Returns passkey options that name the passkeys of the signed-in user.',
+	responses: {
+		200: jsonResponse(PasskeyOptionsSchema, 'Authentication options'),
+		401: errorResponse('Not authenticated'),
+	},
+})
+
+const verifyRoute = createRoute({
+	method: 'post',
+	path: '/session/verify',
+	tags: ['Auth'],
+	summary: 'Pass the second step',
+	description:
+		'Checks a passkey, authenticator code or recovery code of the signed-in user and marks the session as past its second step. The fifth wrong try ends the session.',
+	request: {
+		body: jsonRequest(SecondFactorRequestSchema),
+	},
+	responses: {
+		200: jsonResponse(SessionSchema, 'Session verified'),
+		400: errorResponse('Code or passkey not accepted, or no second factor'),
+		401: errorResponse('Not authenticated'),
+		410: errorResponse('Too many tries; the session ended'),
+	},
+})
+
 const registerRoute = createRoute({
 	method: 'post',
 	path: '/register',
@@ -230,22 +190,15 @@ const registerRoute = createRoute({
 })
 
 /** Starts a session for `userId`, replacing the one the browser still holds, and sets its cookie. */
-async function signIn(c: Context, userId: string) {
-	const { token, session } = await createSession(userId, getSessionToken(c))
+async function signIn(c: Context, userId: string, twoStep = false) {
+	const { token, session } = await createSession(userId, {
+		replacing: getSessionToken(c),
+		twoStep,
+	})
 
 	setSessionCookie(c, token)
 
 	return session
-}
-
-function requireLoginTicket(c: Context): string {
-	const token = getLoginTicket(c)
-
-	if (!token) {
-		throw new AuthError('sign_in_expired', 'Sign in again')
-	}
-
-	return token
 }
 
 export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
@@ -253,58 +206,6 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 		const { email, password } = c.req.valid('json')
 
 		const userId = await authenticateUser(email, password, getIpAddress(c))
-
-		const methods = secondFactorMethods(await getFactors(userId))
-
-		// A ticket from an earlier password step ends, so each browser holds one.
-		const earlier = getLoginTicket(c)
-
-		if (earlier) await deleteLoginTicket(earlier)
-
-		if (methods.length > 0) {
-			setLoginTicketCookie(c, await createLoginTicket(userId))
-
-			return c.json({ methods }, 202)
-		}
-
-		if (earlier) clearLoginTicketCookie(c)
-
-		return c.json(await signIn(c, userId), 200)
-	})
-	.openapi(pendingSignInRoute, async (c) => {
-		const userId = await findLoginTicket(requireLoginTicket(c))
-
-		const methods = secondFactorMethods(await getFactors(userId))
-
-		// The user removed the last factor in another session: nothing can finish this sign-in.
-		if (methods.length === 0) {
-			throw new AuthError('sign_in_expired', 'Sign in again')
-		}
-
-		c.header('Cache-Control', 'private, no-store')
-
-		return c.json({ methods }, 200)
-	})
-	.openapi(cancelSignInRoute, async (c) => {
-		const token = getLoginTicket(c)
-
-		if (token) await deleteLoginTicket(token)
-
-		clearLoginTicketCookie(c)
-
-		return c.body(null, 204)
-	})
-	.openapi(secondFactorOptionsRoute, async (c) => {
-		const userId = await findLoginTicket(requireLoginTicket(c))
-
-		return c.json(await createSecondFactorOptions(userId), 200)
-	})
-	.openapi(secondFactorRoute, async (c) => {
-		const proof = c.req.valid('json') as SecondFactorProof
-
-		const userId = await completeLoginTicket(requireLoginTicket(c), proof, getIpAddress(c))
-
-		clearLoginTicketCookie(c)
 
 		return c.json(await signIn(c, userId), 200)
 	})
@@ -316,7 +217,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 
 		const userId = await authenticatePasskey(credential, getIpAddress(c))
 
-		return c.json(await signIn(c, userId), 200)
+		return c.json(await signIn(c, userId, true), 200)
 	})
 	.openapi(logoutRoute, async (c) => {
 		const current = c.get('session')
@@ -350,6 +251,26 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 		await deleteUserSessions(current.user.id, current.id)
 
 		return c.body(null, 204)
+	})
+	.openapi(verifyOptionsRoute, async (c) => {
+		const current = requireSession(c)
+
+		return c.json(await createSecondFactorOptions(current.user.id), 200)
+	})
+	.openapi(verifyRoute, async (c) => {
+		const current = requireSession(c)
+
+		const proof = c.req.valid('json') as SecondFactorProof
+
+		try {
+			await verifySession(current, proof, getIpAddress(c))
+		} catch (err) {
+			if (err instanceof AuthError && err.code === 'sign_in_expired') clearSessionCookie(c)
+
+			throw err
+		}
+
+		return c.json({ ...current, two_step: true }, 200)
 	})
 	.openapi(registerRoute, async (c) => {
 		const { email, password } = c.req.valid('json')

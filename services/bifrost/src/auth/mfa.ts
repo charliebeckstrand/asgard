@@ -1,10 +1,9 @@
-import { createHash, randomBytes, randomInt } from 'node:crypto'
+import { createHash, randomInt } from 'node:crypto'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
-import type { User } from 'skuld'
+import type { Session, User } from 'skuld'
 import { getConfig } from './config.js'
 import { AuthError } from './errors.js'
 import { authenticatePasskey } from './passkeys.js'
-import { hashToken } from './sessions.js'
 import {
 	base32Encode,
 	decryptSecret,
@@ -15,9 +14,7 @@ import {
 } from './totp.js'
 import type { Factors } from './types.js'
 
-export const TICKET_TTL_SECONDS = 5 * 60
-
-export const MAX_TICKET_ATTEMPTS = 5
+export const MAX_FAILED_STEPS = 5
 
 export const RECOVERY_CODE_COUNT = 10
 
@@ -46,73 +43,42 @@ export function secondFactorMethods(factors: Factors): SecondFactorMethod[] {
 }
 
 /**
- * Holds a sign-in that passed its first factor until the second one. The
- * cookie gets the token; the database keeps only its SHA-256.
+ * Checks a second factor of the signed-in user and marks the session as past its
+ * second step. Each wrong try counts, and the fifth ends the session, so a guess
+ * costs a new sign-in.
  */
-export async function createLoginTicket(userId: string): Promise<string> {
-	const token = randomBytes(32).toString('base64url')
-
-	await getConfig().mfaRepository.createTicket(
-		hashToken(token),
-		userId,
-		new Date(Date.now() + TICKET_TTL_SECONDS * 1000),
-	)
-
-	return token
-}
-
-/** The user of a ticket that can still be used, without spending an attempt. */
-export async function findLoginTicket(token: string): Promise<string> {
-	const userId = await getConfig().mfaRepository.findTicket(hashToken(token), MAX_TICKET_ATTEMPTS)
-
-	if (!userId) {
-		throw new AuthError('sign_in_expired', 'Sign in again')
-	}
-
-	return userId
-}
-
-/** Ends a sign-in that waits on its second step, for example when the user goes back. */
-export function deleteLoginTicket(token: string): Promise<void> {
-	return getConfig().mfaRepository.deleteTicket(hashToken(token))
-}
-
-/**
- * Checks the second factor of the sign-in the ticket holds, and returns the
- * user's id. Each call spends one attempt, so a ticket can't be brute-forced.
- */
-export async function completeLoginTicket(
-	token: string,
+export async function verifySession(
+	session: Session,
 	proof: SecondFactorProof,
 	ip?: string,
-): Promise<string> {
-	const { mfaRepository, userRepository, onSecurityEvent } = getConfig()
+): Promise<void> {
+	const { sessionRepository, onSecurityEvent } = getConfig()
 
-	const id = hashToken(token)
+	const userId = session.user.id
 
-	const userId = await mfaRepository.useTicketAttempt(id, MAX_TICKET_ATTEMPTS)
-
-	if (!userId) {
-		throw new AuthError('sign_in_expired', 'Sign in again')
+	if (secondFactorMethods(await getFactors(userId)).length === 0) {
+		throw new AuthError('no_second_factor', 'Add a passkey or an authenticator app first')
 	}
 
-	if (!(await checkProof(userId, proof))) {
-		const method = Object.keys(proof)[0]
+	if (await checkProof(userId, proof)) {
+		await sessionRepository.passSecondStep(session.id)
 
-		if (ip) onSecurityEvent?.({ type: 'login_failed', ip, details: { user_id: userId, method } })
-
-		throw new AuthError('invalid_credentials', 'That code or passkey was not accepted')
+		return
 	}
 
-	await mfaRepository.deleteTicket(id)
-
-	const user = await userRepository.getUserById(userId)
-
-	if (!user?.is_active) {
-		throw new AuthError('account_inactive', 'Account is inactive')
+	if (ip) {
+		onSecurityEvent?.({
+			type: 'login_failed',
+			ip,
+			details: { user_id: userId, method: Object.keys(proof)[0] },
+		})
 	}
 
-	return userId
+	if (await sessionRepository.failSecondStep(session.id, MAX_FAILED_STEPS)) {
+		throw new AuthError('sign_in_expired', 'Too many tries. Sign in again')
+	}
+
+	throw new AuthError('code_rejected', 'That code or passkey was not accepted')
 }
 
 async function checkProof(userId: string, proof: SecondFactorProof): Promise<boolean> {
@@ -225,8 +191,4 @@ export async function generateRecoveryCodes(userId: string): Promise<string[]> {
 	await mfaRepository.replaceRecoveryCodes(userId, codes.map(hashRecoveryCode))
 
 	return codes
-}
-
-export function deleteExpiredTickets(): Promise<number> {
-	return getConfig().mfaRepository.deleteExpiredTickets()
 }

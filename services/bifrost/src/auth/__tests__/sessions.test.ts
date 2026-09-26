@@ -25,6 +25,7 @@ const session: Session = {
 	id: 'hash',
 	created_at: '2026-09-26T00:00:00.000Z',
 	expires_at: '2026-10-26T00:00:00.000Z',
+	two_step: false,
 	user: {
 		id: USER_ID,
 		email: 'alice@example.com',
@@ -45,6 +46,8 @@ beforeEach(() => {
 		deleteSession: vi.fn(),
 		deleteUserSessions: vi.fn(),
 		deleteExpiredSessions: vi.fn(),
+		passSecondStep: vi.fn(),
+		failSecondStep: vi.fn(),
 	}
 
 	configure({
@@ -96,15 +99,23 @@ describe('createSession', () => {
 
 		expect(expiresAt.getTime()).toBeGreaterThanOrEqual(before + SESSION_TTL_SECONDS * 1000)
 
-		expect(options).toEqual({ replacing: undefined, limit: MAX_SESSIONS_PER_USER })
+		expect(options).toEqual({ replacing: undefined, limit: MAX_SESSIONS_PER_USER, twoStep: false })
 	})
 
 	it("replaces the browser's previous session by its hash", async () => {
-		await createSession(USER_ID, 'old-token')
+		await createSession(USER_ID, { replacing: 'old-token' })
 
 		const [, , , options] = vi.mocked(sessionRepository.createSession).mock.calls[0]
 
 		expect(options.replacing).toBe(hashToken('old-token'))
+	})
+
+	it('starts a session past its second step when the sign-in passed one', async () => {
+		await createSession(USER_ID, { twoStep: true })
+
+		const [, , , options] = vi.mocked(sessionRepository.createSession).mock.calls[0]
+
+		expect(options.twoStep).toBe(true)
 	})
 
 	it('returns the session the repository created', async () => {
