@@ -3,6 +3,7 @@ const MOCK_SECRET = 'test-secret-that-is-at-least-32-chars-long'
 vi.stubEnv('SESSION_SECRET', MOCK_SECRET)
 vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
 vi.stubEnv('SECRET_KEY', 'test-secret-key-that-is-at-least-32-chars')
+vi.stubEnv('CLIENT_IP_HEADER', 'do-connecting-ip')
 
 const { mockAuthenticateUser, mockRegisterUser, mockVerifyAccessToken, mockGetUserById } =
 	vi.hoisted(() => ({
@@ -124,6 +125,26 @@ describe('Auth routes', () => {
 				'secret',
 				expect.any(String),
 			)
+		})
+
+		it('passes the client IP from the edge header to authenticateUser', async () => {
+			mockAuthenticateUser.mockResolvedValueOnce({
+				access_token: 'at_test123',
+				refresh_token: 'rt_test123',
+				token_type: 'bearer',
+			})
+
+			await app.request('/auth/login', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Origin: ORIGIN,
+					'do-connecting-ip': '203.0.113.7',
+				},
+				body: JSON.stringify({ email: 'test@example.com', password: 'secret' }),
+			})
+
+			expect(mockAuthenticateUser).toHaveBeenCalledWith('test@example.com', 'secret', '203.0.113.7')
 		})
 
 		it('returns 401 on invalid credentials', async () => {

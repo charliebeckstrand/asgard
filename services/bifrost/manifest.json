@@ -6,6 +6,8 @@
 		"SECRET_KEY": { "type": "secret" },
 		"PREVIOUS_SECRET_KEY": { "type": "value", "default": "" },
 		"SESSION_SECRET": { "type": "secret" },
+		"CLIENT_IP_HEADER": { "type": "value", "default": "" },
+		"PROXY_SECRET": { "type": "value", "default": "" },
 		"VIDAR_URL": { "type": "ref", "service": "vidar" },
 		"VIDAR_API_KEY": { "type": "ref", "service": "vidar", "key": "VIDAR_API_KEY" }
 	}

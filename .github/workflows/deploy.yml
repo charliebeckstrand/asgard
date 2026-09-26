@@ -26,6 +26,7 @@ jobs:
               env:
                   SECRET_KEY: ${{ secrets.SECRET_KEY }}
                   SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+                  PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
               with:
                   token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
                   # Only applies when the app is created; moving it later is done in DO.
