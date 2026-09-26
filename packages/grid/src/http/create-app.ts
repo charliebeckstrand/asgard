@@ -1,6 +1,7 @@
 import { swaggerUI } from '@hono/swagger-ui'
 import { OpenAPIHono } from '@hono/zod-openapi'
 import type { Env } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { compress } from 'hono/compress'
 import { cors } from 'hono/cors'
 import { etag } from 'hono/etag'
@@ -9,7 +10,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import { timing } from 'hono/timing'
 import { trimTrailingSlash } from 'hono/trailing-slash'
 import type { Logger } from 'pino'
-import { errorHandler, notFoundHandler } from './error-handler.js'
+import { errorBody, errorHandler, notFoundHandler } from './error-handler.js'
 import { requestLogger } from './request-logger.js'
 import { validationHook } from './validation-hook.js'
 
@@ -28,6 +29,8 @@ interface CreateAppOptions {
 	logger?: Logger
 }
 
+const MAX_BODY_BYTES = 64 * 1024
+
 export function createApp<E extends Env = Env>(options: CreateAppOptions): OpenAPIHono<E> {
 	const app = new OpenAPIHono<E>({ defaultHook: validationHook })
 
@@ -37,6 +40,16 @@ export function createApp<E extends Env = Env>(options: CreateAppOptions): OpenA
 	app.use('*', secureHeaders())
 	app.use('*', options.logger ? requestLogger(options.logger) : honoRequestLogger())
 	app.use('*', timing())
+
+	// Bodies are read into memory before validation, so an unbounded one could
+	// exhaust the process. Every service takes small JSON bodies.
+	app.use(
+		'*',
+		bodyLimit({
+			maxSize: MAX_BODY_BYTES,
+			onError: (c) => c.json(errorBody(413, 'Request body too large'), 413),
+		}),
+	)
 
 	const compressMw = compress()
 

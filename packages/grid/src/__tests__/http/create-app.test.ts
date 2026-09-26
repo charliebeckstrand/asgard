@@ -56,6 +56,25 @@ describe('createApp', () => {
 		expect(body.info.title).toBe('API')
 	})
 
+	it('answers 413 to a body over 64 KiB', async () => {
+		const app = createApp({
+			basePath: '/api',
+			title: 'API',
+			description: 'Main API',
+			port: 4000,
+		})
+
+		app.post('/api/echo', async (c) => c.text(await c.req.text()))
+
+		const small = await app.request('/api/echo', { method: 'POST', body: 'x'.repeat(1024) })
+
+		const large = await app.request('/api/echo', { method: 'POST', body: 'x'.repeat(65 * 1024) })
+
+		expect(small.status).toBe(200)
+
+		expect(large.status).toBe(413)
+	})
+
 	it('handles errors using errorHandler', async () => {
 		const app = createApp({
 			basePath: '/test',
