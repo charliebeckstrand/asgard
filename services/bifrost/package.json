@@ -35,7 +35,7 @@
 		"saga": "workspace:*",
 		"skuld": "workspace:*",
 		"vidar": "workspace:*",
-		"zod": "^4.3.6"
+		"zod": "^4.6.5"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.6",
