@@ -70,7 +70,7 @@ async function addPasskey(userId: string, id = randomUUID()) {
 }
 
 async function makeAdmin(userId: string) {
-	await pool.query("UPDATE users SET role = 'admin' WHERE id = $1", [userId])
+	await pool.query("UPDATE users SET roles = '{user,admin}' WHERE id = $1", [userId])
 }
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
@@ -231,8 +231,8 @@ describeWithDocker('createPasskeyRepository (integration)', () => {
 })
 
 describeWithDocker('admins (integration)', () => {
-	async function role(userId: string) {
-		return (await users.getUserById(userId))?.role
+	async function roles(userId: string) {
+		return (await users.getUserById(userId))?.roles
 	}
 
 	it('promotes a user who has a passkey, and ends their sessions', async () => {
@@ -247,11 +247,23 @@ describeWithDocker('admins (integration)', () => {
 
 		expect(await admins.promote(' Alice@X.dev ')).toBe('promoted')
 
-		expect(await role(userId)).toBe('admin')
+		expect(await roles(userId)).toEqual(['user', 'admin'])
 
 		const { rows } = await pool.query('SELECT 1 FROM sessions WHERE user_id = $1', [userId])
 
 		expect(rows).toHaveLength(0)
+	})
+
+	it('adds the admin role only once', async () => {
+		const userId = await insertUser('dan@x.dev')
+
+		await addPasskey(userId)
+
+		await admins.promote('dan@x.dev')
+
+		await admins.promote('dan@x.dev')
+
+		expect(await roles(userId)).toEqual(['user', 'admin'])
 	})
 
 	it("won't promote a user without a second factor", async () => {
@@ -259,7 +271,7 @@ describeWithDocker('admins (integration)', () => {
 
 		expect(await admins.promote('bob@x.dev')).toBe('no_second_factor')
 
-		expect(await role(userId)).toBe('user')
+		expect(await roles(userId)).toEqual(['user'])
 	})
 
 	it('reports an unknown email', async () => {
@@ -275,6 +287,6 @@ describeWithDocker('admins (integration)', () => {
 
 		expect(await admins.demote('carol@x.dev')).toBe('demoted')
 
-		expect(await role(userId)).toBe('user')
+		expect(await roles(userId)).toEqual(['user'])
 	})
 })

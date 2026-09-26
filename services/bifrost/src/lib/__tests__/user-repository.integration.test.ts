@@ -63,7 +63,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 			expect(inserted.is_verified).toBe(false)
 
-			expect(inserted.role).toBe('user')
+			expect(inserted.roles).toEqual(['user'])
 
 			const fetched = await repo.getUserById(inserted.id)
 
@@ -93,7 +93,6 @@ describeWithDocker('createUserRepository (integration)', () => {
 				id,
 				hashed_password: 'hashed-pw',
 				is_active: true,
-				role: 'user',
 			})
 		})
 
@@ -140,7 +139,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 		it('leaves admins alone', async () => {
 			const { id } = await repo.insertUser('admin@example.com', 'h')
 
-			await pool.query(`UPDATE users SET role = 'admin' WHERE id = $1`, [id])
+			await pool.query(`UPDATE users SET roles = '{user,admin}' WHERE id = $1`, [id])
 
 			expect(await repo.setUserActive(id, false)).toBeNull()
 

@@ -55,12 +55,17 @@ const sampleUser = {
 	email: 'user@example.com',
 	is_active: true,
 	is_verified: false,
-	role: 'user',
+	roles: ['user'],
 	created_at: '2026-01-01T00:00:00.000Z',
 	updated_at: '2026-01-01T00:00:00.000Z',
 }
 
-const sampleAdmin = { ...sampleUser, id: ADMIN_ID, email: 'admin@example.com', role: 'admin' }
+const sampleAdmin = {
+	...sampleUser,
+	id: ADMIN_ID,
+	email: 'admin@example.com',
+	roles: ['user', 'admin'],
+}
 
 function signedInAs(user: typeof sampleUser, { twoStep = true } = {}) {
 	mockFindSession.mockResolvedValue({
@@ -267,7 +272,7 @@ describe('Users routes', () => {
 
 		it.each([
 			['email', { email: 'new@example.com' }],
-			['role', { role: 'admin' }],
+			['roles', { roles: ['user', 'admin'] }],
 			['password', { password: 'password123' }],
 		])('rejects a body that only changes %s', async (_, body) => {
 			const res = await app.request(`/api/users/${USER_ID}`, {

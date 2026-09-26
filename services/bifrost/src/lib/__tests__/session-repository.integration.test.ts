@@ -95,7 +95,7 @@ describeWithDocker('createSessionRepository (integration)', () => {
 
 			expect(session.user.id).toBe(userId)
 
-			expect(session.user.role).toBe('user')
+			expect(session.user.roles).toEqual(['user'])
 		})
 
 		it('starts a session past its second step', async () => {
@@ -192,9 +192,9 @@ describeWithDocker('createSessionRepository (integration)', () => {
 
 			const id = await openSession(userId)
 
-			await pool.query(`UPDATE users SET role = 'admin' WHERE id = $1`, [userId])
+			await pool.query(`UPDATE users SET roles = '{user,admin}' WHERE id = $1`, [userId])
 
-			expect((await sessions.findSession(id))?.user.role).toBe('admin')
+			expect((await sessions.findSession(id))?.user.roles).toEqual(['user', 'admin'])
 		})
 	})
 

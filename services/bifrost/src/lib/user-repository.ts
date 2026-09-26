@@ -10,7 +10,7 @@ export function createUserRepository(): UserRepository {
 				sql`
 					INSERT INTO users (email, hashed_password)
 					VALUES (${email}, ${hashedPassword})
-					RETURNING id, email, is_active, is_verified, role, created_at, updated_at
+					RETURNING id, email, is_active, is_verified, roles, created_at, updated_at
 				`,
 			)
 		},
@@ -18,7 +18,7 @@ export function createUserRepository(): UserRepository {
 		async getCredentialsByEmail(email) {
 			return db.first<CredentialsRow>(
 				sql`
-					SELECT id, hashed_password, is_active, role
+					SELECT id, hashed_password, is_active
 					FROM users
 					WHERE email = ${email}
 				`,
@@ -27,14 +27,14 @@ export function createUserRepository(): UserRepository {
 
 		async getUsers() {
 			return db.many<User>(
-				sql`SELECT id, email, is_active, is_verified, role, created_at, updated_at FROM users ORDER BY created_at`,
+				sql`SELECT id, email, is_active, is_verified, roles, created_at, updated_at FROM users ORDER BY created_at`,
 			)
 		},
 
 		async getUserById(id) {
 			return db.first<User>(
 				sql`
-					SELECT id, email, is_active, is_verified, role, created_at, updated_at
+					SELECT id, email, is_active, is_verified, roles, created_at, updated_at
 					FROM users
 					WHERE id = ${id}
 				`,
@@ -46,8 +46,8 @@ export function createUserRepository(): UserRepository {
 				sql`
 					UPDATE users
 					SET is_active = ${isActive}
-					WHERE id = ${id} AND role = 'user'
-					RETURNING id, email, is_active, is_verified, role, created_at, updated_at
+					WHERE id = ${id} AND NOT 'admin' = ANY(roles)
+					RETURNING id, email, is_active, is_verified, roles, created_at, updated_at
 				`,
 			)
 		},

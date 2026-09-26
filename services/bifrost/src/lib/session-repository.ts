@@ -1,5 +1,5 @@
 import { sql } from 'saga'
-import type { Session, UserRole } from 'skuld'
+import type { Role, Session } from 'skuld'
 import type { SessionRepository } from '../auth/types.js'
 import { db } from './db.js'
 
@@ -12,14 +12,14 @@ interface SessionRow {
 	email: string
 	is_active: boolean
 	is_verified: boolean
-	role: UserRole
+	roles: Role[]
 	user_created_at: string
 	user_updated_at: string
 }
 
 const selectSession = sql`
 	SELECT s.id, s.created_at, s.expires_at, s.two_step,
-		u.id AS user_id, u.email, u.is_active, u.is_verified, u.role,
+		u.id AS user_id, u.email, u.is_active, u.is_verified, u.roles,
 		u.created_at AS user_created_at, u.updated_at AS user_updated_at
 	FROM sessions s
 	JOIN users u ON u.id = s.user_id
@@ -36,7 +36,7 @@ function toSession(row: SessionRow): Session {
 			email: row.email,
 			is_active: row.is_active,
 			is_verified: row.is_verified,
-			role: row.role,
+			roles: row.roles,
 			created_at: row.user_created_at,
 			updated_at: row.user_updated_at,
 		},

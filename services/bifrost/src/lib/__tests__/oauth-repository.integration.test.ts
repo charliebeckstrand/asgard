@@ -115,7 +115,7 @@ describeWithDocker('createOAuthRepository (integration)', () => {
 			expect(await users.getUserById(userId)).toMatchObject({
 				email: 'carol@x.dev',
 				is_verified: true,
-				role: 'user',
+				roles: ['user'],
 			})
 
 			expect(await users.getCredentialsByEmail('carol@x.dev')).toMatchObject({

@@ -12,8 +12,8 @@ export {
 	ConnectionStatusSchema,
 	type HealthStatus,
 	HealthStatusSchema,
-	type UserRole,
-	UserRoleSchema,
+	type Role,
+	RoleSchema,
 } from './enums.js'
 
 // Passkey — a user's WebAuthn credential

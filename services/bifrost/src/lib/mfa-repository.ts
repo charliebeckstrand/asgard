@@ -25,15 +25,15 @@ export async function removeSecondFactor(
 	remove: SqlFragment,
 ): Promise<'deleted' | 'not_found' | 'last_admin_factor'> {
 	// Serializes removals for one user, so two can't both remove "not the last" factor.
-	const user = await tx.first<{ role: string }>(
-		sql`SELECT role FROM users WHERE id = ${userId} FOR UPDATE`,
+	const user = await tx.first<{ roles: string[] }>(
+		sql`SELECT roles FROM users WHERE id = ${userId} FOR UPDATE`,
 	)
 
 	if (!(await tx.first(owned))) return 'not_found'
 
 	const count = await countSecondFactors(tx, userId)
 
-	if (user?.role === 'admin' && count <= 1) return 'last_admin_factor'
+	if (user?.roles.includes('admin') && count <= 1) return 'last_admin_factor'
 
 	await tx.exec(remove)
 
