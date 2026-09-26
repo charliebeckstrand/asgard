@@ -2,7 +2,8 @@ import type { Passkey, Session, User, UserRole } from 'skuld'
 
 export interface CredentialsRow {
 	id: string
-	hashed_password: string
+	/** Null for an account made with GitHub or Google. */
+	hashed_password: string | null
 	is_active: boolean
 	role: UserRole
 }
@@ -94,4 +95,65 @@ export interface MfaRepository {
 	findTicket(id: string, maxAttempts: number): Promise<string | null>
 	deleteTicket(id: string): Promise<void>
 	deleteExpiredTickets(): Promise<number>
+}
+
+export type OAuthProvider = 'github' | 'google'
+
+/** A GitHub or Google account, as the provider reports it. */
+export interface OAuthIdentity {
+	provider: OAuthProvider
+	/** The ID of the account at the provider. It stays the same when its email changes. */
+	subject: string
+	/** The verified email of the account, or null when it has none. */
+	email: string | null
+}
+
+/** A sign-in that waits on the provider. */
+export interface StoredOAuthState {
+	provider: OAuthProvider
+	verifier: string
+	/** The app origin that started the sign-in, for the redirect URI. */
+	origin: string
+	return_to: string
+	/** The user who connects the account, or null for a sign-in. */
+	user_id: string | null
+}
+
+export interface LinkedIdentity {
+	provider: OAuthProvider
+	email: string | null
+	created_at: string
+}
+
+export interface OAuthRepository {
+	createState(id: string, state: StoredOAuthState, expiresAt: Date): Promise<void>
+	/** Deletes a live state and returns it, so each state works once. */
+	useState(id: string): Promise<StoredOAuthState | null>
+	deleteExpiredStates(): Promise<number>
+	/** The user of the identity, or null when no user has it. */
+	findIdentityUser(provider: OAuthProvider, subject: string): Promise<string | null>
+	/**
+	 * Makes a user with no password, marked verified, and gives it the identity.
+	 * Refuses when a user already has the email.
+	 */
+	createUserWithIdentity(
+		identity: OAuthIdentity & { email: string },
+	): Promise<{ userId: string } | 'email_exists'>
+	/**
+	 * Gives the identity to the user. `in_use` means another user has it, and
+	 * `provider_linked` means the user has another account of that provider.
+	 */
+	linkIdentity(
+		userId: string,
+		identity: OAuthIdentity,
+	): Promise<'linked' | 'in_use' | 'provider_linked'>
+	getIdentities(userId: string): Promise<LinkedIdentity[]>
+	/**
+	 * Removes the identity, unless the user then has no way to sign in: no
+	 * password, no other identity, and no passkey.
+	 */
+	unlinkIdentity(
+		userId: string,
+		provider: OAuthProvider,
+	): Promise<'deleted' | 'not_found' | 'last_sign_in'>
 }

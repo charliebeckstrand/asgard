@@ -1,5 +1,6 @@
 import type {
 	MfaRepository,
+	OAuthRepository,
 	PasskeyRepository,
 	SessionRepository,
 	UserRepository,
@@ -40,6 +41,8 @@ describe('auth config', () => {
 			mfaRepository,
 			passkeys,
 			mfa,
+			oauthRepository: {} as OAuthRepository,
+			oauth: {},
 			onSecurityEvent,
 		})
 

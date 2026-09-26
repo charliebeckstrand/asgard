@@ -9,6 +9,7 @@ import { session } from './middleware/session.js'
 import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
 import { mfaRoutes } from './routes/mfa.js'
+import { oauthRoutes } from './routes/oauth.js'
 import { passkeysRoutes } from './routes/passkeys.js'
 import { usersRoutes } from './routes/users.js'
 
@@ -43,6 +44,18 @@ export function createBifrostApp() {
 
 	app.use('/auth/login/*', (c, next) => (c.req.method === 'POST' ? loginLimit(c, next) : next()))
 
+	// Each start stores a state row, and each callback calls the provider and can
+	// make an account. Ten tries, then one every six seconds per address.
+	const oauthLimit = createVidar({
+		rate: 1 / 6,
+		burst: 10,
+		route: '/auth/oauth',
+		service: 'bifrost',
+	})
+
+	app.use('/auth/oauth/:provider/start', oauthLimit)
+	app.use('/auth/oauth/:provider/callback', oauthLimit)
+
 	// Three accounts, then one a minute per address, so no one can fill the database.
 	app.use(
 		'/auth/register',
@@ -53,6 +66,7 @@ export function createBifrostApp() {
 		.route('/auth', authRoutes)
 		.route('/auth/passkeys', passkeysRoutes)
 		.route('/auth/mfa', mfaRoutes)
+		.route('/auth/oauth', oauthRoutes)
 		.route('/api', health)
 		.route('/api/users', usersRoutes)
 }

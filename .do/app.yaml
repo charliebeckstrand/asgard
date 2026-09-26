@@ -86,6 +86,24 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: ${MFA_ENCRYPTION_KEY}
+      # OAuth clients for signing in with GitHub and Google. A provider without
+      # both values is off.
+      - key: OAUTH_GITHUB_CLIENT_ID
+        scope: RUN_TIME
+        type: SECRET
+        value: ${OAUTH_GITHUB_CLIENT_ID}
+      - key: OAUTH_GITHUB_CLIENT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: ${OAUTH_GITHUB_CLIENT_SECRET}
+      - key: OAUTH_GOOGLE_CLIENT_ID
+        scope: RUN_TIME
+        type: SECRET
+        value: ${OAUTH_GOOGLE_CLIENT_ID}
+      - key: OAUTH_GOOGLE_CLIENT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: ${OAUTH_GOOGLE_CLIENT_SECRET}
 
 # Applies bifrost's pending migrations before each deploy. If it fails, the
 # deploy stops and the running version keeps serving.

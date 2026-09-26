@@ -5,6 +5,7 @@ import { AuthError, authenticateUser, registerUser } from '../credentials.js'
 import type {
 	CredentialsRow,
 	MfaRepository,
+	OAuthRepository,
 	PasskeyRepository,
 	SessionRepository,
 	UserRepository,
@@ -59,6 +60,8 @@ beforeEach(() => {
 		passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
 		mfaRepository: {} as MfaRepository,
 		mfa: { issuer: 'localhost' },
+		oauthRepository: {} as OAuthRepository,
+		oauth: {},
 	})
 })
 
@@ -98,6 +101,19 @@ describe('authenticateUser', () => {
 		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue(null)
 
 		await expect(authenticateUser('nobody@example.com', 'any-password')).rejects.toThrow(AuthError)
+	})
+
+	it('refuses a password for an account made with GitHub or Google', async () => {
+		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
+			id: TEST_USER.id,
+			hashed_password: null,
+			is_active: true,
+			role: 'user',
+		})
+
+		await expect(authenticateUser('alice@example.com', 'dummy-timing-pad')).rejects.toMatchObject({
+			code: 'invalid_credentials',
+		})
 	})
 
 	it('throws account_inactive for inactive user', async () => {
@@ -153,6 +169,8 @@ describe('authenticateUser', () => {
 			passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
 			mfaRepository: {} as MfaRepository,
 			mfa: { issuer: 'localhost' },
+			oauthRepository: {} as OAuthRepository,
+			oauth: {},
 			onSecurityEvent,
 		})
 
@@ -218,6 +236,8 @@ describe('registerUser', () => {
 			passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
 			mfaRepository: {} as MfaRepository,
 			mfa: { issuer: 'localhost' },
+			oauthRepository: {} as OAuthRepository,
+			oauth: {},
 			onSecurityEvent,
 		})
 

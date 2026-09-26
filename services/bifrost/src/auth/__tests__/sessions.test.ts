@@ -13,6 +13,7 @@ import {
 } from '../sessions.js'
 import type {
 	MfaRepository,
+	OAuthRepository,
 	PasskeyRepository,
 	SessionRepository,
 	UserRepository,
@@ -53,6 +54,8 @@ beforeEach(() => {
 		passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
 		mfaRepository: {} as MfaRepository,
 		mfa: { issuer: 'localhost' },
+		oauthRepository: {} as OAuthRepository,
+		oauth: {},
 	})
 })
 

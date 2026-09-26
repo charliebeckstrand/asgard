@@ -1,4 +1,4 @@
-export type { Config } from './config.js'
+export type { Config, OAuthClient } from './config.js'
 export { configure, getConfig } from './config.js'
 export { AuthError, authenticateUser, registerUser } from './credentials.js'
 export {
@@ -19,6 +19,20 @@ export {
 	startTotpSetup,
 	TICKET_TTL_SECONDS,
 } from './mfa.js'
+export {
+	completeOAuth,
+	deleteExpiredOAuthStates,
+	enabledProviders,
+	getIdentities,
+	OAUTH_PROVIDERS,
+	OAUTH_STATE_TTL_SECONDS,
+	OAuthFailure,
+	type OAuthFailureCode,
+	type OAuthOutcome,
+	safeReturnTo,
+	startOAuth,
+	unlinkIdentity,
+} from './oauth.js'
 export {
 	authenticatePasskey,
 	CHALLENGE_TTL_SECONDS,
@@ -45,9 +59,14 @@ export {
 export type {
 	CredentialsRow,
 	Factors,
+	LinkedIdentity,
 	MfaRepository,
+	OAuthIdentity,
+	OAuthProvider,
+	OAuthRepository,
 	PasskeyRepository,
 	SessionRepository,
+	StoredOAuthState,
 	StoredPasskey,
 	StoredTotp,
 	UserRepository,
