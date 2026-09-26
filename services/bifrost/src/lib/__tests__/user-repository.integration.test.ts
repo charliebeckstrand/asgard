@@ -2,13 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Pool } from 'pg'
-import { createDatabaseClient, type Db } from 'saga'
-import {
-	applyMigrations,
-	isDockerAvailable,
-	startPostgres,
-	type TestDatabase,
-} from 'vali/containers'
+import { createDb, type Db, migrate } from 'saga'
+import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
 import { stubServiceEnv } from 'vali/env'
 import type { UserRepository } from '../../auth/types.js'
 
@@ -28,15 +23,11 @@ beforeAll(async () => {
 
 	pool = new Pool({ connectionString: testDb.connectionUri })
 
-	await applyMigrations(pool, migrationsDir)
+	await migrate({ url: testDb.connectionUri }, migrationsDir)
 
-	db = createDatabaseClient(pool)
+	db = createDb(() => ({ url: testDb.connectionUri }))
 
-	vi.doMock('../db.js', () => ({
-		db,
-		closePool: vi.fn().mockResolvedValue(undefined),
-		migrate: vi.fn().mockResolvedValue(undefined),
-	}))
+	vi.doMock('../db.js', () => ({ db }))
 
 	const mod = await import('../user-repository.js')
 
@@ -44,6 +35,8 @@ beforeAll(async () => {
 }, 60_000)
 
 afterAll(async () => {
+	await db?.close()
+
 	await pool?.end()
 
 	await testDb?.stop()
@@ -59,12 +52,10 @@ const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 
 describeWithDocker('createUserRepository (integration)', () => {
 	describe('insertUser + getUserById', () => {
-		it('inserts and retrieves a user', async () => {
-			const id = randomUUID()
+		it('inserts a user with a version 7 id and retrieves it', async () => {
+			const inserted = await repo.insertUser('alice@example.com', 'hash')
 
-			const inserted = await repo.insertUser(id, 'alice@example.com', 'hash')
-
-			expect(inserted.id).toBe(id)
+			expect(inserted.id.charAt(14)).toBe('7')
 
 			expect(inserted.email).toBe('alice@example.com')
 
@@ -74,7 +65,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 			expect(inserted.role).toBe('user')
 
-			const fetched = await repo.getUserById(id)
+			const fetched = await repo.getUserById(inserted.id)
 
 			expect(fetched).not.toBeNull()
 
@@ -86,17 +77,15 @@ describeWithDocker('createUserRepository (integration)', () => {
 		})
 
 		it('rejects duplicate emails via unique index', async () => {
-			await repo.insertUser(randomUUID(), 'dup@example.com', 'hash')
+			await repo.insertUser('dup@example.com', 'hash')
 
-			await expect(repo.insertUser(randomUUID(), 'dup@example.com', 'hash')).rejects.toThrow()
+			await expect(repo.insertUser('dup@example.com', 'hash')).rejects.toThrow()
 		})
 	})
 
 	describe('getCredentialsByEmail', () => {
 		it('returns credentials for an existing user', async () => {
-			const id = randomUUID()
-
-			await repo.insertUser(id, 'creds@example.com', 'hashed-pw')
+			const { id } = await repo.insertUser('creds@example.com', 'hashed-pw')
 
 			const creds = await repo.getCredentialsByEmail('creds@example.com')
 
@@ -115,17 +104,15 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 	describe('getUsers', () => {
 		it('returns all users ordered by created_at', async () => {
-			const ids = [randomUUID(), randomUUID(), randomUUID()]
-
-			await repo.insertUser(ids[0], 'a@example.com', 'h')
+			await repo.insertUser('a@example.com', 'h')
 
 			await new Promise((r) => setTimeout(r, 5))
 
-			await repo.insertUser(ids[1], 'b@example.com', 'h')
+			await repo.insertUser('b@example.com', 'h')
 
 			await new Promise((r) => setTimeout(r, 5))
 
-			await repo.insertUser(ids[2], 'c@example.com', 'h')
+			await repo.insertUser('c@example.com', 'h')
 
 			const users = await repo.getUsers()
 
@@ -139,11 +126,9 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 	describe('setUserActive', () => {
 		it('updates is_active and refreshes updated_at', async () => {
-			const id = randomUUID()
+			const before = await repo.insertUser('flip@example.com', 'h')
 
-			const before = await repo.insertUser(id, 'flip@example.com', 'h')
-
-			const after = await repo.setUserActive(id, false)
+			const after = await repo.setUserActive(before.id, false)
 
 			expect(after?.is_active).toBe(false)
 
@@ -153,9 +138,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 		})
 
 		it('leaves admins alone', async () => {
-			const id = randomUUID()
-
-			await repo.insertUser(id, 'admin@example.com', 'h')
+			const { id } = await repo.insertUser('admin@example.com', 'h')
 
 			await pool.query(`UPDATE users SET role = 'admin' WHERE id = $1`, [id])
 

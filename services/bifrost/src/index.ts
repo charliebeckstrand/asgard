@@ -3,7 +3,7 @@ import { setupLifecycle } from 'grid/server-lifecycle'
 import { configure as configureVidar, reportEvent } from 'vidar/client'
 import { createBifrostApp } from './app.js'
 import { configure, deleteExpiredChallenges, deleteExpiredSessions } from './auth/index.js'
-import { closePool, migrate } from './lib/db.js'
+import { db } from './lib/db.js'
 import { environment } from './lib/env.js'
 import { logger } from './lib/log.js'
 import { createPasskeyRepository } from './lib/passkey-repository.js'
@@ -12,8 +12,6 @@ import { createUserRepository } from './lib/user-repository.js'
 
 const env = environment()
 const log = logger()
-
-await migrate(import.meta.url)
 
 configureVidar({
 	vidarUrl: env.VIDAR_URL,
@@ -58,6 +56,6 @@ setupLifecycle({
 	onShutdown: async () => {
 		clearInterval(sweepTimer)
 
-		await closePool()
+		await db.close()
 	},
 })

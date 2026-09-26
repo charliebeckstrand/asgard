@@ -5,14 +5,12 @@ import { setupLifecycle } from 'grid/server-lifecycle'
 import { createVidarApp } from './app.js'
 import { cleanExpiredBans } from './handlers/bans.js'
 import { purgeOldEvents } from './handlers/events.js'
-import { closePool, migrate } from './lib/db.js'
+import { db } from './lib/db.js'
 import { environment } from './lib/env.js'
 import { logger } from './lib/log.js'
 
 const env = environment()
 const log = logger()
-
-await migrate(import.meta.url)
 
 const app = createVidarApp()
 
@@ -48,6 +46,6 @@ setupLifecycle({
 	onShutdown: async () => {
 		clearInterval(cleanupTimer)
 
-		await closePool()
+		await db.close()
 	},
 })

@@ -18,6 +18,10 @@
             "cache": false,
             "persistent": true
         },
+        "db:migrate": {
+            "dependsOn": ["^build", "env:init"],
+            "cache": false
+        },
         "lint": {},
         "typecheck": {
             "dependsOn": ["^typecheck"]

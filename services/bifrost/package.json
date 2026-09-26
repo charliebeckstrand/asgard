@@ -14,6 +14,8 @@
 		"dev": "tsx watch --env-file=.env src/index.ts",
 		"build": "tsup",
 		"start": "node dist/index.js",
+		"db:migrate": "saga migrate --env-file=.env",
+		"db:status": "saga status --env-file=.env",
 		"admin:promote": "node dist/cli.js promote",
 		"admin:demote": "node dist/cli.js demote",
 		"lint": "biome check --config-path=../.. .",

@@ -48,6 +48,7 @@ describe('SecurityEventSchema', () => {
 			event_type: 'login_failed',
 			details: { email: 'test@example.com' },
 			service: 'bifrost',
+			account: 'test@example.com',
 			created_at: '2024-01-01T00:00:00Z',
 		})
 

@@ -146,7 +146,7 @@ async function checkRule(ip: string, rule: Rule): Promise<boolean> {
 	const row = await db.one<{ event_count: number; account_count: number }>(
 		sql`SELECT
 			COUNT(*)::int AS event_count,
-			COUNT(DISTINCT details->>'email')::int AS account_count
+			COUNT(DISTINCT account)::int AS account_count
 		 FROM vdr_security_events
 		 WHERE ip = ${ip}
 		   AND event_type = ${rule.event_type}
