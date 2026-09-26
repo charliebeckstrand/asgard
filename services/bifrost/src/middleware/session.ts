@@ -1,7 +1,7 @@
 import { HTTPException } from 'grid'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
-import type { Session } from 'skuld'
+import type { Role, Session } from 'skuld'
 import {
 	AuthError,
 	findSession,
@@ -86,20 +86,24 @@ export async function requireSecondStep(c: Context<SessionEnv>): Promise<Session
 	throw new AuthError('second_step_required', 'Confirm that it is you with a second step')
 }
 
+// Roles whose routes also need a session that passed the second step.
+const STEP_UP_ROLES: ReadonlySet<Role> = new Set(['admin'])
+
 /**
- * Lets only an admin through, on a session that passed the second step. Unlike
- * {@link requireSecondStep}, it has no pass for a user without a second factor:
- * after `reset-mfa`, the admin adds a new one, which passes the step.
+ * Lets only a user with `role` through. For a role in `STEP_UP_ROLES`, the
+ * session must also have passed the second step. Unlike {@link requireSecondStep},
+ * it has no pass for a user without a second factor: after `reset-mfa`, the
+ * admin adds a new one, which passes the step.
  */
-export function requireAdmin(): MiddlewareHandler<SessionEnv> {
+export function requireRole(role: Role): MiddlewareHandler<SessionEnv> {
 	return async (c, next) => {
 		const current = requireSession(c)
 
-		if (current.user.role !== 'admin') {
-			throw new HTTPException(403, { message: 'Admin role required' })
+		if (!current.user.roles.includes(role)) {
+			throw new HTTPException(403, { message: `The ${role} role is required` })
 		}
 
-		if (!current.two_step) {
+		if (STEP_UP_ROLES.has(role) && !current.two_step) {
 			throw new AuthError('second_step_required', 'Confirm that it is you with a second step')
 		}
 

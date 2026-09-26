@@ -16,7 +16,7 @@ const TEST_USER: User = {
 	email: 'alice@example.com',
 	is_active: true,
 	is_verified: true,
-	role: 'user',
+	roles: ['user'],
 	created_at: '2024-01-01T00:00:00Z',
 	updated_at: '2024-01-01T00:00:00Z',
 }
@@ -38,7 +38,6 @@ beforeEach(() => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
-			role: 'user',
 		} satisfies CredentialsRow),
 		getUsers: vi.fn().mockResolvedValue([]),
 		getUserById: vi.fn().mockResolvedValue(TEST_USER),
@@ -110,7 +109,6 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: null,
 			is_active: true,
-			role: 'user',
 		})
 
 		await expect(authenticateUser('alice@example.com', 'dummy-timing-pad')).rejects.toMatchObject({
@@ -123,7 +121,6 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: false,
-			role: 'user',
 		})
 
 		try {
@@ -140,7 +137,6 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
-			role: 'admin',
 		})
 
 		await expect(authenticateUser('alice@example.com', 'correct-password')).resolves.toBe(
@@ -153,7 +149,6 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
-			role: 'admin',
 		})
 
 		const err = await authenticateUser('alice@example.com', 'wrong-password').catch((e) => e)

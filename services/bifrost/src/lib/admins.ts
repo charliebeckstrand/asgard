@@ -20,7 +20,10 @@ export function promote(email: string): Promise<'promoted' | 'not_found' | 'no_s
 
 		if ((await countSecondFactors(tx, user.id)) === 0) return 'no_second_factor'
 
-		await tx.exec(sql`UPDATE users SET role = 'admin' WHERE id = ${user.id}`)
+		await tx.exec(sql`
+				UPDATE users SET roles = array_append(roles, 'admin')
+				WHERE id = ${user.id} AND NOT 'admin' = ANY(roles)
+			`)
 
 		await tx.exec(sql`DELETE FROM sessions WHERE user_id = ${user.id}`)
 
@@ -28,10 +31,13 @@ export function promote(email: string): Promise<'promoted' | 'not_found' | 'no_s
 	})
 }
 
-/** Makes the admin a user again. */
+/** Takes the admin role away. The user keeps their other roles. */
 export async function demote(email: string): Promise<'demoted' | 'not_found'> {
 	const updated = await db.exec(
-		sql`UPDATE users SET role = 'user' WHERE email = ${email.trim().toLowerCase()}`,
+		sql`
+			UPDATE users SET roles = array_remove(roles, 'admin')
+			WHERE email = ${email.trim().toLowerCase()}
+		`,
 	)
 
 	return updated ? 'demoted' : 'not_found'

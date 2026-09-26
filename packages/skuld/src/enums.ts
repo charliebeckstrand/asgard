@@ -12,8 +12,8 @@ export const ConnectionStatusSchema = z
 
 export type ConnectionStatus = z.infer<typeof ConnectionStatusSchema>
 
-export const UserRoleSchema = z
-	.enum(['user', 'admin'])
-	.openapi({ description: 'Account role; admins can manage other users' })
+export const RoleSchema = z.enum(['user', 'admin']).openapi({
+	description: '`user` can change data in the apps; `admin` can manage other users',
+})
 
-export type UserRole = z.infer<typeof UserRoleSchema>
+export type Role = z.infer<typeof RoleSchema>

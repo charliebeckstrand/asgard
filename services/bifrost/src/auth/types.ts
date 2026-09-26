@@ -1,11 +1,10 @@
-import type { Passkey, Session, User, UserRole } from 'skuld'
+import type { Passkey, Session, User } from 'skuld'
 
 export interface CredentialsRow {
 	id: string
 	/** Null for an account made with GitHub or Google. */
 	hashed_password: string | null
 	is_active: boolean
-	role: UserRole
 }
 
 export interface UserRepository {
@@ -13,7 +12,7 @@ export interface UserRepository {
 	getCredentialsByEmail(email: string): Promise<CredentialsRow | null>
 	getUsers(): Promise<User[]>
 	getUserById(id: string): Promise<User | null>
-	/** Only applies to `role = 'user'`; returns null for admins and unknown ids. */
+	/** Returns null for admins and unknown ids. */
 	setUserActive(id: string, isActive: boolean): Promise<User | null>
 }
 

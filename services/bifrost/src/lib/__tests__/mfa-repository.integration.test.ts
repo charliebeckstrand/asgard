@@ -68,7 +68,7 @@ async function addTotp(userId: string) {
 }
 
 async function makeAdmin(userId: string) {
-	await pool.query(`UPDATE users SET role = 'admin' WHERE id = $1`, [userId])
+	await pool.query(`UPDATE users SET roles = '{user,admin}' WHERE id = $1`, [userId])
 }
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
@@ -269,7 +269,7 @@ describeWithDocker('admins (integration)', () => {
 			(await pool.query('SELECT 1 FROM sessions WHERE user_id = $1', [adminId])).rowCount,
 		).toBe(0)
 
-		expect((await users.getUserById(adminId))?.role).toBe('admin')
+		expect((await users.getUserById(adminId))?.roles).toEqual(['user', 'admin'])
 
 		expect(await mfa.getFactors(bystanderId)).toMatchObject({ totp: true })
 	})

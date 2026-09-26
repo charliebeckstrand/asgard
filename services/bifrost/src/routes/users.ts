@@ -2,7 +2,7 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { createListSchema, IdSchema, toList, UserSchema } from 'skuld'
 import { deleteUserSessions, getConfig } from '../auth/index.js'
-import { requireAdmin, type SessionEnv } from '../middleware/session.js'
+import { requireRole, type SessionEnv } from '../middleware/session.js'
 
 // Admins manage an account's standing, never its credentials: no passwords,
 // no email, no roles. They also can't act on other admins; admins are made
@@ -64,7 +64,7 @@ const updateUserRoute = createRoute({
 
 const usersRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
 
-usersRoutes.use('*', requireAdmin())
+usersRoutes.use('*', requireRole('admin'))
 
 usersRoutes.openapi(listUsersRoute, async (c) => {
 	const { userRepository } = getConfig()
@@ -101,7 +101,7 @@ usersRoutes.openapi(updateUserRoute, async (c) => {
 		throw new HTTPException(404, { message: 'User not found' })
 	}
 
-	if (target.role === 'admin') {
+	if (target.roles.includes('admin')) {
 		throw new HTTPException(403, { message: 'Admin accounts cannot be changed' })
 	}
 
