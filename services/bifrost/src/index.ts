@@ -2,10 +2,17 @@ import { serve } from '@hono/node-server'
 import { setupLifecycle } from 'grid/server-lifecycle'
 import { configure as configureVidar, reportEvent } from 'vidar/client'
 import { createBifrostApp } from './app.js'
-import { configure, deleteExpiredSessions } from './auth/index.js'
+import {
+	configure,
+	deleteExpiredChallenges,
+	deleteExpiredSessions,
+	deleteExpiredTickets,
+} from './auth/index.js'
 import { closePool, migrate } from './lib/db.js'
 import { environment } from './lib/env.js'
 import { logger } from './lib/log.js'
+import { createMfaRepository } from './lib/mfa-repository.js'
+import { createPasskeyRepository } from './lib/passkey-repository.js'
 import { createSessionRepository } from './lib/session-repository.js'
 import { createUserRepository } from './lib/user-repository.js'
 
@@ -23,6 +30,10 @@ configureVidar({
 configure({
 	userRepository: createUserRepository(),
 	sessionRepository: createSessionRepository(),
+	passkeyRepository: createPasskeyRepository(),
+	mfaRepository: createMfaRepository(),
+	passkeys: { domain: env.PASSKEY_DOMAIN, origins: env.CORS_ORIGIN },
+	mfa: { key: env.MFA_ENCRYPTION_KEY, issuer: env.PASSKEY_DOMAIN },
 	onSecurityEvent: (event) => reportEvent(event.type, event.ip, event.details ?? {}, 'bifrost'),
 })
 
@@ -31,9 +42,11 @@ const app = createBifrostApp()
 const SWEEP_INTERVAL_MS = 3_600_000 // 1 hour
 
 const sweepTimer = setInterval(() => {
-	deleteExpiredSessions().catch((err) => {
-		log.error({ err }, 'failed to delete expired sessions')
-	})
+	Promise.all([deleteExpiredSessions(), deleteExpiredChallenges(), deleteExpiredTickets()]).catch(
+		(err) => {
+			log.error({ err }, 'failed to delete expired sessions, challenges and login tickets')
+		},
+	)
 }, SWEEP_INTERVAL_MS)
 
 const server = serve(

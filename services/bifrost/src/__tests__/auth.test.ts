@@ -9,6 +9,13 @@ const {
 	mockFindSession,
 	mockDeleteSession,
 	mockDeleteUserSessions,
+	mockCreateSignInOptions,
+	mockAuthenticatePasskey,
+	mockGetFactors,
+	mockCreateLoginTicket,
+	mockFindLoginTicket,
+	mockCompleteLoginTicket,
+	mockCreateSecondFactorOptions,
 } = vi.hoisted(() => ({
 	mockAuthenticateUser: vi.fn(),
 	mockRegisterUser: vi.fn(),
@@ -16,6 +23,13 @@ const {
 	mockFindSession: vi.fn(),
 	mockDeleteSession: vi.fn(),
 	mockDeleteUserSessions: vi.fn(),
+	mockCreateSignInOptions: vi.fn(),
+	mockAuthenticatePasskey: vi.fn(),
+	mockGetFactors: vi.fn(),
+	mockCreateLoginTicket: vi.fn(),
+	mockFindLoginTicket: vi.fn(),
+	mockCompleteLoginTicket: vi.fn(),
+	mockCreateSecondFactorOptions: vi.fn(),
 }))
 
 import { AuthError } from '../auth/errors.js'
@@ -23,17 +37,28 @@ import { AuthError } from '../auth/errors.js'
 vi.mock('../auth/index.js', async () => {
 	const errors = await vi.importActual<typeof import('../auth/errors.js')>('../auth/errors.js')
 
+	const mfa = await vi.importActual<typeof import('../auth/mfa.js')>('../auth/mfa.js')
+
 	return {
 		configure: vi.fn(),
 		getConfig: vi.fn(),
 		AuthError: errors.AuthError,
 		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
+		TICKET_TTL_SECONDS: 5 * 60,
+		secondFactorMethods: mfa.secondFactorMethods,
 		authenticateUser: (...args: unknown[]) => mockAuthenticateUser(...args),
 		registerUser: (...args: unknown[]) => mockRegisterUser(...args),
 		createSession: (...args: unknown[]) => mockCreateSession(...args),
 		findSession: (...args: unknown[]) => mockFindSession(...args),
 		deleteSession: (...args: unknown[]) => mockDeleteSession(...args),
 		deleteUserSessions: (...args: unknown[]) => mockDeleteUserSessions(...args),
+		createSignInOptions: (...args: unknown[]) => mockCreateSignInOptions(...args),
+		authenticatePasskey: (...args: unknown[]) => mockAuthenticatePasskey(...args),
+		getFactors: (...args: unknown[]) => mockGetFactors(...args),
+		createLoginTicket: (...args: unknown[]) => mockCreateLoginTicket(...args),
+		findLoginTicket: (...args: unknown[]) => mockFindLoginTicket(...args),
+		completeLoginTicket: (...args: unknown[]) => mockCompleteLoginTicket(...args),
+		createSecondFactorOptions: (...args: unknown[]) => mockCreateSecondFactorOptions(...args),
 	}
 })
 
@@ -92,6 +117,8 @@ describe('Auth routes', () => {
 		mockCreateSession.mockResolvedValue({ token: 'new-token', session })
 
 		mockFindSession.mockResolvedValue(session)
+
+		mockGetFactors.mockResolvedValue({ passkeys: 0, totp: false, recovery_codes: 0 })
 	})
 
 	describe('POST /auth/login', () => {
@@ -157,6 +184,32 @@ describe('Auth routes', () => {
 			expect((await login()).status).toBe(403)
 		})
 
+		it('holds the sign-in for a second step when the user has one', async () => {
+			mockGetFactors.mockResolvedValueOnce({ passkeys: 1, totp: true, recovery_codes: 10 })
+
+			mockCreateLoginTicket.mockResolvedValueOnce('ticket-token')
+
+			const res = await login()
+
+			expect(res.status).toBe(202)
+
+			expect(await res.json()).toEqual({ methods: ['passkey', 'totp', 'recovery_code'] })
+
+			expect(res.headers.get('set-cookie')).toContain('__Host-mfa=ticket-token')
+
+			expect(mockCreateLoginTicket).toHaveBeenCalledWith(USER_ID)
+
+			expect(mockCreateSession).not.toHaveBeenCalled()
+		})
+
+		it('starts a session when only recovery codes are left over', async () => {
+			mockGetFactors.mockResolvedValueOnce({ passkeys: 0, totp: false, recovery_codes: 3 })
+
+			expect((await login()).status).toBe(200)
+
+			expect(mockCreateLoginTicket).not.toHaveBeenCalled()
+		})
+
 		it('rejects a password longer than 128 characters', async () => {
 			const res = await app.request('/auth/login', {
 				method: 'POST',
@@ -167,6 +220,177 @@ describe('Auth routes', () => {
 			expect(res.status).toBe(400)
 
 			expect(mockAuthenticateUser).not.toHaveBeenCalled()
+		})
+	})
+
+	describe('POST /auth/login/options', () => {
+		it('returns the sign-in options', async () => {
+			mockCreateSignInOptions.mockResolvedValueOnce({ challenge: 'abc', rpId: 'localhost' })
+
+			const res = await app.request('/auth/login/options', {
+				method: 'POST',
+				headers: { Origin: ORIGIN },
+			})
+
+			expect(res.status).toBe(200)
+
+			expect(await res.json()).toEqual({ challenge: 'abc', rpId: 'localhost' })
+		})
+	})
+
+	describe('POST /auth/login/mfa/options', () => {
+		it("returns passkey options for the ticket's user", async () => {
+			mockFindLoginTicket.mockResolvedValueOnce(USER_ID)
+
+			mockCreateSecondFactorOptions.mockResolvedValueOnce({ challenge: 'abc' })
+
+			const res = await app.request('/auth/login/mfa/options', {
+				method: 'POST',
+				headers: { Origin: ORIGIN, Cookie: '__Host-mfa=ticket-token' },
+			})
+
+			expect(res.status).toBe(200)
+
+			expect(await res.json()).toEqual({ challenge: 'abc' })
+
+			expect(mockFindLoginTicket).toHaveBeenCalledWith('ticket-token')
+
+			expect(mockCreateSecondFactorOptions).toHaveBeenCalledWith(USER_ID)
+		})
+
+		it('returns 401 without a ticket', async () => {
+			const res = await app.request('/auth/login/mfa/options', {
+				method: 'POST',
+				headers: { Origin: ORIGIN },
+			})
+
+			expect(res.status).toBe(401)
+
+			expect(mockFindLoginTicket).not.toHaveBeenCalled()
+		})
+	})
+
+	describe('POST /auth/login/mfa', () => {
+		function secondStep(body: unknown, headers: Record<string, string> = {}) {
+			return app.request('/auth/login/mfa', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Origin: ORIGIN,
+					Cookie: '__Host-mfa=ticket-token',
+					...headers,
+				},
+				body: JSON.stringify(body),
+			})
+		}
+
+		it('starts a session and clears the ticket cookie', async () => {
+			mockCompleteLoginTicket.mockResolvedValueOnce(USER_ID)
+
+			const res = await secondStep({ totp: '123456' }, { 'do-connecting-ip': '203.0.113.7' })
+
+			expect(res.status).toBe(200)
+
+			expect(await res.json()).toEqual(session)
+
+			expect(mockCompleteLoginTicket).toHaveBeenCalledWith(
+				'ticket-token',
+				{ totp: '123456' },
+				'203.0.113.7',
+			)
+
+			const setCookie = res.headers.get('set-cookie') ?? ''
+
+			expect(setCookie).toContain('__Host-session=new-token')
+
+			expect(setCookie).toMatch(/__Host-mfa=;/)
+		})
+
+		it('accepts a recovery code', async () => {
+			mockCompleteLoginTicket.mockResolvedValueOnce(USER_ID)
+
+			expect((await secondStep({ recovery_code: 'abcde-fghjk' })).status).toBe(200)
+		})
+
+		it('returns 401 when the code is not accepted', async () => {
+			mockCompleteLoginTicket.mockRejectedValueOnce(
+				new AuthError('invalid_credentials', 'That code or passkey was not accepted'),
+			)
+
+			expect((await secondStep({ totp: '000000' })).status).toBe(401)
+
+			expect(mockCreateSession).not.toHaveBeenCalled()
+		})
+
+		it('returns 401 without a ticket', async () => {
+			expect((await secondStep({ totp: '123456' }, { Cookie: '' })).status).toBe(401)
+
+			expect(mockCompleteLoginTicket).not.toHaveBeenCalled()
+		})
+
+		it('rejects a body with no proof', async () => {
+			expect((await secondStep({ code: '123456' })).status).toBe(400)
+
+			expect(mockCompleteLoginTicket).not.toHaveBeenCalled()
+		})
+	})
+
+	describe('POST /auth/login/passkey', () => {
+		const credential = {
+			id: 'credential-1',
+			rawId: 'credential-1',
+			type: 'public-key',
+			response: { clientDataJSON: 'x', authenticatorData: 'y', signature: 'z' },
+			clientExtensionResults: {},
+		}
+
+		function passkeyLogin(headers: Record<string, string> = {}, body: unknown = credential) {
+			return app.request('/auth/login/passkey', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Origin: ORIGIN, ...headers },
+				body: JSON.stringify(body),
+			})
+		}
+
+		it('starts a session like a password login', async () => {
+			mockAuthenticatePasskey.mockResolvedValueOnce(USER_ID)
+
+			const res = await passkeyLogin(cookie('old-token'))
+
+			expect(res.status).toBe(200)
+
+			expect(await res.json()).toEqual(session)
+
+			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, 'old-token')
+
+			expect(res.headers.get('set-cookie')).toContain('__Host-session=new-token')
+		})
+
+		it('passes the credential and the client IP to authenticatePasskey', async () => {
+			mockAuthenticatePasskey.mockResolvedValueOnce(USER_ID)
+
+			await passkeyLogin({ 'do-connecting-ip': '203.0.113.7' })
+
+			expect(mockAuthenticatePasskey).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'credential-1' }),
+				'203.0.113.7',
+			)
+		})
+
+		it('returns 401 for an unrecognized passkey', async () => {
+			mockAuthenticatePasskey.mockRejectedValueOnce(
+				new AuthError('invalid_credentials', 'Passkey not recognized'),
+			)
+
+			expect((await passkeyLogin()).status).toBe(401)
+
+			expect(mockCreateSession).not.toHaveBeenCalled()
+		})
+
+		it('rejects a body that is not a credential', async () => {
+			expect((await passkeyLogin({}, { id: 'credential-1' })).status).toBe(400)
+
+			expect(mockAuthenticatePasskey).not.toHaveBeenCalled()
 		})
 	})
 

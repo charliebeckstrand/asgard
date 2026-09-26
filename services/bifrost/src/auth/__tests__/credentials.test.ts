@@ -2,7 +2,13 @@ import { hash } from '@node-rs/argon2'
 import type { User } from 'skuld'
 import { configure } from '../config.js'
 import { AuthError, authenticateUser, registerUser } from '../credentials.js'
-import type { CredentialsRow, SessionRepository, UserRepository } from '../types.js'
+import type {
+	CredentialsRow,
+	MfaRepository,
+	PasskeyRepository,
+	SessionRepository,
+	UserRepository,
+} from '../types.js'
 
 const TEST_USER: User = {
 	id: 'user-123',
@@ -31,6 +37,7 @@ beforeEach(() => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
+			role: 'user',
 		} satisfies CredentialsRow),
 		getUsers: vi.fn().mockResolvedValue([]),
 		getUserById: vi.fn().mockResolvedValue(TEST_USER),
@@ -48,6 +55,10 @@ beforeEach(() => {
 	configure({
 		userRepository: mockRepo,
 		sessionRepository: mockSessionRepo,
+		passkeyRepository: {} as PasskeyRepository,
+		passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
+		mfaRepository: {} as MfaRepository,
+		mfa: { issuer: 'localhost' },
 	})
 })
 
@@ -94,6 +105,7 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: false,
+			role: 'user',
 		})
 
 		try {
@@ -105,12 +117,42 @@ describe('authenticateUser', () => {
 		}
 	})
 
+	it('accepts a correct password for an admin', async () => {
+		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
+			id: TEST_USER.id,
+			hashed_password: hashedPassword,
+			is_active: true,
+			role: 'admin',
+		})
+
+		await expect(authenticateUser('alice@example.com', 'correct-password')).resolves.toBe(
+			TEST_USER.id,
+		)
+	})
+
+	it('reports invalid_credentials for an admin with a wrong password', async () => {
+		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
+			id: TEST_USER.id,
+			hashed_password: hashedPassword,
+			is_active: true,
+			role: 'admin',
+		})
+
+		const err = await authenticateUser('alice@example.com', 'wrong-password').catch((e) => e)
+
+		expect((err as AuthError).code).toBe('invalid_credentials')
+	})
+
 	it('calls onSecurityEvent on failed login', async () => {
 		const onSecurityEvent = vi.fn()
 
 		configure({
 			userRepository: mockRepo,
 			sessionRepository: mockSessionRepo,
+			passkeyRepository: {} as PasskeyRepository,
+			passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
+			mfaRepository: {} as MfaRepository,
+			mfa: { issuer: 'localhost' },
 			onSecurityEvent,
 		})
 
@@ -176,6 +218,10 @@ describe('registerUser', () => {
 		configure({
 			userRepository: mockRepo,
 			sessionRepository: mockSessionRepo,
+			passkeyRepository: {} as PasskeyRepository,
+			passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
+			mfaRepository: {} as MfaRepository,
+			mfa: { issuer: 'localhost' },
 			onSecurityEvent,
 		})
 
