@@ -1,5 +1,6 @@
-import type { Pool, PoolClient, QueryResultRow } from 'pg'
-import { createPool, type PoolOptions } from './pool.js'
+import { Pool, type QueryConfig, type QueryResult, type QueryResultRow } from 'pg'
+import { type ConnectionOptions, connectionConfig } from './connection.js'
+import type { Logger } from './log/index.js'
 import type { SqlFragment } from './sql.js'
 
 export class NoRowsError extends Error {
@@ -13,25 +14,42 @@ export class NoRowsError extends Error {
 }
 
 export interface Queryable {
+	/** The first row, or null when there is none. */
 	first<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null>
+	/** The first row. Throws `NoRowsError` when there is none. */
 	one<T extends QueryResultRow>(fragment: SqlFragment): Promise<T>
 	many<T extends QueryResultRow>(fragment: SqlFragment): Promise<T[]>
+	/** Runs a statement and returns the number of rows it touched. */
 	exec(fragment: SqlFragment): Promise<number>
+	/** The first column of the first row. Throws `NoRowsError` when there is none. */
 	val<T>(fragment: SqlFragment): Promise<T>
 }
 
 export interface Db extends Queryable {
+	/** Runs `fn` in a transaction, committed when it resolves and rolled back when it throws. */
 	tx<T>(fn: (tx: Queryable) => Promise<T>): Promise<T>
 	ping(): Promise<boolean>
+	/** Ends the pool. A later query opens a new one. */
+	close(): Promise<void>
 }
 
-function toConfig(fragment: SqlFragment): { text: string; values: unknown[] } {
-	return { text: fragment.text, values: [...fragment.values] }
+export interface DbConfig extends ConnectionOptions {
+	max?: number
+	idleTimeoutMillis?: number
+	connectionTimeoutMillis?: number
+	/** Receives errors from idle connections. Defaults to the console. */
+	logger?: Logger
 }
 
-function createQueryable(executor: { query: Pool['query'] | PoolClient['query'] }): Queryable {
-	async function firstRow<T extends QueryResultRow>(fragment: SqlFragment): Promise<T> {
-		const { rows } = await executor.query<T>(toConfig(fragment))
+type Run = <T extends QueryResultRow>(query: QueryConfig) => Promise<QueryResult<T>>
+
+function createQueryable(run: Run): Queryable {
+	async function query<T extends QueryResultRow>(fragment: SqlFragment): Promise<QueryResult<T>> {
+		return run<T>({ text: fragment.text, values: [...fragment.values] })
+	}
+
+	async function one<T extends QueryResultRow>(fragment: SqlFragment): Promise<T> {
+		const { rows } = await query<T>(fragment)
 
 		if (rows.length === 0) {
 			throw new NoRowsError(fragment.text)
@@ -41,41 +59,103 @@ function createQueryable(executor: { query: Pool['query'] | PoolClient['query'] 
 	}
 
 	return {
-		async first<T extends QueryResultRow>(fragment: SqlFragment): Promise<T | null> {
-			const { rows } = await executor.query<T>(toConfig(fragment))
+		async first<T extends QueryResultRow>(fragment: SqlFragment) {
+			const { rows } = await query<T>(fragment)
 
 			return rows[0] ?? null
 		},
 
-		one: firstRow,
+		one,
 
-		async many<T extends QueryResultRow>(fragment: SqlFragment): Promise<T[]> {
-			const { rows } = await executor.query<T>(toConfig(fragment))
+		async many<T extends QueryResultRow>(fragment: SqlFragment) {
+			const { rows } = await query<T>(fragment)
 
 			return rows
 		},
 
-		async exec(fragment: SqlFragment): Promise<number> {
-			const { rowCount } = await executor.query(toConfig(fragment))
+		async exec(fragment) {
+			const { rowCount } = await query(fragment)
 
 			return rowCount ?? 0
 		},
 
-		async val<T>(fragment: SqlFragment): Promise<T> {
-			return Object.values(await firstRow<Record<string, T>>(fragment))[0]
+		async val<T>(fragment: SqlFragment) {
+			return Object.values(await one<Record<string, T>>(fragment))[0]
 		},
 	}
 }
 
-export function createDatabaseClient(pool: Pool): Db {
-	const queryable = createQueryable(pool)
+function createPool({
+	max,
+	idleTimeoutMillis,
+	connectionTimeoutMillis,
+	logger,
+	...connection
+}: DbConfig): Pool {
+	const pool = new Pool({
+		...connectionConfig(connection),
+		max: max ?? 5,
+		idleTimeoutMillis: idleTimeoutMillis ?? 30_000,
+		connectionTimeoutMillis: connectionTimeoutMillis ?? 5_000,
+	})
+
+	// An idle connection can drop (network blip, database restart). Without a
+	// listener, node-postgres raises that as an uncaught exception.
+	pool.on('error', (err) => {
+		if (logger) {
+			logger.error({ err }, 'idle client error')
+		} else {
+			console.error('[saga] idle client error:', err.message)
+		}
+	})
+
+	return pool
+}
+
+/**
+ * A database handle backed by a connection pool. The pool opens on the first
+ * query, so `config` is read then, not when the module defining `db` loads.
+ */
+export function createDb(config: () => DbConfig): Db {
+	let pool: Pool | null = null
+
+	const getPool = (): Pool => {
+		pool ??= createPool(config())
+
+		return pool
+	}
 
 	return {
-		...queryable,
+		...createQueryable((query) => getPool().query(query)),
 
-		async ping(): Promise<boolean> {
+		async tx(fn) {
+			const client = await getPool().connect()
+
+			// A connection that can't roll back is broken, so it's destroyed, not reused.
+			let broken: Error | undefined
+
 			try {
-				await pool.query('SELECT 1')
+				await client.query('BEGIN')
+
+				const result = await fn(createQueryable((query) => client.query(query)))
+
+				await client.query('COMMIT')
+
+				return result
+			} catch (err) {
+				await client.query('ROLLBACK').catch((rollbackErr: Error) => {
+					broken = rollbackErr
+				})
+
+				throw err
+			} finally {
+				client.release(broken)
+			}
+		},
+
+		async ping() {
+			try {
+				await getPool().query('SELECT 1')
 
 				return true
 			} catch {
@@ -83,66 +163,12 @@ export function createDatabaseClient(pool: Pool): Db {
 			}
 		},
 
-		async tx<T>(fn: (tx: Queryable) => Promise<T>): Promise<T> {
-			const client = await pool.connect()
+		async close() {
+			const open = pool
 
-			try {
-				await client.query('BEGIN')
+			pool = null
 
-				const tx = createQueryable(client)
-
-				const result = await fn(tx)
-
-				await client.query('COMMIT')
-
-				return result
-			} catch (err) {
-				await client.query('ROLLBACK')
-
-				throw err
-			} finally {
-				client.release()
-			}
-		},
-	}
-}
-
-interface State {
-	pool: Pool
-	client: Db
-}
-
-export function createDatabase(
-	getDatabaseUrl: () => string,
-	options?: PoolOptions,
-): { db: Db; closePool: () => Promise<void> } {
-	let state: State | null = null
-
-	const init = (): State => {
-		if (!state) {
-			const pool = createPool(getDatabaseUrl(), options)
-
-			state = { pool, client: createDatabaseClient(pool) }
-		}
-
-		return state
-	}
-
-	const db = new Proxy({} as Db, {
-		get(_, prop) {
-			return init().client[prop as keyof Db]
-		},
-	})
-
-	return {
-		db,
-
-		async closePool() {
-			if (state) {
-				await state.pool.end()
-
-				state = null
-			}
+			await open?.end()
 		},
 	}
 }

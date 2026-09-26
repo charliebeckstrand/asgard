@@ -1,7 +1,7 @@
 {
 	"name": "saga",
 	"version": "0.1.0",
-	"description": "Data toolkit — Postgres pool, SQL builder, migrations, and structured logging",
+	"description": "Data toolkit \u2014 Postgres client, SQL builder, migrations, and structured logging",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./src/index.ts",
@@ -16,6 +16,7 @@
 		}
 	},
 	"bin": {
+		"saga": "./bin/saga.js",
 		"saga-bootstrap": "./src/bin/bootstrap.ts"
 	},
 	"scripts": {

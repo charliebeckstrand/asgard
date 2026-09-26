@@ -42,7 +42,8 @@ The `vali` package centralizes the patterns that used to be duplicated. When you
 | You need… | Import from |
 |---|---|
 | Stub the standard service env (`DATABASE_URL`, `CORS_ORIGIN`) | `stubServiceEnv` from `vali/env` |
-| Start a Postgres testcontainer + apply migrations from disk | `startPostgres` + `applyMigrations` from `vali/containers` |
+| Start a Postgres testcontainer | `startPostgres` from `vali/containers` |
+| Apply a service's migrations to it | `migrate` from `saga` |
 | Skip a suite when Docker is unavailable | `isDockerAvailable() ? describe : describe.skip` |
 
 If you find yourself re-implementing one of these, stop and import from `vali` instead. If a new pattern is being duplicated across two or more test files, propose extracting it into `vali` (CLAUDE.md: "abstractions are extracted, not predicted" — but two uses earns the abstraction).
@@ -79,11 +80,11 @@ beforeAll(async () => {
 
     const testDb = await startPostgres()
 
-    pool = new Pool({ connectionString: testDb.connectionUri })
+    await migrate({ url: testDb.connectionUri }, migrationsDir)
 
-    await applyMigrations(pool, migrationsDir)
+    db = createDb(() => ({ url: testDb.connectionUri }))
 
-    vi.doMock('../db.js', () => ({ db: createDatabaseClient(pool) }))
+    vi.doMock('../db.js', () => ({ db }))
 
     const mod = await import('../repo.js')
 
@@ -98,7 +99,6 @@ For service tests that don't need a real DB, mock `lib/db.js` to a noop:
 ```ts
 vi.mock('../lib/db.js', () => ({
     db: { ping: vi.fn().mockResolvedValue(true) },
-    closePool: vi.fn(),
 }))
 ```
 
@@ -122,7 +122,7 @@ vi.mock('vidar/client', () => ({
 - Gate with `const describeWithDocker = isDockerAvailable() ? describe : describe.skip`.
 - Use `beforeAll(async () => { ... }, 60_000)` for container startup — the default 5s timeout is not enough.
 - Truncate the table(s) you write to in `beforeEach` (use `CASCADE` if there are FKs).
-- Apply migrations from `<service>/migrations` via `applyMigrations(pool, migrationsDir)` rather than re-encoding schema in the test (drift risk).
+- Apply migrations from `<service>/migrations` via saga's `migrate({ url }, migrationsDir)` rather than re-encoding schema in the test (drift risk).
 
 ## Async assertions — prefer `vi.waitFor`
 

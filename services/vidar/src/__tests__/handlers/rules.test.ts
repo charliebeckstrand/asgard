@@ -7,7 +7,6 @@ const { mockDbOne, mockCreateBan, mockIsIpBanned, mockCreateThreat } = vi.hoiste
 
 vi.mock('../../lib/db.js', () => ({
 	db: { one: mockDbOne },
-	closePool: vi.fn(),
 }))
 
 vi.mock('../../handlers/bans.js', () => ({

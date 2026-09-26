@@ -1,19 +1,18 @@
-import { Pool } from 'pg'
 import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
-import { createDatabaseClient, NoRowsError } from '../db.js'
+import { createDb, type Db, NoRowsError } from '../db.js'
 import { sql } from '../sql.js'
 
 let testDb: TestDatabase
-let pool: Pool
+let db: Db
 
 beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
 	testDb = await startPostgres()
 
-	pool = new Pool({ connectionString: testDb.connectionUri })
+	db = createDb(() => ({ url: testDb.connectionUri }))
 
-	await pool.query(`
+	await db.exec(sql`
 		CREATE TABLE users (
 			id SERIAL PRIMARY KEY,
 			name TEXT NOT NULL,
@@ -22,26 +21,24 @@ beforeAll(async () => {
 		)
 	`)
 
-	await pool.query(`
+	await db.exec(sql`
 		INSERT INTO users (name, email) VALUES
 		('Alice', 'alice@example.com'),
 		('Bob', 'bob@example.com')
 	`)
-}, 30_000)
+}, 60_000)
 
 afterAll(async () => {
-	await pool?.end()
+	await db?.close()
 
 	await testDb?.stop()
 })
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 
-describeWithDocker('createDatabaseClient (integration)', () => {
+describeWithDocker('createDb (integration)', () => {
 	describe('first', () => {
 		it('returns the first row from a real database', async () => {
-			const db = createDatabaseClient(pool)
-
 			const result = await db.first<{ id: number; name: string; email: string }>(
 				sql`
 					SELECT *
@@ -58,8 +55,6 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 		})
 
 		it('returns null when no rows match', async () => {
-			const db = createDatabaseClient(pool)
-
 			const result = await db.first(sql`
 				SELECT *
 				FROM users
@@ -72,8 +67,6 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 
 	describe('one', () => {
 		it('returns the first row', async () => {
-			const db = createDatabaseClient(pool)
-
 			const result = await db.one<{ id: number; name: string }>(sql`
 				SELECT *
 				FROM users
@@ -84,8 +77,6 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 		})
 
 		it('throws NoRowsError when no rows match', async () => {
-			const db = createDatabaseClient(pool)
-
 			await expect(
 				db.one(sql`
 					SELECT *
@@ -98,8 +89,6 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 
 	describe('many', () => {
 		it('returns all matching rows', async () => {
-			const db = createDatabaseClient(pool)
-
 			const result = await db.many<{ id: number; name: string }>(sql`
 				SELECT *
 				FROM users
@@ -114,8 +103,6 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 		})
 
 		it('returns empty array when no rows match', async () => {
-			const db = createDatabaseClient(pool)
-
 			const result = await db.many(sql`
 				SELECT *
 				FROM users
@@ -128,9 +115,7 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 
 	describe('exec', () => {
 		it('returns affected row count', async () => {
-			const db = createDatabaseClient(pool)
-
-			await pool.query("INSERT INTO users (name) VALUES ('Temp')")
+			await db.exec(sql`INSERT INTO users (name) VALUES (${'Temp'})`)
 
 			const result = await db.exec(sql`
 				DELETE FROM users
@@ -141,8 +126,6 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 		})
 
 		it('returns 0 when no rows affected', async () => {
-			const db = createDatabaseClient(pool)
-
 			const result = await db.exec(sql`
 				DELETE FROM users
 				WHERE name = ${'Nobody'}
@@ -154,8 +137,6 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 
 	describe('val', () => {
 		it('returns scalar value', async () => {
-			const db = createDatabaseClient(pool)
-
 			const result = await db.val<number>(sql`
 				SELECT COUNT(*)::int
 				FROM users
@@ -165,8 +146,6 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 		})
 
 		it('throws NoRowsError on empty result', async () => {
-			const db = createDatabaseClient(pool)
-
 			await expect(
 				db.val(sql`
 					SELECT id
@@ -179,8 +158,6 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 
 	describe('tx', () => {
 		it('commits on success', async () => {
-			const db = createDatabaseClient(pool)
-
 			const result = await db.tx(async (tx) => {
 				return tx.one<{ id: number }>(sql`
 					INSERT INTO users (name, email)
@@ -204,8 +181,6 @@ describeWithDocker('createDatabaseClient (integration)', () => {
 		})
 
 		it('rolls back on error', async () => {
-			const db = createDatabaseClient(pool)
-
 			const countBefore = await db.val<number>(sql`
 				SELECT COUNT(*)::int
 				FROM users

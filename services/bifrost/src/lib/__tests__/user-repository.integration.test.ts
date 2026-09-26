@@ -2,13 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Pool } from 'pg'
-import { createDatabaseClient, type Db } from 'saga'
-import {
-	applyMigrations,
-	isDockerAvailable,
-	startPostgres,
-	type TestDatabase,
-} from 'vali/containers'
+import { createDb, type Db, migrate } from 'saga'
+import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
 import { stubServiceEnv } from 'vali/env'
 import type { UserRepository } from '../../auth/types.js'
 
@@ -28,15 +23,11 @@ beforeAll(async () => {
 
 	pool = new Pool({ connectionString: testDb.connectionUri })
 
-	await applyMigrations(pool, migrationsDir)
+	await migrate({ url: testDb.connectionUri }, migrationsDir)
 
-	db = createDatabaseClient(pool)
+	db = createDb(() => ({ url: testDb.connectionUri }))
 
-	vi.doMock('../db.js', () => ({
-		db,
-		closePool: vi.fn().mockResolvedValue(undefined),
-		migrate: vi.fn().mockResolvedValue(undefined),
-	}))
+	vi.doMock('../db.js', () => ({ db }))
 
 	const mod = await import('../user-repository.js')
 
@@ -44,6 +35,8 @@ beforeAll(async () => {
 }, 60_000)
 
 afterAll(async () => {
+	await db?.close()
+
 	await pool?.end()
 
 	await testDb?.stop()
