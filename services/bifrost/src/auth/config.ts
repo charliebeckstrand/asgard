@@ -1,5 +1,4 @@
-import type { JwtKeys } from 'grid/auth'
-import type { UserRepository } from './types.js'
+import type { SessionRepository, UserRepository } from './types.js'
 
 export type AuthSecurityEventType = 'login_failed' | 'registration'
 
@@ -11,26 +10,18 @@ export interface AuthSecurityEvent {
 
 export interface Config {
 	userRepository: UserRepository
-	keys: JwtKeys
+	sessionRepository: SessionRepository
 	onSecurityEvent?: (event: AuthSecurityEvent) => void
 }
 
 let _config: Config | null = null
 
-export function configure(config: Partial<Config> & Pick<Config, 'userRepository' | 'keys'>): void {
-	if (config.keys.current.length < 32) {
-		throw new Error('Heimdall keys.current must be at least 32 characters')
-	}
-
-	if (config.keys.previous !== undefined && config.keys.previous.length < 32) {
-		throw new Error('Heimdall keys.previous must be at least 32 characters when set')
-	}
-
+export function configure(config: Config): void {
 	_config = { ...config }
 }
 
 export function getConfig(): Config {
-	if (!_config) throw new Error('Heimdall not configured. Call configure() first.')
+	if (!_config) throw new Error('Auth not configured. Call configure() first.')
 
 	return _config
 }

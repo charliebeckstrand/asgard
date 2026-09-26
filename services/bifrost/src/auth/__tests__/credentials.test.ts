@@ -1,17 +1,15 @@
 import { hash } from '@node-rs/argon2'
 import type { User } from 'skuld'
 import { configure } from '../config.js'
-import { AuthError, authenticateUser, refreshTokenPair, registerUser } from '../credentials.js'
-import { signToken, verifyToken } from '../jwt.js'
-import type { CredentialsRow, UserRepository } from '../types.js'
-
-const SECRET = 'a-test-secret-key-that-is-at-least-32-characters-long'
+import { AuthError, authenticateUser, registerUser } from '../credentials.js'
+import type { CredentialsRow, SessionRepository, UserRepository } from '../types.js'
 
 const TEST_USER: User = {
 	id: 'user-123',
 	email: 'alice@example.com',
 	is_active: true,
 	is_verified: true,
+	role: 'user',
 	created_at: '2024-01-01T00:00:00Z',
 	updated_at: '2024-01-01T00:00:00Z',
 }
@@ -19,6 +17,8 @@ const TEST_USER: User = {
 let hashedPassword: string
 
 let mockRepo: UserRepository
+
+let mockSessionRepo: SessionRepository
 
 beforeAll(async () => {
 	hashedPassword = await hash('correct-password', { algorithm: 2 })
@@ -34,11 +34,21 @@ beforeEach(() => {
 		} satisfies CredentialsRow),
 		getUsers: vi.fn().mockResolvedValue([]),
 		getUserById: vi.fn().mockResolvedValue(TEST_USER),
-		updateUser: vi.fn().mockResolvedValue(TEST_USER),
-		deleteUser: vi.fn().mockResolvedValue(true),
+		setUserActive: vi.fn().mockResolvedValue(TEST_USER),
 	}
 
-	configure({ userRepository: mockRepo, keys: { current: SECRET } })
+	mockSessionRepo = {
+		createSession: vi.fn(),
+		findSession: vi.fn(),
+		deleteSession: vi.fn(),
+		deleteUserSessions: vi.fn(),
+		deleteExpiredSessions: vi.fn(),
+	}
+
+	configure({
+		userRepository: mockRepo,
+		sessionRepository: mockSessionRepo,
+	})
 })
 
 describe('AuthError', () => {
@@ -53,12 +63,8 @@ describe('AuthError', () => {
 })
 
 describe('authenticateUser', () => {
-	it('returns token pair for valid credentials', async () => {
-		const result = await authenticateUser('alice@example.com', 'correct-password')
-
-		expect(result.access_token).toBeTypeOf('string')
-		expect(result.refresh_token).toBeTypeOf('string')
-		expect(result.token_type).toBe('bearer')
+	it("returns the user's id for valid credentials", async () => {
+		expect(await authenticateUser('alice@example.com', 'correct-password')).toBe(TEST_USER.id)
 	})
 
 	it('normalizes email to lowercase and trimmed', async () => {
@@ -102,7 +108,11 @@ describe('authenticateUser', () => {
 	it('calls onSecurityEvent on failed login', async () => {
 		const onSecurityEvent = vi.fn()
 
-		configure({ userRepository: mockRepo, keys: { current: SECRET }, onSecurityEvent })
+		configure({
+			userRepository: mockRepo,
+			sessionRepository: mockSessionRepo,
+			onSecurityEvent,
+		})
 
 		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue(null)
 
@@ -111,19 +121,6 @@ describe('authenticateUser', () => {
 		expect(onSecurityEvent).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'login_failed', ip: '1.2.3.4' }),
 		)
-	})
-
-	it('signs access and refresh tokens with correct claims', async () => {
-		const result = await authenticateUser('alice@example.com', 'correct-password')
-
-		const accessPayload = await verifyToken(result.access_token)
-		const refreshPayload = await verifyToken(result.refresh_token)
-
-		expect(accessPayload.sub).toBe('user-123')
-		expect(accessPayload.type).toBe('access')
-
-		expect(refreshPayload.sub).toBe('user-123')
-		expect(refreshPayload.type).toBe('refresh')
 	})
 })
 
@@ -176,50 +173,16 @@ describe('registerUser', () => {
 	it('calls onSecurityEvent on registration', async () => {
 		const onSecurityEvent = vi.fn()
 
-		configure({ userRepository: mockRepo, keys: { current: SECRET }, onSecurityEvent })
+		configure({
+			userRepository: mockRepo,
+			sessionRepository: mockSessionRepo,
+			onSecurityEvent,
+		})
 
 		await registerUser('new@example.com', 'password123', '1.2.3.4')
 
 		expect(onSecurityEvent).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'registration', ip: '1.2.3.4' }),
 		)
-	})
-})
-
-describe('refreshTokenPair', () => {
-	it('returns new token pair for valid refresh token', async () => {
-		const refreshToken = await signToken(TEST_USER.id, 'refresh')
-
-		const result = await refreshTokenPair(refreshToken)
-
-		expect(result.access_token).toBeTypeOf('string')
-		expect(result.refresh_token).toBeTypeOf('string')
-		expect(result.token_type).toBe('bearer')
-	})
-
-	it('throws for access token (wrong type)', async () => {
-		const accessToken = await signToken(TEST_USER.id, 'access')
-
-		await expect(refreshTokenPair(accessToken)).rejects.toThrow(AuthError)
-	})
-
-	it('throws for inactive user', async () => {
-		vi.mocked(mockRepo.getUserById).mockResolvedValue({ ...TEST_USER, is_active: false })
-
-		const refreshToken = await signToken(TEST_USER.id, 'refresh')
-
-		await expect(refreshTokenPair(refreshToken)).rejects.toThrow(AuthError)
-	})
-
-	it('throws when user not found', async () => {
-		vi.mocked(mockRepo.getUserById).mockResolvedValue(null)
-
-		const refreshToken = await signToken('deleted-user', 'refresh')
-
-		await expect(refreshTokenPair(refreshToken)).rejects.toThrow(AuthError)
-	})
-
-	it('throws for invalid token string', async () => {
-		await expect(refreshTokenPair('garbage')).rejects.toThrow(AuthError)
 	})
 })

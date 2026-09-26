@@ -10,7 +10,7 @@ export function createUserRepository(): UserRepository {
 				sql`
 					INSERT INTO users (id, email, hashed_password)
 					VALUES (${id}, ${email}, ${hashedPassword})
-					RETURNING id, email, is_active, is_verified, created_at, updated_at
+					RETURNING id, email, is_active, is_verified, role, created_at, updated_at
 				`,
 			)
 		},
@@ -27,37 +27,29 @@ export function createUserRepository(): UserRepository {
 
 		async getUsers() {
 			return db.many<User>(
-				sql`SELECT id, email, is_active, is_verified, created_at, updated_at FROM users ORDER BY created_at`,
+				sql`SELECT id, email, is_active, is_verified, role, created_at, updated_at FROM users ORDER BY created_at`,
 			)
 		},
 
 		async getUserById(id) {
 			return db.first<User>(
 				sql`
-					SELECT id, email, is_active, is_verified, created_at, updated_at
+					SELECT id, email, is_active, is_verified, role, created_at, updated_at
 					FROM users
 					WHERE id = ${id}
 				`,
 			)
 		},
 
-		async updateUser(id, data) {
-			const sets = sql.set(data)
-
+		async setUserActive(id, isActive) {
 			return db.first<User>(
 				sql`
 					UPDATE users
-					${sets}
-					WHERE id = ${id}
-					RETURNING id, email, is_active, is_verified, created_at, updated_at
+					SET is_active = ${isActive}
+					WHERE id = ${id} AND role = 'user'
+					RETURNING id, email, is_active, is_verified, role, created_at, updated_at
 				`,
 			)
-		},
-
-		async deleteUser(id) {
-			const count = await db.exec(sql`DELETE FROM users WHERE id = ${id}`)
-
-			return count > 0
 		},
 	}
 }

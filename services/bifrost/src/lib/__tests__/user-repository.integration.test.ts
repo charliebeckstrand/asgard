@@ -52,7 +52,7 @@ afterAll(async () => {
 beforeEach(async () => {
 	if (!isDockerAvailable()) return
 
-	await pool.query('TRUNCATE users')
+	await pool.query('TRUNCATE users CASCADE')
 })
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
@@ -71,6 +71,8 @@ describeWithDocker('createUserRepository (integration)', () => {
 			expect(inserted.is_active).toBe(true)
 
 			expect(inserted.is_verified).toBe(false)
+
+			expect(inserted.role).toBe('user')
 
 			const fetched = await repo.getUserById(id)
 
@@ -134,15 +136,13 @@ describeWithDocker('createUserRepository (integration)', () => {
 		})
 	})
 
-	describe('updateUser', () => {
+	describe('setUserActive', () => {
 		it('updates is_active and refreshes updated_at', async () => {
 			const id = randomUUID()
 
 			const before = await repo.insertUser(id, 'flip@example.com', 'h')
 
-			await new Promise((r) => setTimeout(r, 10))
-
-			const after = await repo.updateUser(id, { is_active: false })
+			const after = await repo.setUserActive(id, false)
 
 			expect(after?.is_active).toBe(false)
 
@@ -151,34 +151,20 @@ describeWithDocker('createUserRepository (integration)', () => {
 			)
 		})
 
-		it('updates email when provided', async () => {
+		it('leaves admins alone', async () => {
 			const id = randomUUID()
 
-			await repo.insertUser(id, 'old@example.com', 'h')
+			await repo.insertUser(id, 'admin@example.com', 'h')
 
-			const after = await repo.updateUser(id, { email: 'new@example.com' })
+			await pool.query(`UPDATE users SET role = 'admin' WHERE id = $1`, [id])
 
-			expect(after?.email).toBe('new@example.com')
+			expect(await repo.setUserActive(id, false)).toBeNull()
+
+			expect((await repo.getUserById(id))?.is_active).toBe(true)
 		})
 
-		it('returns null when updating a missing user', async () => {
-			expect(await repo.updateUser(randomUUID(), { is_active: false })).toBeNull()
-		})
-	})
-
-	describe('deleteUser', () => {
-		it('deletes an existing user and returns true', async () => {
-			const id = randomUUID()
-
-			await repo.insertUser(id, 'gone@example.com', 'h')
-
-			expect(await repo.deleteUser(id)).toBe(true)
-
-			expect(await repo.getUserById(id)).toBeNull()
-		})
-
-		it('returns false when deleting a missing user', async () => {
-			expect(await repo.deleteUser(randomUUID())).toBe(false)
+		it('returns null for a missing user', async () => {
+			expect(await repo.setUserActive(randomUUID(), false)).toBeNull()
 		})
 	})
 })

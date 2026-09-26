@@ -1,4 +1,4 @@
-import { stubServiceEnv, TEST_DATABASE_URL, TEST_SECRET_KEY, TEST_SESSION_SECRET } from '../env.js'
+import { stubServiceEnv, TEST_CORS_ORIGIN, TEST_DATABASE_URL } from '../env.js'
 
 afterEach(() => {
 	vi.unstubAllEnvs()
@@ -7,10 +7,6 @@ afterEach(() => {
 describe('stubServiceEnv', () => {
 	it('sets the standard service env vars to defaults', () => {
 		stubServiceEnv()
-
-		expect(process.env.SECRET_KEY).toBe(TEST_SECRET_KEY)
-
-		expect(process.env.SESSION_SECRET).toBe(TEST_SESSION_SECRET)
 
 		expect(process.env.DATABASE_URL).toBe(TEST_DATABASE_URL)
 
@@ -22,7 +18,7 @@ describe('stubServiceEnv', () => {
 
 		expect(process.env.CORS_ORIGIN).toBe('http://localhost:4444')
 
-		expect(process.env.SECRET_KEY).toBe(TEST_SECRET_KEY)
+		expect(process.env.DATABASE_URL).toBe(TEST_DATABASE_URL)
 	})
 
 	it('skips a key when override is null', () => {
@@ -32,7 +28,7 @@ describe('stubServiceEnv', () => {
 
 		expect(process.env.DATABASE_URL).toBe(before)
 
-		expect(process.env.SECRET_KEY).toBe(TEST_SECRET_KEY)
+		expect(process.env.CORS_ORIGIN).toBe(TEST_CORS_ORIGIN)
 	})
 
 	it('passes through extra keys not in the standard set', () => {

@@ -52,14 +52,6 @@ services:
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${asgard-db.DATABASE_URL}
-      - key: SECRET_KEY
-        scope: RUN_TIME
-        type: SECRET
-        value: ${SECRET_KEY}
-      - key: SESSION_SECRET
-        scope: RUN_TIME
-        type: SECRET
-        value: ${SESSION_SECRET}
       - key: CORS_ORIGIN
         scope: RUN_TIME
         value: https://admin.ivoryimage.dev,https://places.ivoryimage.dev

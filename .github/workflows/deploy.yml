@@ -24,8 +24,6 @@ jobs:
             # it and waits for the deployment to go live.
             - uses: digitalocean/app_action/deploy@v2
               env:
-                  SECRET_KEY: ${{ secrets.SECRET_KEY }}
-                  SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
                   PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
               with:
                   token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}

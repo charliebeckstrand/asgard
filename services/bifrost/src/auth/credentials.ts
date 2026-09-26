@@ -3,26 +3,20 @@ import { hash, verify } from '@node-rs/argon2'
 import type { User } from 'skuld'
 import { getConfig } from './config.js'
 import { AuthError } from './errors.js'
-import { signToken, verifyRefreshToken } from './jwt.js'
 
 export { AuthError } from './errors.js'
-
-export interface TokenPair {
-	access_token: string
-	refresh_token: string
-	token_type: 'bearer'
-}
 
 // Pre-compute a dummy hash for timing-safe login.
 // Ensures argon2 always runs even when the user is not found,
 // preventing timing-based email enumeration.
 const dummyHashPromise = hash('dummy-timing-pad', { algorithm: 2 /* Argon2id */ })
 
+/** Checks the credentials and returns the user's id. */
 export async function authenticateUser(
 	email: string,
 	password: string,
 	ip?: string,
-): Promise<TokenPair> {
+): Promise<string> {
 	const normalizedEmail = email.trim().toLowerCase()
 
 	const { userRepository } = getConfig()
@@ -50,10 +44,7 @@ export async function authenticateUser(
 		throw new AuthError('account_inactive', 'Account is inactive')
 	}
 
-	const access_token = await signToken(creds.id, 'access')
-	const refresh_token = await signToken(creds.id, 'refresh')
-
-	return { access_token, refresh_token, token_type: 'bearer' }
+	return creds.id
 }
 
 export async function registerUser(email: string, password: string, ip?: string): Promise<User> {
@@ -81,23 +72,4 @@ export async function registerUser(email: string, password: string, ip?: string)
 
 		throw err
 	}
-}
-
-export async function refreshTokenPair(refreshToken: string): Promise<TokenPair> {
-	const claims = await verifyRefreshToken(refreshToken).catch(() => {
-		throw new AuthError('invalid_token', 'Invalid or expired refresh token')
-	})
-
-	const { userRepository } = getConfig()
-
-	const user = await userRepository.getUserById(claims.sub)
-
-	if (!user || !user.is_active) {
-		throw new AuthError('invalid_token', 'Invalid or expired refresh token')
-	}
-
-	const access_token = await signToken(user.id, 'access')
-	const refresh_token = await signToken(user.id, 'refresh')
-
-	return { access_token, refresh_token, token_type: 'bearer' }
 }

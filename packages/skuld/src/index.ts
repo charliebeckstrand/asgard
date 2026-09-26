@@ -12,6 +12,8 @@ export {
 	ConnectionStatusSchema,
 	type HealthStatus,
 	HealthStatusSchema,
+	type UserRole,
+	UserRoleSchema,
 } from './enums.js'
 
 // Primitives — reusable atomic schema building blocks
@@ -47,6 +49,9 @@ export {
 	type SecurityEvent,
 	SecurityEventSchema,
 } from './security.js'
+
+// Session — a signed-in session and its user
+export { type Session, SessionSchema } from './session.js'
 
 // User — canonical user account schema
 export { type User, UserSchema } from './user.js'
