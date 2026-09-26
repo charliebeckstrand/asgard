@@ -291,4 +291,50 @@ describeWithDocker('admins (integration)', () => {
 
 		expect(await admins.promote('carol@x.dev')).toBe('promoted')
 	})
+
+	it('resets every second factor, session, and pending sign-in of an admin', async () => {
+		const adminId = await insertUser('dave@x.dev')
+
+		await addTotp(adminId)
+
+		await passkeys.insertPasskey(adminId, {
+			id: 'p1',
+			publicKey: new Uint8Array([1]),
+			counter: 0,
+			transports: [],
+		})
+
+		await mfa.replaceRecoveryCodes(adminId, ['a'])
+
+		await mfa.createTicket('t1', adminId, inAMinute())
+
+		await makeAdmin(adminId)
+
+		await pool.query(
+			"INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', $1, now() + interval '1 day')",
+			[adminId],
+		)
+
+		const bystanderId = await insertUser()
+
+		await addTotp(bystanderId)
+
+		expect(await admins.resetSecondFactors('Dave@x.dev')).toBe('reset')
+
+		expect(await mfa.getFactors(adminId)).toEqual({ passkeys: 0, totp: false, recovery_codes: 0 })
+
+		expect(await mfa.findTicket('t1', 5)).toBeNull()
+
+		expect(
+			(await pool.query('SELECT 1 FROM sessions WHERE user_id = $1', [adminId])).rowCount,
+		).toBe(0)
+
+		expect((await users.getUserById(adminId))?.role).toBe('admin')
+
+		expect(await mfa.getFactors(bystanderId)).toMatchObject({ totp: true })
+	})
+
+	it('reports an unknown email on reset', async () => {
+		expect(await admins.resetSecondFactors('nobody@x.dev')).toBe('not_found')
+	})
 })

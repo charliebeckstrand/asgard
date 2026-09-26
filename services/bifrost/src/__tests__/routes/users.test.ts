@@ -2,17 +2,20 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
 
-const { mockUserRepository, mockFindSession, mockDeleteUserSessions } = vi.hoisted(() => ({
-	mockUserRepository: {
-		getUsers: vi.fn(),
-		getUserById: vi.fn(),
-		setUserActive: vi.fn(),
-		insertUser: vi.fn(),
-		getCredentialsByEmail: vi.fn(),
-	},
-	mockFindSession: vi.fn(),
-	mockDeleteUserSessions: vi.fn(),
-}))
+const { mockUserRepository, mockFindSession, mockDeleteUserSessions, mockGetFactors } = vi.hoisted(
+	() => ({
+		mockUserRepository: {
+			getUsers: vi.fn(),
+			getUserById: vi.fn(),
+			setUserActive: vi.fn(),
+			insertUser: vi.fn(),
+			getCredentialsByEmail: vi.fn(),
+		},
+		mockFindSession: vi.fn(),
+		mockDeleteUserSessions: vi.fn(),
+		mockGetFactors: vi.fn(),
+	}),
+)
 
 vi.mock('../../auth/index.js', () => ({
 	configure: vi.fn(),
@@ -20,6 +23,9 @@ vi.mock('../../auth/index.js', () => ({
 	SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
 	findSession: (...args: unknown[]) => mockFindSession(...args),
 	deleteUserSessions: (...args: unknown[]) => mockDeleteUserSessions(...args),
+	getFactors: (...args: unknown[]) => mockGetFactors(...args),
+	secondFactorMethods: (factors: { passkeys: number; totp: boolean }) =>
+		factors.passkeys > 0 || factors.totp ? ['passkey'] : [],
 }))
 
 vi.mock('vidar/client', () => ({
@@ -84,6 +90,8 @@ describe('Users routes', () => {
 		vi.resetAllMocks()
 
 		signedInAs(sampleAdmin)
+
+		mockGetFactors.mockResolvedValue({ passkeys: 1, totp: false, recovery_codes: 0 })
 	})
 
 	describe('access', () => {
@@ -115,6 +123,32 @@ describe('Users routes', () => {
 			})
 
 			expect(res.status).toBe(403)
+
+			expect(mockUserRepository.getUsers).not.toHaveBeenCalled()
+
+			expect(mockUserRepository.setUserActive).not.toHaveBeenCalled()
+		})
+
+		it.each([
+			['GET', '/api/users'],
+			['GET', `/api/users/${USER_ID}`],
+			['PATCH', `/api/users/${USER_ID}`],
+		] as const)('returns 403 for %s %s when the admin has no second factor', async (method, path) => {
+			mockGetFactors.mockResolvedValue({ passkeys: 0, totp: false, recovery_codes: 0 })
+
+			const res = await app.request(path, {
+				method,
+				headers,
+				body: method === 'GET' ? undefined : JSON.stringify({ is_active: false }),
+			})
+
+			expect(res.status).toBe(403)
+
+			expect(await res.json()).toMatchObject({
+				message: 'Add a passkey or an authenticator app to use the admin pages',
+			})
+
+			expect(mockGetFactors).toHaveBeenCalledWith(ADMIN_ID)
 
 			expect(mockUserRepository.getUsers).not.toHaveBeenCalled()
 
