@@ -6,6 +6,7 @@ export {
 	confirmTotp,
 	createLoginTicket,
 	deleteExpiredTickets,
+	deleteLoginTicket,
 	deleteTotp,
 	findLoginTicket,
 	generateRecoveryCodes,

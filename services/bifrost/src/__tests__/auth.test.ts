@@ -16,6 +16,7 @@ const {
 	mockFindLoginTicket,
 	mockCompleteLoginTicket,
 	mockCreateSecondFactorOptions,
+	mockDeleteLoginTicket,
 } = vi.hoisted(() => ({
 	mockAuthenticateUser: vi.fn(),
 	mockRegisterUser: vi.fn(),
@@ -30,6 +31,7 @@ const {
 	mockFindLoginTicket: vi.fn(),
 	mockCompleteLoginTicket: vi.fn(),
 	mockCreateSecondFactorOptions: vi.fn(),
+	mockDeleteLoginTicket: vi.fn(),
 }))
 
 import { AuthError } from '../auth/errors.js'
@@ -59,6 +61,7 @@ vi.mock('../auth/index.js', async () => {
 		findLoginTicket: (...args: unknown[]) => mockFindLoginTicket(...args),
 		completeLoginTicket: (...args: unknown[]) => mockCompleteLoginTicket(...args),
 		createSecondFactorOptions: (...args: unknown[]) => mockCreateSecondFactorOptions(...args),
+		deleteLoginTicket: (...args: unknown[]) => mockDeleteLoginTicket(...args),
 	}
 })
 
@@ -202,6 +205,28 @@ describe('Auth routes', () => {
 			expect(mockCreateSession).not.toHaveBeenCalled()
 		})
 
+		it('ends the ticket of an earlier password step', async () => {
+			mockGetFactors.mockResolvedValueOnce({ passkeys: 1, totp: false, recovery_codes: 0 })
+
+			mockCreateLoginTicket.mockResolvedValueOnce('new-ticket')
+
+			const res = await login({ Cookie: '__Host-mfa=old-ticket' })
+
+			expect(mockDeleteLoginTicket).toHaveBeenCalledWith('old-ticket')
+
+			expect(res.headers.get('set-cookie')).toContain('__Host-mfa=new-ticket')
+		})
+
+		it('clears a stale ticket cookie when no second step is needed', async () => {
+			const res = await login({ Cookie: '__Host-mfa=old-ticket' })
+
+			expect(res.status).toBe(200)
+
+			expect(mockDeleteLoginTicket).toHaveBeenCalledWith('old-ticket')
+
+			expect(res.headers.get('set-cookie')).toMatch(/__Host-mfa=;/)
+		})
+
 		it('starts a session when only recovery codes are left over', async () => {
 			mockGetFactors.mockResolvedValueOnce({ passkeys: 0, totp: false, recovery_codes: 3 })
 
@@ -235,6 +260,72 @@ describe('Auth routes', () => {
 			expect(res.status).toBe(200)
 
 			expect(await res.json()).toEqual({ challenge: 'abc', rpId: 'localhost' })
+		})
+	})
+
+	describe('GET /auth/login/mfa', () => {
+		function pending(headers: Record<string, string> = { Cookie: '__Host-mfa=ticket-token' }) {
+			return app.request('/auth/login/mfa', { headers })
+		}
+
+		it('returns the methods of a live sign-in, uncached', async () => {
+			mockFindLoginTicket.mockResolvedValueOnce(USER_ID)
+
+			mockGetFactors.mockResolvedValueOnce({ passkeys: 0, totp: true, recovery_codes: 2 })
+
+			const res = await pending()
+
+			expect(res.status).toBe(200)
+
+			expect(await res.json()).toEqual({ methods: ['totp', 'recovery_code'] })
+
+			expect(res.headers.get('cache-control')).toBe('private, no-store')
+
+			expect(mockFindLoginTicket).toHaveBeenCalledWith('ticket-token')
+		})
+
+		it('returns 410 without a ticket', async () => {
+			expect((await pending({})).status).toBe(410)
+
+			expect(mockFindLoginTicket).not.toHaveBeenCalled()
+		})
+
+		it('returns 410 for a spent ticket', async () => {
+			mockFindLoginTicket.mockRejectedValueOnce(new AuthError('sign_in_expired', 'Sign in again'))
+
+			expect((await pending()).status).toBe(410)
+		})
+
+		it('returns 410 when the user has no second factor left', async () => {
+			mockFindLoginTicket.mockResolvedValueOnce(USER_ID)
+
+			expect((await pending()).status).toBe(410)
+		})
+	})
+
+	describe('DELETE /auth/login/mfa', () => {
+		it('ends the ticket and clears its cookie', async () => {
+			const res = await app.request('/auth/login/mfa', {
+				method: 'DELETE',
+				headers: { Origin: ORIGIN, Cookie: '__Host-mfa=ticket-token' },
+			})
+
+			expect(res.status).toBe(204)
+
+			expect(mockDeleteLoginTicket).toHaveBeenCalledWith('ticket-token')
+
+			expect(res.headers.get('set-cookie')).toMatch(/__Host-mfa=;/)
+		})
+
+		it('answers 204 without a ticket', async () => {
+			const res = await app.request('/auth/login/mfa', {
+				method: 'DELETE',
+				headers: { Origin: ORIGIN },
+			})
+
+			expect(res.status).toBe(204)
+
+			expect(mockDeleteLoginTicket).not.toHaveBeenCalled()
 		})
 	})
 

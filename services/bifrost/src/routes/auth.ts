@@ -20,6 +20,7 @@ import {
 	createSecondFactorOptions,
 	createSession,
 	createSignInOptions,
+	deleteLoginTicket,
 	deleteSession,
 	deleteUserSessions,
 	findLoginTicket,
@@ -93,6 +94,30 @@ const loginRoute = createRoute({
 		202: jsonResponse(SecondFactorRequiredSchema, 'Second step needed'),
 		401: errorResponse('Invalid credentials'),
 		403: errorResponse('Account inactive'),
+	},
+})
+
+const pendingSignInRoute = createRoute({
+	method: 'get',
+	path: '/login/mfa',
+	tags: ['Auth'],
+	summary: 'Get the sign-in that waits on its second step',
+	description:
+		'Returns the methods that can finish the sign-in in the `__Host-mfa` cookie, without spending an attempt. A page of the second step calls it to guard itself.',
+	responses: {
+		200: jsonResponse(SecondFactorRequiredSchema, 'Second step needed'),
+		410: errorResponse('No live sign-in: sign in again'),
+	},
+})
+
+const cancelSignInRoute = createRoute({
+	method: 'delete',
+	path: '/login/mfa',
+	tags: ['Auth'],
+	summary: 'Cancel the sign-in that waits on its second step',
+	description: 'Deletes the ticket in the `__Host-mfa` cookie, if any, and clears the cookie.',
+	responses: {
+		204: { description: 'Sign-in canceled' },
 	},
 })
 
@@ -231,13 +256,43 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 
 		const methods = secondFactorMethods(await getFactors(userId))
 
+		// A ticket from an earlier password step ends, so each browser holds one.
+		const earlier = getLoginTicket(c)
+
+		if (earlier) await deleteLoginTicket(earlier)
+
 		if (methods.length > 0) {
 			setLoginTicketCookie(c, await createLoginTicket(userId))
 
 			return c.json({ methods }, 202)
 		}
 
+		if (earlier) clearLoginTicketCookie(c)
+
 		return c.json(await signIn(c, userId), 200)
+	})
+	.openapi(pendingSignInRoute, async (c) => {
+		const userId = await findLoginTicket(requireLoginTicket(c))
+
+		const methods = secondFactorMethods(await getFactors(userId))
+
+		// The user removed the last factor in another session: nothing can finish this sign-in.
+		if (methods.length === 0) {
+			throw new AuthError('sign_in_expired', 'Sign in again')
+		}
+
+		c.header('Cache-Control', 'private, no-store')
+
+		return c.json({ methods }, 200)
+	})
+	.openapi(cancelSignInRoute, async (c) => {
+		const token = getLoginTicket(c)
+
+		if (token) await deleteLoginTicket(token)
+
+		clearLoginTicketCookie(c)
+
+		return c.body(null, 204)
 	})
 	.openapi(secondFactorOptionsRoute, async (c) => {
 		const userId = await findLoginTicket(requireLoginTicket(c))

@@ -14,6 +14,7 @@ import {
 	completeLoginTicket,
 	confirmTotp,
 	createLoginTicket,
+	deleteLoginTicket,
 	deleteTotp,
 	findLoginTicket,
 	generateRecoveryCodes,
@@ -136,6 +137,14 @@ describe('findLoginTicket', () => {
 		mfaRepository.findTicket.mockResolvedValueOnce(null)
 
 		await expect(findLoginTicket('token')).rejects.toMatchObject({ code: 'sign_in_expired' })
+	})
+})
+
+describe('deleteLoginTicket', () => {
+	it('deletes the ticket by the hash of its token', async () => {
+		await deleteLoginTicket('token')
+
+		expect(mfaRepository.deleteTicket).toHaveBeenCalledWith(hashToken('token'))
 	})
 })
 

@@ -72,6 +72,11 @@ export async function findLoginTicket(token: string): Promise<string> {
 	return userId
 }
 
+/** Ends a sign-in that waits on its second step, for example when the user goes back. */
+export function deleteLoginTicket(token: string): Promise<void> {
+	return getConfig().mfaRepository.deleteTicket(hashToken(token))
+}
+
 /**
  * Checks the second factor of the sign-in the ticket holds, and returns the
  * user's id. Each call spends one attempt, so a ticket can't be brute-forced.
