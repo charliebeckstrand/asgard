@@ -1,170 +1,69 @@
-import { escapeIdentifier } from 'pg'
+/**
+ * A piece of SQL and the values bound to it. Fragments nest: interpolating one
+ * into `sql` splices its text and values in place, so placeholders are numbered
+ * once, when the query text is read, never rewritten.
+ */
+export class SqlFragment {
+	constructor(
+		readonly strings: readonly string[],
+		readonly values: readonly unknown[],
+	) {}
 
-const SQL_FRAGMENT = Symbol('SqlFragment')
+	/** The query text, with `$1`, `$2`, … in place of each value. */
+	get text(): string {
+		const text = this.strings.reduce((query, part, i) => `${query}$${i}${part}`)
 
-export interface SqlFragment {
-	readonly [SQL_FRAGMENT]: true
-	readonly text: string
-	readonly values: unknown[]
+		return text.replace(/\s+/g, ' ').trim()
+	}
 }
 
-function fragment(text: string, values: unknown[]): SqlFragment {
-	return { [SQL_FRAGMENT]: true, text, values }
-}
+const empty = new SqlFragment([''], [])
 
-function isSqlFragment(value: unknown): value is SqlFragment {
-	return typeof value === 'object' && value !== null && SQL_FRAGMENT in value
-}
-
-function reNumber(text: string, offset: number): string {
-	if (offset === 0) return text
-
-	return text.replace(/\$(\d+)/g, (_, n) => `$${Number(n) + offset}`)
-}
-
-function normalizeWhitespace(text: string): string {
-	return text.replace(/\s+/g, ' ').trim()
-}
-
+/**
+ * Tagged template that turns every interpolation into a bound value, except a
+ * `SqlFragment`, which is spliced in as SQL.
+ */
 function sql(strings: TemplateStringsArray, ...params: unknown[]): SqlFragment {
-	const textParts: string[] = []
+	const parts = [strings[0]]
 
 	const values: unknown[] = []
 
-	for (let i = 0; i < strings.length; i++) {
-		textParts.push(strings[i])
+	for (const [i, param] of params.entries()) {
+		if (param instanceof SqlFragment) {
+			parts[parts.length - 1] += param.strings[0]
 
-		if (i < params.length) {
-			const param = params[i]
+			parts.push(...param.strings.slice(1))
 
-			if (isSqlFragment(param)) {
-				textParts.push(reNumber(param.text, values.length))
+			values.push(...param.values)
 
-				values.push(...param.values)
-			} else {
-				values.push(param)
+			parts[parts.length - 1] += strings[i + 1]
+		} else {
+			parts.push(strings[i + 1])
 
-				textParts.push(`$${values.length}`)
-			}
+			values.push(param)
 		}
 	}
 
-	return fragment(normalizeWhitespace(textParts.join('')), values)
-}
-
-/**
- * Inlines a string verbatim into a SQL fragment with no escaping or
- * parameterization. The caller is responsible for ensuring the value is
- * trusted SQL — never pass user input.
- */
-sql.raw = function raw(value: string): SqlFragment {
-	return fragment(value, [])
+	return new SqlFragment(parts, values)
 }
 
 sql.join = function join(fragments: SqlFragment[], separator = ', '): SqlFragment {
-	if (fragments.length === 0) {
-		return fragment('', [])
-	}
+	const glue = new SqlFragment([separator], [])
 
-	const textParts: string[] = []
-
-	const values: unknown[] = []
-
-	for (let i = 0; i < fragments.length; i++) {
-		if (i > 0) {
-			textParts.push(separator)
-		}
-
-		textParts.push(reNumber(fragments[i].text, values.length))
-
-		values.push(...fragments[i].values)
-	}
-
-	return fragment(textParts.join(''), values)
+	return fragments.reduce(
+		(joined, fragment, i) => (i === 0 ? fragment : sql`${joined}${glue}${fragment}`),
+		empty,
+	)
 }
 
-sql.json = function json(value: unknown): SqlFragment {
-	return fragment('$1', [JSON.stringify(value)])
-}
-
-sql.and = function and(conditions: SqlFragment[]): SqlFragment {
-	return sql.join(conditions, ' AND ')
-}
-
-sql.or = function or(conditions: SqlFragment[]): SqlFragment {
-	if (conditions.length === 0) {
-		return fragment('', [])
-	}
-
-	const joined = sql.join(conditions, ' OR ')
-
-	return fragment(`(${joined.text})`, joined.values)
-}
-
+/** `WHERE` with the conditions joined by `AND`, or nothing when there are none. */
 sql.where = function where(conditions: SqlFragment[]): SqlFragment {
-	if (conditions.length === 0) {
-		return fragment('', [])
-	}
-
-	const joined = sql.join(conditions, ' AND ')
-
-	return fragment(`WHERE ${joined.text}`, joined.values)
+	return conditions.length > 0 ? sql`WHERE ${sql.join(conditions, ' AND ')}` : empty
 }
 
-sql.values = function values(rows: unknown[][]): SqlFragment {
-	if (rows.length === 0) {
-		throw new Error('sql.values() requires at least one row')
-	}
-
-	const width = rows[0].length
-
-	if (rows.some((row) => row.length !== width)) {
-		throw new Error('sql.values() requires all rows to have the same length')
-	}
-
-	const textParts: string[] = []
-
-	const allValues: unknown[] = []
-
-	for (const row of rows) {
-		const placeholders: string[] = []
-
-		for (const val of row) {
-			allValues.push(val)
-
-			placeholders.push(`$${allValues.length}`)
-		}
-
-		textParts.push(`(${placeholders.join(', ')})`)
-	}
-
-	return fragment(textParts.join(', '), allValues)
-}
-
-sql.set = function set(obj: Record<string, unknown>): SqlFragment {
-	const entries = Object.entries(obj)
-
-	if (entries.length === 0) {
-		throw new Error('sql.set() requires at least one column')
-	}
-
-	const fragments = entries.map(([key, value]) => sql`${sql.raw(escapeIdentifier(key))} = ${value}`)
-
-	return sql`SET ${sql.join(fragments)}`
-}
-
-sql.insert = function insert(table: string, data: Record<string, unknown>): SqlFragment {
-	const keys = Object.keys(data)
-
-	if (keys.length === 0) {
-		throw new Error('sql.insert() requires at least one column')
-	}
-
-	const columns = keys.map(escapeIdentifier).join(', ')
-
-	const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ')
-
-	return fragment(`INSERT INTO ${table} (${columns}) VALUES (${placeholders})`, Object.values(data))
+/** Binds a value as JSON text. node-postgres would send an array as a Postgres array. */
+sql.json = function json(value: unknown): SqlFragment {
+	return new SqlFragment(['', ''], [JSON.stringify(value)])
 }
 
 export { sql }
