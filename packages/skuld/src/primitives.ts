@@ -20,11 +20,17 @@ export type Email = z.infer<typeof EmailSchema>
 export const PasswordSchema = z
 	.string()
 	.min(8, 'Password must be at least 8 characters')
-	.openapi({ description: 'Password (min 8 characters)' })
+	.max(128, 'Password must be at most 128 characters')
+	.openapi({ description: 'Password (8 to 128 characters)' })
 
 export type Password = z.infer<typeof PasswordSchema>
 
-export const LoginPasswordSchema = z.string().min(1).openapi({ description: 'Login password' })
+// Capped like PasswordSchema so a huge body can't make argon2 burn CPU.
+export const LoginPasswordSchema = z
+	.string()
+	.min(1)
+	.max(128)
+	.openapi({ description: 'Login password' })
 
 export type LoginPassword = z.infer<typeof LoginPasswordSchema>
 
