@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { type ClientIpOptions, clientIp, getIpAddress } from '../../network/ip.js'
 
-const SECRET = 'a-proxy-secret-of-at-least-32-chars'
+const SECRET = 'a-client-ip-secret-of-at-least-32-chars'
 
 function buildApp(options?: ClientIpOptions) {
 	const app = new Hono()
@@ -26,12 +26,6 @@ describe('clientIp', () => {
 		await expect(ipFor(app, { 'do-connecting-ip': '203.0.113.7' })).resolves.toBe('203.0.113.7')
 	})
 
-	it('ignores the edge header when none is configured', async () => {
-		const app = buildApp({})
-
-		await expect(ipFor(app, { 'do-connecting-ip': '203.0.113.7' })).resolves.toBe('unknown')
-	})
-
 	it('ignores an edge header that is not an IP', async () => {
 		const app = buildApp({ header: 'do-connecting-ip' })
 
@@ -39,24 +33,24 @@ describe('clientIp', () => {
 	})
 
 	it("trusts the proxy's x-client-ip when the secret matches", async () => {
-		const app = buildApp({ header: 'do-connecting-ip', proxySecret: SECRET })
+		const app = buildApp({ header: 'do-connecting-ip', secret: SECRET })
 
 		const ip = ipFor(app, {
 			'do-connecting-ip': '198.51.100.1',
 			'x-client-ip': '2001:db8::1',
-			'x-proxy-secret': SECRET,
+			'x-client-ip-secret': SECRET,
 		})
 
 		await expect(ip).resolves.toBe('2001:db8::1')
 	})
 
 	it('ignores x-client-ip with a wrong or missing secret', async () => {
-		const app = buildApp({ header: 'do-connecting-ip', proxySecret: SECRET })
+		const app = buildApp({ header: 'do-connecting-ip', secret: SECRET })
 
 		const wrong = ipFor(app, {
 			'do-connecting-ip': '198.51.100.1',
 			'x-client-ip': '203.0.113.7',
-			'x-proxy-secret': 'wrong',
+			'x-client-ip-secret': 'wrong',
 		})
 
 		await expect(wrong).resolves.toBe('198.51.100.1')
@@ -66,25 +60,25 @@ describe('clientIp', () => {
 		await expect(missing).resolves.toBe('198.51.100.1')
 	})
 
-	it('ignores x-client-ip when no proxy secret is configured', async () => {
+	it('ignores x-client-ip when no secret is configured', async () => {
 		const app = buildApp({ header: 'do-connecting-ip' })
 
 		const ip = ipFor(app, {
 			'do-connecting-ip': '198.51.100.1',
 			'x-client-ip': '203.0.113.7',
-			'x-proxy-secret': '',
+			'x-client-ip-secret': '',
 		})
 
 		await expect(ip).resolves.toBe('198.51.100.1')
 	})
 
 	it('falls back to the edge header when the proxy sends no valid IP', async () => {
-		const app = buildApp({ header: 'do-connecting-ip', proxySecret: SECRET })
+		const app = buildApp({ header: 'do-connecting-ip', secret: SECRET })
 
 		const ip = ipFor(app, {
 			'do-connecting-ip': '198.51.100.1',
 			'x-client-ip': 'garbage',
-			'x-proxy-secret': SECRET,
+			'x-client-ip-secret': SECRET,
 		})
 
 		await expect(ip).resolves.toBe('198.51.100.1')
@@ -92,9 +86,9 @@ describe('clientIp', () => {
 })
 
 describe('getIpAddress', () => {
-	it('ignores forwarded headers without the middleware', async () => {
-		const app = buildApp()
+	it('fails without the middleware', async () => {
+		const res = await buildApp().request('/ip')
 
-		await expect(ipFor(app, { 'do-connecting-ip': '203.0.113.7' })).resolves.toBe('unknown')
+		expect(res.status).toBe(500)
 	})
 })

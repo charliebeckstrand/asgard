@@ -12,20 +12,20 @@ export interface ClientIpEnv {
 export interface ClientIpOptions {
 	/**
 	 * Header the edge sets to the client address, replacing any value the client
-	 * sent (e.g. `do-connecting-ip` on DigitalOcean App Platform). Only set it when
+	 * sent (e.g. `do-connecting-ip` on DigitalOcean App Platform). Only use it when
 	 * every request reaches the app through that edge.
 	 */
-	header?: string
+	header: string
 	/**
-	 * Secret a trusted proxy (e.g. a server-side app in front of this one) sends in
-	 * `x-proxy-secret`. Its `x-client-ip` is trusted only on requests carrying it.
+	 * Secret a trusted proxy in front of the app sends in `x-client-ip-secret`.
+	 * Its `x-client-ip` is trusted only on requests carrying it.
 	 */
-	proxySecret?: string
+	secret?: string
 }
 
 const CLIENT_IP_HEADER = 'x-client-ip'
 
-const PROXY_SECRET_HEADER = 'x-proxy-secret'
+const CLIENT_IP_SECRET_HEADER = 'x-client-ip-secret'
 
 function socketAddress(c: Context): string | undefined {
 	try {
@@ -47,27 +47,27 @@ function validIp(value: string | undefined): string | undefined {
  * edge's `header`, then the socket address. A header that is missing or not an
  * IP falls through to the next source.
  */
-export function clientIp(options: ClientIpOptions = {}): MiddlewareHandler<ClientIpEnv> {
-	const { header, proxySecret } = options
-
+export function clientIp({ header, secret }: ClientIpOptions): MiddlewareHandler<ClientIpEnv> {
 	return async (c, next) => {
 		const proxied =
-			proxySecret && timingSafeCompare(c.req.header(PROXY_SECRET_HEADER) ?? '', proxySecret)
+			secret && timingSafeCompare(c.req.header(CLIENT_IP_SECRET_HEADER) ?? '', secret)
 				? validIp(c.req.header(CLIENT_IP_HEADER))
 				: undefined
 
-		const edge = header ? validIp(c.req.header(header)) : undefined
-
-		c.set('clientIp', proxied ?? edge ?? socketAddress(c) ?? 'unknown')
+		c.set('clientIp', proxied ?? validIp(c.req.header(header)) ?? socketAddress(c) ?? 'unknown')
 
 		await next()
 	}
 }
 
 /**
- * The client address that {@link clientIp} resolved, or the socket address when
- * the middleware is not installed.
+ * The client address that {@link clientIp} resolved. Throws when the middleware
+ * is not installed, so an app can't silently key on the wrong address.
  */
 export function getIpAddress(c: Context): string {
-	return c.get('clientIp') ?? socketAddress(c) ?? 'unknown'
+	const ip: string | undefined = c.get('clientIp')
+
+	if (!ip) throw new Error('getIpAddress needs the clientIp middleware')
+
+	return ip
 }
