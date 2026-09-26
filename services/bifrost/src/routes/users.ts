@@ -1,9 +1,17 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import { createListSchema, EmailSchema, IdSchema, PasswordSchema, toList, UserSchema } from 'skuld'
+import {
+	createListSchema,
+	EmailSchema,
+	IdSchema,
+	PasswordSchema,
+	toList,
+	UserRoleSchema,
+	UserSchema,
+} from 'skuld'
 import { getConfig, registerUser } from '../auth/index.js'
-import { requireSession, type SessionEnv } from '../middleware/session.js'
+import { requireAdmin, type SessionEnv } from '../middleware/session.js'
 
 const UserIdParamSchema = z.object({
 	id: IdSchema,
@@ -23,6 +31,7 @@ const UpdateUserRequestSchema = z
 	.object({
 		email: EmailSchema.optional(),
 		is_active: z.boolean().optional(),
+		role: UserRoleSchema.optional(),
 	})
 	.openapi('UpdateUserRequest')
 
@@ -102,7 +111,7 @@ const deleteUserRoute = createRoute({
 
 const usersRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
 
-usersRoutes.use('*', requireSession())
+usersRoutes.use('*', requireAdmin())
 
 usersRoutes.openapi(listUsersRoute, async (c) => {
 	const { userRepository } = getConfig()

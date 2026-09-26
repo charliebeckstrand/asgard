@@ -1,4 +1,4 @@
-import type { UserRepository } from '../types.js'
+import type { SessionRepository, UserRepository } from '../types.js'
 
 const mockRepo: UserRepository = {
 	insertUser: vi.fn(),
@@ -7,6 +7,15 @@ const mockRepo: UserRepository = {
 	getUserById: vi.fn(),
 	updateUser: vi.fn(),
 	deleteUser: vi.fn(),
+}
+
+const mockSessionRepo: SessionRepository = {
+	createSession: vi.fn(),
+	getSession: vi.fn(),
+	getSessionUser: vi.fn(),
+	rotateSession: vi.fn(),
+	revokeSession: vi.fn(),
+	revokeUserSessions: vi.fn(),
 }
 
 const KEY = 'a'.repeat(32)
@@ -27,6 +36,7 @@ describe('heimdall config', () => {
 
 		configure({
 			userRepository: mockRepo,
+			sessionRepository: mockSessionRepo,
 			keys: { current: KEY },
 		})
 
@@ -44,6 +54,7 @@ describe('heimdall config', () => {
 
 		configure({
 			userRepository: mockRepo,
+			sessionRepository: mockSessionRepo,
 			keys: { current: KEY, previous },
 		})
 
@@ -56,6 +67,7 @@ describe('heimdall config', () => {
 		expect(() =>
 			configure({
 				userRepository: mockRepo,
+				sessionRepository: mockSessionRepo,
 				keys: { current: 'short' },
 			}),
 		).toThrow('Heimdall keys.current must be at least 32 characters')
@@ -67,6 +79,7 @@ describe('heimdall config', () => {
 		expect(() =>
 			configure({
 				userRepository: mockRepo,
+				sessionRepository: mockSessionRepo,
 				keys: { current: KEY, previous: 'short' },
 			}),
 		).toThrow('Heimdall keys.previous must be at least 32 characters when set')
@@ -79,6 +92,7 @@ describe('heimdall config', () => {
 
 		configure({
 			userRepository: mockRepo,
+			sessionRepository: mockSessionRepo,
 			keys: { current: KEY },
 			onSecurityEvent: onEvent,
 		})

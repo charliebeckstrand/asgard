@@ -3,7 +3,7 @@ import { hash, verify } from '@node-rs/argon2'
 import type { User } from 'skuld'
 import { getConfig } from './config.js'
 import { AuthError } from './errors.js'
-import { signToken, verifyRefreshToken } from './jwt.js'
+import { REFRESH_TOKEN_TTL_SECONDS, signToken, verifyRefreshToken } from './jwt.js'
 
 export { AuthError } from './errors.js'
 
@@ -11,6 +11,23 @@ export interface TokenPair {
 	access_token: string
 	refresh_token: string
 	token_type: 'bearer'
+	session_id: string
+}
+
+// Parallel requests (two tabs, a burst of fetches) can all present the same
+// refresh token. Within this window after a rotation, the replaced token is
+// answered with the session's current jti instead of being treated as stolen.
+const ROTATION_GRACE_MS = 30_000
+
+function sessionExpiry(): Date {
+	return new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000)
+}
+
+async function issueTokenPair(userId: string, sessionId: string, jti: string): Promise<TokenPair> {
+	const access_token = await signToken(userId, 'access')
+	const refresh_token = await signToken(userId, 'refresh', { sid: sessionId, jti })
+
+	return { access_token, refresh_token, token_type: 'bearer', session_id: sessionId }
 }
 
 // Pre-compute a dummy hash for timing-safe login.
@@ -50,10 +67,12 @@ export async function authenticateUser(
 		throw new AuthError('account_inactive', 'Account is inactive')
 	}
 
-	const access_token = await signToken(creds.id, 'access')
-	const refresh_token = await signToken(creds.id, 'refresh')
+	const sessionId = randomUUID()
+	const jti = randomUUID()
 
-	return { access_token, refresh_token, token_type: 'bearer' }
+	await getConfig().sessionRepository.createSession(sessionId, creds.id, jti, sessionExpiry())
+
+	return issueTokenPair(creds.id, sessionId, jti)
 }
 
 export async function registerUser(email: string, password: string, ip?: string): Promise<User> {
@@ -83,21 +102,66 @@ export async function registerUser(email: string, password: string, ip?: string)
 	}
 }
 
-export async function refreshTokenPair(refreshToken: string): Promise<TokenPair> {
+export async function refreshTokenPair(refreshToken: string, ip?: string): Promise<TokenPair> {
+	const invalid = () => new AuthError('invalid_token', 'Invalid or expired refresh token')
+
 	const claims = await verifyRefreshToken(refreshToken).catch(() => {
-		throw new AuthError('invalid_token', 'Invalid or expired refresh token')
+		throw invalid()
 	})
 
-	const { userRepository } = getConfig()
+	const { onSecurityEvent, sessionRepository, userRepository } = getConfig()
+
+	let jti: string = randomUUID()
+
+	const rotated = await sessionRepository.rotateSession(
+		claims.sid,
+		claims.jti,
+		jti,
+		sessionExpiry(),
+	)
+
+	if (!rotated) {
+		const session = await sessionRepository.getSession(claims.sid)
+
+		if (!session || session.revoked_at || session.expires_at.getTime() <= Date.now()) {
+			throw invalid()
+		}
+
+		const recentlyReplaced =
+			session.previous_jti === claims.jti &&
+			session.rotated_at !== null &&
+			Date.now() - session.rotated_at.getTime() < ROTATION_GRACE_MS
+
+		if (!recentlyReplaced) {
+			// A stale refresh token came back: someone else may hold this session.
+			await sessionRepository.revokeSession(session.id)
+
+			if (ip)
+				onSecurityEvent?.({
+					type: 'refresh_token_reused',
+					ip,
+					details: { userId: session.user_id, sessionId: session.id },
+				})
+
+			throw invalid()
+		}
+
+		jti = session.refresh_jti
+	}
 
 	const user = await userRepository.getUserById(claims.sub)
 
 	if (!user || !user.is_active) {
-		throw new AuthError('invalid_token', 'Invalid or expired refresh token')
+		throw invalid()
 	}
 
-	const access_token = await signToken(user.id, 'access')
-	const refresh_token = await signToken(user.id, 'refresh')
+	return issueTokenPair(user.id, claims.sid, jti)
+}
 
-	return { access_token, refresh_token, token_type: 'bearer' }
+export function revokeSession(sessionId: string): Promise<void> {
+	return getConfig().sessionRepository.revokeSession(sessionId)
+}
+
+export function revokeUserSessions(userId: string): Promise<void> {
+	return getConfig().sessionRepository.revokeUserSessions(userId)
 }

@@ -6,6 +6,7 @@ import { configure } from './auth/index.js'
 import { closePool, migrate } from './lib/db.js'
 import { environment } from './lib/env.js'
 import { logger } from './lib/log.js'
+import { createSessionRepository } from './lib/session-repository.js'
 import { createUserRepository } from './lib/user-repository.js'
 
 const env = environment()
@@ -21,6 +22,7 @@ configureVidar({
 
 configure({
 	userRepository: createUserRepository(),
+	sessionRepository: createSessionRepository(),
 	keys: { current: env.SECRET_KEY, previous: env.PREVIOUS_SECRET_KEY },
 	onSecurityEvent: (event) => reportEvent(event.type, event.ip, event.details ?? {}, 'bifrost'),
 })

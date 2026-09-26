@@ -3,7 +3,7 @@ import type { User } from 'skuld'
 import { configure } from '../config.js'
 import { AuthError, authenticateUser, refreshTokenPair, registerUser } from '../credentials.js'
 import { signToken, verifyToken } from '../jwt.js'
-import type { CredentialsRow, UserRepository } from '../types.js'
+import type { CredentialsRow, SessionRepository, SessionRow, UserRepository } from '../types.js'
 
 const SECRET = 'a-test-secret-key-that-is-at-least-32-characters-long'
 
@@ -12,13 +12,39 @@ const TEST_USER: User = {
 	email: 'alice@example.com',
 	is_active: true,
 	is_verified: true,
+	role: 'user',
 	created_at: '2024-01-01T00:00:00Z',
 	updated_at: '2024-01-01T00:00:00Z',
 }
 
 let hashedPassword: string
 
+const SESSION_ID = '00000000-0000-4000-8000-00000000000a'
+
+const JTI = '00000000-0000-4000-8000-00000000000b'
+
+const CURRENT_JTI = '00000000-0000-4000-8000-00000000000c'
+
 let mockRepo: UserRepository
+
+let mockSessionRepo: SessionRepository
+
+function sessionRow(overrides: Partial<SessionRow> = {}): SessionRow {
+	return {
+		id: SESSION_ID,
+		user_id: TEST_USER.id,
+		refresh_jti: CURRENT_JTI,
+		previous_jti: JTI,
+		rotated_at: new Date(),
+		expires_at: new Date(Date.now() + 60_000),
+		revoked_at: null,
+		...overrides,
+	}
+}
+
+function signSessionRefreshToken(sub = TEST_USER.id): Promise<string> {
+	return signToken(sub, 'refresh', { sid: SESSION_ID, jti: JTI })
+}
 
 beforeAll(async () => {
 	hashedPassword = await hash('correct-password', { algorithm: 2 })
@@ -38,7 +64,20 @@ beforeEach(() => {
 		deleteUser: vi.fn().mockResolvedValue(true),
 	}
 
-	configure({ userRepository: mockRepo, keys: { current: SECRET } })
+	mockSessionRepo = {
+		createSession: vi.fn().mockResolvedValue(undefined),
+		getSession: vi.fn().mockResolvedValue(null),
+		getSessionUser: vi.fn().mockResolvedValue(null),
+		rotateSession: vi.fn().mockResolvedValue(true),
+		revokeSession: vi.fn().mockResolvedValue(undefined),
+		revokeUserSessions: vi.fn().mockResolvedValue(undefined),
+	}
+
+	configure({
+		userRepository: mockRepo,
+		sessionRepository: mockSessionRepo,
+		keys: { current: SECRET },
+	})
 })
 
 describe('AuthError', () => {
@@ -102,7 +141,12 @@ describe('authenticateUser', () => {
 	it('calls onSecurityEvent on failed login', async () => {
 		const onSecurityEvent = vi.fn()
 
-		configure({ userRepository: mockRepo, keys: { current: SECRET }, onSecurityEvent })
+		configure({
+			userRepository: mockRepo,
+			sessionRepository: mockSessionRepo,
+			keys: { current: SECRET },
+			onSecurityEvent,
+		})
 
 		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue(null)
 
@@ -124,6 +168,31 @@ describe('authenticateUser', () => {
 
 		expect(refreshPayload.sub).toBe('user-123')
 		expect(refreshPayload.type).toBe('refresh')
+	})
+
+	it('opens a session the refresh token points at', async () => {
+		const result = await authenticateUser('alice@example.com', 'correct-password')
+
+		const refreshPayload = await verifyToken(result.refresh_token)
+
+		const [sessionId, userId, jti, expiresAt] = vi.mocked(mockSessionRepo.createSession).mock
+			.calls[0]
+
+		expect(sessionId).toBe(result.session_id)
+
+		expect(userId).toBe(TEST_USER.id)
+
+		expect(refreshPayload.sid).toBe(sessionId)
+
+		expect(refreshPayload.jti).toBe(jti)
+
+		expect(expiresAt.getTime()).toBeGreaterThan(Date.now())
+	})
+
+	it('opens no session when credentials are wrong', async () => {
+		await authenticateUser('alice@example.com', 'wrong-password').catch(() => {})
+
+		expect(mockSessionRepo.createSession).not.toHaveBeenCalled()
 	})
 })
 
@@ -176,7 +245,12 @@ describe('registerUser', () => {
 	it('calls onSecurityEvent on registration', async () => {
 		const onSecurityEvent = vi.fn()
 
-		configure({ userRepository: mockRepo, keys: { current: SECRET }, onSecurityEvent })
+		configure({
+			userRepository: mockRepo,
+			sessionRepository: mockSessionRepo,
+			keys: { current: SECRET },
+			onSecurityEvent,
+		})
 
 		await registerUser('new@example.com', 'password123', '1.2.3.4')
 
@@ -187,18 +261,91 @@ describe('registerUser', () => {
 })
 
 describe('refreshTokenPair', () => {
-	it('returns new token pair for valid refresh token', async () => {
+	it('rotates the session to a new jti', async () => {
+		const result = await refreshTokenPair(await signSessionRefreshToken())
+
+		const [sessionId, currentJti, nextJti] = vi.mocked(mockSessionRepo.rotateSession).mock.calls[0]
+
+		const refreshPayload = await verifyToken(result.refresh_token)
+
+		expect(sessionId).toBe(SESSION_ID)
+
+		expect(currentJti).toBe(JTI)
+
+		expect(nextJti).not.toBe(JTI)
+
+		expect(refreshPayload.jti).toBe(nextJti)
+
+		expect(refreshPayload.sid).toBe(SESSION_ID)
+
+		expect(result.session_id).toBe(SESSION_ID)
+	})
+
+	it('reissues the current jti for a token replaced moments ago', async () => {
+		vi.mocked(mockSessionRepo.rotateSession).mockResolvedValue(false)
+
+		vi.mocked(mockSessionRepo.getSession).mockResolvedValue(sessionRow())
+
+		const result = await refreshTokenPair(await signSessionRefreshToken())
+
+		const refreshPayload = await verifyToken(result.refresh_token)
+
+		expect(refreshPayload.jti).toBe(CURRENT_JTI)
+
+		expect(mockSessionRepo.revokeSession).not.toHaveBeenCalled()
+	})
+
+	it('revokes the session and reports a reused refresh token', async () => {
+		const onSecurityEvent = vi.fn()
+
+		configure({
+			userRepository: mockRepo,
+			sessionRepository: mockSessionRepo,
+			keys: { current: SECRET },
+			onSecurityEvent,
+		})
+
+		vi.mocked(mockSessionRepo.rotateSession).mockResolvedValue(false)
+
+		vi.mocked(mockSessionRepo.getSession).mockResolvedValue(
+			sessionRow({ rotated_at: new Date(Date.now() - 60_000) }),
+		)
+
+		await expect(refreshTokenPair(await signSessionRefreshToken(), '1.2.3.4')).rejects.toThrow(
+			AuthError,
+		)
+
+		expect(mockSessionRepo.revokeSession).toHaveBeenCalledWith(SESSION_ID)
+
+		expect(onSecurityEvent).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'refresh_token_reused', ip: '1.2.3.4' }),
+		)
+	})
+
+	it.each([
+		['missing', null],
+		['revoked', sessionRow({ revoked_at: new Date() })],
+		['expired', sessionRow({ expires_at: new Date(Date.now() - 1000) })],
+	])('throws without revoking when the session is %s', async (_, session) => {
+		vi.mocked(mockSessionRepo.rotateSession).mockResolvedValue(false)
+
+		vi.mocked(mockSessionRepo.getSession).mockResolvedValue(session)
+
+		await expect(refreshTokenPair(await signSessionRefreshToken())).rejects.toThrow(AuthError)
+
+		expect(mockSessionRepo.revokeSession).not.toHaveBeenCalled()
+	})
+
+	it('throws for a refresh token without a session', async () => {
 		const refreshToken = await signToken(TEST_USER.id, 'refresh')
 
-		const result = await refreshTokenPair(refreshToken)
+		await expect(refreshTokenPair(refreshToken)).rejects.toThrow(AuthError)
 
-		expect(result.access_token).toBeTypeOf('string')
-		expect(result.refresh_token).toBeTypeOf('string')
-		expect(result.token_type).toBe('bearer')
+		expect(mockSessionRepo.rotateSession).not.toHaveBeenCalled()
 	})
 
 	it('throws for access token (wrong type)', async () => {
-		const accessToken = await signToken(TEST_USER.id, 'access')
+		const accessToken = await signToken(TEST_USER.id, 'access', { sid: SESSION_ID, jti: JTI })
 
 		await expect(refreshTokenPair(accessToken)).rejects.toThrow(AuthError)
 	})
@@ -206,17 +353,15 @@ describe('refreshTokenPair', () => {
 	it('throws for inactive user', async () => {
 		vi.mocked(mockRepo.getUserById).mockResolvedValue({ ...TEST_USER, is_active: false })
 
-		const refreshToken = await signToken(TEST_USER.id, 'refresh')
-
-		await expect(refreshTokenPair(refreshToken)).rejects.toThrow(AuthError)
+		await expect(refreshTokenPair(await signSessionRefreshToken())).rejects.toThrow(AuthError)
 	})
 
 	it('throws when user not found', async () => {
 		vi.mocked(mockRepo.getUserById).mockResolvedValue(null)
 
-		const refreshToken = await signToken('deleted-user', 'refresh')
-
-		await expect(refreshTokenPair(refreshToken)).rejects.toThrow(AuthError)
+		await expect(refreshTokenPair(await signSessionRefreshToken('deleted-user'))).rejects.toThrow(
+			AuthError,
+		)
 	})
 
 	it('throws for invalid token string', async () => {

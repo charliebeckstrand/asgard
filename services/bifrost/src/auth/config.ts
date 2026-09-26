@@ -1,7 +1,7 @@
 import type { JwtKeys } from 'grid/auth'
-import type { UserRepository } from './types.js'
+import type { SessionRepository, UserRepository } from './types.js'
 
-export type AuthSecurityEventType = 'login_failed' | 'registration'
+export type AuthSecurityEventType = 'login_failed' | 'registration' | 'refresh_token_reused'
 
 export interface AuthSecurityEvent {
 	type: AuthSecurityEventType
@@ -11,13 +11,16 @@ export interface AuthSecurityEvent {
 
 export interface Config {
 	userRepository: UserRepository
+	sessionRepository: SessionRepository
 	keys: JwtKeys
 	onSecurityEvent?: (event: AuthSecurityEvent) => void
 }
 
 let _config: Config | null = null
 
-export function configure(config: Partial<Config> & Pick<Config, 'userRepository' | 'keys'>): void {
+export function configure(
+	config: Partial<Config> & Pick<Config, 'userRepository' | 'sessionRepository' | 'keys'>,
+): void {
 	if (config.keys.current.length < 32) {
 		throw new Error('Heimdall keys.current must be at least 32 characters')
 	}

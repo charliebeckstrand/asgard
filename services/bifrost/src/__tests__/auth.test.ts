@@ -5,13 +5,23 @@ vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost:5432/test')
 vi.stubEnv('SECRET_KEY', 'test-secret-key-that-is-at-least-32-chars')
 vi.stubEnv('CLIENT_IP_HEADER', 'do-connecting-ip')
 
-const { mockAuthenticateUser, mockRegisterUser, mockVerifyAccessToken, mockGetUserById } =
-	vi.hoisted(() => ({
-		mockAuthenticateUser: vi.fn(),
-		mockRegisterUser: vi.fn(),
-		mockVerifyAccessToken: vi.fn(),
-		mockGetUserById: vi.fn(),
-	}))
+const {
+	mockAuthenticateUser,
+	mockRegisterUser,
+	mockVerifyAccessToken,
+	mockGetUserById,
+	mockGetSessionUser,
+	mockRevokeSession,
+	mockRevokeUserSessions,
+} = vi.hoisted(() => ({
+	mockAuthenticateUser: vi.fn(),
+	mockRegisterUser: vi.fn(),
+	mockVerifyAccessToken: vi.fn(),
+	mockGetUserById: vi.fn(),
+	mockGetSessionUser: vi.fn(),
+	mockRevokeSession: vi.fn(),
+	mockRevokeUserSessions: vi.fn(),
+}))
 
 import { AuthError } from '../auth/errors.js'
 
@@ -22,11 +32,16 @@ vi.mock('../auth/index.js', async () => {
 		configure: vi.fn(),
 		getConfig: () => ({
 			userRepository: { getUserById: (...args: unknown[]) => mockGetUserById(...args) },
+			sessionRepository: {
+				getSessionUser: (...args: unknown[]) => mockGetSessionUser(...args),
+			},
 		}),
 		authenticateUser: (...args: unknown[]) => mockAuthenticateUser(...args),
 		registerUser: (...args: unknown[]) => mockRegisterUser(...args),
 		AuthError: errors.AuthError,
 		refreshTokenPair: vi.fn(),
+		revokeSession: (...args: unknown[]) => mockRevokeSession(...args),
+		revokeUserSessions: (...args: unknown[]) => mockRevokeUserSessions(...args),
 	}
 })
 
@@ -53,6 +68,8 @@ import { createBifrostApp } from '../app.js'
 
 const ORIGIN = 'http://localhost:3000'
 
+const SESSION_ID = '00000000-0000-4000-8000-00000000000a'
+
 const app = createBifrostApp()
 
 function getCookieFromResponse(res: Response): string | undefined {
@@ -71,7 +88,30 @@ describe('Auth routes', () => {
 		mockRegisterUser.mockReset()
 		mockVerifyAccessToken.mockReset()
 		mockGetUserById.mockReset()
+
+		mockGetSessionUser.mockReset().mockResolvedValue({ id: 'user-123', role: 'user' })
+
+		mockRevokeSession.mockReset().mockResolvedValue(undefined)
+
+		mockRevokeUserSessions.mockReset().mockResolvedValue(undefined)
 	})
+
+	async function login(): Promise<string> {
+		mockAuthenticateUser.mockResolvedValueOnce({
+			access_token: 'at_test123',
+			refresh_token: 'rt_test123',
+			token_type: 'bearer',
+			session_id: SESSION_ID,
+		})
+
+		const res = await app.request('/auth/login', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+			body: JSON.stringify({ email: 'test@example.com', password: 'password123' }),
+		})
+
+		return `bifrost_session=${getCookieFromResponse(res)}`
+	}
 
 	afterEach(() => {
 		vi.restoreAllMocks()
@@ -83,6 +123,7 @@ describe('Auth routes', () => {
 				access_token: 'at_test123',
 				refresh_token: 'rt_test123',
 				token_type: 'bearer',
+				session_id: SESSION_ID,
 			})
 
 			const res = await app.request('/auth/login', {
@@ -112,6 +153,7 @@ describe('Auth routes', () => {
 				access_token: 'at_test123',
 				refresh_token: 'rt_test123',
 				token_type: 'bearer',
+				session_id: SESSION_ID,
 			})
 
 			await app.request('/auth/login', {
@@ -132,6 +174,7 @@ describe('Auth routes', () => {
 				access_token: 'at_test123',
 				refresh_token: 'rt_test123',
 				token_type: 'bearer',
+				session_id: SESSION_ID,
 			})
 
 			await app.request('/auth/login', {
@@ -192,6 +235,49 @@ describe('Auth routes', () => {
 			const setCookie = res.headers.get('set-cookie')
 
 			expect(setCookie).toContain('bifrost_session=')
+
+			expect(mockRevokeSession).not.toHaveBeenCalled()
+		})
+
+		it('revokes the current session', async () => {
+			const cookie = await login()
+
+			const res = await app.request('/auth/logout', {
+				method: 'POST',
+				headers: { Cookie: cookie, Origin: ORIGIN },
+			})
+
+			expect(res.status).toBe(200)
+
+			expect(mockRevokeSession).toHaveBeenCalledWith(SESSION_ID)
+		})
+	})
+
+	describe('POST /auth/logout-all', () => {
+		it('returns 401 without a session', async () => {
+			const res = await app.request('/auth/logout-all', {
+				method: 'POST',
+				headers: { Origin: ORIGIN },
+			})
+
+			expect(res.status).toBe(401)
+
+			expect(mockRevokeUserSessions).not.toHaveBeenCalled()
+		})
+
+		it("revokes every one of the user's sessions and clears the cookie", async () => {
+			const cookie = await login()
+
+			const res = await app.request('/auth/logout-all', {
+				method: 'POST',
+				headers: { Cookie: cookie, Origin: ORIGIN },
+			})
+
+			expect(res.status).toBe(200)
+
+			expect(mockRevokeUserSessions).toHaveBeenCalledWith('user-123')
+
+			expect(res.headers.get('set-cookie')).toContain('bifrost_session=;')
 		})
 	})
 
@@ -208,6 +294,7 @@ describe('Auth routes', () => {
 				access_token: 'at_test123',
 				refresh_token: 'rt_test123',
 				token_type: 'bearer',
+				session_id: SESSION_ID,
 			})
 
 			const loginRes = await app.request('/auth/login', {
@@ -232,6 +319,22 @@ describe('Auth routes', () => {
 			expect(body.authenticated).toBe(true)
 
 			expect(body.expiresAt).toBeTypeOf('number')
+
+			expect(mockGetSessionUser).toHaveBeenCalledWith(SESSION_ID)
+		})
+
+		it('returns 401 and clears the cookie once the session is no longer live', async () => {
+			const cookie = await login()
+
+			mockGetSessionUser.mockResolvedValueOnce(null)
+
+			const res = await app.request('/auth/session', {
+				headers: { Cookie: cookie },
+			})
+
+			expect(res.status).toBe(401)
+
+			expect(res.headers.get('set-cookie')).toContain('bifrost_session=;')
 		})
 	})
 
@@ -247,6 +350,7 @@ describe('Auth routes', () => {
 				access_token: 'at_test123',
 				refresh_token: 'rt_test123',
 				token_type: 'bearer',
+				session_id: SESSION_ID,
 			})
 
 			const loginRes = await app.request('/auth/login', {
@@ -266,6 +370,7 @@ describe('Auth routes', () => {
 				email: 'test@example.com',
 				is_active: true,
 				is_verified: false,
+				role: 'user',
 				created_at: '2026-01-01T00:00:00.000Z',
 				updated_at: '2026-01-01T00:00:00.000Z',
 			}
@@ -292,6 +397,7 @@ describe('Auth routes', () => {
 				access_token: 'at_test123',
 				refresh_token: 'rt_test123',
 				token_type: 'bearer',
+				session_id: SESSION_ID,
 			})
 
 			const loginRes = await app.request('/auth/login', {

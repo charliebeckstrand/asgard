@@ -1,13 +1,16 @@
 import { HTTPException } from 'grid'
+import { getIpAddress } from 'grid/middleware'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
+import type { UserRole } from 'skuld'
 import { z } from 'zod'
-import { refreshTokenPair } from '../auth/index.js'
+import { getConfig, refreshTokenPair } from '../auth/index.js'
 import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from '../auth/jwt.js'
 import { environment } from '../lib/env.js'
 
 const SessionPayloadSchema = z.object({
+	sessionId: z.string(),
 	accessToken: z.string(),
 	refreshToken: z.string(),
 	expiresAt: z.number(),
@@ -15,9 +18,15 @@ const SessionPayloadSchema = z.object({
 
 export type SessionData = z.infer<typeof SessionPayloadSchema>
 
+/** A cookie session that is still live in the database, with its user. */
+export type Session = SessionData & {
+	userId: string
+	role: UserRole
+}
+
 export type SessionEnv = {
 	Variables: {
-		session: SessionData | null
+		session: Session | null
 	}
 }
 
@@ -42,16 +51,23 @@ async function decodeSession(cookie: string, secret: string): Promise<SessionDat
 	}
 }
 
-let refreshLock: Promise<SessionData | null> | null = null
+// Concurrent requests carrying the same cookie share one refresh, so the
+// token is rotated once. Keyed by refresh token so sessions never mix.
+const refreshes = new Map<string, Promise<SessionData | null>>()
 
-async function refreshAccessToken(sessionData: SessionData): Promise<SessionData | null> {
-	if (refreshLock) return refreshLock
+function refreshSession(sessionData: SessionData, ip: string): Promise<SessionData | null> {
+	const { refreshToken } = sessionData
+
+	const pending = refreshes.get(refreshToken)
+
+	if (pending) return pending
 
 	const attempt = (async () => {
 		try {
-			const tokens = await refreshTokenPair(sessionData.refreshToken)
+			const tokens = await refreshTokenPair(refreshToken, ip)
 
 			return {
+				sessionId: tokens.session_id,
 				accessToken: tokens.access_token,
 				refreshToken: tokens.refresh_token,
 				expiresAt: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS,
@@ -61,10 +77,10 @@ async function refreshAccessToken(sessionData: SessionData): Promise<SessionData
 		}
 	})()
 
-	refreshLock = attempt
+	refreshes.set(refreshToken, attempt)
 
 	void attempt.finally(() => {
-		refreshLock = null
+		refreshes.delete(refreshToken)
 	})
 
 	return attempt
@@ -115,7 +131,7 @@ export function session(): MiddlewareHandler<SessionEnv> {
 		const now = Math.floor(Date.now() / 1000)
 
 		if (sessionData.expiresAt - now < REFRESH_BUFFER_SECONDS) {
-			const refreshed = await refreshAccessToken(sessionData)
+			const refreshed = await refreshSession(sessionData, getIpAddress(c))
 
 			if (refreshed) {
 				sessionData = refreshed
@@ -130,18 +146,33 @@ export function session(): MiddlewareHandler<SessionEnv> {
 			}
 		}
 
-		c.set('session', sessionData)
+		// Checked on every request so logout, revocation and deactivation apply at once.
+		const user = await getConfig().sessionRepository.getSessionUser(sessionData.sessionId)
+
+		if (!user) {
+			clearSessionCookie(c)
+
+			c.set('session', null)
+
+			return next()
+		}
+
+		c.set('session', { ...sessionData, userId: user.id, role: user.role })
 
 		return next()
 	}
 }
 
-export function requireSession(): MiddlewareHandler<SessionEnv> {
+export function requireAdmin(): MiddlewareHandler<SessionEnv> {
 	return async (c: Context<SessionEnv>, next) => {
 		const sessionData = c.get('session')
 
 		if (!sessionData) {
 			throw new HTTPException(401, { message: 'Not authenticated' })
+		}
+
+		if (sessionData.role !== 'admin') {
+			throw new HTTPException(403, { message: 'Admin role required' })
 		}
 
 		return next()

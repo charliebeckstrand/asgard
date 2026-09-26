@@ -2,7 +2,13 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import { EmailSchema, LoginPasswordSchema, MessageSchema, PasswordSchema, UserSchema } from 'skuld'
-import { authenticateUser, getConfig, registerUser } from '../auth/index.js'
+import {
+	authenticateUser,
+	getConfig,
+	registerUser,
+	revokeSession,
+	revokeUserSessions,
+} from '../auth/index.js'
 import { ACCESS_TOKEN_TTL_SECONDS, verifyAccessToken } from '../auth/jwt.js'
 import { environment } from '../lib/env.js'
 import {
@@ -66,8 +72,21 @@ const logoutRoute = createRoute({
 	path: '/logout',
 	tags: ['Auth'],
 	summary: 'Logout and clear session',
+	description: 'Revokes the current session and clears its cookie.',
 	responses: {
 		200: jsonResponse(MessageSchema, 'Logged out'),
+	},
+})
+
+const logoutAllRoute = createRoute({
+	method: 'post',
+	path: '/logout-all',
+	tags: ['Auth'],
+	summary: 'Logout everywhere',
+	description: 'Revokes every session of the authenticated user, on all devices.',
+	responses: {
+		200: jsonResponse(MessageSchema, 'Logged out everywhere'),
+		401: errorResponse('Not authenticated'),
 	},
 })
 
@@ -122,6 +141,7 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 		const tokens = await authenticateUser(email, password, ip)
 
 		const sessionData: SessionData = {
+			sessionId: tokens.session_id,
 			accessToken: tokens.access_token,
 			refreshToken: tokens.refresh_token,
 			expiresAt: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS,
@@ -138,9 +158,28 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 		)
 	})
 	.openapi(logoutRoute, async (c) => {
+		const session = c.get('session')
+
+		if (session) {
+			await revokeSession(session.sessionId)
+		}
+
 		clearSessionCookie(c)
 
 		return c.json({ message: 'Logged out' }, 200)
+	})
+	.openapi(logoutAllRoute, async (c) => {
+		const session = c.get('session')
+
+		if (!session) {
+			throw new HTTPException(401, { message: 'Not authenticated' })
+		}
+
+		await revokeUserSessions(session.userId)
+
+		clearSessionCookie(c)
+
+		return c.json({ message: 'Logged out everywhere' }, 200)
 	})
 	.openapi(sessionRoute, async (c) => {
 		const session = c.get('session')

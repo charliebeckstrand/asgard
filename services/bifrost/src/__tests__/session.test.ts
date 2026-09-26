@@ -7,6 +7,7 @@ import { _decodeSession, _encodeSession, type SessionData } from '../middleware/
 const SECRET = 'test-secret-that-is-at-least-32-chars-long'
 
 const testSession: SessionData = {
+	sessionId: '00000000-0000-4000-8000-00000000000a',
 	accessToken: 'at_abc123',
 	refreshToken: 'rt_xyz789',
 	expiresAt: Math.floor(Date.now() / 1000) + 3600,

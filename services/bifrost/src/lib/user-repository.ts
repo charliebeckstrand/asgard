@@ -10,7 +10,7 @@ export function createUserRepository(): UserRepository {
 				sql`
 					INSERT INTO users (id, email, hashed_password)
 					VALUES (${id}, ${email}, ${hashedPassword})
-					RETURNING id, email, is_active, is_verified, created_at, updated_at
+					RETURNING id, email, is_active, is_verified, role, created_at, updated_at
 				`,
 			)
 		},
@@ -27,14 +27,14 @@ export function createUserRepository(): UserRepository {
 
 		async getUsers() {
 			return db.many<User>(
-				sql`SELECT id, email, is_active, is_verified, created_at, updated_at FROM users ORDER BY created_at`,
+				sql`SELECT id, email, is_active, is_verified, role, created_at, updated_at FROM users ORDER BY created_at`,
 			)
 		},
 
 		async getUserById(id) {
 			return db.first<User>(
 				sql`
-					SELECT id, email, is_active, is_verified, created_at, updated_at
+					SELECT id, email, is_active, is_verified, role, created_at, updated_at
 					FROM users
 					WHERE id = ${id}
 				`,
@@ -49,7 +49,7 @@ export function createUserRepository(): UserRepository {
 					UPDATE users
 					${sets}
 					WHERE id = ${id}
-					RETURNING id, email, is_active, is_verified, created_at, updated_at
+					RETURNING id, email, is_active, is_verified, role, created_at, updated_at
 				`,
 			)
 		},

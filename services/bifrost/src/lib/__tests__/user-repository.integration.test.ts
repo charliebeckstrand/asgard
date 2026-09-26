@@ -52,7 +52,7 @@ afterAll(async () => {
 beforeEach(async () => {
 	if (!isDockerAvailable()) return
 
-	await pool.query('TRUNCATE users')
+	await pool.query('TRUNCATE users CASCADE')
 })
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
@@ -71,6 +71,8 @@ describeWithDocker('createUserRepository (integration)', () => {
 			expect(inserted.is_active).toBe(true)
 
 			expect(inserted.is_verified).toBe(false)
+
+			expect(inserted.role).toBe('user')
 
 			const fetched = await repo.getUserById(id)
 

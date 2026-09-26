@@ -1,6 +1,6 @@
 import { configure } from '../config.js'
 import { signToken, verifyToken } from '../jwt.js'
-import type { UserRepository } from '../types.js'
+import type { SessionRepository, UserRepository } from '../types.js'
 
 const SECRET = 'a-test-secret-key-that-is-at-least-32-characters-long'
 
@@ -13,8 +13,21 @@ const mockRepo: UserRepository = {
 	deleteUser: vi.fn(),
 }
 
+const mockSessionRepo: SessionRepository = {
+	createSession: vi.fn(),
+	getSession: vi.fn(),
+	getSessionUser: vi.fn(),
+	rotateSession: vi.fn(),
+	revokeSession: vi.fn(),
+	revokeUserSessions: vi.fn(),
+}
+
 beforeAll(() => {
-	configure({ userRepository: mockRepo, keys: { current: SECRET } })
+	configure({
+		userRepository: mockRepo,
+		sessionRepository: mockSessionRepo,
+		keys: { current: SECRET },
+	})
 })
 
 describe('signToken', () => {
