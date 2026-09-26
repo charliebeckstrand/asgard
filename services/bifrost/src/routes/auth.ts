@@ -1,6 +1,8 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
 import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
 import { getIpAddress } from 'grid/middleware'
+import type { Context } from 'hono'
 import {
 	EmailSchema,
 	LoginPasswordSchema,
@@ -10,8 +12,10 @@ import {
 	UserSchema,
 } from 'skuld'
 import {
+	authenticatePasskey,
 	authenticateUser,
 	createSession,
+	createSignInOptions,
 	deleteSession,
 	deleteUserSessions,
 	registerUser,
@@ -22,6 +26,7 @@ import {
 	type SessionEnv,
 	setSessionCookie,
 } from '../middleware/session.js'
+import { PasskeyCredentialSchema, PasskeyOptionsSchema } from './passkeys.js'
 
 const LoginRequestSchema = z
 	.object({
@@ -55,6 +60,33 @@ const loginRoute = createRoute({
 	responses: {
 		200: jsonResponse(SessionSchema, 'Login successful'),
 		401: errorResponse('Invalid credentials'),
+		403: errorResponse('Account inactive, or an admin, who signs in with a passkey'),
+	},
+})
+
+const signInOptionsRoute = createRoute({
+	method: 'post',
+	path: '/login/options',
+	tags: ['Auth'],
+	summary: 'Start a passkey sign-in',
+	responses: {
+		200: jsonResponse(PasskeyOptionsSchema, 'Authentication options'),
+	},
+})
+
+const passkeyLoginRoute = createRoute({
+	method: 'post',
+	path: '/login/passkey',
+	tags: ['Auth'],
+	summary: 'Login with a passkey',
+	description:
+		'Verifies the passkey against the challenge from `/login/options`, then starts a session like `/login`.',
+	request: {
+		body: jsonRequest(PasskeyCredentialSchema),
+	},
+	responses: {
+		200: jsonResponse(SessionSchema, 'Login successful'),
+		401: errorResponse('Passkey not recognized'),
 		403: errorResponse('Account inactive'),
 	},
 })
@@ -110,17 +142,32 @@ const registerRoute = createRoute({
 	},
 })
 
+/** Starts a session for `userId`, replacing the one the browser still holds, and sets its cookie. */
+async function signIn(c: Context, userId: string) {
+	const { token, session } = await createSession(userId, getSessionToken(c))
+
+	setSessionCookie(c, token)
+
+	return session
+}
+
 export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
 	.openapi(loginRoute, async (c) => {
 		const { email, password } = c.req.valid('json')
 
 		const userId = await authenticateUser(email, password, getIpAddress(c))
 
-		const { token, session } = await createSession(userId, getSessionToken(c))
+		return c.json(await signIn(c, userId), 200)
+	})
+	.openapi(signInOptionsRoute, async (c) => {
+		return c.json(await createSignInOptions(), 200)
+	})
+	.openapi(passkeyLoginRoute, async (c) => {
+		const credential = c.req.valid('json') as unknown as AuthenticationResponseJSON
 
-		setSessionCookie(c, token)
+		const userId = await authenticatePasskey(credential, getIpAddress(c))
 
-		return c.json(session, 200)
+		return c.json(await signIn(c, userId), 200)
 	})
 	.openapi(logoutRoute, async (c) => {
 		const current = c.get('session')

@@ -55,6 +55,10 @@ services:
       - key: CORS_ORIGIN
         scope: RUN_TIME
         value: https://admin.ivoryimage.dev,https://places.ivoryimage.dev
+      # Passkeys belong to the parent domain, so one works on every app under it.
+      - key: PASSKEY_DOMAIN
+        scope: RUN_TIME
+        value: ivoryimage.dev
       # App Platform overwrites this header with the client address on every
       # request, so clients can't spoof it.
       - key: CLIENT_IP_HEADER

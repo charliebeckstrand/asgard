@@ -54,6 +54,17 @@ export function session(): MiddlewareHandler<SessionEnv> {
 	}
 }
 
+/** The current session, or a 401. */
+export function requireSession(c: Context<SessionEnv>): Session {
+	const current = c.get('session')
+
+	if (!current) {
+		throw new HTTPException(401, { message: 'Not authenticated' })
+	}
+
+	return current
+}
+
 export function requireAdmin(): MiddlewareHandler<SessionEnv> {
 	return async (c, next) => {
 		const current = c.get('session')

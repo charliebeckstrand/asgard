@@ -44,6 +44,10 @@ export async function authenticateUser(
 		throw new AuthError('account_inactive', 'Account is inactive')
 	}
 
+	if (creds.role === 'admin') {
+		throw new AuthError('passkey_required', 'Admins sign in with a passkey')
+	}
+
 	return creds.id
 }
 
