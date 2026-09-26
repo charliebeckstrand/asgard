@@ -40,26 +40,16 @@ export class InvalidTokenError extends Error {
 	}
 }
 
-/**
- * Signs a token for `sub`. `claims` adds service-specific claims and may
- * override the generated `jti`; the registered claims always win.
- */
-export async function signToken(
-	sub: string,
-	type: TokenType,
-	keys: JwtKeys,
-	claims: Record<string, unknown> = {},
-): Promise<string> {
+export async function signToken(sub: string, type: TokenType, keys: JwtKeys): Promise<string> {
 	const now = Math.floor(Date.now() / 1000)
 
 	const payload: JWTPayload = {
-		jti: randomUUID(),
-		...claims,
 		sub,
 		type,
 		iss: TOKEN_ISSUER,
 		exp: now + TOKEN_TTL_SECONDS[type],
 		iat: now,
+		jti: randomUUID(),
 	}
 
 	return sign(payload, keys.current, 'HS256')
