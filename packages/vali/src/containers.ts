@@ -71,7 +71,7 @@ export async function startPostgres(
 ): Promise<TestDatabase> {
 	const { database = 'test', username = 'test', password = 'test' } = options
 
-	const container = await new PostgreSqlContainer('postgres:16-alpine')
+	const container = await new PostgreSqlContainer('postgres:18-alpine')
 		.withDatabase(database)
 		.withUsername(username)
 		.withPassword(password)
