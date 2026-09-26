@@ -46,6 +46,10 @@ export const SecurityEventSchema = z
 		event_type: eventType,
 		details,
 		service: serviceName,
+		account: z.string().nullable().openapi({
+			description: 'Account the event names, from details.email',
+			example: 'alice@example.com',
+		}),
 		created_at: TimestampSchema,
 	})
 	.openapi('SecurityEvent')
