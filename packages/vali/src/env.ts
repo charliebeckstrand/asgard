@@ -1,12 +1,5 @@
 import { vi } from 'vitest'
 
-/**
- * Standard test secrets — long enough to satisfy length validators (32+ chars).
- * Keep these stable so the same value drives both env stubbing and JWT signing
- * in the same test file.
- */
-export const TEST_SECRET_KEY = 'test-secret-key-that-is-at-least-32-chars-long'
-export const TEST_SESSION_SECRET = 'test-session-secret-that-is-32-chars-long'
 export const TEST_DATABASE_URL = 'postgres://test:test@localhost:5432/test'
 export const TEST_CORS_ORIGIN = 'http://localhost:3000'
 
@@ -15,8 +8,6 @@ export const TEST_CORS_ORIGIN = 'http://localhost:3000'
  * overrides take precedence; pass `null` to skip stubbing a particular var.
  */
 export const TEST_SERVICE_ENV = {
-	SECRET_KEY: TEST_SECRET_KEY,
-	SESSION_SECRET: TEST_SESSION_SECRET,
 	DATABASE_URL: TEST_DATABASE_URL,
 	CORS_ORIGIN: TEST_CORS_ORIGIN,
 } as const

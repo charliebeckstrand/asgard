@@ -41,8 +41,7 @@ The `vali` package centralizes the patterns that used to be duplicated. When you
 
 | You need… | Import from |
 |---|---|
-| Stub the standard service env (`SECRET_KEY`, `SESSION_SECRET`, `DATABASE_URL`, `CORS_ORIGIN`) | `stubServiceEnv` from `vali/env` |
-| The same secret you stubbed (so signing and verification line up) | `TEST_SECRET_KEY` / `TEST_SESSION_SECRET` from `vali/env` |
+| Stub the standard service env (`DATABASE_URL`, `CORS_ORIGIN`) | `stubServiceEnv` from `vali/env` |
 | Start a Postgres testcontainer + apply migrations from disk | `startPostgres` + `applyMigrations` from `vali/containers` |
 | Skip a suite when Docker is unavailable | `isDockerAvailable() ? describe : describe.skip` |
 
@@ -160,7 +159,7 @@ Before finishing a test file, confirm:
 
 1. ☐ Blank lines between `expect`s and around AAA blocks.
 2. ☐ All `vi.hoisted` / `vi.mock` calls come **before** source imports.
-3. ☐ No re-implementation of vali utilities (env stubbing, JWT signing, cookie extraction, migrations).
+3. ☐ No re-implementation of vali utilities (env stubbing, migrations).
 4. ☐ Integration tests are Docker-gated and have a 60s `beforeAll` timeout.
 5. ☐ No `setTimeout(..., N)` polling — `vi.waitFor` instead.
 6. ☐ No dead mocks (`vi.fn()` declared but never asserted on or read by the test).
