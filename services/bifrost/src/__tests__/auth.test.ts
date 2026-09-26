@@ -65,11 +65,20 @@ vi.mock('../auth/index.js', async () => {
 	}
 })
 
+// Records each request that a rate limit sees, then lets it through.
+const { limited } = vi.hoisted(() => ({ limited: [] as string[] }))
+
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
-	createVidar: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
-		await next()
-	}),
+	createVidar: vi
+		.fn()
+		.mockReturnValue(
+			async (c: { req: { method: string; path: string } }, next: () => Promise<void>) => {
+				limited.push(`${c.req.method} ${c.req.path}`)
+
+				await next()
+			},
+		),
 	reportEvent: vi.fn(),
 }))
 
@@ -260,6 +269,20 @@ describe('Auth routes', () => {
 			expect(res.status).toBe(200)
 
 			expect(await res.json()).toEqual({ challenge: 'abc', rpId: 'localhost' })
+		})
+	})
+
+	describe('login rate limit', () => {
+		it('counts a POST under /auth/login, but not the GET or DELETE of a pending sign-in', async () => {
+			limited.length = 0
+
+			await app.request('/auth/login/mfa', { headers: { Cookie: '__Host-mfa=ticket-token' } })
+
+			await app.request('/auth/login/mfa', { method: 'DELETE', headers: { Origin: ORIGIN } })
+
+			await app.request('/auth/login/options', { method: 'POST', headers: { Origin: ORIGIN } })
+
+			expect(limited).toEqual(['POST /auth/login/options'])
 		})
 	})
 
