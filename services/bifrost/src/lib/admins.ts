@@ -1,6 +1,5 @@
-import { sql } from 'saga'
+import { type Db, sql } from 'saga'
 import { normalizeEmail } from 'skuld'
-import { db } from './db.js'
 import { countSecondFactors } from './mfa-repository.js'
 
 // Admins are made and unmade by the operator from the command line, never through
@@ -13,6 +12,7 @@ import { countSecondFactors } from './mfa-repository.js'
  * two steps. Their sessions end, since each may have begun with one step.
  */
 export function promote(
+	db: Db,
 	email: string,
 ): Promise<'promoted' | 'not_found' | 'unverified' | 'no_second_factor'> {
 	return db.tx(async (tx) => {
@@ -38,7 +38,7 @@ export function promote(
 }
 
 /** Takes the admin role away. The user keeps their other roles. */
-export async function demote(email: string): Promise<'demoted' | 'not_found'> {
+export async function demote(db: Db, email: string): Promise<'demoted' | 'not_found'> {
 	const updated = await db.exec(
 		sql`
 			UPDATE users SET roles = array_remove(roles, 'admin')
@@ -55,7 +55,7 @@ export async function demote(email: string): Promise<'demoted' | 'not_found'> {
  * alone. An admin keeps the role, but the admin routes stay closed until they
  * add a new factor.
  */
-export function resetSecondFactors(email: string): Promise<'reset' | 'not_found'> {
+export function resetSecondFactors(db: Db, email: string): Promise<'reset' | 'not_found'> {
 	return db.tx(async (tx) => {
 		const user = await tx.first<{ id: string }>(
 			sql`SELECT id FROM users WHERE email = ${normalizeEmail(email)} FOR UPDATE`,

@@ -68,28 +68,31 @@ vi.mock('../lib/repo.js', () => ({ createRepo: () => mockRepo }))
 import { createApp } from '../app.js'
 ```
 
-### Late-bound mock (async setup needed)
+### Repositories against a real database
 
-When the real implementation isn't available until `beforeAll` (e.g. a testcontainer pool), use `vi.doMock` + dynamic import. Do **not** try to call utilities from inside `vi.hoisted` — hoisted factories run before any imports resolve.
+Bifrost's repositories take the database as an argument, so integration tests pass one in; no module mocking. `startTestDb()` in `services/bifrost/src/lib/__tests__/test-db.ts` starts Postgres with bifrost's migrations applied, and `reset()` empties every table.
 
 ```ts
-let repo: Repo
+let testDb: TestDb
+let users: UserRepository
 
 beforeAll(async () => {
     if (!isDockerAvailable()) return
 
-    const testDb = await startPostgres()
+    testDb = await startTestDb()
 
-    await migrate({ url: testDb.connectionUri }, migrationsDir)
-
-    db = createDb(() => ({ url: testDb.connectionUri }))
-
-    vi.doMock('../db.js', () => ({ db }))
-
-    const mod = await import('../repo.js')
-
-    repo = mod.createRepo()
+    users = createUserRepository(testDb.db)
 }, 60_000)
+
+afterAll(async () => {
+    await testDb?.stop()
+})
+
+beforeEach(async () => {
+    if (!isDockerAvailable()) return
+
+    await testDb.reset()
+})
 ```
 
 ### Mocking the standard `db` module
@@ -121,8 +124,8 @@ vi.mock('vidar/client', () => ({
 - Suffix the file `*.integration.test.ts` so coverage tooling can target them separately if needed.
 - Gate with `const describeWithDocker = isDockerAvailable() ? describe : describe.skip`.
 - Use `beforeAll(async () => { ... }, 60_000)` for container startup — the default 5s timeout is not enough.
-- Truncate the table(s) you write to in `beforeEach` (use `CASCADE` if there are FKs).
-- Apply migrations from `<service>/migrations` via saga's `migrate({ url }, migrationsDir)` rather than re-encoding schema in the test (drift risk).
+- Empty the tables in `beforeEach` (bifrost: `testDb.reset()`).
+- Apply migrations from `<service>/migrations` via saga's `migrate({ url }, migrationsDir)` rather than re-encoding schema in the test (drift risk). Bifrost's `startTestDb()` does this.
 
 ## Async assertions — prefer `vi.waitFor`
 

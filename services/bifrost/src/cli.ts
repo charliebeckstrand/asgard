@@ -27,7 +27,7 @@ if (!run || !email) {
 	process.exit(1)
 }
 
-const result = await run(email)
+const result = await run(db, email)
 
 console.log(`${email} ${messages[result]}`)
 

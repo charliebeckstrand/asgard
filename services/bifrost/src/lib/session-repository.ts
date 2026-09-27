@@ -1,7 +1,6 @@
-import { sql } from 'saga'
+import { type Db, sql } from 'saga'
 import type { Role, Session } from 'skuld'
 import type { SessionRepository } from '../auth/types.js'
-import { db } from './db.js'
 
 interface SessionRow {
 	id: string
@@ -43,7 +42,7 @@ function toSession(row: SessionRow): Session {
 	}
 }
 
-export function createSessionRepository(): SessionRepository {
+export function createSessionRepository(db: Db): SessionRepository {
 	return {
 		async createSession(id, userId, expiresAt, { replacing, limit, twoStep }) {
 			return db.tx(async (tx) => {

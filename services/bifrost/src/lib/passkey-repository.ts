@@ -1,7 +1,6 @@
-import { sql } from 'saga'
+import { type Db, sql } from 'saga'
 import type { Passkey } from 'skuld'
 import type { PasskeyRepository, StoredPasskey } from '../auth/types.js'
-import { db } from './db.js'
 import { removeSecondFactor } from './mfa-repository.js'
 
 interface PasskeyRow extends Omit<StoredPasskey, 'counter'> {
@@ -15,7 +14,7 @@ function toStoredPasskey(row: PasskeyRow): StoredPasskey {
 	return { ...row, public_key: new Uint8Array(row.public_key), counter: Number(row.counter) }
 }
 
-export function createPasskeyRepository(): PasskeyRepository {
+export function createPasskeyRepository(db: Db): PasskeyRepository {
 	return {
 		async insertPasskey(userId, { id, publicKey, counter, transports }) {
 			return db.one<Passkey>(

@@ -1,8 +1,7 @@
-import { sql } from 'saga'
+import { type Db, sql } from 'saga'
 import type { EmailTokenRepository } from '../auth/types.js'
-import { db } from './db.js'
 
-export function createEmailTokenRepository(): EmailTokenRepository {
+export function createEmailTokenRepository(db: Db): EmailTokenRepository {
 	return {
 		async createToken(id, userId, purpose, expiresAt, interval) {
 			// Replaces the user's live link of this purpose, unless it is newer than `interval`.

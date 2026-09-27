@@ -1,24 +1,17 @@
 import { randomUUID } from 'node:crypto'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { Pool } from 'pg'
-import { createDb, type Db, migrate } from 'saga'
-import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
-import { stubServiceEnv } from 'vali/env'
+import { isDockerAvailable } from 'vali/containers'
 import type {
 	OAuthRepository,
 	PasskeyRepository,
 	StoredOAuthState,
 	UserRepository,
 } from '../../auth/types.js'
+import { createOAuthRepository } from '../oauth-repository.js'
+import { createPasskeyRepository } from '../passkey-repository.js'
+import { createUserRepository } from '../user-repository.js'
+import { startTestDb, type TestDb } from './test-db.js'
 
-stubServiceEnv()
-
-const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../migrations')
-
-let testDb: TestDatabase
-let pool: Pool
-let db: Db
+let testDb: TestDb
 let users: UserRepository
 let passkeys: PasskeyRepository
 let oauth: OAuthRepository
@@ -26,35 +19,23 @@ let oauth: OAuthRepository
 beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
-	testDb = await startPostgres()
+	testDb = await startTestDb()
 
-	pool = new Pool({ connectionString: testDb.connectionUri })
+	users = createUserRepository(testDb.db)
 
-	await migrate({ url: testDb.connectionUri }, migrationsDir)
+	passkeys = createPasskeyRepository(testDb.db)
 
-	db = createDb(() => ({ url: testDb.connectionUri }))
-
-	vi.doMock('../db.js', () => ({ db }))
-
-	users = (await import('../user-repository.js')).createUserRepository()
-
-	passkeys = (await import('../passkey-repository.js')).createPasskeyRepository()
-
-	oauth = (await import('../oauth-repository.js')).createOAuthRepository()
+	oauth = createOAuthRepository(testDb.db)
 }, 60_000)
 
 afterAll(async () => {
-	await db?.close()
-
-	await pool?.end()
-
 	await testDb?.stop()
 })
 
 beforeEach(async () => {
 	if (!isDockerAvailable()) return
 
-	await pool.query('TRUNCATE users, oauth_states CASCADE')
+	await testDb.reset()
 })
 
 const state: StoredOAuthState = {

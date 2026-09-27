@@ -1,6 +1,5 @@
-import { type Queryable, type SqlFragment, sql } from 'saga'
+import { type Db, type Queryable, type SqlFragment, sql } from 'saga'
 import type { Factors, MfaRepository, StoredTotp } from '../auth/types.js'
-import { db } from './db.js'
 
 /** Passkeys plus a confirmed authenticator app. */
 export function countSecondFactors(q: Queryable, userId: string): Promise<number> {
@@ -44,7 +43,7 @@ export async function removeSecondFactor(
 	return 'deleted'
 }
 
-export function createMfaRepository(): MfaRepository {
+export function createMfaRepository(db: Db): MfaRepository {
 	return {
 		async getFactors(userId) {
 			return db.one<Factors>(

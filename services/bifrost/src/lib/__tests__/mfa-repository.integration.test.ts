@@ -1,58 +1,41 @@
 import { randomUUID } from 'node:crypto'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { Pool } from 'pg'
-import { createDb, type Db, migrate } from 'saga'
-import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
-import { stubServiceEnv } from 'vali/env'
+import type { Pool } from 'pg'
+import { isDockerAvailable } from 'vali/containers'
 import type { MfaRepository, PasskeyRepository, UserRepository } from '../../auth/types.js'
+import { promote, resetSecondFactors } from '../admins.js'
+import { createMfaRepository } from '../mfa-repository.js'
+import { createPasskeyRepository } from '../passkey-repository.js'
+import { createUserRepository } from '../user-repository.js'
+import { startTestDb, type TestDb } from './test-db.js'
 
-stubServiceEnv()
-
-const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../migrations')
-
-let testDb: TestDatabase
+let testDb: TestDb
 let pool: Pool
-let db: Db
 let users: UserRepository
 let passkeys: PasskeyRepository
 let mfa: MfaRepository
-let admins: typeof import('../admins.js')
 
 beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
-	testDb = await startPostgres()
+	testDb = await startTestDb()
 
-	pool = new Pool({ connectionString: testDb.connectionUri })
+	pool = testDb.pool
 
-	await migrate({ url: testDb.connectionUri }, migrationsDir)
+	users = createUserRepository(testDb.db)
 
-	db = createDb(() => ({ url: testDb.connectionUri }))
+	passkeys = createPasskeyRepository(testDb.db)
 
-	vi.doMock('../db.js', () => ({ db }))
-
-	users = (await import('../user-repository.js')).createUserRepository()
-
-	passkeys = (await import('../passkey-repository.js')).createPasskeyRepository()
-
-	mfa = (await import('../mfa-repository.js')).createMfaRepository()
-
-	admins = await import('../admins.js')
+	mfa = createMfaRepository(testDb.db)
 }, 60_000)
 
 afterAll(async () => {
-	await db?.close()
-
-	await pool?.end()
-
 	await testDb?.stop()
 })
 
 beforeEach(async () => {
 	if (!isDockerAvailable()) return
 
-	await pool.query('TRUNCATE users CASCADE')
+	await testDb.reset()
 })
 
 const secret = new Uint8Array([1, 2, 3])
@@ -311,7 +294,7 @@ describeWithDocker('admins (integration)', () => {
 
 		await addTotp(userId)
 
-		expect(await admins.promote('carol@x.dev')).toBe('promoted')
+		expect(await promote(testDb.db, 'carol@x.dev')).toBe('promoted')
 	})
 
 	it('resets every second factor and session of an admin', async () => {
@@ -339,7 +322,7 @@ describeWithDocker('admins (integration)', () => {
 
 		await addTotp(bystanderId)
 
-		expect(await admins.resetSecondFactors('Dave@x.dev')).toBe('reset')
+		expect(await resetSecondFactors(testDb.db, 'Dave@x.dev')).toBe('reset')
 
 		expect(await mfa.getFactors(adminId)).toEqual({ passkeys: 0, totp: false, recovery_codes: 0 })
 
@@ -353,6 +336,6 @@ describeWithDocker('admins (integration)', () => {
 	})
 
 	it('reports an unknown email on reset', async () => {
-		expect(await admins.resetSecondFactors('nobody@x.dev')).toBe('not_found')
+		expect(await resetSecondFactors(testDb.db, 'nobody@x.dev')).toBe('not_found')
 	})
 })
