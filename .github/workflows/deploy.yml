@@ -18,7 +18,7 @@ jobs:
         runs-on: ubuntu-latest
         environment: production
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@v7
 
             # Creates the app from .do/app.yaml on the first run, then updates
             # it and waits for the deployment to go live.
