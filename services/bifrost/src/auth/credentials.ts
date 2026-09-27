@@ -77,7 +77,15 @@ export function deleteStaleFailedLogins(): Promise<number> {
 	return getConfig().userRepository.deleteStaleFailedLogins(FAILED_LOGIN_TTL_SECONDS)
 }
 
-export async function registerUser(email: string, password: string, ip?: string): Promise<User> {
+/**
+ * Creates an account for `email`, or returns null when it already has one. The
+ * password is hashed either way, so the two take the same time.
+ */
+export async function registerUser(
+	email: string,
+	password: string,
+	ip?: string,
+): Promise<User | null> {
 	const normalizedEmail = email.trim().toLowerCase()
 
 	const hashedPassword = await hash(password, { algorithm: 2 /* Argon2id */ })
@@ -97,7 +105,7 @@ export async function registerUser(email: string, password: string, ip?: string)
 		return user
 	} catch (err: unknown) {
 		if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
-			throw new AuthError('email_exists', 'Email already registered')
+			return null
 		}
 
 		throw err

@@ -15,6 +15,7 @@ const {
 	mockCreateSecondFactorOptions,
 	mockVerifySession,
 	mockSendVerificationEmail,
+	mockSendAccountExistsEmail,
 	mockVerifyEmail,
 	mockRequestPasswordReset,
 	mockResetPassword,
@@ -31,6 +32,7 @@ const {
 	mockCreateSecondFactorOptions: vi.fn(),
 	mockVerifySession: vi.fn(),
 	mockSendVerificationEmail: vi.fn(),
+	mockSendAccountExistsEmail: vi.fn(),
 	mockVerifyEmail: vi.fn(),
 	mockRequestPasswordReset: vi.fn(),
 	mockResetPassword: vi.fn(),
@@ -61,6 +63,7 @@ vi.mock('../auth/index.js', async () => {
 		createSecondFactorOptions: (...args: unknown[]) => mockCreateSecondFactorOptions(...args),
 		verifySession: (...args: unknown[]) => mockVerifySession(...args),
 		sendVerificationEmail: (...args: unknown[]) => mockSendVerificationEmail(...args),
+		sendAccountExistsEmail: (...args: unknown[]) => mockSendAccountExistsEmail(...args),
 		verifyEmail: (...args: unknown[]) => mockVerifyEmail(...args),
 		requestPasswordReset: (...args: unknown[]) => mockRequestPasswordReset(...args),
 		resetPassword: (...args: unknown[]) => mockResetPassword(...args),
@@ -146,6 +149,8 @@ describe('Auth routes', () => {
 		mockGetFactors.mockResolvedValue({ passkeys: 0, totp: false, recovery_codes: 0 })
 
 		mockSendVerificationEmail.mockResolvedValue(undefined)
+
+		mockSendAccountExistsEmail.mockResolvedValue(undefined)
 
 		mockRequestPasswordReset.mockResolvedValue(undefined)
 	})
@@ -519,18 +524,19 @@ describe('Auth routes', () => {
 	})
 
 	describe('POST /auth/register', () => {
-		it('registers a new user and returns 201', async () => {
+		const CHECK_EMAIL = { message: 'Check your email to finish signing up' }
+
+		it('registers a new user and asks them to check their email', async () => {
 			mockRegisterUser.mockResolvedValueOnce({ ...session.user, email: 'new@example.com' })
 
-			const res = await app.request('/auth/register', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
-				body: JSON.stringify({ email: 'new@example.com', password: 'password123' }),
+			const res = await post('/auth/register', {
+				email: 'new@example.com',
+				password: 'password123',
 			})
 
-			expect(res.status).toBe(201)
+			expect(res.status).toBe(202)
 
-			expect(await res.json()).toEqual({ id: USER_ID, email: 'new@example.com' })
+			expect(await res.json()).toEqual(CHECK_EMAIL)
 		})
 
 		it('emails a verification link that opens the app', async () => {
@@ -541,9 +547,31 @@ describe('Auth routes', () => {
 			await post('/auth/register', { email: 'new@example.com', password: 'password123' })
 
 			expect(mockSendVerificationEmail).toHaveBeenCalledWith(user, 'http://localhost:3000')
+
+			expect(mockSendAccountExistsEmail).not.toHaveBeenCalled()
 		})
 
-		it('still registers when the email fails', async () => {
+		it('answers a taken email the same way and emails its owner', async () => {
+			mockRegisterUser.mockResolvedValueOnce(null)
+
+			const res = await post('/auth/register', {
+				email: 'existing@example.com',
+				password: 'password123',
+			})
+
+			expect(res.status).toBe(202)
+
+			expect(await res.json()).toEqual(CHECK_EMAIL)
+
+			expect(mockSendAccountExistsEmail).toHaveBeenCalledWith(
+				'existing@example.com',
+				'http://localhost:3000',
+			)
+
+			expect(mockSendVerificationEmail).not.toHaveBeenCalled()
+		})
+
+		it('still answers when the email fails', async () => {
 			mockRegisterUser.mockResolvedValueOnce(session.user)
 
 			mockSendVerificationEmail.mockRejectedValueOnce(new Error('mail down'))
@@ -553,21 +581,7 @@ describe('Auth routes', () => {
 				password: 'password123',
 			})
 
-			expect(res.status).toBe(201)
-		})
-
-		it('returns 409 when email already exists', async () => {
-			mockRegisterUser.mockRejectedValueOnce(
-				new AuthError('email_exists', 'Email already registered'),
-			)
-
-			const res = await app.request('/auth/register', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
-				body: JSON.stringify({ email: 'existing@example.com', password: 'password123' }),
-			})
-
-			expect(res.status).toBe(409)
+			expect(res.status).toBe(202)
 		})
 	})
 

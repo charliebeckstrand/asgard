@@ -9,7 +9,6 @@ import {
 	MessageSchema,
 	PasswordSchema,
 	SessionSchema,
-	UserSchema,
 } from 'skuld'
 import {
 	AuthError,
@@ -24,6 +23,7 @@ import {
 	requestPasswordReset,
 	resetPassword,
 	type SecondFactorProof,
+	sendAccountExistsEmail,
 	sendVerificationEmail,
 	verifyEmail,
 	verifySession,
@@ -63,10 +63,6 @@ const ResetPasswordRequestSchema = z.object({ email: EmailSchema }).openapi('Res
 const NewPasswordRequestSchema = z
 	.object({ token: TokenSchema, password: PasswordSchema })
 	.openapi('NewPasswordRequest')
-
-const RegisterResponseSchema = UserSchema.pick({ id: true, email: true }).openapi(
-	'RegisterResponse',
-)
 
 const SecondFactorRequestSchema = z
 	.union([
@@ -195,14 +191,14 @@ const registerRoute = createRoute({
 	path: '/register',
 	tags: ['Auth'],
 	summary: 'Register a new account',
-	description: 'Creates a new user account.',
+	description:
+		'Creates an account and emails a link that verifies its address. When the email already has an account, emails its owner instead. Answers the same either way, so no one can learn who has an account.',
 	request: {
 		body: jsonRequest(RegisterRequestSchema),
 	},
 	responses: {
-		201: jsonResponse(RegisterResponseSchema, 'Account created'),
+		202: jsonResponse(MessageSchema, 'Check your email'),
 		400: errorResponse('Validation error'),
-		409: errorResponse('Email already registered'),
 	},
 })
 
@@ -370,15 +366,19 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 
 		const origin = appOrigin(c)
 
-		// Sent in the background, so a mail outage never fails a sign-up. The
-		// account page can send another link.
+		// Sent in the background, so a mail outage never fails a sign-up and both
+		// answers take the same time. The account page can send another link.
 		if (origin) {
-			sendVerificationEmail(user, origin).catch((err: unknown) => {
-				logger().error({ err }, 'failed to send a verification email')
+			const sending = user
+				? sendVerificationEmail(user, origin)
+				: sendAccountExistsEmail(email, origin)
+
+			sending.catch((err: unknown) => {
+				logger().error({ err }, 'failed to send a sign-up email')
 			})
 		}
 
-		return c.json({ id: user.id, email: user.email }, 201)
+		return c.json({ message: 'Check your email to finish signing up' }, 202)
 	})
 	.openapi(sendVerificationRoute, async (c) => {
 		const current = requireSession(c)
