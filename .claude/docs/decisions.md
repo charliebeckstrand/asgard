@@ -21,6 +21,7 @@ Choices Charlie made that the code doesn't explain, with what was turned down. A
 ## Services
 
 - **Vidar stays a separate, private service.** It is not folded into grid and does not run inside bifrost, and it has no public domain. Admins reach it through bifrost's `/api/security` routes and Midgard's admin Security page. Deferred: flagging attacks spread across addresses against one account, and caching ban checks.
+- **Apps' data lives in Mimir**, one private service for every app rather than one per app, and not in Midgard. It gets saga migrations, grid's logs and limits, and an OpenAPI spec like the other services. Each app's data is ordinary routes and handlers in Mimir, with no plug-in layer until a second app shows the need. Mimir took over Midgard's `places` database as it was, so the move copied no data. Turned down: a service named for places, a generic documents API (every body `unknown`, validation back in Midgard), and a shared package in Midgard (no saga, grid or spec). Real rows instead of one JSON document per user are a separate, later choice.
 - **The rate limiter lives in grid**, not Vidar. `vidar/client` keeps only ban checks, event reports and the admin reads.
 
 ## Hosting

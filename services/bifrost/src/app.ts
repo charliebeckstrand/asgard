@@ -11,6 +11,7 @@ import { session } from './middleware/session.js'
 import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
 import { mfaRoutes } from './routes/mfa.js'
+import { mimirRoutes } from './routes/mimir.js'
 import { oauthRoutes } from './routes/oauth.js'
 import { passkeysRoutes } from './routes/passkeys.js'
 import { securityRoutes } from './routes/security.js'
@@ -84,4 +85,5 @@ export function createBifrostApp() {
 		.route('/api', health)
 		.route('/api/users', usersRoutes)
 		.route('/api/security', securityRoutes)
+		.route('/api', mimirRoutes)
 }

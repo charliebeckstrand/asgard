@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from 'hono'
+import type { Context, MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 
 import { getIpAddress } from './ip.js'
@@ -8,8 +8,10 @@ export interface RateLimitOptions {
 	rate: number
 	/** Maximum bucket size / burst capacity */
 	burst: number
-	/** Called with the client address each time a request is turned away */
-	onLimited?: (ip: string) => void
+	/** What each bucket belongs to. Defaults to the client address, which needs the clientIp middleware. */
+	key?: (c: Context) => string
+	/** Called with the key each time a request is turned away */
+	onLimited?: (key: string) => void
 }
 
 interface TokenBucket {
@@ -70,18 +72,24 @@ export function createTokenBucket({ rate, burst }: { rate: number; burst: number
 }
 
 /**
- * Hono middleware that limits requests per client address with an in-memory
- * token bucket, answering 429 once the bucket is empty. Needs the clientIp middleware.
- * Each call has its own bucket, so reuse one instance to share a budget across routes.
+ * Hono middleware that limits requests per key, the client address unless
+ * `key` says otherwise, with an in-memory token bucket, answering 429 once the
+ * bucket is empty. Each call has its own bucket, so reuse one instance to share
+ * a budget across routes.
  */
-export function rateLimit({ rate, burst, onLimited }: RateLimitOptions): MiddlewareHandler {
+export function rateLimit({
+	rate,
+	burst,
+	key = getIpAddress,
+	onLimited,
+}: RateLimitOptions): MiddlewareHandler {
 	const bucket = createTokenBucket({ rate, burst })
 
 	return async (c, next) => {
-		const ip = getIpAddress(c)
+		const id = key(c)
 
-		if (!bucket.consume(ip)) {
-			onLimited?.(ip)
+		if (!bucket.consume(id)) {
+			onLimited?.(id)
 
 			throw new HTTPException(429, { message: 'Too many requests' })
 		}

@@ -26,6 +26,7 @@ jobs:
               env:
                   CLIENT_IP_SECRET: ${{ secrets.CLIENT_IP_SECRET }}
                   LOGTAIL_TOKEN: ${{ secrets.LOGTAIL_TOKEN }}
+                  MIMIR_API_KEY: ${{ secrets.MIMIR_API_KEY }}
                   MFA_ENCRYPTION_KEY: ${{ secrets.MFA_ENCRYPTION_KEY }}
                   OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
                   OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}

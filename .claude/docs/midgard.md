@@ -7,6 +7,7 @@ This file is the one record of how the two repos fit together. Midgard links her
 ## Requests
 
 - Midgard's servers proxy `/auth/*` and `/api/*` to `BIFROST_URL` (https://auth.ivoryimage.dev in production, http://localhost:4000 elsewhere). Midgard needs `BIFROST_URL` at build time and at run time.
+- Bifrost forwards `/api/places/*` and `/api/visits/*` to Mimir, which keeps the places app's data. The places app has no database or server code of its own for them; it turns on `gatewayApi` so those paths reach bifrost. Mimir sends `cache-control: private, no-store` on all of them.
 - Each app keeps its own `__Host-session` cookie, since `__Host-` cookies have no Domain. Bifrost's `APP_ORIGINS` lists the apps allowed to call it.
 
 ## Client address
@@ -15,10 +16,10 @@ App Platform overwrites `do-connecting-ip` on every hop, so requests from Midgar
 
 ## Types
 
-Bifrost's OpenAPI spec is committed at `services/bifrost/openapi.json`. Midgard generates `packages/auth/src/openapi.d.ts` from asgard's `main` and calls bifrost through an openapi-fetch client. After a bifrost API change:
+Bifrost's OpenAPI spec is committed at `services/bifrost/openapi.json`, and Mimir's at `services/mimir/openapi.json`. Midgard generates `packages/auth/src/openapi.d.ts` from bifrost's and `apps/places/src/api/openapi.d.ts` from Mimir's, both from asgard's `main`, and calls each through an openapi-fetch client. After an API change:
 
-1. In asgard, run `pnpm --filter bifrost openapi` and merge.
-2. In midgard, run `pnpm --filter auth openapi`.
+1. In asgard, run `pnpm --filter bifrost openapi` or `pnpm --filter mimir openapi` and merge.
+2. In midgard, run `pnpm --filter auth openapi` or `pnpm --filter places openapi`.
 
 ## Second step
 
