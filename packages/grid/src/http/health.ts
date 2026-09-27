@@ -20,6 +20,10 @@ export const HealthResponseSchema = z
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>
 
+// The commit the running build came from. App Platform sets COMMIT_HASH; anywhere
+// else the build is local.
+const version = process.env.COMMIT_HASH || 'dev'
+
 type ServiceProbe = () => Promise<{ up: boolean }>
 
 interface CreateHealthRouteOptions {
@@ -79,16 +83,13 @@ export function createHealthRoute(options?: CreateHealthRouteOptions) {
 			const status = aggregateStatus(services)
 
 			return c.json(
-				{ status, version: '0.1.0', uptime: uptimeSeconds, services },
+				{ status, version, uptime: uptimeSeconds, services },
 				status === 'unhealthy' ? 503 : 200,
 			)
 		}
 
 		const extra = options?.check ? await options.check() : {}
 
-		return c.json(
-			{ status: 'healthy' as const, version: '0.1.0', uptime: uptimeSeconds, ...extra },
-			200,
-		)
+		return c.json({ status: 'healthy' as const, version, uptime: uptimeSeconds, ...extra }, 200)
 	})
 }

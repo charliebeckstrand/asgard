@@ -18,11 +18,27 @@ describe('createHealthRoute', () => {
 
 		expect(body.status).toBe('healthy')
 
-		expect(body.version).toBe('0.1.0')
+		expect(body.version).toBe('dev')
 
 		expect(body.uptime).toBeTypeOf('number')
 
 		expect(body.uptime).toBeGreaterThanOrEqual(0)
+	})
+
+	it('reports the deployed commit as the version', async () => {
+		vi.stubEnv('COMMIT_HASH', 'abc123')
+
+		vi.resetModules()
+
+		const { createHealthRoute } = await import('../../http/health.js')
+
+		const res = await createHealthRoute().request('/health')
+
+		const body = (await res.json()) as HealthResponse
+
+		expect(body.version).toBe('abc123')
+
+		vi.unstubAllEnvs()
 	})
 
 	it('includes extra fields from custom check function', async () => {

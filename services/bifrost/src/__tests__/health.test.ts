@@ -68,7 +68,7 @@ describe('Health route', () => {
 
 		expect(body.status).toBe('healthy')
 
-		expect(body.version).toBe('0.1.0')
+		expect(body.version).toBe('dev')
 
 		expect(body.uptime).toBeTypeOf('number')
 	})
