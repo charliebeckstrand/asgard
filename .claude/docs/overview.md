@@ -14,6 +14,7 @@ Shared packages in `packages/` never import from `services/`.
 Services in `services/`. Each has `manifest.json`, `migrations/`, `src/index.ts` (starts the server), `src/app.ts` (builds the routes) and `src/lib/{db,env,log}.ts`.
 
 - `bifrost` (port 4000, `/api`, public at auth.ivoryimage.dev): accounts and sign-in. Passwords, passkeys, authenticator apps, GitHub and Google OAuth, email verification and password reset through Resend, sessions, roles, and the admin-only `/api/security` routes that read Vidar.
+- `mimir` (port 4002, `/api`, private): apps' data, today the places app's places and visited regions, stored as one JSON document per user and name. Behind an API key. Bifrost checks the session and forwards `/api/places/*` and `/api/visits/*` unchanged with the user in `x-mimir-user`; Mimir declares each route's role. A new app's data gets its own routes and handlers here, not a new service.
 - `vidar` (port 4001, `/vidar`, private): security events, threat rules and IP bans, behind an API key. Bifrost uses `vidar/client`: `banCheck`, `reportEvent`, and the admin reads, which answer 503 when Vidar is down.
 
 ## Commands
@@ -22,7 +23,7 @@ Services in `services/`. Each has `manifest.json`, `migrations/`, `src/index.ts`
 - `pnpm lint`, `pnpm lint:fix`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm knip`. CI runs `pnpm turbo run lint typecheck test build` and then `pnpm knip`, and builds each service's Docker image on pull requests.
 - `pnpm dev` starts Postgres in Docker, creates the local roles and databases, applies migrations, and runs every service through `hlidskjalf`.
 - `pnpm --filter <service> db:migrate` and `db:status` run against the service's `.env`. `pnpm --filter <service> exec saga new <name>` adds a migration.
-- `pnpm --filter bifrost openapi` rewrites `services/bifrost/openapi.json`. A test fails when the spec and the routes differ.
+- `pnpm --filter bifrost openapi` and `pnpm --filter mimir openapi` rewrite each service's `openapi.json`. A test fails when a spec and its routes differ.
 
 ## Environment
 
@@ -30,7 +31,7 @@ Each service's `.env` is generated from its `manifest.json` and the secrets cach
 
 ## Deploy
 
-A push to `main` runs CI, then applies `.do/app.yaml` to the `asgard` app on DigitalOcean App Platform. The spec's comments explain each part. In short: bifrost and vidar run from the one Dockerfile (`SERVICE` build arg); a `PRE_DEPLOY` job per service runs `saga migrate` as the admin user; each service connects as its own user, which can read and write rows but not change the schema; logs go to Better Stack.
+A push to `main` runs CI, then applies `.do/app.yaml` to the `asgard` app on DigitalOcean App Platform. The spec's comments explain each part. In short: bifrost, vidar and mimir run from the one Dockerfile (`SERVICE` build arg); a `PRE_DEPLOY` job per service runs `saga migrate` as the admin user; each service connects as its own user, which can read and write rows but not change the schema; logs go to Better Stack.
 
 ## Cloud sessions
 
