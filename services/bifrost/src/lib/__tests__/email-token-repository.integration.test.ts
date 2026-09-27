@@ -153,6 +153,10 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		it('sets the password, verifies the email and ends every session and link', async () => {
 			const userId = await insertUser()
 
+			const { email } = (await users.getUserById(userId)) as { email: string }
+
+			await pool.query('INSERT INTO failed_logins (email, count) VALUES ($1, 5)', [email])
+
 			await tokens.createToken('t1', userId, 'reset_password', inAnHour(), 60)
 
 			await tokens.createToken('t2', userId, 'verify_email', inAnHour(), 60)
@@ -171,6 +175,10 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 			const { rows } = await pool.query('SELECT 1 FROM sessions WHERE user_id = $1', [userId])
 
 			expect(rows).toHaveLength(0)
+
+			const failed = await pool.query('SELECT 1 FROM failed_logins WHERE email = $1', [email])
+
+			expect(failed.rows).toHaveLength(0)
 		})
 
 		it('changes nothing with an unknown or expired link', async () => {

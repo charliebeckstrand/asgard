@@ -43,8 +43,9 @@ export interface EmailTokenRepository {
 	/** Uses a live verification link and marks its user's email verified. */
 	verifyEmail(id: string): Promise<boolean>
 	/**
-	 * Uses a live reset link: sets the password, marks the email verified, and
-	 * deletes the user's sessions and other links.
+	 * Uses a live reset link: sets the password, marks the email verified,
+	 * clears the failed logins of the email, and deletes the user's sessions and
+	 * other links.
 	 */
 	resetPassword(id: string, hashedPassword: string): Promise<boolean>
 	deleteExpiredTokens(): Promise<number>

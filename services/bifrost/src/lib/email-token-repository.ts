@@ -49,12 +49,16 @@ export function createEmailTokenRepository(): EmailTokenRepository {
 				if (!used) return false
 
 				// The link reached the inbox, so the email is the user's.
-				await tx.exec(
+				const user = await tx.one<{ email: string }>(
 					sql`
 						UPDATE users SET hashed_password = ${hashedPassword}, is_verified = true
 						WHERE id = ${used.user_id}
+						RETURNING email
 					`,
 				)
+
+				// The wrong passwords before the reset no longer hold back a sign-in.
+				await tx.exec(sql`DELETE FROM failed_logins WHERE email = ${user.email}`)
 
 				await tx.exec(sql`DELETE FROM email_tokens WHERE user_id = ${used.user_id}`)
 
