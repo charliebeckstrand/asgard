@@ -1,4 +1,4 @@
-export type { Config, OAuthClient, Turnstile } from './config.js'
+export type { OAuthClient } from './config.js'
 export { configure, getConfig } from './config.js'
 export {
 	AuthError,
@@ -11,14 +11,11 @@ export {
 export {
 	deleteExpiredEmailTokens,
 	deleteOldSentEmails,
-	EMAIL_INTERVAL_SECONDS,
-	RESET_PASSWORD_TTL_SECONDS,
 	requestPasswordReset,
 	resetPassword,
 	sendAccountExistsEmail,
 	sendSecurityNotice,
 	sendVerificationEmail,
-	VERIFY_EMAIL_TTL_SECONDS,
 	verifyEmail,
 } from './email.js'
 export {
@@ -27,9 +24,6 @@ export {
 	deleteTotp,
 	generateRecoveryCodes,
 	getFactors,
-	MAX_FAILED_STEPS,
-	RECOVERY_CODE_COUNT,
-	type SecondFactorMethod,
 	type SecondFactorProof,
 	secondFactorMethods,
 	startTotpSetup,
@@ -40,18 +34,13 @@ export {
 	deleteExpiredOAuthStates,
 	enabledProviders,
 	getIdentities,
-	OAUTH_PROVIDERS,
-	OAUTH_STATE_TTL_SECONDS,
 	OAuthFailure,
-	type OAuthFailureCode,
-	type OAuthOutcome,
 	safeReturnTo,
 	startOAuth,
 	unlinkIdentity,
 } from './oauth.js'
 export {
 	authenticatePasskey,
-	CHALLENGE_TTL_SECONDS,
 	createRegistrationOptions,
 	createSecondFactorOptions,
 	createSignInOptions,
@@ -66,28 +55,8 @@ export {
 	deleteSession,
 	deleteUserSessions,
 	findSession,
-	hashToken,
-	MAX_SESSIONS_PER_USER,
 	passSecondStep,
-	RECENT_SIGN_IN_SECONDS,
 	requireRecentSignIn,
 	SESSION_TTL_SECONDS,
 } from './sessions.js'
-export type {
-	CredentialsRow,
-	Email,
-	EmailPurpose,
-	EmailTokenRepository,
-	Factors,
-	LinkedIdentity,
-	MfaRepository,
-	OAuthIdentity,
-	OAuthProvider,
-	OAuthRepository,
-	PasskeyRepository,
-	SessionRepository,
-	StoredOAuthState,
-	StoredPasskey,
-	StoredTotp,
-	UserRepository,
-} from './types.js'
+export type { Email, OAuthProvider } from './types.js'

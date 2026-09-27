@@ -36,9 +36,6 @@ const ManifestSchema = z.object({
 	vars: z.record(z.string(), ManifestVarSchema).optional(),
 })
 
-export type ManifestVarValue = z.infer<typeof ManifestVarValueSchema>
-export type ManifestVarSecret = z.infer<typeof ManifestVarSecretSchema>
-export type ManifestVarRef = z.infer<typeof ManifestVarRefSchema>
 export type ManifestVar = z.infer<typeof ManifestVarSchema>
 export type ManifestDatabase = z.infer<typeof ManifestDatabaseSchema>
 export type Manifest = z.infer<typeof ManifestSchema>

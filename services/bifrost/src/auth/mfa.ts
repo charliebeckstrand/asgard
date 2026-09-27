@@ -20,7 +20,7 @@ export const MAX_FAILED_STEPS = 5
 export const FAILED_STEP_WAIT_SECONDS = 15 * 60
 
 /** How long a user's wrong second steps are remembered. */
-export const FAILED_STEP_TTL_SECONDS = 24 * 60 * 60
+const FAILED_STEP_TTL_SECONDS = 24 * 60 * 60
 
 export const RECOVERY_CODE_COUNT = 10
 

@@ -33,6 +33,9 @@ jobs:
 
             - run: pnpm turbo run lint typecheck test build
 
+            # Fails on unused files, exports and dependencies.
+            - run: pnpm knip
+
             # Keep the saved cache from growing without bound.
             - run: find .turbo/cache -type f -mtime +7 -delete
 
