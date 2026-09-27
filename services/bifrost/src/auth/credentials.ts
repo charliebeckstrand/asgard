@@ -17,6 +17,9 @@ export const MAX_FAILED_LOGINS = 5
 /** How long a try waits after the last one, past `MAX_FAILED_LOGINS`. */
 export const FAILED_LOGIN_WAIT_SECONDS = 60
 
+/** Sign-ups a network gets in a day. */
+export const MAX_DAILY_SIGN_UPS = 3
+
 /** How long an email's wrong passwords are remembered. */
 const FAILED_LOGIN_TTL_SECONDS = 24 * 60 * 60
 
@@ -78,6 +81,10 @@ export function deleteStaleFailedLogins(): Promise<number> {
 	return getConfig().userRepository.deleteStaleFailedLogins(FAILED_LOGIN_TTL_SECONDS)
 }
 
+export function deleteOldSignUps(): Promise<number> {
+	return getConfig().userRepository.deleteOldSignUps()
+}
+
 /**
  * Hashes a password the user chose, after refusing one known from a data breach,
  * since anyone trying leaked passwords against accounts would guess it first.
@@ -109,7 +116,9 @@ export async function checkTurnstile(token: string | undefined, ip?: string): Pr
 
 /**
  * Creates an account for `email`, or returns null when it already has one. The
- * password is hashed either way, so the two take the same time.
+ * password is hashed either way, so the two take the same time. Each network
+ * gets `MAX_DAILY_SIGN_UPS` a day, and a taken email counts too, so the limit
+ * reveals no accounts.
  */
 export async function registerUser(
 	email: string,
@@ -121,6 +130,13 @@ export async function registerUser(
 	const hashedPassword = await hashNewPassword(password)
 
 	const { userRepository } = getConfig()
+
+	if (ip && !(await userRepository.countSignUp(ip, MAX_DAILY_SIGN_UPS))) {
+		throw new AuthError(
+			'too_many_sign_ups',
+			'Too many sign-ups from your network today. Try again tomorrow.',
+		)
+	}
 
 	try {
 		const user = await userRepository.insertUser(normalizedEmail, hashedPassword)

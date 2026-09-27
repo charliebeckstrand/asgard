@@ -10,6 +10,7 @@ import {
 	deleteExpiredSessions,
 	deleteOldActivity,
 	deleteOldSentEmails,
+	deleteOldSignUps,
 	deleteStaleFailedLogins,
 	deleteStaleFailedSteps,
 	type OAuthClient,
@@ -82,6 +83,7 @@ function sweep() {
 		deleteExpiredChallenges(),
 		deleteExpiredOAuthStates(),
 		deleteStaleFailedLogins(),
+		deleteOldSignUps(),
 		deleteStaleFailedSteps(),
 		deleteExpiredEmailTokens(),
 		deleteOldSentEmails(),
@@ -89,7 +91,7 @@ function sweep() {
 	]).catch((err) => {
 		log.error(
 			{ err },
-			'failed to delete expired sessions, challenges, OAuth states, failed tries, email links, email counts and old activity',
+			'failed to delete expired sessions, challenges, OAuth states, failed tries, sign-up counts, email links, email counts and old activity',
 		)
 	})
 }

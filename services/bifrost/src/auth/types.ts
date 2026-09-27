@@ -24,6 +24,13 @@ export interface UserRepository {
 	clearFailedLogins(email: string): Promise<void>
 	/** Deletes the counts of emails with no failed login in the last `seconds`. */
 	deleteStaleFailedLogins(seconds: number): Promise<number>
+	/**
+	 * Counts a sign-up from `ip`'s network, unless it already made `limit` in the
+	 * last day. Returns false, and counts nothing, when it has.
+	 */
+	countSignUp(ip: string, limit: number): Promise<boolean>
+	/** Deletes the counts of sign-ups made more than a day ago. */
+	deleteOldSignUps(): Promise<number>
 }
 
 export type EmailPurpose = 'verify_email' | 'reset_password'

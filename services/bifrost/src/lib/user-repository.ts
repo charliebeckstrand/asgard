@@ -2,6 +2,10 @@ import { type Db, sql } from 'saga'
 import type { User } from 'skuld'
 import type { CredentialsRow, UserRepository } from '../auth/types.js'
 
+/** An address's network: itself for IPv4, its /64 for IPv6. */
+const network = (ip: string) =>
+	sql`network(set_masklen(${ip}::inet, CASE family(${ip}::inet) WHEN 6 THEN 64 ELSE 32 END))`
+
 export function createUserRepository(db: Db): UserRepository {
 	return {
 		async insertUser(email, hashedPassword) {
@@ -74,6 +78,31 @@ export function createUserRepository(db: Db): UserRepository {
 			return db.exec(
 				sql`DELETE FROM failed_logins WHERE last_failed_at <= now() - make_interval(secs => ${seconds})`,
 			)
+		},
+
+		async countSignUp(ip, limit) {
+			return db.tx(async (tx) => {
+				// Lets other sign-ups wait, so two can't both take the last one.
+				await tx.exec(sql`LOCK TABLE sign_ups IN EXCLUSIVE MODE`)
+
+				const { count } = await tx.one<{ count: number }>(
+					sql`
+						SELECT count(*)::int AS count
+						FROM sign_ups
+						WHERE network = ${network(ip)} AND created_at > now() - interval '1 day'
+					`,
+				)
+
+				if (count >= limit) return false
+
+				await tx.exec(sql`INSERT INTO sign_ups (network) VALUES (${network(ip)})`)
+
+				return true
+			})
+		},
+
+		async deleteOldSignUps() {
+			return db.exec(sql`DELETE FROM sign_ups WHERE created_at <= now() - interval '1 day'`)
 		},
 	}
 }
