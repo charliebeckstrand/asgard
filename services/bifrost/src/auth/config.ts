@@ -26,6 +26,8 @@ export interface Config {
 	emailTokenRepository: EmailTokenRepository
 	/** Sends an email, such as a link to verify the address or reset the password. */
 	sendEmail: (email: Email) => Promise<void>
+	/** Whether a new password is known from a data breach. Unset checks nothing. */
+	isBreachedPassword?: (password: string) => Promise<boolean>
 	/** The domain passkeys belong to, and the origins allowed to use them. */
 	passkeys: { domain: string; origins: string[] }
 	/**

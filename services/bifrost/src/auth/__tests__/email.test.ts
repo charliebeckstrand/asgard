@@ -1,6 +1,6 @@
 import { verify } from '@node-rs/argon2'
 import type { Mock } from 'vitest'
-import { configure } from '../config.js'
+import { configure, getConfig } from '../config.js'
 import {
 	EMAIL_INTERVAL_SECONDS,
 	RESET_PASSWORD_TTL_SECONDS,
@@ -254,6 +254,17 @@ describe('resetPassword', () => {
 		expect(id).toBe(hashToken('token'))
 
 		expect(await verify(hashedPassword, 'new password')).toBe(true)
+	})
+
+	it('refuses a password known from a data breach before using the link', async () => {
+		configure({ ...getConfig(), isBreachedPassword: vi.fn().mockResolvedValue(true) })
+
+		await expect(resetPassword('token', 'new password')).rejects.toMatchObject({
+			code: 'password_breached',
+			status: 400,
+		})
+
+		expect(emailTokenRepository.resetPassword).not.toHaveBeenCalled()
 	})
 
 	it('rejects an unknown, used or expired link', async () => {

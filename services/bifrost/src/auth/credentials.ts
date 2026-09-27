@@ -78,6 +78,21 @@ export function deleteStaleFailedLogins(): Promise<number> {
 }
 
 /**
+ * Hashes a password the user chose, after refusing one known from a data breach,
+ * since anyone trying leaked passwords against accounts would guess it first.
+ */
+export async function hashNewPassword(password: string): Promise<string> {
+	if (await getConfig().isBreachedPassword?.(password)) {
+		throw new AuthError(
+			'password_breached',
+			'This password has appeared in a data breach. Choose a different one.',
+		)
+	}
+
+	return hash(password, { algorithm: 2 /* Argon2id */ })
+}
+
+/**
  * Creates an account for `email`, or returns null when it already has one. The
  * password is hashed either way, so the two take the same time.
  */
@@ -88,7 +103,7 @@ export async function registerUser(
 ): Promise<User | null> {
 	const normalizedEmail = email.trim().toLowerCase()
 
-	const hashedPassword = await hash(password, { algorithm: 2 /* Argon2id */ })
+	const hashedPassword = await hashNewPassword(password)
 
 	const { userRepository } = getConfig()
 
