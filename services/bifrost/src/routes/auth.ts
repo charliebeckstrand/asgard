@@ -174,7 +174,7 @@ const verifyRoute = createRoute({
 	tags: ['Auth'],
 	summary: 'Pass the second step',
 	description:
-		'Checks a passkey, authenticator code or recovery code of the signed-in user and marks the session as past its second step. The fifth wrong try ends the session.',
+		'Checks a passkey, authenticator code or recovery code of the signed-in user and marks the session as past its second step. The fifth wrong try ends the session. Past five wrong tries across all their sessions, a user gets one try every fifteen minutes.',
 	request: {
 		body: jsonRequest(SecondFactorRequestSchema),
 	},
@@ -183,6 +183,7 @@ const verifyRoute = createRoute({
 		400: errorResponse('Code or passkey not accepted, or no second factor'),
 		401: errorResponse('Not authenticated'),
 		410: errorResponse('Too many tries; the session ended'),
+		429: errorResponse('Too many wrong tries for this user; try again in 15 minutes'),
 	},
 })
 

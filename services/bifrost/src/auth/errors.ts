@@ -7,6 +7,7 @@ const AUTH_STATUS = {
 	invalid_credentials: 401,
 	account_inactive: 403,
 	sign_in_again: 403,
+	email_unverified: 403,
 	second_step_required: 403,
 	passkey_not_found: 404,
 	totp_not_found: 404,
@@ -19,6 +20,7 @@ const AUTH_STATUS = {
 	no_second_factor: 409,
 	last_sign_in: 409,
 	too_many_logins: 429,
+	too_many_steps: 429,
 	email_recently_sent: 429,
 	mfa_unavailable: 503,
 } as const

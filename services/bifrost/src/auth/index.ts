@@ -19,6 +19,7 @@ export {
 } from './email.js'
 export {
 	confirmTotp,
+	deleteStaleFailedSteps,
 	deleteTotp,
 	generateRecoveryCodes,
 	getFactors,

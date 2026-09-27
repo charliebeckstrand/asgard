@@ -74,7 +74,7 @@ const session = {
 		id: USER_ID,
 		email: 'alice@example.com',
 		is_active: true,
-		is_verified: false,
+		is_verified: true,
 		roles: ['user'],
 		created_at: '2026-01-01T00:00:00.000Z',
 		updated_at: '2026-01-01T00:00:00.000Z',
@@ -163,6 +163,35 @@ describe('Passkeys routes', () => {
 		expect(res.status).toBe(403)
 
 		expect(await res.json()).toMatchObject({ code: 'second_step_required' })
+
+		expect(mockCreateRegistrationOptions).not.toHaveBeenCalled()
+
+		expect(mockRegisterPasskey).not.toHaveBeenCalled()
+
+		expect(mockDeletePasskey).not.toHaveBeenCalled()
+	})
+
+	it.each([
+		['POST', '/auth/passkeys/options', undefined],
+		['POST', '/auth/passkeys', credential],
+		['DELETE', '/auth/passkeys/credential-1', undefined],
+	] as const)('asks for a verified email on %s %s', async (method, path, body) => {
+		mockFindSession.mockResolvedValue({
+			...session,
+			user: { ...session.user, is_verified: false },
+		})
+
+		mockGetFactors.mockResolvedValue({ passkeys: 0, totp: false, recovery_codes: 0 })
+
+		const res = await app.request(path, {
+			method,
+			headers,
+			body: body ? JSON.stringify(body) : undefined,
+		})
+
+		expect(res.status).toBe(403)
+
+		expect(await res.json()).toMatchObject({ code: 'email_unverified' })
 
 		expect(mockCreateRegistrationOptions).not.toHaveBeenCalled()
 

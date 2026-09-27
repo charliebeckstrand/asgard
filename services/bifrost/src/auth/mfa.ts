@@ -16,6 +16,12 @@ import type { Factors } from './types.js'
 
 export const MAX_FAILED_STEPS = 5
 
+/** How long a second step waits after the last one, past `MAX_FAILED_STEPS` for the user. */
+export const FAILED_STEP_WAIT_SECONDS = 15 * 60
+
+/** How long a user's wrong second steps are remembered. */
+export const FAILED_STEP_TTL_SECONDS = 24 * 60 * 60
+
 export const RECOVERY_CODE_COUNT = 10
 
 export type SecondFactorMethod = 'passkey' | 'totp' | 'recovery_code'
@@ -45,14 +51,16 @@ export function secondFactorMethods(factors: Factors): SecondFactorMethod[] {
 /**
  * Checks a second factor of the signed-in user and marks the session as past its
  * second step. Each wrong try counts, and the fifth ends the session, so a guess
- * costs a new sign-in.
+ * costs a new sign-in. The user also gets `MAX_FAILED_STEPS` wrong tries across
+ * all their sessions, then one every fifteen minutes, so signing in again with a
+ * known password buys no more guesses at an authenticator code.
  */
 export async function verifySession(
 	session: Session,
 	proof: SecondFactorProof,
 	ip?: string,
 ): Promise<void> {
-	const { sessionRepository, onSecurityEvent } = getConfig()
+	const { sessionRepository, mfaRepository, onSecurityEvent } = getConfig()
 
 	const userId = session.user.id
 
@@ -60,7 +68,13 @@ export async function verifySession(
 		throw new AuthError('no_second_factor', 'Add a passkey or an authenticator app first')
 	}
 
+	if (!(await mfaRepository.countFailedStep(userId, MAX_FAILED_STEPS, FAILED_STEP_WAIT_SECONDS))) {
+		throw new AuthError('too_many_steps', 'Too many wrong tries. Try again in 15 minutes')
+	}
+
 	if (await checkProof(userId, proof)) {
+		await mfaRepository.clearFailedSteps(userId)
+
 		await sessionRepository.passSecondStep(session.id)
 
 		return
@@ -158,6 +172,10 @@ export async function deleteTotp(userId: string): Promise<void> {
 	if (result === 'last_admin_factor') {
 		throw new AuthError('last_admin_factor', 'An admin must keep a passkey or an authenticator app')
 	}
+}
+
+export function deleteStaleFailedSteps(): Promise<number> {
+	return getConfig().mfaRepository.deleteStaleFailedSteps(FAILED_STEP_TTL_SECONDS)
 }
 
 const RECOVERY_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'

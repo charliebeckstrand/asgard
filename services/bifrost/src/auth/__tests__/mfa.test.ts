@@ -13,6 +13,7 @@ import { type AuthSecurityEvent, configure } from '../config.js'
 import {
 	confirmTotp,
 	deleteTotp,
+	FAILED_STEP_WAIT_SECONDS,
 	generateRecoveryCodes,
 	MAX_FAILED_STEPS,
 	RECOVERY_CODE_COUNT,
@@ -93,6 +94,9 @@ beforeEach(() => {
 		deleteTotp: vi.fn().mockResolvedValue('deleted'),
 		replaceRecoveryCodes: vi.fn(),
 		useRecoveryCode: vi.fn().mockResolvedValue(true),
+		countFailedStep: vi.fn().mockResolvedValue(true),
+		clearFailedSteps: vi.fn(),
+		deleteStaleFailedSteps: vi.fn(),
 	}
 
 	sessionRepository = {
@@ -126,6 +130,32 @@ describe('verifySession', () => {
 		expect(sessionRepository.passSecondStep).toHaveBeenCalledWith('session-1')
 
 		expect(sessionRepository.failSecondStep).not.toHaveBeenCalled()
+
+		expect(mfaRepository.clearFailedSteps).toHaveBeenCalledWith(USER_ID)
+	})
+
+	it('counts each try against the user, across sessions, before checking it', async () => {
+		await verifySession(session, { totp: '000000' }).catch(() => {})
+
+		expect(mfaRepository.countFailedStep).toHaveBeenCalledWith(
+			USER_ID,
+			MAX_FAILED_STEPS,
+			FAILED_STEP_WAIT_SECONDS,
+		)
+
+		expect(mfaRepository.clearFailedSteps).not.toHaveBeenCalled()
+	})
+
+	it('makes the user wait past their wrong tries, even with a right code', async () => {
+		mfaRepository.countFailedStep.mockResolvedValueOnce(false)
+
+		await expect(
+			verifySession(session, { totp: totpCode(secret, totpStep()) }),
+		).rejects.toMatchObject({ code: 'too_many_steps' })
+
+		expect(mfaRepository.useTotpStep).not.toHaveBeenCalled()
+
+		expect(sessionRepository.passSecondStep).not.toHaveBeenCalled()
 	})
 
 	it('refuses a replayed authenticator code', async () => {
@@ -230,6 +260,8 @@ describe('verifySession', () => {
 		})
 
 		expect(sessionRepository.failSecondStep).not.toHaveBeenCalled()
+
+		expect(mfaRepository.countFailedStep).not.toHaveBeenCalled()
 	})
 })
 

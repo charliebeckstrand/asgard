@@ -133,6 +133,15 @@ export interface MfaRepository {
 	deleteTotp(userId: string): Promise<'deleted' | 'not_found' | 'last_admin_factor'>
 	replaceRecoveryCodes(userId: string, hashes: string[]): Promise<void>
 	useRecoveryCode(userId: string, hash: string): Promise<boolean>
+	/**
+	 * Counts a second step of `userId` as failed until it passes, across all their
+	 * sessions. Past `limit`, one try is let through each `waitSeconds`; returns
+	 * false when this one must wait.
+	 */
+	countFailedStep(userId: string, limit: number, waitSeconds: number): Promise<boolean>
+	clearFailedSteps(userId: string): Promise<void>
+	/** Deletes the counts of users with no failed second step in the last `seconds`. */
+	deleteStaleFailedSteps(seconds: number): Promise<number>
 }
 
 export type OAuthProvider = 'github' | 'google'
