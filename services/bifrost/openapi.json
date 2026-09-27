@@ -1,0 +1,2013 @@
+{
+	"openapi": "3.0.0",
+	"info": {
+		"title": "Bifrost",
+		"description": "",
+		"version": "0.1.0"
+	},
+	"components": {
+		"schemas": {
+			"Session": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "SHA-256 of the session token, hex"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time",
+						"description": "ISO 8601 datetime",
+						"example": "2026-01-01T00:00:00.000Z"
+					},
+					"expires_at": {
+						"type": "string",
+						"format": "date-time",
+						"description": "ISO 8601 datetime",
+						"example": "2026-01-01T00:00:00.000Z"
+					},
+					"two_step": {
+						"type": "boolean",
+						"description": "Whether the session passed a second step: a passkey sign-in, or a passkey, app code or recovery code checked on it"
+					},
+					"user": {
+						"$ref": "#/components/schemas/User"
+					}
+				},
+				"required": [
+					"id",
+					"created_at",
+					"expires_at",
+					"two_step",
+					"user"
+				]
+			},
+			"User": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Unique identifier (UUID)",
+						"example": "550e8400-e29b-41d4-a716-446655440000"
+					},
+					"email": {
+						"type": "string",
+						"format": "email",
+						"example": "user@example.com"
+					},
+					"is_active": {
+						"type": "boolean"
+					},
+					"is_verified": {
+						"type": "boolean"
+					},
+					"roles": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"enum": [
+								"user",
+								"admin"
+							],
+							"description": "`user` can change data in the apps; `admin` can manage other users"
+						},
+						"description": "The roles of the account; none means it can change nothing"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time",
+						"description": "ISO 8601 datetime",
+						"example": "2026-01-01T00:00:00.000Z"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time",
+						"description": "ISO 8601 datetime",
+						"example": "2026-01-01T00:00:00.000Z"
+					}
+				},
+				"required": [
+					"id",
+					"email",
+					"is_active",
+					"is_verified",
+					"roles",
+					"created_at",
+					"updated_at"
+				]
+			},
+			"Error": {
+				"type": "object",
+				"properties": {
+					"error": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					},
+					"statusCode": {
+						"type": "number"
+					},
+					"code": {
+						"type": "string",
+						"description": "A stable name for the error, when the service gives one"
+					}
+				},
+				"required": [
+					"error",
+					"message",
+					"statusCode"
+				]
+			},
+			"LoginRequest": {
+				"type": "object",
+				"properties": {
+					"email": {
+						"type": "string",
+						"format": "email",
+						"example": "user@example.com"
+					},
+					"password": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 128,
+						"description": "Login password"
+					}
+				},
+				"required": [
+					"email",
+					"password"
+				]
+			},
+			"PasskeyOptions": {
+				"type": "object",
+				"additionalProperties": {
+					"nullable": true
+				},
+				"description": "WebAuthn options, as the browser API expects them"
+			},
+			"PasskeyCredential": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"rawId": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string",
+						"enum": [
+							"public-key"
+						]
+					},
+					"response": {
+						"type": "object",
+						"additionalProperties": {
+							"nullable": true
+						}
+					},
+					"clientExtensionResults": {
+						"type": "object",
+						"additionalProperties": {
+							"nullable": true
+						}
+					}
+				},
+				"required": [
+					"id",
+					"rawId",
+					"type",
+					"response",
+					"clientExtensionResults"
+				],
+				"additionalProperties": {
+					"nullable": true
+				},
+				"description": "The credential the browser API returned"
+			},
+			"Message": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"message"
+				]
+			},
+			"ActivityList": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Activity"
+						}
+					},
+					"total": {
+						"type": "number",
+						"description": "Total number of items"
+					}
+				},
+				"required": [
+					"data",
+					"total"
+				]
+			},
+			"Activity": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Unique identifier (UUID)",
+						"example": "550e8400-e29b-41d4-a716-446655440000"
+					},
+					"action": {
+						"$ref": "#/components/schemas/ActivityAction"
+					},
+					"detail": {
+						"type": "string",
+						"nullable": true,
+						"description": "More about the action: how the user signed in, or which provider",
+						"example": "passkey"
+					},
+					"actor_id": {
+						"type": "string",
+						"nullable": true,
+						"format": "uuid",
+						"description": "Who did it: the user, an admin, or null for the operator",
+						"example": "550e8400-e29b-41d4-a716-446655440000"
+					},
+					"ip": {
+						"type": "string",
+						"nullable": true
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time",
+						"description": "ISO 8601 datetime",
+						"example": "2026-01-01T00:00:00.000Z"
+					}
+				},
+				"required": [
+					"id",
+					"action",
+					"detail",
+					"actor_id",
+					"ip",
+					"created_at"
+				]
+			},
+			"ActivityAction": {
+				"type": "string",
+				"enum": [
+					"signed_in",
+					"signed_out_elsewhere",
+					"email_verified",
+					"password_reset",
+					"passkey_added",
+					"passkey_removed",
+					"authenticator_added",
+					"authenticator_removed",
+					"recovery_codes_created",
+					"account_connected",
+					"account_disconnected",
+					"deactivated",
+					"reactivated",
+					"promoted",
+					"demoted",
+					"second_factors_reset"
+				]
+			},
+			"SecondFactorRequest": {
+				"anyOf": [
+					{
+						"type": "object",
+						"properties": {
+							"totp": {
+								"type": "string",
+								"maxLength": 16,
+								"description": "Code from the authenticator app"
+							}
+						},
+						"required": [
+							"totp"
+						]
+					},
+					{
+						"type": "object",
+						"properties": {
+							"recovery_code": {
+								"type": "string",
+								"maxLength": 64,
+								"description": "An unused recovery code"
+							}
+						},
+						"required": [
+							"recovery_code"
+						]
+					},
+					{
+						"type": "object",
+						"properties": {
+							"passkey": {
+								"$ref": "#/components/schemas/PasskeyCredential"
+							}
+						},
+						"required": [
+							"passkey"
+						]
+					}
+				]
+			},
+			"RegisterOptions": {
+				"type": "object",
+				"properties": {
+					"turnstile_site_key": {
+						"type": "string",
+						"nullable": true,
+						"description": "The key to show Turnstile with, or null when sign-up has no check"
+					}
+				},
+				"required": [
+					"turnstile_site_key"
+				]
+			},
+			"RegisterRequest": {
+				"type": "object",
+				"properties": {
+					"email": {
+						"type": "string",
+						"format": "email",
+						"example": "user@example.com"
+					},
+					"password": {
+						"type": "string",
+						"minLength": 8,
+						"maxLength": 128,
+						"description": "Password (8 to 128 characters)"
+					},
+					"name": {
+						"type": "string",
+						"minLength": 1
+					},
+					"turnstile_token": {
+						"type": "string",
+						"maxLength": 2048,
+						"description": "The token of the Turnstile widget, when sign-up has one"
+					}
+				},
+				"required": [
+					"email",
+					"password"
+				]
+			},
+			"VerifyEmailRequest": {
+				"type": "object",
+				"properties": {
+					"token": {
+						"type": "string",
+						"maxLength": 64,
+						"description": "The token from the emailed link"
+					}
+				},
+				"required": [
+					"token"
+				]
+			},
+			"ResetPasswordRequest": {
+				"type": "object",
+				"properties": {
+					"email": {
+						"type": "string",
+						"format": "email",
+						"example": "user@example.com"
+					}
+				},
+				"required": [
+					"email"
+				]
+			},
+			"NewPasswordRequest": {
+				"type": "object",
+				"properties": {
+					"token": {
+						"type": "string",
+						"maxLength": 64,
+						"description": "The token from the emailed link"
+					},
+					"password": {
+						"type": "string",
+						"minLength": 8,
+						"maxLength": 128,
+						"description": "Password (8 to 128 characters)"
+					}
+				},
+				"required": [
+					"token",
+					"password"
+				]
+			},
+			"PasskeyList": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Passkey"
+						}
+					},
+					"total": {
+						"type": "number",
+						"description": "Total number of items"
+					}
+				},
+				"required": [
+					"data",
+					"total"
+				]
+			},
+			"Passkey": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Credential ID, base64url"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time",
+						"description": "ISO 8601 datetime",
+						"example": "2026-01-01T00:00:00.000Z"
+					}
+				},
+				"required": [
+					"id",
+					"created_at"
+				]
+			},
+			"Factors": {
+				"type": "object",
+				"properties": {
+					"enabled": {
+						"type": "boolean",
+						"description": "Whether sign-in takes a second step"
+					},
+					"passkeys": {
+						"type": "integer"
+					},
+					"totp": {
+						"type": "boolean",
+						"description": "Whether an authenticator app is on"
+					},
+					"recovery_codes": {
+						"type": "integer",
+						"description": "Unused recovery codes"
+					}
+				},
+				"required": [
+					"enabled",
+					"passkeys",
+					"totp",
+					"recovery_codes"
+				]
+			},
+			"TotpSetup": {
+				"type": "object",
+				"properties": {
+					"secret": {
+						"type": "string",
+						"description": "The secret, base32, for typing into an app"
+					},
+					"uri": {
+						"type": "string",
+						"description": "The `otpauth://` URI, for a QR code"
+					}
+				},
+				"required": [
+					"secret",
+					"uri"
+				]
+			},
+			"TotpConfirm": {
+				"type": "object",
+				"properties": {
+					"code": {
+						"type": "string",
+						"maxLength": 16,
+						"description": "A code the app shows now"
+					}
+				},
+				"required": [
+					"code"
+				]
+			},
+			"RecoveryCodes": {
+				"type": "object",
+				"properties": {
+					"codes": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Shown this once"
+					}
+				},
+				"required": [
+					"codes"
+				]
+			},
+			"OAuthProviders": {
+				"type": "object",
+				"properties": {
+					"providers": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"enum": [
+								"github",
+								"google"
+							]
+						},
+						"description": "The providers set up"
+					}
+				},
+				"required": [
+					"providers"
+				]
+			},
+			"Identities": {
+				"type": "object",
+				"properties": {
+					"identities": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Identity"
+						}
+					}
+				},
+				"required": [
+					"identities"
+				]
+			},
+			"Identity": {
+				"type": "object",
+				"properties": {
+					"provider": {
+						"type": "string",
+						"enum": [
+							"github",
+							"google"
+						]
+					},
+					"email": {
+						"type": "string",
+						"nullable": true,
+						"description": "The verified email of the account"
+					},
+					"created_at": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"provider",
+					"email",
+					"created_at"
+				]
+			},
+			"HealthResponse": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "string",
+						"enum": [
+							"healthy",
+							"degraded",
+							"unhealthy"
+						],
+						"description": "Service health status"
+					},
+					"version": {
+						"type": "string"
+					},
+					"uptime": {
+						"type": "number"
+					},
+					"services": {
+						"type": "object",
+						"additionalProperties": {
+							"type": "object",
+							"properties": {
+								"status": {
+									"type": "string",
+									"enum": [
+										"up",
+										"down",
+										"unknown"
+									],
+									"description": "Connection status"
+								},
+								"latency": {
+									"type": "number"
+								}
+							},
+							"required": [
+								"status"
+							]
+						}
+					}
+				},
+				"required": [
+					"status",
+					"version",
+					"uptime"
+				]
+			},
+			"UserList": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/User"
+						}
+					},
+					"total": {
+						"type": "number",
+						"description": "Total number of items"
+					}
+				},
+				"required": [
+					"data",
+					"total"
+				]
+			},
+			"UpdateUserRequest": {
+				"type": "object",
+				"properties": {
+					"is_active": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"is_active"
+				]
+			}
+		},
+		"parameters": {}
+	},
+	"paths": {
+		"/auth/login": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Login with email and password",
+				"description": "Authenticates credentials, starts a one-step session and sets its cookie. A session the browser still holds is replaced. `/session/verify` takes the session past its second step.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/LoginRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Login successful",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Session"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Invalid credentials",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Account inactive",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Too many wrong passwords for this email; try again in a minute",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/login/options": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Start a passkey sign-in",
+				"responses": {
+					"200": {
+						"description": "Authentication options",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PasskeyOptions"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/login/passkey": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Login with a passkey",
+				"description": "Verifies the passkey against the challenge from `/login/options`, then starts a session like `/login`. A passkey is a second step in itself, so the session starts past it.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PasskeyCredential"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Login successful",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Session"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Passkey not recognized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Account inactive",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/logout": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Logout",
+				"description": "Deletes the current session and clears its cookie.",
+				"responses": {
+					"200": {
+						"description": "Logged out",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Message"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/session": {
+			"get": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Get current session",
+				"description": "Returns the current session and its user, or 401.",
+				"responses": {
+					"200": {
+						"description": "Active session",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Session"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/activity": {
+			"get": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Get recent activity",
+				"description": "Returns the latest activity on the signed-in user's account, newest first: sign-ins, changes to how they sign in, and what admins did.",
+				"responses": {
+					"200": {
+						"description": "Recent activity",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ActivityList"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/sessions": {
+			"delete": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Sign out other devices",
+				"description": "Deletes every session of the current user except this one.",
+				"responses": {
+					"204": {
+						"description": "Other sessions deleted"
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/session/verify/options": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Start a passkey second step",
+				"description": "Returns passkey options that name the passkeys of the signed-in user.",
+				"responses": {
+					"200": {
+						"description": "Authentication options",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PasskeyOptions"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/session/verify": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Pass the second step",
+				"description": "Checks a passkey, authenticator code or recovery code of the signed-in user and marks the session as past its second step. The fifth wrong try ends the session. Past five wrong tries across all their sessions, a user gets one try every fifteen minutes.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SecondFactorRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Session verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Session"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Code or passkey not accepted, or no second factor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"410": {
+						"description": "Too many tries; the session ended",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Too many wrong tries for this user; try again in 15 minutes",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/register/options": {
+			"get": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Get what the sign-up page needs",
+				"responses": {
+					"200": {
+						"description": "Sign-up options",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RegisterOptions"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/register": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Register a new account",
+				"description": "Creates an account and emails a link that verifies its address. When the email already has an account, emails its owner instead. Answers the same either way, so no one can learn who has an account. A network gets three sign-ups a day, counted either way.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RegisterRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"202": {
+						"description": "Check your email",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Message"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error, a failed Turnstile check, or a password known from a data breach",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Too many sign-ups from this network today",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/verify-email": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Email a verification link",
+				"description": "Emails the signed-in user a link that verifies their address, for 24 hours. A new link replaces the last one, at most once a minute.",
+				"responses": {
+					"204": {
+						"description": "Link sent"
+					},
+					"400": {
+						"description": "Unknown app origin",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Email already verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "A link was sent less than a minute ago",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/verify-email/confirm": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Verify an email",
+				"description": "Uses the token of a verification link and marks the email verified.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/VerifyEmailRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"204": {
+						"description": "Email verified"
+					},
+					"400": {
+						"description": "Link expired or already used",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/reset-password": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Email a password reset link",
+				"description": "Emails a link that sets a new password, for one hour, when an active account has the email. Answers the same either way.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ResetPasswordRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"202": {
+						"description": "Link sent if the account exists",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Message"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Unknown app origin",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/reset-password/confirm": {
+			"post": {
+				"tags": [
+					"Auth"
+				],
+				"summary": "Set a new password",
+				"description": "Uses the token of a reset link to set a new password, marks the email verified, and ends every session of the user.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/NewPasswordRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"204": {
+						"description": "Password set"
+					},
+					"400": {
+						"description": "Link expired or already used, or a password known from a data breach",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/passkeys": {
+			"get": {
+				"tags": [
+					"Passkeys"
+				],
+				"summary": "List your passkeys",
+				"responses": {
+					"200": {
+						"description": "Your passkeys",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PasskeyList"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Passkeys"
+				],
+				"summary": "Add a passkey",
+				"description": "Verifies the new passkey against the challenge from `/options`.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PasskeyCredential"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Passkey added",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Passkey"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Passkey could not be verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/passkeys/options": {
+			"post": {
+				"tags": [
+					"Passkeys"
+				],
+				"summary": "Start adding a passkey",
+				"description": "Needs a sign-in from the last ten minutes.",
+				"responses": {
+					"200": {
+						"description": "Registration options",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PasskeyOptions"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/passkeys/{id}": {
+			"delete": {
+				"tags": [
+					"Passkeys"
+				],
+				"summary": "Remove a passkey",
+				"description": "Needs a sign-in from the last ten minutes. An admin keeps at least one.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"required": true,
+						"name": "id",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Passkey removed"
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Passkey not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Last passkey of an admin",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/mfa": {
+			"get": {
+				"tags": [
+					"MFA"
+				],
+				"summary": "Show your second factors",
+				"responses": {
+					"200": {
+						"description": "Your second factors",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Factors"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/mfa/totp/setup": {
+			"post": {
+				"tags": [
+					"MFA"
+				],
+				"summary": "Start adding an authenticator app",
+				"description": "Needs a sign-in from the last ten minutes. The app stays off until `POST /totp` confirms a code; a new setup replaces an unconfirmed one.",
+				"responses": {
+					"200": {
+						"description": "Secret for the app",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TotpSetup"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "An authenticator app is already on",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Authenticator apps are not set up on this server",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/mfa/totp": {
+			"post": {
+				"tags": [
+					"MFA"
+				],
+				"summary": "Turn on the authenticator app",
+				"description": "Needs a sign-in from the last ten minutes, and a code from the app.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/TotpConfirm"
+							}
+						}
+					}
+				},
+				"responses": {
+					"204": {
+						"description": "Authenticator app on"
+					},
+					"400": {
+						"description": "Code not correct",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No setup to confirm",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"MFA"
+				],
+				"summary": "Remove the authenticator app",
+				"description": "Needs a sign-in from the last ten minutes. An admin keeps a passkey or an authenticator app.",
+				"responses": {
+					"204": {
+						"description": "Authenticator app removed"
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No authenticator app",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Last second factor of an admin",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/mfa/recovery-codes": {
+			"post": {
+				"tags": [
+					"MFA"
+				],
+				"summary": "Make new recovery codes",
+				"description": "Needs a sign-in from the last ten minutes and a second factor. Replaces any earlier codes.",
+				"responses": {
+					"200": {
+						"description": "New recovery codes",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RecoveryCodes"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "No second factor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/oauth/providers": {
+			"get": {
+				"tags": [
+					"OAuth"
+				],
+				"summary": "List the sign-in providers",
+				"responses": {
+					"200": {
+						"description": "The providers set up on this server",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OAuthProviders"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/oauth/identities": {
+			"get": {
+				"tags": [
+					"OAuth"
+				],
+				"summary": "List your connected accounts",
+				"responses": {
+					"200": {
+						"description": "Your connected accounts",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Identities"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/oauth/identities/{provider}": {
+			"delete": {
+				"tags": [
+					"OAuth"
+				],
+				"summary": "Disconnect an account",
+				"description": "Needs a sign-in from the last ten minutes. Refuses when the user then has no password, no other connected account, and no passkey.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"enum": [
+								"github",
+								"google"
+							]
+						},
+						"required": true,
+						"name": "provider",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Account disconnected"
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Not connected",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Last way to sign in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/health": {
+			"get": {
+				"tags": [
+					"System"
+				],
+				"summary": "Health check",
+				"description": "Returns the health status of the gateway and its database",
+				"responses": {
+					"200": {
+						"description": "Service is healthy or degraded",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HealthResponse"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Service is unhealthy",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HealthResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/users": {
+			"get": {
+				"tags": [
+					"Users"
+				],
+				"summary": "List all users",
+				"responses": {
+					"200": {
+						"description": "List of users",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserList"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/users/{id}": {
+			"get": {
+				"tags": [
+					"Users"
+				],
+				"summary": "Get a user by ID",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"format": "uuid",
+							"description": "Unique identifier (UUID)",
+							"example": "550e8400-e29b-41d4-a716-446655440000"
+						},
+						"required": true,
+						"description": "Unique identifier (UUID)",
+						"name": "id",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "User found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/User"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "User not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"patch": {
+				"tags": [
+					"Users"
+				],
+				"summary": "Deactivate or reactivate a user",
+				"description": "Deactivating signs the user out everywhere. Admin accounts cannot be changed.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"format": "uuid",
+							"description": "Unique identifier (UUID)",
+							"example": "550e8400-e29b-41d4-a716-446655440000"
+						},
+						"required": true,
+						"description": "Unique identifier (UUID)",
+						"name": "id",
+						"in": "path"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateUserRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "User updated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/User"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Admin accounts cannot be changed",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "User not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/users/{id}/activity": {
+			"get": {
+				"tags": [
+					"Users"
+				],
+				"summary": "Get a user's recent activity",
+				"description": "Newest first: sign-ins, changes to how they sign in, and what admins did.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"format": "uuid",
+							"description": "Unique identifier (UUID)",
+							"example": "550e8400-e29b-41d4-a716-446655440000"
+						},
+						"required": true,
+						"description": "Unique identifier (UUID)",
+						"name": "id",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Recent activity",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ActivityList"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
