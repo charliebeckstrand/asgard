@@ -11,6 +11,7 @@ const {
 	mockEnabledProviders,
 	mockGetIdentities,
 	mockUnlinkIdentity,
+	mockSendSecurityNotice,
 } = vi.hoisted(() => ({
 	mockFindSession: vi.fn(),
 	mockStartOAuth: vi.fn(),
@@ -20,6 +21,7 @@ const {
 	mockEnabledProviders: vi.fn(),
 	mockGetIdentities: vi.fn(),
 	mockUnlinkIdentity: vi.fn(),
+	mockSendSecurityNotice: vi.fn(),
 }))
 
 vi.mock('../../auth/index.js', async () => {
@@ -50,6 +52,7 @@ vi.mock('../../auth/index.js', async () => {
 		enabledProviders: (...args: unknown[]) => mockEnabledProviders(...args),
 		getIdentities: (...args: unknown[]) => mockGetIdentities(...args),
 		unlinkIdentity: (...args: unknown[]) => mockUnlinkIdentity(...args),
+		sendSecurityNotice: async (...args: unknown[]) => mockSendSecurityNotice(...args),
 	}
 })
 
@@ -306,6 +309,12 @@ describe('OAuth routes', () => {
 			expect(res.headers.get('Location')).toBe('/account')
 
 			expect(mockCreateSession).not.toHaveBeenCalled()
+
+			expect(mockSendSecurityNotice).toHaveBeenCalledWith(
+				USER_ID,
+				'A Google account was connected to your account',
+				'http://localhost:3000',
+			)
 		})
 
 		it.each([

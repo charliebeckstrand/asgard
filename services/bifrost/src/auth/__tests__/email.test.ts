@@ -7,6 +7,7 @@ import {
 	requestPasswordReset,
 	resetPassword,
 	sendAccountExistsEmail,
+	sendSecurityNotice,
 	sendVerificationEmail,
 	VERIFY_EMAIL_TTL_SECONDS,
 	verifyEmail,
@@ -29,7 +30,10 @@ const ORIGIN = 'https://places.example.com'
 
 let emailTokenRepository: { [K in keyof EmailTokenRepository]: Mock<EmailTokenRepository[K]> }
 
-let userRepository: { getCredentialsByEmail: Mock<UserRepository['getCredentialsByEmail']> }
+let userRepository: {
+	getCredentialsByEmail: Mock<UserRepository['getCredentialsByEmail']>
+	getUserById: Mock<UserRepository['getUserById']>
+}
 
 let sendEmail: Mock<(email: Email) => Promise<void>>
 
@@ -45,6 +49,15 @@ beforeEach(() => {
 		getCredentialsByEmail: vi
 			.fn()
 			.mockResolvedValue({ id: USER_ID, hashed_password: 'h', is_active: true }),
+		getUserById: vi.fn().mockResolvedValue({
+			id: USER_ID,
+			email: 'alice@example.com',
+			is_active: true,
+			is_verified: true,
+			roles: ['user'],
+			created_at: '2026-01-01T00:00:00.000Z',
+			updated_at: '2026-01-01T00:00:00.000Z',
+		}),
 	}
 
 	sendEmail = vi.fn().mockResolvedValue(undefined)
@@ -202,6 +215,28 @@ describe('sendAccountExistsEmail', () => {
 		emailTokenRepository.createToken.mockResolvedValue(created)
 
 		await sendAccountExistsEmail('alice@example.com', ORIGIN)
+
+		expect(sendEmail).not.toHaveBeenCalled()
+	})
+})
+
+describe('sendSecurityNotice', () => {
+	it('tells the user what changed and where to reset the password', async () => {
+		await sendSecurityNotice(USER_ID, 'A passkey was added to your account', ORIGIN)
+
+		const [email] = sendEmail.mock.calls[0] as [Email]
+
+		expect(email.to).toBe('alice@example.com')
+
+		expect(email.subject).toBe('A passkey was added to your account')
+
+		expect(email.text).toContain(`${ORIGIN}/forgot-password`)
+	})
+
+	it('sends nothing for an unknown user', async () => {
+		userRepository.getUserById.mockResolvedValueOnce(null)
+
+		await sendSecurityNotice(USER_ID, 'A passkey was added to your account')
 
 		expect(sendEmail).not.toHaveBeenCalled()
 	})

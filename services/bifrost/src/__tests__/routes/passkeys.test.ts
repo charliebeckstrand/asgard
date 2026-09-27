@@ -11,6 +11,7 @@ const {
 	mockRequireRecentSignIn,
 	mockGetFactors,
 	mockPassSecondStep,
+	mockSendSecurityNotice,
 } = vi.hoisted(() => ({
 	mockFindSession: vi.fn(),
 	mockGetPasskeys: vi.fn(),
@@ -20,6 +21,7 @@ const {
 	mockRequireRecentSignIn: vi.fn(),
 	mockGetFactors: vi.fn(),
 	mockPassSecondStep: vi.fn(),
+	mockSendSecurityNotice: vi.fn(),
 }))
 
 import { AuthError } from '../../auth/errors.js'
@@ -44,6 +46,7 @@ vi.mock('../../auth/index.js', async () => {
 		secondFactorMethods: mfa.secondFactorMethods,
 		getFactors: (...args: unknown[]) => mockGetFactors(...args),
 		passSecondStep: (...args: unknown[]) => mockPassSecondStep(...args),
+		sendSecurityNotice: async (...args: unknown[]) => mockSendSecurityNotice(...args),
 	}
 })
 
@@ -260,6 +263,12 @@ describe('Passkeys routes', () => {
 		expect(mockRegisterPasskey).toHaveBeenCalledWith(
 			USER_ID,
 			expect.objectContaining({ id: 'credential-1' }),
+		)
+
+		expect(mockSendSecurityNotice).toHaveBeenCalledWith(
+			USER_ID,
+			'A passkey was added to your account',
+			undefined,
 		)
 	})
 

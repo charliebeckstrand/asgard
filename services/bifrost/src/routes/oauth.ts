@@ -11,6 +11,7 @@ import {
 	enabledProviders,
 	getIdentities,
 	OAuthFailure,
+	type OAuthProvider,
 	requireRecentSignIn,
 	safeReturnTo,
 	startOAuth,
@@ -28,6 +29,7 @@ import {
 	type SessionEnv,
 	setSessionCookie,
 } from '../middleware/session.js'
+import { notifyOwner } from './security-notice.js'
 
 // GitHub and Google sign-in. The browser goes to `/start`, then to the provider,
 // then back to `/callback`. Both answer with redirects, not JSON, since the
@@ -37,6 +39,8 @@ import {
 // `__Host-oauth` holds the `state` of the sign-in this browser started, so a
 // callback URL from someone else's sign-in can't sign this browser in.
 const STATE_COOKIE_NAME = 'oauth'
+
+const PROVIDER_NAMES: Record<OAuthProvider, string> = { github: 'GitHub', google: 'Google' }
 
 const ProviderSchema = z.enum(OAUTH_PROVIDERS).openapi({ param: { name: 'provider', in: 'path' } })
 
@@ -142,7 +146,15 @@ export const oauthRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validation
 
 		requireRecentSignIn(session)
 
-		await unlinkIdentity(session.user.id, c.req.valid('param').provider)
+		const { provider } = c.req.valid('param')
+
+		await unlinkIdentity(session.user.id, provider)
+
+		notifyOwner(
+			c,
+			session.user.id,
+			`A ${PROVIDER_NAMES[provider]} account was disconnected from your account`,
+		)
 
 		return c.body(null, 204)
 	})
@@ -222,7 +234,15 @@ oauthRoutes.get('/:provider/callback', async (c) => {
 	try {
 		const outcome = await completeOAuth(provider.data, state, code, getIpAddress(c))
 
-		if (outcome.kind === 'linked') return c.redirect(outcome.returnTo, 302)
+		if (outcome.kind === 'linked') {
+			notifyOwner(
+				c,
+				outcome.userId,
+				`A ${PROVIDER_NAMES[provider.data]} account was connected to your account`,
+			)
+
+			return c.redirect(outcome.returnTo, 302)
+		}
 
 		return c.redirect(await finishSignIn(c, outcome.userId, outcome.returnTo), 302)
 	} catch (err) {

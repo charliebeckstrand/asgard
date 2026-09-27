@@ -13,6 +13,7 @@ export {
 	requestPasswordReset,
 	resetPassword,
 	sendAccountExistsEmail,
+	sendSecurityNotice,
 	sendVerificationEmail,
 	VERIFY_EMAIL_TTL_SECONDS,
 	verifyEmail,
