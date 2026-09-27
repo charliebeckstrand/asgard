@@ -40,12 +40,12 @@ configureVidar({
 })
 
 configure({
-	userRepository: createUserRepository(),
-	sessionRepository: createSessionRepository(),
-	passkeyRepository: createPasskeyRepository(),
-	mfaRepository: createMfaRepository(),
-	oauthRepository: createOAuthRepository(),
-	emailTokenRepository: createEmailTokenRepository(),
+	userRepository: createUserRepository(db),
+	sessionRepository: createSessionRepository(db),
+	passkeyRepository: createPasskeyRepository(db),
+	mfaRepository: createMfaRepository(db),
+	oauthRepository: createOAuthRepository(db),
+	emailTokenRepository: createEmailTokenRepository(db),
 	sendEmail: createMailer({
 		apiKey: env.RESEND_API_KEY,
 		from: env.EMAIL_FROM,

@@ -1,9 +1,8 @@
-import { sql } from 'saga'
+import { type Db, sql } from 'saga'
 import type { User } from 'skuld'
 import type { CredentialsRow, UserRepository } from '../auth/types.js'
-import { db } from './db.js'
 
-export function createUserRepository(): UserRepository {
+export function createUserRepository(db: Db): UserRepository {
 	return {
 		async insertUser(email, hashedPassword) {
 			return db.one<User>(

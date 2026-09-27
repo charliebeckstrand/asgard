@@ -1,51 +1,32 @@
 import { randomUUID } from 'node:crypto'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { Pool } from 'pg'
-import { createDb, type Db, migrate } from 'saga'
-import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
-import { stubServiceEnv } from 'vali/env'
+import type { Pool } from 'pg'
+import { isDockerAvailable } from 'vali/containers'
 import type { UserRepository } from '../../auth/types.js'
+import { createUserRepository } from '../user-repository.js'
+import { startTestDb, type TestDb } from './test-db.js'
 
-stubServiceEnv()
-
-const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../migrations')
-
-let testDb: TestDatabase
+let testDb: TestDb
 let pool: Pool
-let db: Db
 let repo: UserRepository
 
 beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
-	testDb = await startPostgres()
+	testDb = await startTestDb()
 
-	pool = new Pool({ connectionString: testDb.connectionUri })
+	pool = testDb.pool
 
-	await migrate({ url: testDb.connectionUri }, migrationsDir)
-
-	db = createDb(() => ({ url: testDb.connectionUri }))
-
-	vi.doMock('../db.js', () => ({ db }))
-
-	const mod = await import('../user-repository.js')
-
-	repo = mod.createUserRepository()
+	repo = createUserRepository(testDb.db)
 }, 60_000)
 
 afterAll(async () => {
-	await db?.close()
-
-	await pool?.end()
-
 	await testDb?.stop()
 })
 
 beforeEach(async () => {
 	if (!isDockerAvailable()) return
 
-	await pool.query('TRUNCATE users, failed_logins CASCADE')
+	await testDb.reset()
 })
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip

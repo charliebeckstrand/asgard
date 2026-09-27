@@ -1,52 +1,36 @@
 import { randomUUID } from 'node:crypto'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { Pool } from 'pg'
-import { createDb, type Db, migrate } from 'saga'
-import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
-import { stubServiceEnv } from 'vali/env'
+import type { Pool } from 'pg'
+import { isDockerAvailable } from 'vali/containers'
 import type { EmailTokenRepository, UserRepository } from '../../auth/types.js'
+import { createEmailTokenRepository } from '../email-token-repository.js'
+import { createUserRepository } from '../user-repository.js'
+import { startTestDb, type TestDb } from './test-db.js'
 
-stubServiceEnv()
-
-const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../migrations')
-
-let testDb: TestDatabase
+let testDb: TestDb
 let pool: Pool
-let db: Db
 let users: UserRepository
 let tokens: EmailTokenRepository
 
 beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
-	testDb = await startPostgres()
+	testDb = await startTestDb()
 
-	pool = new Pool({ connectionString: testDb.connectionUri })
+	pool = testDb.pool
 
-	await migrate({ url: testDb.connectionUri }, migrationsDir)
+	users = createUserRepository(testDb.db)
 
-	db = createDb(() => ({ url: testDb.connectionUri }))
-
-	vi.doMock('../db.js', () => ({ db }))
-
-	users = (await import('../user-repository.js')).createUserRepository()
-
-	tokens = (await import('../email-token-repository.js')).createEmailTokenRepository()
+	tokens = createEmailTokenRepository(testDb.db)
 }, 60_000)
 
 afterAll(async () => {
-	await db?.close()
-
-	await pool?.end()
-
 	await testDb?.stop()
 })
 
 beforeEach(async () => {
 	if (!isDockerAvailable()) return
 
-	await pool.query('TRUNCATE users, sent_emails CASCADE')
+	await testDb.reset()
 })
 
 const inAnHour = () => new Date(Date.now() + 60 * 60 * 1000)

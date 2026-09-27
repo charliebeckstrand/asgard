@@ -1,55 +1,37 @@
 import { randomUUID } from 'node:crypto'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { Pool } from 'pg'
-import { createDb, type Db, migrate } from 'saga'
-import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
-import { stubServiceEnv } from 'vali/env'
+import type { Pool } from 'pg'
+import { isDockerAvailable } from 'vali/containers'
 import type { PasskeyRepository, UserRepository } from '../../auth/types.js'
+import { demote, promote } from '../admins.js'
+import { createPasskeyRepository } from '../passkey-repository.js'
+import { createUserRepository } from '../user-repository.js'
+import { startTestDb, type TestDb } from './test-db.js'
 
-stubServiceEnv()
-
-const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../migrations')
-
-let testDb: TestDatabase
+let testDb: TestDb
 let pool: Pool
-let db: Db
 let users: UserRepository
 let passkeys: PasskeyRepository
-let admins: typeof import('../admins.js')
 
 beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
-	testDb = await startPostgres()
+	testDb = await startTestDb()
 
-	pool = new Pool({ connectionString: testDb.connectionUri })
+	pool = testDb.pool
 
-	await migrate({ url: testDb.connectionUri }, migrationsDir)
+	users = createUserRepository(testDb.db)
 
-	db = createDb(() => ({ url: testDb.connectionUri }))
-
-	vi.doMock('../db.js', () => ({ db }))
-
-	users = (await import('../user-repository.js')).createUserRepository()
-
-	passkeys = (await import('../passkey-repository.js')).createPasskeyRepository()
-
-	admins = await import('../admins.js')
+	passkeys = createPasskeyRepository(testDb.db)
 }, 60_000)
 
 afterAll(async () => {
-	await db?.close()
-
-	await pool?.end()
-
 	await testDb?.stop()
 })
 
 beforeEach(async () => {
 	if (!isDockerAvailable()) return
 
-	await pool.query('TRUNCATE users, challenges CASCADE')
+	await testDb.reset()
 })
 
 const inAMinute = () => new Date(Date.now() + 60_000)
@@ -251,7 +233,7 @@ describeWithDocker('admins (integration)', () => {
 			[userId],
 		)
 
-		expect(await admins.promote(' Alice@X.dev ')).toBe('promoted')
+		expect(await promote(testDb.db, ' Alice@X.dev ')).toBe('promoted')
 
 		expect(await roles(userId)).toEqual(['user', 'admin'])
 
@@ -267,9 +249,9 @@ describeWithDocker('admins (integration)', () => {
 
 		await addPasskey(userId)
 
-		await admins.promote('dan@x.dev')
+		await promote(testDb.db, 'dan@x.dev')
 
-		await admins.promote('dan@x.dev')
+		await promote(testDb.db, 'dan@x.dev')
 
 		expect(await roles(userId)).toEqual(['user', 'admin'])
 	})
@@ -279,7 +261,7 @@ describeWithDocker('admins (integration)', () => {
 
 		await verify(userId)
 
-		expect(await admins.promote('bob@x.dev')).toBe('no_second_factor')
+		expect(await promote(testDb.db, 'bob@x.dev')).toBe('no_second_factor')
 
 		expect(await roles(userId)).toEqual(['user'])
 	})
@@ -289,15 +271,15 @@ describeWithDocker('admins (integration)', () => {
 
 		await addPasskey(userId)
 
-		expect(await admins.promote('erin@x.dev')).toBe('unverified')
+		expect(await promote(testDb.db, 'erin@x.dev')).toBe('unverified')
 
 		expect(await roles(userId)).toEqual(['user'])
 	})
 
 	it('reports an unknown email', async () => {
-		expect(await admins.promote('nobody@x.dev')).toBe('not_found')
+		expect(await promote(testDb.db, 'nobody@x.dev')).toBe('not_found')
 
-		expect(await admins.demote('nobody@x.dev')).toBe('not_found')
+		expect(await demote(testDb.db, 'nobody@x.dev')).toBe('not_found')
 	})
 
 	it('demotes an admin', async () => {
@@ -305,7 +287,7 @@ describeWithDocker('admins (integration)', () => {
 
 		await makeAdmin(userId)
 
-		expect(await admins.demote('carol@x.dev')).toBe('demoted')
+		expect(await demote(testDb.db, 'carol@x.dev')).toBe('demoted')
 
 		expect(await roles(userId)).toEqual(['user'])
 	})

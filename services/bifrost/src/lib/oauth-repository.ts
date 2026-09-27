@@ -1,8 +1,7 @@
-import { sql } from 'saga'
+import { type Db, sql } from 'saga'
 import type { LinkedIdentity, OAuthRepository, StoredOAuthState } from '../auth/types.js'
-import { db } from './db.js'
 
-export function createOAuthRepository(): OAuthRepository {
+export function createOAuthRepository(db: Db): OAuthRepository {
 	return {
 		async createState(id, state, expiresAt) {
 			await db.exec(
