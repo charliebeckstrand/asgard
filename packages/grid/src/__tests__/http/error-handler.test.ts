@@ -82,6 +82,33 @@ describe('errorHandler', () => {
 		})
 	})
 
+	it('logs an unexpected error through the request logger when there is one', async () => {
+		const logger = { error: vi.fn() }
+
+		const logged = new Hono()
+
+		logged.use(async (c, next) => {
+			c.set('logger' as never, logger as never)
+
+			await next()
+		})
+
+		logged.get('/', () => {
+			throw new Error('Something broke')
+		})
+
+		logged.onError(errorHandler)
+
+		const res = await logged.request('/')
+
+		expect(res.status).toBe(500)
+
+		expect(logger.error).toHaveBeenCalledWith(
+			{ err: expect.objectContaining({ message: 'Something broke' }) },
+			'unhandled error',
+		)
+	})
+
 	it('returns 500 with generic message for unexpected errors', async () => {
 		const res = await app.request('/unexpected-error')
 

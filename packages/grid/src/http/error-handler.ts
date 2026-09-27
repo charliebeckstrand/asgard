@@ -1,6 +1,7 @@
 import { STATUS_CODES } from 'node:http'
 import type { Context, Env } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
+import type { RequestLoggerEnv } from './request-logger.js'
 
 export function errorBody(status: number, message: string, error?: string, code?: string) {
 	return {
@@ -22,7 +23,11 @@ export function errorHandler<E extends Env>(err: Error, c: Context<E>) {
 		return c.json(errorBody(status, err.message, undefined, code), status)
 	}
 
-	console.error(`Unhandled error: ${err.message}`, err.stack)
+	// The request logger, when the app has one, ties the error to its request ID.
+	const logger = (c.var as Partial<RequestLoggerEnv['Variables']>).logger
+
+	if (logger) logger.error({ err }, 'unhandled error')
+	else console.error(`Unhandled error: ${err.message}`, err.stack)
 
 	return c.json(errorBody(500, 'An unexpected error occurred'), 500)
 }
