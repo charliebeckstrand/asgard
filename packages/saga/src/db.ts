@@ -37,6 +37,8 @@ export interface DbConfig extends ConnectionOptions {
 	max?: number
 	idleTimeoutMillis?: number
 	connectionTimeoutMillis?: number
+	/** Cancels a statement that runs longer, so one stuck query can't hold a connection. */
+	statementTimeoutMillis?: number
 	/** Receives errors from idle connections. Defaults to the console. */
 	logger?: Logger
 }
@@ -89,6 +91,7 @@ function createPool({
 	max,
 	idleTimeoutMillis,
 	connectionTimeoutMillis,
+	statementTimeoutMillis,
 	logger,
 	...connection
 }: DbConfig): Pool {
@@ -97,6 +100,7 @@ function createPool({
 		max: max ?? 5,
 		idleTimeoutMillis: idleTimeoutMillis ?? 30_000,
 		connectionTimeoutMillis: connectionTimeoutMillis ?? 5_000,
+		statement_timeout: statementTimeoutMillis ?? 30_000,
 	})
 
 	// An idle connection can drop (network blip, database restart). Without a
