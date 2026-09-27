@@ -283,7 +283,10 @@ describe('OAuth routes', () => {
 
 			expect(mockCompleteOAuth).toHaveBeenCalledWith('google', 'the-state', 'the-code', 'unknown')
 
-			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, { replacing: undefined })
+			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, {
+				replacing: undefined,
+				twoStep: false,
+			})
 
 			expect(cookies(res).some((c) => c.startsWith('__Host-session=session-token'))).toBe(true)
 
@@ -303,7 +306,10 @@ describe('OAuth routes', () => {
 
 			expect(res.headers.get('Location')).toBe('/users')
 
-			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, { replacing: undefined })
+			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, {
+				replacing: undefined,
+				twoStep: false,
+			})
 		})
 
 		it('goes to the return path after connecting an account', async () => {

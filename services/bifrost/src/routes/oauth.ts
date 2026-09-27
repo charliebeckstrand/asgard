@@ -7,7 +7,6 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import {
 	AuthError,
 	completeOAuth,
-	createSession,
 	enabledProviders,
 	getIdentities,
 	OAuthFailure,
@@ -21,14 +20,9 @@ import {
 import { OAUTH_PROVIDERS, OAUTH_STATE_TTL_SECONDS } from '../auth/oauth.js'
 import { appOrigin } from '../lib/app-origin.js'
 import { logger } from '../lib/log.js'
-import {
-	authorizeSignInChange,
-	getSessionToken,
-	requireSession,
-	type SessionEnv,
-	setSessionCookie,
-} from '../middleware/session.js'
-import { record, recordChange } from './activity.js'
+import { authorizeSignInChange, requireSession, type SessionEnv } from '../middleware/session.js'
+import { recordChange } from './activity.js'
+import { signIn } from './auth.js'
 
 // GitHub and Google sign-in. The browser goes to `/start`, then to the provider,
 // then back to `/callback`. Both answer with redirects, not JSON, since the
@@ -120,22 +114,6 @@ function sameState(cookie: string | undefined, query: string | undefined): boole
 	const b = Buffer.from(query)
 
 	return a.length === b.length && timingSafeEqual(a, b)
-}
-
-/** Signs the user in with a one-step session, like a password would. Returns the path to go to. */
-async function finishSignIn(
-	c: Context,
-	userId: string,
-	provider: OAuthProvider,
-	returnTo: string,
-): Promise<string> {
-	const { token } = await createSession(userId, { replacing: getSessionToken(c) })
-
-	setSessionCookie(c, token)
-
-	await record(c, { userId, actorId: userId, action: 'signed_in', detail: provider })
-
-	return returnTo
 }
 
 export const oauthRoutes = createRouter<SessionEnv>()
@@ -250,7 +228,9 @@ oauthRoutes.get('/:provider/callback', async (c) => {
 			return c.redirect(outcome.returnTo, 302)
 		}
 
-		return c.redirect(await finishSignIn(c, outcome.userId, provider.data, outcome.returnTo), 302)
+		await signIn(c, outcome.userId, provider.data)
+
+		return c.redirect(outcome.returnTo, 302)
 	} catch (err) {
 		if (err instanceof OAuthFailure) {
 			return c.redirect(withError(err.linking ? '/account' : '/login', err.code), 302)

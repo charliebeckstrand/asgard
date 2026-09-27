@@ -23,6 +23,7 @@ import {
 	deleteSession,
 	deleteUserSessions,
 	getActivity,
+	type OAuthProvider,
 	registerUser,
 	requestPasswordReset,
 	resetPassword,
@@ -313,9 +314,14 @@ const resetPasswordRoute = createRoute({
 
 /**
  * Starts a session for `userId`, replacing the one the browser still holds, and
- * sets its cookie. A passkey sign-in passes the second step.
+ * sets its cookie. Every way to sign in ends here. A passkey sign-in passes the
+ * second step.
  */
-async function signIn(c: Context, userId: string, method: 'password' | 'passkey') {
+export async function signIn(
+	c: Context,
+	userId: string,
+	method: 'password' | 'passkey' | OAuthProvider,
+) {
 	const { token, session } = await createSession(userId, {
 		replacing: getSessionToken(c),
 		twoStep: method === 'passkey',
