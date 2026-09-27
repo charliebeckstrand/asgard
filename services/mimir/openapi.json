@@ -101,7 +101,8 @@
 					"name": {
 						"type": "string",
 						"minLength": 1,
-						"maxLength": 2000
+						"maxLength": 2000,
+						"description": "The business or place name"
 					},
 					"category": {
 						"$ref": "#/components/schemas/PlaceCategory"
@@ -109,7 +110,8 @@
 					"address": {
 						"type": "string",
 						"minLength": 1,
-						"maxLength": 2000
+						"maxLength": 2000,
+						"description": "The address on one line"
 					},
 					"city": {
 						"type": "string",
@@ -117,11 +119,13 @@
 					},
 					"state": {
 						"type": "string",
-						"maxLength": 2000
+						"maxLength": 2000,
+						"description": "The state the geocoder named, for places the map outline leaves out and for the state filter"
 					},
 					"country": {
 						"type": "string",
-						"maxLength": 2000
+						"maxLength": 2000,
+						"description": "The country the geocoder named, for the country filter"
 					},
 					"latitude": {
 						"type": "number",
@@ -151,7 +155,8 @@
 					"photo": {
 						"type": "string",
 						"maxLength": 2000,
-						"format": "uri"
+						"format": "uri",
+						"description": "A picture of the place"
 					},
 					"visitedAt": {
 						"type": "string",

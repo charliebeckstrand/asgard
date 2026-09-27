@@ -45,12 +45,17 @@ const PlaceCategorySchema = z
 
 export const PlaceDraftSchema = z
 	.object({
-		name: text('name'),
+		name: text('name').openapi({ description: 'The business or place name' }),
 		category: PlaceCategorySchema,
-		address: text('address'),
+		address: text('address').openapi({ description: 'The address on one line' }),
 		city: optionalText('city'),
-		state: optionalText('state'),
-		country: optionalText('country'),
+		state: optionalText('state').openapi({
+			description:
+				'The state the geocoder named, for places the map outline leaves out and for the state filter',
+		}),
+		country: optionalText('country').openapi({
+			description: 'The country the geocoder named, for the country filter',
+		}),
 		latitude: coordinate('latitude', 90),
 		longitude: coordinate('longitude', 180),
 		rating: z
@@ -61,7 +66,7 @@ export const PlaceDraftSchema = z
 			.openapi({ description: `1 to ${MAX_RATING}, or 0 for none` }),
 		review: optionalText('review'),
 		url: webAddress('url'),
-		photo: webAddress('photo'),
+		photo: webAddress('photo').openapi({ description: 'A picture of the place' }),
 		visitedAt: z
 			.string('`visitedAt` must be a YYYY-MM-DD day.')
 			.regex(/^\d{4}-\d{2}-\d{2}$/, '`visitedAt` must be a YYYY-MM-DD day.')
