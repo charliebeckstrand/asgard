@@ -279,6 +279,18 @@ describe('Passkeys routes', () => {
 		)
 	})
 
+	it('returns 400 for a body that is not a WebAuthn credential', async () => {
+		const res = await app.request('/auth/passkeys', {
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ id: 'credential-1' }),
+		})
+
+		expect(res.status).toBe(400)
+
+		expect(mockRegisterPasskey).not.toHaveBeenCalled()
+	})
+
 	it('removes one of your passkeys', async () => {
 		const res = await app.request('/auth/passkeys/credential-1', { method: 'DELETE', headers })
 
