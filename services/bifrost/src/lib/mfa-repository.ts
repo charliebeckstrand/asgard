@@ -149,5 +149,30 @@ export function createMfaRepository(): MfaRepository {
 
 			return deleted > 0
 		},
+
+		async countFailedStep(userId, limit, waitSeconds) {
+			// The row lock orders concurrent tries, so each sees the count of the last.
+			const counted = await db.exec(
+				sql`
+					INSERT INTO failed_steps (user_id) VALUES (${userId})
+					ON CONFLICT (user_id) DO UPDATE
+					SET count = failed_steps.count + 1, last_failed_at = now()
+					WHERE failed_steps.count < ${limit}
+					OR failed_steps.last_failed_at <= now() - make_interval(secs => ${waitSeconds})
+				`,
+			)
+
+			return counted > 0
+		},
+
+		async clearFailedSteps(userId) {
+			await db.exec(sql`DELETE FROM failed_steps WHERE user_id = ${userId}`)
+		},
+
+		async deleteStaleFailedSteps(seconds) {
+			return db.exec(
+				sql`DELETE FROM failed_steps WHERE last_failed_at <= now() - make_interval(secs => ${seconds})`,
+			)
+		},
 	}
 }

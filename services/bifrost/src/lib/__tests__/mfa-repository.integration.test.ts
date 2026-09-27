@@ -225,6 +225,82 @@ describeWithDocker('createMfaRepository (integration)', () => {
 			expect(await mfa.useRecoveryCode(bob, 'a')).toBe(false)
 		})
 	})
+
+	describe('countFailedStep', () => {
+		it('counts tries up to the limit, then makes the next one wait', async () => {
+			const userId = await insertUser()
+
+			for (let i = 0; i < 3; i++) {
+				expect(await mfa.countFailedStep(userId, 3, 60)).toBe(true)
+			}
+
+			expect(await mfa.countFailedStep(userId, 3, 60)).toBe(false)
+
+			const { rows } = await pool.query('SELECT count FROM failed_steps WHERE user_id = $1', [
+				userId,
+			])
+
+			expect(rows[0].count).toBe(3)
+		})
+
+		it('lets a try through once the wait is over', async () => {
+			const userId = await insertUser()
+
+			await mfa.countFailedStep(userId, 1, 60)
+
+			await pool.query(
+				`UPDATE failed_steps SET last_failed_at = now() - interval '61 seconds' WHERE user_id = $1`,
+				[userId],
+			)
+
+			expect(await mfa.countFailedStep(userId, 1, 60)).toBe(true)
+
+			expect(await mfa.countFailedStep(userId, 1, 60)).toBe(false)
+		})
+
+		it('counts each user apart', async () => {
+			const alice = await insertUser()
+
+			const bob = await insertUser()
+
+			await mfa.countFailedStep(alice, 1, 60)
+
+			expect(await mfa.countFailedStep(bob, 1, 60)).toBe(true)
+		})
+
+		it('starts over after clearFailedSteps', async () => {
+			const userId = await insertUser()
+
+			await mfa.countFailedStep(userId, 1, 60)
+
+			await mfa.clearFailedSteps(userId)
+
+			expect(await mfa.countFailedStep(userId, 1, 60)).toBe(true)
+		})
+	})
+
+	describe('deleteStaleFailedSteps', () => {
+		it('deletes only counts older than the given age', async () => {
+			const old = await insertUser()
+
+			const recent = await insertUser()
+
+			await mfa.countFailedStep(old, 5, 60)
+
+			await mfa.countFailedStep(recent, 5, 60)
+
+			await pool.query(
+				`UPDATE failed_steps SET last_failed_at = now() - interval '2 days' WHERE user_id = $1`,
+				[old],
+			)
+
+			expect(await mfa.deleteStaleFailedSteps(24 * 60 * 60)).toBe(1)
+
+			const { rows } = await pool.query('SELECT user_id FROM failed_steps')
+
+			expect(rows).toEqual([{ user_id: recent }])
+		})
+	})
 })
 
 describeWithDocker('admins (integration)', () => {
