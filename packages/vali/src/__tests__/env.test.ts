@@ -1,4 +1,4 @@
-import { stubServiceEnv, TEST_CORS_ORIGIN, TEST_DATABASE_URL } from '../env.js'
+import { stubServiceEnv, TEST_APP_ORIGINS, TEST_DATABASE_URL } from '../env.js'
 
 afterEach(() => {
 	vi.unstubAllEnvs()
@@ -10,13 +10,13 @@ describe('stubServiceEnv', () => {
 
 		expect(process.env.DATABASE_URL).toBe(TEST_DATABASE_URL)
 
-		expect(process.env.CORS_ORIGIN).toBe('http://localhost:3000')
+		expect(process.env.APP_ORIGINS).toBe('http://localhost:3000')
 	})
 
 	it('honours per-key overrides', () => {
-		stubServiceEnv({ CORS_ORIGIN: 'http://localhost:4444' })
+		stubServiceEnv({ APP_ORIGINS: 'http://localhost:4444' })
 
-		expect(process.env.CORS_ORIGIN).toBe('http://localhost:4444')
+		expect(process.env.APP_ORIGINS).toBe('http://localhost:4444')
 
 		expect(process.env.DATABASE_URL).toBe(TEST_DATABASE_URL)
 	})
@@ -28,7 +28,7 @@ describe('stubServiceEnv', () => {
 
 		expect(process.env.DATABASE_URL).toBe(before)
 
-		expect(process.env.CORS_ORIGIN).toBe(TEST_CORS_ORIGIN)
+		expect(process.env.APP_ORIGINS).toBe(TEST_APP_ORIGINS)
 	})
 
 	it('passes through extra keys not in the standard set', () => {

@@ -64,7 +64,7 @@ configure({
 					verify: createTurnstileCheck(env.TURNSTILE_SECRET_KEY, log),
 				}
 			: undefined,
-	passkeys: { domain: env.PASSKEY_DOMAIN, origins: env.CORS_ORIGIN },
+	passkeys: { domain: env.PASSKEY_DOMAIN, origins: env.APP_ORIGINS },
 	mfa: { key: env.MFA_ENCRYPTION_KEY, issuer: env.PASSKEY_DOMAIN },
 	oauth: {
 		github: oauthClient(env.OAUTH_GITHUB_CLIENT_ID, env.OAUTH_GITHUB_CLIENT_SECRET),
