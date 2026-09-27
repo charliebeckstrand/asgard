@@ -66,3 +66,10 @@ export async function setThreatResolved(id: string, resolved: boolean): Promise<
 		`,
 	)
 }
+
+export async function purgeOldThreats(retentionDays: number): Promise<number> {
+	return db.exec(sql`
+		DELETE FROM vdr_threats
+		WHERE created_at < now() - make_interval(days => ${retentionDays}::int)
+	`)
+}
