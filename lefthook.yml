@@ -1,4 +1,16 @@
 pre-commit:
   commands:
     lint:
-      run: pnpm biome check
+      glob: "*.{ts,tsx}"
+      run: pnpm biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+
+# Commit summaries read `type(scope): summary`, like `fix(grid): …`.
+commit-msg:
+  commands:
+    conventional:
+      run: |
+        head -1 {1} | grep -qE '^((feat|fix|refactor|chore|ci|build|style|test|docs|perf|revert)(\([a-z0-9-]+\))?!?: .+|Merge |Revert |fixup! |squash! )' || {
+          echo 'Start the summary with type(scope): …, for example fix(grid): …'
+          exit 1
+        }

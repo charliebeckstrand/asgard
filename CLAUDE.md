@@ -18,6 +18,11 @@
 - Extend before inventing. Prefer growing an existing module over creating a new one unless there is a clear, distinct boundary.
 - Dependencies flow inward. Shared packages never depend on application code.
 - Abstractions are extracted, not predicted. Duplication across multiple call sites earns a shared utility; a single use case does not.
+- Migrations run before the new code goes live, while the old code still serves, and a rollback doesn't undo them. Every migration must work with the code already running: drop or rename a column one deploy after the code stops using it.
+
+## Testing
+
+- `*.integration.test.ts` files need Docker and skip without it, as in cloud sessions. A skip is not a pass; CI runs them.
 
 ## Git
 

@@ -40,9 +40,11 @@ jobs:
             - run: find .turbo/cache -type f -mtime +7 -delete
 
     # App Platform builds this same Dockerfile at deploy, so a broken image
-    # fails here instead of after merge.
+    # fails here instead of after merge. Only on pull requests: on main the
+    # deploy builds the image itself right after.
     docker:
         name: Build ${{ matrix.service }} image
+        if: github.event_name == 'pull_request'
         runs-on: ubuntu-latest
         strategy:
             matrix:

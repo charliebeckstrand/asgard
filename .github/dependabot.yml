@@ -6,9 +6,31 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    # One PR per group instead of one per package and workspace.
+    groups:
+      dev-tools:
+        patterns:
+          - "@biomejs/*"
+          - "@types/node"
+          - "@vitest/*"
+          - knip
+          - lefthook
+          - tsup
+          - tsx
+          - turbo
+          - typescript
+          - vitest
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
       day: monday
+    groups:
+      actions:
+        patterns:
+          - "*"
