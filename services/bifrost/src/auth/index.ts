@@ -1,6 +1,11 @@
 export type { Config, OAuthClient } from './config.js'
 export { configure, getConfig } from './config.js'
-export { AuthError, authenticateUser, registerUser } from './credentials.js'
+export {
+	AuthError,
+	authenticateUser,
+	deleteStaleFailedLogins,
+	registerUser,
+} from './credentials.js'
 export {
 	deleteExpiredEmailTokens,
 	EMAIL_INTERVAL_SECONDS,

@@ -14,6 +14,15 @@ export interface UserRepository {
 	getUserById(id: string): Promise<User | null>
 	/** Returns null for admins and unknown ids. */
 	setUserActive(id: string, isActive: boolean): Promise<User | null>
+	/**
+	 * Counts a login for `email` as failed until its password proves right. Past
+	 * `limit`, one try is let through each `waitSeconds`; returns false when this
+	 * one must wait.
+	 */
+	countFailedLogin(email: string, limit: number, waitSeconds: number): Promise<boolean>
+	clearFailedLogins(email: string): Promise<void>
+	/** Deletes the counts of emails with no failed login in the last `seconds`. */
+	deleteStaleFailedLogins(seconds: number): Promise<number>
 }
 
 export type EmailPurpose = 'verify_email' | 'reset_password'

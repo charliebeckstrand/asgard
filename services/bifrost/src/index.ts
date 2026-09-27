@@ -8,6 +8,7 @@ import {
 	deleteExpiredEmailTokens,
 	deleteExpiredOAuthStates,
 	deleteExpiredSessions,
+	deleteStaleFailedLogins,
 	type OAuthClient,
 } from './auth/index.js'
 import { db } from './lib/db.js'
@@ -65,11 +66,12 @@ const sweepTimer = setInterval(() => {
 		deleteExpiredSessions(),
 		deleteExpiredChallenges(),
 		deleteExpiredOAuthStates(),
+		deleteStaleFailedLogins(),
 		deleteExpiredEmailTokens(),
 	]).catch((err) => {
 		log.error(
 			{ err },
-			'failed to delete expired sessions, challenges, OAuth states and email links',
+			'failed to delete expired sessions, challenges, OAuth states, failed logins and email links',
 		)
 	})
 }, SWEEP_INTERVAL_MS)

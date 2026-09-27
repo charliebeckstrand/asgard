@@ -19,6 +19,7 @@ const AUTH_STATUS = {
 	totp_exists: 409,
 	no_second_factor: 409,
 	last_sign_in: 409,
+	too_many_logins: 429,
 	email_recently_sent: 429,
 	mfa_unavailable: 503,
 } as const

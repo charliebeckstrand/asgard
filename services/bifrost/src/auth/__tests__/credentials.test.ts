@@ -1,7 +1,13 @@
 import { hash } from '@node-rs/argon2'
 import type { User } from 'skuld'
 import { configure } from '../config.js'
-import { AuthError, authenticateUser, registerUser } from '../credentials.js'
+import {
+	AuthError,
+	authenticateUser,
+	FAILED_LOGIN_WAIT_SECONDS,
+	MAX_FAILED_LOGINS,
+	registerUser,
+} from '../credentials.js'
 import type {
 	CredentialsRow,
 	EmailTokenRepository,
@@ -43,6 +49,9 @@ beforeEach(() => {
 		getUsers: vi.fn().mockResolvedValue([]),
 		getUserById: vi.fn().mockResolvedValue(TEST_USER),
 		setUserActive: vi.fn().mockResolvedValue(TEST_USER),
+		countFailedLogin: vi.fn().mockResolvedValue(true),
+		clearFailedLogins: vi.fn(),
+		deleteStaleFailedLogins: vi.fn(),
 	}
 
 	mockSessionRepo = {
@@ -183,6 +192,63 @@ describe('authenticateUser', () => {
 		expect(onSecurityEvent).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'login_failed', ip: '1.2.3.4' }),
 		)
+	})
+})
+
+describe('failed login limit', () => {
+	it('counts each try against the normalized email', async () => {
+		await authenticateUser('  Alice@Example.COM  ', 'wrong-password').catch(() => {})
+
+		expect(mockRepo.countFailedLogin).toHaveBeenCalledWith(
+			'alice@example.com',
+			MAX_FAILED_LOGINS,
+			FAILED_LOGIN_WAIT_SECONDS,
+		)
+	})
+
+	it('refuses a try that must wait without checking the password', async () => {
+		vi.mocked(mockRepo.countFailedLogin).mockResolvedValue(false)
+
+		await expect(authenticateUser('alice@example.com', 'correct-password')).rejects.toMatchObject({
+			code: 'too_many_logins',
+			status: 429,
+		})
+
+		expect(mockRepo.getCredentialsByEmail).not.toHaveBeenCalled()
+	})
+
+	it('limits an unknown email the same way', async () => {
+		vi.mocked(mockRepo.countFailedLogin).mockResolvedValue(false)
+
+		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue(null)
+
+		await expect(authenticateUser('nobody@example.com', 'any-password')).rejects.toMatchObject({
+			code: 'too_many_logins',
+		})
+	})
+
+	it('clears the count when the password is right', async () => {
+		await authenticateUser('alice@example.com', 'correct-password')
+
+		expect(mockRepo.clearFailedLogins).toHaveBeenCalledWith('alice@example.com')
+	})
+
+	it('clears the count for an inactive account with the right password', async () => {
+		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
+			id: TEST_USER.id,
+			hashed_password: hashedPassword,
+			is_active: false,
+		})
+
+		await authenticateUser('alice@example.com', 'correct-password').catch(() => {})
+
+		expect(mockRepo.clearFailedLogins).toHaveBeenCalledWith('alice@example.com')
+	})
+
+	it('keeps the count when the password is wrong', async () => {
+		await authenticateUser('alice@example.com', 'wrong-password').catch(() => {})
+
+		expect(mockRepo.clearFailedLogins).not.toHaveBeenCalled()
 	})
 })
 

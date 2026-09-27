@@ -94,6 +94,7 @@ const loginRoute = createRoute({
 		200: jsonResponse(SessionSchema, 'Login successful'),
 		401: errorResponse('Invalid credentials'),
 		403: errorResponse('Account inactive'),
+		429: errorResponse('Too many wrong passwords for this email; try again in a minute'),
 	},
 })
 
