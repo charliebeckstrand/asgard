@@ -25,6 +25,39 @@ export interface UserRepository {
 	deleteStaleFailedLogins(seconds: number): Promise<number>
 }
 
+export type EmailPurpose = 'verify_email' | 'reset_password'
+
+export interface EmailTokenRepository {
+	/**
+	 * Stores a link for the user, replacing their live link of the same purpose.
+	 * Returns false, and stores nothing, when that one is less than `interval`
+	 * seconds old.
+	 */
+	createToken(
+		id: string,
+		userId: string,
+		purpose: EmailPurpose,
+		expiresAt: Date,
+		interval: number,
+	): Promise<boolean>
+	/** Uses a live verification link and marks its user's email verified. */
+	verifyEmail(id: string): Promise<boolean>
+	/**
+	 * Uses a live reset link: sets the password, marks the email verified,
+	 * clears the failed logins of the email, and deletes the user's sessions and
+	 * other links.
+	 */
+	resetPassword(id: string, hashedPassword: string): Promise<boolean>
+	deleteExpiredTokens(): Promise<number>
+}
+
+/** A plain-text email. */
+export interface Email {
+	to: string
+	subject: string
+	text: string
+}
+
 export interface SessionRepository {
 	/**
 	 * Inserts the session, deletes `replacing` (the browser's previous session) and

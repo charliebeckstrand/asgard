@@ -6,17 +6,22 @@ import { countSecondFactors } from './mfa-repository.js'
 // the API, so a compromised admin can't make more admins.
 
 /**
- * Makes the user an admin. The user must already have a passkey or an
- * authenticator app, because admins sign in with two steps. Their sessions end,
- * since each may have begun with one step.
+ * Makes the user an admin. The user must have verified their email, so the
+ * account is theirs and not one someone made with their address first. They
+ * must also have a passkey or an authenticator app, because admins sign in with
+ * two steps. Their sessions end, since each may have begun with one step.
  */
-export function promote(email: string): Promise<'promoted' | 'not_found' | 'no_second_factor'> {
+export function promote(
+	email: string,
+): Promise<'promoted' | 'not_found' | 'unverified' | 'no_second_factor'> {
 	return db.tx(async (tx) => {
-		const user = await tx.first<{ id: string }>(
-			sql`SELECT id FROM users WHERE email = ${email.trim().toLowerCase()} FOR UPDATE`,
+		const user = await tx.first<{ id: string; is_verified: boolean }>(
+			sql`SELECT id, is_verified FROM users WHERE email = ${email.trim().toLowerCase()} FOR UPDATE`,
 		)
 
 		if (!user) return 'not_found'
+
+		if (!user.is_verified) return 'unverified'
 
 		if ((await countSecondFactors(tx, user.id)) === 0) return 'no_second_factor'
 

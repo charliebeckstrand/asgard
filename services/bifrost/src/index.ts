@@ -5,14 +5,17 @@ import { createBifrostApp } from './app.js'
 import {
 	configure,
 	deleteExpiredChallenges,
+	deleteExpiredEmailTokens,
 	deleteExpiredOAuthStates,
 	deleteExpiredSessions,
 	deleteStaleFailedLogins,
 	type OAuthClient,
 } from './auth/index.js'
 import { db } from './lib/db.js'
+import { createEmailTokenRepository } from './lib/email-token-repository.js'
 import { environment } from './lib/env.js'
 import { logger } from './lib/log.js'
+import { createMailer } from './lib/mailer.js'
 import { createMfaRepository } from './lib/mfa-repository.js'
 import { createOAuthRepository } from './lib/oauth-repository.js'
 import { createPasskeyRepository } from './lib/passkey-repository.js'
@@ -38,6 +41,13 @@ configure({
 	passkeyRepository: createPasskeyRepository(),
 	mfaRepository: createMfaRepository(),
 	oauthRepository: createOAuthRepository(),
+	emailTokenRepository: createEmailTokenRepository(),
+	sendEmail: createMailer({
+		apiKey: env.RESEND_API_KEY,
+		from: env.EMAIL_FROM,
+		production: env.NODE_ENV === 'production',
+		log,
+	}),
 	passkeys: { domain: env.PASSKEY_DOMAIN, origins: env.CORS_ORIGIN },
 	mfa: { key: env.MFA_ENCRYPTION_KEY, issuer: env.PASSKEY_DOMAIN },
 	oauth: {
@@ -57,10 +67,11 @@ const sweepTimer = setInterval(() => {
 		deleteExpiredChallenges(),
 		deleteExpiredOAuthStates(),
 		deleteStaleFailedLogins(),
+		deleteExpiredEmailTokens(),
 	]).catch((err) => {
 		log.error(
 			{ err },
-			'failed to delete expired sessions, challenges, OAuth states and failed logins',
+			'failed to delete expired sessions, challenges, OAuth states, failed logins and email links',
 		)
 	})
 }, SWEEP_INTERVAL_MS)

@@ -129,8 +129,8 @@ export async function startOAuth(
  *
  * @remarks
  * An account whose email already belongs to a user never signs in as that
- * user. The gateway does not verify emails, so someone who registered the
- * email first could otherwise keep a password on the account. The user must
+ * user. A user can register an email before verifying it, so someone who
+ * registered the email first could otherwise keep a password on the account. The user must
  * sign in first and connect the account from the account page.
  */
 export async function completeOAuth(

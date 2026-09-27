@@ -21,9 +21,15 @@ import {
 	deleteSession,
 	deleteUserSessions,
 	registerUser,
+	requestPasswordReset,
+	resetPassword,
 	type SecondFactorProof,
+	sendVerificationEmail,
+	verifyEmail,
 	verifySession,
 } from '../auth/index.js'
+import { appOrigin } from '../lib/app-origin.js'
+import { logger } from '../lib/log.js'
 import {
 	clearSessionCookie,
 	getSessionToken,
@@ -47,6 +53,16 @@ const RegisterRequestSchema = z
 		name: z.string().min(1).optional(),
 	})
 	.openapi('RegisterRequest')
+
+const TokenSchema = z.string().max(64).openapi({ description: 'The token from the emailed link' })
+
+const VerifyEmailRequestSchema = z.object({ token: TokenSchema }).openapi('VerifyEmailRequest')
+
+const ResetPasswordRequestSchema = z.object({ email: EmailSchema }).openapi('ResetPasswordRequest')
+
+const NewPasswordRequestSchema = z
+	.object({ token: TokenSchema, password: PasswordSchema })
+	.openapi('NewPasswordRequest')
 
 const RegisterResponseSchema = UserSchema.pick({ id: true, email: true }).openapi(
 	'RegisterResponse',
@@ -190,6 +206,69 @@ const registerRoute = createRoute({
 	},
 })
 
+const sendVerificationRoute = createRoute({
+	method: 'post',
+	path: '/verify-email',
+	tags: ['Auth'],
+	summary: 'Email a verification link',
+	description:
+		'Emails the signed-in user a link that verifies their address, for 24 hours. A new link replaces the last one, at most once a minute.',
+	responses: {
+		204: { description: 'Link sent' },
+		400: errorResponse('Unknown app origin'),
+		401: errorResponse('Not authenticated'),
+		409: errorResponse('Email already verified'),
+		429: errorResponse('A link was sent less than a minute ago'),
+	},
+})
+
+const verifyEmailRoute = createRoute({
+	method: 'post',
+	path: '/verify-email/confirm',
+	tags: ['Auth'],
+	summary: 'Verify an email',
+	description: 'Uses the token of a verification link and marks the email verified.',
+	request: {
+		body: jsonRequest(VerifyEmailRequestSchema),
+	},
+	responses: {
+		204: { description: 'Email verified' },
+		400: errorResponse('Link expired or already used'),
+	},
+})
+
+const requestPasswordResetRoute = createRoute({
+	method: 'post',
+	path: '/reset-password',
+	tags: ['Auth'],
+	summary: 'Email a password reset link',
+	description:
+		'Emails a link that sets a new password, for one hour, when an active account has the email. Answers the same either way.',
+	request: {
+		body: jsonRequest(ResetPasswordRequestSchema),
+	},
+	responses: {
+		202: jsonResponse(MessageSchema, 'Link sent if the account exists'),
+		400: errorResponse('Unknown app origin'),
+	},
+})
+
+const resetPasswordRoute = createRoute({
+	method: 'post',
+	path: '/reset-password/confirm',
+	tags: ['Auth'],
+	summary: 'Set a new password',
+	description:
+		'Uses the token of a reset link to set a new password, marks the email verified, and ends every session of the user.',
+	request: {
+		body: jsonRequest(NewPasswordRequestSchema),
+	},
+	responses: {
+		204: { description: 'Password set' },
+		400: errorResponse('Link expired or already used'),
+	},
+})
+
 /** Starts a session for `userId`, replacing the one the browser still holds, and sets its cookie. */
 async function signIn(c: Context, userId: string, twoStep = false) {
 	const { token, session } = await createSession(userId, {
@@ -200,6 +279,17 @@ async function signIn(c: Context, userId: string, twoStep = false) {
 	setSessionCookie(c, token)
 
 	return session
+}
+
+/** The app the request came through, which emailed links open, or a 400. */
+function requireAppOrigin(c: Context): string {
+	const origin = appOrigin(c)
+
+	if (!origin) {
+		throw new HTTPException(400, { message: 'Unknown app origin' })
+	}
+
+	return origin
 }
 
 export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
@@ -278,5 +368,49 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 
 		const user = await registerUser(email, password, getIpAddress(c))
 
+		const origin = appOrigin(c)
+
+		// Sent in the background, so a mail outage never fails a sign-up. The
+		// account page can send another link.
+		if (origin) {
+			sendVerificationEmail(user, origin).catch((err: unknown) => {
+				logger().error({ err }, 'failed to send a verification email')
+			})
+		}
+
 		return c.json({ id: user.id, email: user.email }, 201)
+	})
+	.openapi(sendVerificationRoute, async (c) => {
+		const current = requireSession(c)
+
+		if (current.user.is_verified) {
+			throw new AuthError('email_verified', 'Your email is already verified')
+		}
+
+		await sendVerificationEmail(current.user, requireAppOrigin(c))
+
+		return c.body(null, 204)
+	})
+	.openapi(verifyEmailRoute, async (c) => {
+		await verifyEmail(c.req.valid('json').token)
+
+		return c.body(null, 204)
+	})
+	.openapi(requestPasswordResetRoute, async (c) => {
+		const origin = requireAppOrigin(c)
+
+		// Runs in the background, so the answer takes as long whether or not the
+		// account exists.
+		requestPasswordReset(c.req.valid('json').email, origin).catch((err: unknown) => {
+			logger().error({ err }, 'failed to send a password reset email')
+		})
+
+		return c.json({ message: 'If an account has that email, a link is on its way' }, 202)
+	})
+	.openapi(resetPasswordRoute, async (c) => {
+		const { token, password } = c.req.valid('json')
+
+		await resetPassword(token, password)
+
+		return c.body(null, 204)
 	})

@@ -69,6 +69,10 @@ async function addPasskey(userId: string, id = randomUUID()) {
 	return id
 }
 
+async function verify(userId: string) {
+	await pool.query('UPDATE users SET is_verified = true WHERE id = $1', [userId])
+}
+
 async function makeAdmin(userId: string) {
 	await pool.query("UPDATE users SET roles = '{user,admin}' WHERE id = $1", [userId])
 }
@@ -238,6 +242,8 @@ describeWithDocker('admins (integration)', () => {
 	it('promotes a user who has a passkey, and ends their sessions', async () => {
 		const userId = await insertUser('alice@x.dev')
 
+		await verify(userId)
+
 		await addPasskey(userId)
 
 		await pool.query(
@@ -257,6 +263,8 @@ describeWithDocker('admins (integration)', () => {
 	it('adds the admin role only once', async () => {
 		const userId = await insertUser('dan@x.dev')
 
+		await verify(userId)
+
 		await addPasskey(userId)
 
 		await admins.promote('dan@x.dev')
@@ -269,7 +277,19 @@ describeWithDocker('admins (integration)', () => {
 	it("won't promote a user without a second factor", async () => {
 		const userId = await insertUser('bob@x.dev')
 
+		await verify(userId)
+
 		expect(await admins.promote('bob@x.dev')).toBe('no_second_factor')
+
+		expect(await roles(userId)).toEqual(['user'])
+	})
+
+	it("won't promote a user who hasn't verified their email", async () => {
+		const userId = await insertUser('erin@x.dev')
+
+		await addPasskey(userId)
+
+		expect(await admins.promote('erin@x.dev')).toBe('unverified')
 
 		expect(await roles(userId)).toEqual(['user'])
 	})

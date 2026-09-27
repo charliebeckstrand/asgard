@@ -14,6 +14,10 @@ const {
 	mockGetFactors,
 	mockCreateSecondFactorOptions,
 	mockVerifySession,
+	mockSendVerificationEmail,
+	mockVerifyEmail,
+	mockRequestPasswordReset,
+	mockResetPassword,
 } = vi.hoisted(() => ({
 	mockAuthenticateUser: vi.fn(),
 	mockRegisterUser: vi.fn(),
@@ -26,6 +30,10 @@ const {
 	mockGetFactors: vi.fn(),
 	mockCreateSecondFactorOptions: vi.fn(),
 	mockVerifySession: vi.fn(),
+	mockSendVerificationEmail: vi.fn(),
+	mockVerifyEmail: vi.fn(),
+	mockRequestPasswordReset: vi.fn(),
+	mockResetPassword: vi.fn(),
 }))
 
 import { AuthError } from '../auth/errors.js'
@@ -52,6 +60,10 @@ vi.mock('../auth/index.js', async () => {
 		getFactors: (...args: unknown[]) => mockGetFactors(...args),
 		createSecondFactorOptions: (...args: unknown[]) => mockCreateSecondFactorOptions(...args),
 		verifySession: (...args: unknown[]) => mockVerifySession(...args),
+		sendVerificationEmail: (...args: unknown[]) => mockSendVerificationEmail(...args),
+		verifyEmail: (...args: unknown[]) => mockVerifyEmail(...args),
+		requestPasswordReset: (...args: unknown[]) => mockRequestPasswordReset(...args),
+		resetPassword: (...args: unknown[]) => mockResetPassword(...args),
 	}
 })
 
@@ -100,6 +112,17 @@ const session = {
 
 const app = createBifrostApp()
 
+// The Midgard app forwards `/auth/*` with its own host in `x-forwarded-host`.
+const viaApp = { 'x-forwarded-host': 'localhost:3000' }
+
+function post(path: string, body?: unknown, headers: Record<string, string> = {}) {
+	return app.request(path, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', Origin: ORIGIN, ...viaApp, ...headers },
+		body: body === undefined ? undefined : JSON.stringify(body),
+	})
+}
+
 const cookie = (token = 'token') => ({ Cookie: `__Host-session=${token}` })
 
 function login(headers: Record<string, string> = {}) {
@@ -121,6 +144,10 @@ describe('Auth routes', () => {
 		mockFindSession.mockResolvedValue(session)
 
 		mockGetFactors.mockResolvedValue({ passkeys: 0, totp: false, recovery_codes: 0 })
+
+		mockSendVerificationEmail.mockResolvedValue(undefined)
+
+		mockRequestPasswordReset.mockResolvedValue(undefined)
 	})
 
 	describe('POST /auth/login', () => {
@@ -506,6 +533,29 @@ describe('Auth routes', () => {
 			expect(await res.json()).toEqual({ id: USER_ID, email: 'new@example.com' })
 		})
 
+		it('emails a verification link that opens the app', async () => {
+			const user = { ...session.user, email: 'new@example.com' }
+
+			mockRegisterUser.mockResolvedValueOnce(user)
+
+			await post('/auth/register', { email: 'new@example.com', password: 'password123' })
+
+			expect(mockSendVerificationEmail).toHaveBeenCalledWith(user, 'http://localhost:3000')
+		})
+
+		it('still registers when the email fails', async () => {
+			mockRegisterUser.mockResolvedValueOnce(session.user)
+
+			mockSendVerificationEmail.mockRejectedValueOnce(new Error('mail down'))
+
+			const res = await post('/auth/register', {
+				email: 'test@example.com',
+				password: 'password123',
+			})
+
+			expect(res.status).toBe(201)
+		})
+
 		it('returns 409 when email already exists', async () => {
 			mockRegisterUser.mockRejectedValueOnce(
 				new AuthError('email_exists', 'Email already registered'),
@@ -518,6 +568,159 @@ describe('Auth routes', () => {
 			})
 
 			expect(res.status).toBe(409)
+		})
+	})
+
+	describe('POST /auth/verify-email', () => {
+		it('emails the signed-in user a link', async () => {
+			const res = await post('/auth/verify-email', undefined, cookie())
+
+			expect(res.status).toBe(204)
+
+			expect(mockSendVerificationEmail).toHaveBeenCalledWith(session.user, 'http://localhost:3000')
+		})
+
+		it('returns 409 when the email is verified', async () => {
+			mockFindSession.mockResolvedValue({
+				...session,
+				user: { ...session.user, is_verified: true },
+			})
+
+			const res = await post('/auth/verify-email', undefined, cookie())
+
+			expect(res.status).toBe(409)
+
+			expect(mockSendVerificationEmail).not.toHaveBeenCalled()
+		})
+
+		it('returns 429 within a minute of the last link', async () => {
+			mockSendVerificationEmail.mockRejectedValueOnce(
+				new AuthError('email_recently_sent', 'We just sent you an email'),
+			)
+
+			const res = await post('/auth/verify-email', undefined, cookie())
+
+			expect(res.status).toBe(429)
+		})
+
+		it('returns 400 for an unknown app', async () => {
+			const res = await post('/auth/verify-email', undefined, {
+				...cookie(),
+				'x-forwarded-host': 'evil.example',
+			})
+
+			expect(res.status).toBe(400)
+
+			expect(mockSendVerificationEmail).not.toHaveBeenCalled()
+		})
+
+		it('returns 401 without a session', async () => {
+			const res = await post('/auth/verify-email')
+
+			expect(res.status).toBe(401)
+		})
+	})
+
+	describe('POST /auth/verify-email/confirm', () => {
+		it('verifies the email of the link', async () => {
+			const res = await post('/auth/verify-email/confirm', { token: 'abc' })
+
+			expect(res.status).toBe(204)
+
+			expect(mockVerifyEmail).toHaveBeenCalledWith('abc')
+		})
+
+		it('returns 400 for an expired link', async () => {
+			mockVerifyEmail.mockRejectedValueOnce(new AuthError('link_expired', 'Expired'))
+
+			const res = await post('/auth/verify-email/confirm', { token: 'abc' })
+
+			expect(res.status).toBe(400)
+		})
+	})
+
+	describe('POST /auth/reset-password', () => {
+		it('answers 202 and asks for a link on the app', async () => {
+			const res = await post('/auth/reset-password', { email: 'test@example.com' })
+
+			expect(res.status).toBe(202)
+
+			expect(mockRequestPasswordReset).toHaveBeenCalledWith(
+				'test@example.com',
+				'http://localhost:3000',
+			)
+		})
+
+		it('answers the same when sending fails', async () => {
+			mockRequestPasswordReset.mockRejectedValueOnce(new Error('mail down'))
+
+			const res = await post('/auth/reset-password', { email: 'test@example.com' })
+
+			expect(res.status).toBe(202)
+		})
+
+		it('returns 400 for an unknown app', async () => {
+			const res = await post(
+				'/auth/reset-password',
+				{ email: 'test@example.com' },
+				{ 'x-forwarded-host': 'evil.example' },
+			)
+
+			expect(res.status).toBe(400)
+
+			expect(mockRequestPasswordReset).not.toHaveBeenCalled()
+		})
+	})
+
+	describe('POST /auth/reset-password/confirm', () => {
+		it('sets the new password', async () => {
+			const res = await post('/auth/reset-password/confirm', {
+				token: 'abc',
+				password: 'new password',
+			})
+
+			expect(res.status).toBe(204)
+
+			expect(mockResetPassword).toHaveBeenCalledWith('abc', 'new password')
+		})
+
+		it('rejects a weak password', async () => {
+			const res = await post('/auth/reset-password/confirm', { token: 'abc', password: 'x' })
+
+			expect(res.status).toBe(400)
+
+			expect(mockResetPassword).not.toHaveBeenCalled()
+		})
+
+		it('returns 400 for an expired link', async () => {
+			mockResetPassword.mockRejectedValueOnce(new AuthError('link_expired', 'Expired'))
+
+			const res = await post('/auth/reset-password/confirm', {
+				token: 'abc',
+				password: 'new password',
+			})
+
+			expect(res.status).toBe(400)
+		})
+	})
+
+	describe('email rate limits', () => {
+		it('counts requests that send email or set a password', async () => {
+			limited.length = 0
+
+			await post('/auth/verify-email')
+
+			await post('/auth/reset-password', { email: 'test@example.com' })
+
+			await post('/auth/reset-password/confirm', { token: 'abc', password: 'new password' })
+
+			await post('/auth/verify-email/confirm', { token: 'abc' })
+
+			expect(limited).toEqual([
+				'POST /auth/verify-email',
+				'POST /auth/reset-password',
+				'POST /auth/reset-password/confirm',
+			])
 		})
 	})
 })

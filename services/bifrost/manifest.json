@@ -10,6 +10,8 @@
 		"OAUTH_GITHUB_CLIENT_SECRET": { "type": "secret" },
 		"OAUTH_GOOGLE_CLIENT_ID": { "type": "secret" },
 		"OAUTH_GOOGLE_CLIENT_SECRET": { "type": "secret" },
+		"RESEND_API_KEY": { "type": "value", "default": "" },
+		"EMAIL_FROM": { "type": "value", "default": "Bifrost <no-reply@localhost>" },
 		"VIDAR_URL": { "type": "ref", "service": "vidar" },
 		"VIDAR_API_KEY": { "type": "ref", "service": "vidar", "key": "VIDAR_API_KEY" }
 	}

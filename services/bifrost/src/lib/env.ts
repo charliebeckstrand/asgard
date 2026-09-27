@@ -41,6 +41,11 @@ export const environment = createEnvironment({
 	OAUTH_GITHUB_CLIENT_SECRET: optionalValue,
 	OAUTH_GOOGLE_CLIENT_ID: optionalValue,
 	OAUTH_GOOGLE_CLIENT_SECRET: optionalValue,
+	// Sends email, such as verification and password reset links, through Resend.
+	// Unset logs each email instead.
+	RESEND_API_KEY: optionalValue,
+	// The sender of every email. Its domain must be verified in Resend.
+	EMAIL_FROM: z.string().default('Bifrost <no-reply@localhost>'),
 	// Comma-separated, so each consuming app's origin can be allowed.
 	CORS_ORIGIN: z
 		.string()

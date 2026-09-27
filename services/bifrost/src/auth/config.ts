@@ -1,4 +1,6 @@
 import type {
+	Email,
+	EmailTokenRepository,
 	MfaRepository,
 	OAuthProvider,
 	OAuthRepository,
@@ -21,6 +23,9 @@ export interface Config {
 	passkeyRepository: PasskeyRepository
 	mfaRepository: MfaRepository
 	oauthRepository: OAuthRepository
+	emailTokenRepository: EmailTokenRepository
+	/** Sends an email, such as a link to verify the address or reset the password. */
+	sendEmail: (email: Email) => Promise<void>
 	/** The domain passkeys belong to, and the origins allowed to use them. */
 	passkeys: { domain: string; origins: string[] }
 	/**
