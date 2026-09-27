@@ -17,7 +17,7 @@ export const MAX_FAILED_LOGINS = 5
 export const FAILED_LOGIN_WAIT_SECONDS = 60
 
 /** How long an email's wrong passwords are remembered. */
-export const FAILED_LOGIN_TTL_SECONDS = 24 * 60 * 60
+const FAILED_LOGIN_TTL_SECONDS = 24 * 60 * 60
 
 /**
  * Checks the credentials and returns the user's id. Each email gets

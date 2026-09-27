@@ -9,7 +9,7 @@ import type {
 	UserRepository,
 } from './types.js'
 
-export type AuthSecurityEventType = 'login_failed' | 'registration'
+type AuthSecurityEventType = 'login_failed' | 'registration'
 
 export interface AuthSecurityEvent {
 	type: AuthSecurityEventType
@@ -45,7 +45,7 @@ export interface Config {
 	onSecurityEvent?: (event: AuthSecurityEvent) => void
 }
 
-export interface Turnstile {
+interface Turnstile {
 	siteKey: string
 	verify: (token: string, ip?: string) => Promise<boolean>
 }

@@ -15,7 +15,7 @@ export interface CircuitBreakerOptions {
 	logger?: Logger
 }
 
-export interface CircuitBreakerStatus {
+interface CircuitBreakerStatus {
 	failures: number
 	lastFailure: number | null
 	halfOpenAttempts: number

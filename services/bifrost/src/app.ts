@@ -83,5 +83,3 @@ export function createBifrostApp() {
 		.route('/api', health)
 		.route('/api/users', usersRoutes)
 }
-
-export type BifrostApp = ReturnType<typeof createBifrostApp>

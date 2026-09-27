@@ -7,7 +7,7 @@ import {
 } from 'skuld'
 import { z } from 'zod'
 
-export const RuleSeveritySchema = z
+const RuleSeveritySchema = z
 	.enum(['low', 'medium', 'high'])
 	.openapi({ description: 'Rule / threat severity' })
 
@@ -36,7 +36,7 @@ export const ResolveThreatSchema = z
 
 export const SecurityEventListSchema = createListSchema(SecurityEventSchema, 'SecurityEventList')
 
-export const RuleSchema = z
+const RuleSchema = z
 	.object({
 		id: z.string(),
 		name: z.string(),
