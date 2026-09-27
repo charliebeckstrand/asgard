@@ -19,6 +19,7 @@ const {
 	mockVerifyEmail,
 	mockRequestPasswordReset,
 	mockResetPassword,
+	mockCheckTurnstile,
 } = vi.hoisted(() => ({
 	mockAuthenticateUser: vi.fn(),
 	mockRegisterUser: vi.fn(),
@@ -36,6 +37,7 @@ const {
 	mockVerifyEmail: vi.fn(),
 	mockRequestPasswordReset: vi.fn(),
 	mockResetPassword: vi.fn(),
+	mockCheckTurnstile: vi.fn(),
 }))
 
 import { AuthError } from '../auth/errors.js'
@@ -67,6 +69,8 @@ vi.mock('../auth/index.js', async () => {
 		verifyEmail: (...args: unknown[]) => mockVerifyEmail(...args),
 		requestPasswordReset: (...args: unknown[]) => mockRequestPasswordReset(...args),
 		resetPassword: (...args: unknown[]) => mockResetPassword(...args),
+		checkTurnstile: (...args: unknown[]) => mockCheckTurnstile(...args),
+		turnstileSiteKey: () => 'site-key',
 	}
 })
 
@@ -523,6 +527,16 @@ describe('Auth routes', () => {
 		})
 	})
 
+	describe('GET /auth/register/options', () => {
+		it('returns the Turnstile site key', async () => {
+			const res = await app.request('/auth/register/options')
+
+			expect(res.status).toBe(200)
+
+			expect(await res.json()).toEqual({ turnstile_site_key: 'site-key' })
+		})
+	})
+
 	describe('POST /auth/register', () => {
 		const CHECK_EMAIL = { message: 'Check your email to finish signing up' }
 
@@ -569,6 +583,22 @@ describe('Auth routes', () => {
 			)
 
 			expect(mockSendVerificationEmail).not.toHaveBeenCalled()
+		})
+
+		it('checks the Turnstile token before making the account', async () => {
+			mockCheckTurnstile.mockRejectedValueOnce(new AuthError('turnstile_failed', 'Not human'))
+
+			const res = await post('/auth/register', {
+				email: 'new@example.com',
+				password: 'password123',
+				turnstile_token: 'token',
+			})
+
+			expect(res.status).toBe(400)
+
+			expect(mockCheckTurnstile).toHaveBeenCalledWith('token', expect.any(String))
+
+			expect(mockRegisterUser).not.toHaveBeenCalled()
 		})
 
 		it('still answers when the email fails', async () => {

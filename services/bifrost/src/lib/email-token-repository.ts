@@ -71,5 +71,41 @@ export function createEmailTokenRepository(): EmailTokenRepository {
 		async deleteExpiredTokens() {
 			return db.exec(sql`DELETE FROM email_tokens WHERE expires_at <= now()`)
 		},
+
+		async countSentEmail(to, verified, limits) {
+			return db.tx(async (tx) => {
+				// Lets other writers wait, so two emails can't both take the last room.
+				await tx.exec(sql`LOCK TABLE sent_emails IN EXCLUSIVE MODE`)
+
+				const sent = await tx.one<{ total: number; unverified: number; recipient: number }>(
+					sql`
+						SELECT
+							count(*)::int AS total,
+							count(*) FILTER (WHERE NOT verified)::int AS unverified,
+							count(*) FILTER (WHERE recipient = ${to})::int AS recipient
+						FROM sent_emails
+						WHERE sent_at > now() - interval '1 day'
+					`,
+				)
+
+				if (
+					sent.total >= limits.total ||
+					sent.recipient >= limits.recipient ||
+					(!verified && sent.unverified >= limits.unverified)
+				) {
+					return false
+				}
+
+				await tx.exec(
+					sql`INSERT INTO sent_emails (recipient, verified) VALUES (${to}, ${verified})`,
+				)
+
+				return true
+			})
+		},
+
+		async deleteOldSentEmails() {
+			return db.exec(sql`DELETE FROM sent_emails WHERE sent_at <= now() - interval '1 day'`)
+		},
 	}
 }

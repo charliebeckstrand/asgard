@@ -28,6 +28,11 @@ export interface Config {
 	sendEmail: (email: Email) => Promise<void>
 	/** Whether a new password is known from a data breach. Unset checks nothing. */
 	isBreachedPassword?: (password: string) => Promise<boolean>
+	/**
+	 * Cloudflare Turnstile on sign-up: the key the page shows the widget with, and
+	 * a check of the token it gives. Unset lets every sign-up through.
+	 */
+	turnstile?: Turnstile
 	/** The domain passkeys belong to, and the origins allowed to use them. */
 	passkeys: { domain: string; origins: string[] }
 	/**
@@ -38,6 +43,11 @@ export interface Config {
 	/** The OAuth clients of GitHub and Google. A provider without one is off. */
 	oauth: Partial<Record<OAuthProvider, OAuthClient>>
 	onSecurityEvent?: (event: AuthSecurityEvent) => void
+}
+
+export interface Turnstile {
+	siteKey: string
+	verify: (token: string, ip?: string) => Promise<boolean>
 }
 
 export interface OAuthClient {

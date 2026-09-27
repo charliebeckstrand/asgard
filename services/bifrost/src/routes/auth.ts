@@ -14,6 +14,7 @@ import {
 	AuthError,
 	authenticatePasskey,
 	authenticateUser,
+	checkTurnstile,
 	createSecondFactorOptions,
 	createSession,
 	createSignInOptions,
@@ -25,6 +26,7 @@ import {
 	type SecondFactorProof,
 	sendAccountExistsEmail,
 	sendVerificationEmail,
+	turnstileSiteKey,
 	verifyEmail,
 	verifySession,
 } from '../auth/index.js'
@@ -51,8 +53,21 @@ const RegisterRequestSchema = z
 		email: EmailSchema,
 		password: PasswordSchema,
 		name: z.string().min(1).optional(),
+		turnstile_token: z
+			.string()
+			.max(2048)
+			.optional()
+			.openapi({ description: 'The token of the Turnstile widget, when sign-up has one' }),
 	})
 	.openapi('RegisterRequest')
+
+const RegisterOptionsSchema = z
+	.object({
+		turnstile_site_key: z.string().nullable().openapi({
+			description: 'The key to show Turnstile with, or null when sign-up has no check',
+		}),
+	})
+	.openapi('RegisterOptions')
 
 const TokenSchema = z.string().max(64).openapi({ description: 'The token from the emailed link' })
 
@@ -187,6 +202,16 @@ const verifyRoute = createRoute({
 	},
 })
 
+const registerOptionsRoute = createRoute({
+	method: 'get',
+	path: '/register/options',
+	tags: ['Auth'],
+	summary: 'Get what the sign-up page needs',
+	responses: {
+		200: jsonResponse(RegisterOptionsSchema, 'Sign-up options'),
+	},
+})
+
 const registerRoute = createRoute({
 	method: 'post',
 	path: '/register',
@@ -199,7 +224,9 @@ const registerRoute = createRoute({
 	},
 	responses: {
 		202: jsonResponse(MessageSchema, 'Check your email'),
-		400: errorResponse('Validation error, or a password known from a data breach'),
+		400: errorResponse(
+			'Validation error, a failed Turnstile check, or a password known from a data breach',
+		),
 	},
 })
 
@@ -360,10 +387,15 @@ export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationH
 
 		return c.json({ ...current, two_step: true }, 200)
 	})
+	.openapi(registerOptionsRoute, (c) => c.json({ turnstile_site_key: turnstileSiteKey() }, 200))
 	.openapi(registerRoute, async (c) => {
-		const { email, password } = c.req.valid('json')
+		const { email, password, turnstile_token } = c.req.valid('json')
 
-		const user = await registerUser(email, password, getIpAddress(c))
+		const ip = getIpAddress(c)
+
+		await checkTurnstile(turnstile_token, ip)
+
+		const user = await registerUser(email, password, ip)
 
 		const origin = appOrigin(c)
 

@@ -4,6 +4,7 @@ import { configure, getConfig } from '../config.js'
 import {
 	AuthError,
 	authenticateUser,
+	checkTurnstile,
 	FAILED_LOGIN_WAIT_SECONDS,
 	MAX_FAILED_LOGINS,
 	registerUser,
@@ -45,6 +46,7 @@ beforeEach(() => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
+			is_verified: true,
 		} satisfies CredentialsRow),
 		getUsers: vi.fn().mockResolvedValue([]),
 		getUserById: vi.fn().mockResolvedValue(TEST_USER),
@@ -121,6 +123,7 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: null,
 			is_active: true,
+			is_verified: true,
 		})
 
 		await expect(authenticateUser('alice@example.com', 'dummy-timing-pad')).rejects.toMatchObject({
@@ -133,6 +136,7 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: false,
+			is_verified: true,
 		})
 
 		try {
@@ -149,6 +153,7 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
+			is_verified: true,
 		})
 
 		await expect(authenticateUser('alice@example.com', 'correct-password')).resolves.toBe(
@@ -161,6 +166,7 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
+			is_verified: true,
 		})
 
 		const err = await authenticateUser('alice@example.com', 'wrong-password').catch((e) => e)
@@ -238,6 +244,7 @@ describe('failed login limit', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: false,
+			is_verified: true,
 		})
 
 		await authenticateUser('alice@example.com', 'correct-password').catch(() => {})
@@ -249,6 +256,37 @@ describe('failed login limit', () => {
 		await authenticateUser('alice@example.com', 'wrong-password').catch(() => {})
 
 		expect(mockRepo.clearFailedLogins).not.toHaveBeenCalled()
+	})
+})
+
+describe('checkTurnstile', () => {
+	it('lets a sign-up through when Turnstile is off', async () => {
+		await expect(checkTurnstile(undefined)).resolves.toBeUndefined()
+	})
+
+	it('passes a token that Cloudflare accepts', async () => {
+		const verify = vi.fn().mockResolvedValue(true)
+
+		configure({ ...getConfig(), turnstile: { siteKey: 'key', verify } })
+
+		await checkTurnstile('token', '203.0.113.1')
+
+		expect(verify).toHaveBeenCalledWith('token', '203.0.113.1')
+	})
+
+	it.each([
+		['a missing token', undefined, true],
+		['a token that Cloudflare refuses', 'token', false],
+	])('refuses %s', async (_, token, accepted) => {
+		configure({
+			...getConfig(),
+			turnstile: { siteKey: 'key', verify: vi.fn().mockResolvedValue(accepted) },
+		})
+
+		await expect(checkTurnstile(token)).rejects.toMatchObject({
+			code: 'turnstile_failed',
+			status: 400,
+		})
 	})
 })
 

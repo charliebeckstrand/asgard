@@ -92,6 +92,20 @@ export async function hashNewPassword(password: string): Promise<string> {
 	return hash(password, { algorithm: 2 /* Argon2id */ })
 }
 
+/** The key that the sign-up page shows Turnstile with, or null when sign-up has no check. */
+export function turnstileSiteKey(): string | null {
+	return getConfig().turnstile?.siteKey ?? null
+}
+
+/** Refuses a sign-up without a valid Turnstile token, when Turnstile is on. */
+export async function checkTurnstile(token: string | undefined, ip?: string): Promise<void> {
+	const { turnstile } = getConfig()
+
+	if (turnstile && !(token && (await turnstile.verify(token, ip)))) {
+		throw new AuthError('turnstile_failed', 'We could not confirm that you are human. Try again.')
+	}
+}
+
 /**
  * Creates an account for `email`, or returns null when it already has one. The
  * password is hashed either way, so the two take the same time.

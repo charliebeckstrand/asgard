@@ -8,6 +8,7 @@ import {
 	deleteExpiredEmailTokens,
 	deleteExpiredOAuthStates,
 	deleteExpiredSessions,
+	deleteOldSentEmails,
 	deleteStaleFailedLogins,
 	deleteStaleFailedSteps,
 	type OAuthClient,
@@ -22,6 +23,7 @@ import { createMfaRepository } from './lib/mfa-repository.js'
 import { createOAuthRepository } from './lib/oauth-repository.js'
 import { createPasskeyRepository } from './lib/passkey-repository.js'
 import { createSessionRepository } from './lib/session-repository.js'
+import { createTurnstileCheck } from './lib/turnstile.js'
 import { createUserRepository } from './lib/user-repository.js'
 
 const env = environment()
@@ -51,6 +53,13 @@ configure({
 		log,
 	}),
 	isBreachedPassword: createBreachCheck(log),
+	turnstile:
+		env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY
+			? {
+					siteKey: env.TURNSTILE_SITE_KEY,
+					verify: createTurnstileCheck(env.TURNSTILE_SECRET_KEY, log),
+				}
+			: undefined,
 	passkeys: { domain: env.PASSKEY_DOMAIN, origins: env.CORS_ORIGIN },
 	mfa: { key: env.MFA_ENCRYPTION_KEY, issuer: env.PASSKEY_DOMAIN },
 	oauth: {
@@ -72,10 +81,11 @@ const sweepTimer = setInterval(() => {
 		deleteStaleFailedLogins(),
 		deleteStaleFailedSteps(),
 		deleteExpiredEmailTokens(),
+		deleteOldSentEmails(),
 	]).catch((err) => {
 		log.error(
 			{ err },
-			'failed to delete expired sessions, challenges, OAuth states, failed tries and email links',
+			'failed to delete expired sessions, challenges, OAuth states, failed tries, email links and email counts',
 		)
 	})
 }, SWEEP_INTERVAL_MS)
