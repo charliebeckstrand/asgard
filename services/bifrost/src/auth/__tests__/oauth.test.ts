@@ -156,6 +156,11 @@ describe('safeReturnTo', () => {
 		['https://evil.example', '/'],
 		['//evil.example', '/'],
 		['/\\evil.example', '/'],
+		['/\t/evil.example', '/'],
+		['/\n/evil.example', '/'],
+		['\\/evil.example', '/'],
+		['/%09/evil.example', '/%09/evil.example'],
+		['/account#passkeys', '/account#passkeys'],
 		['users', '/'],
 	])('turns %s into %s', (value, expected) => {
 		expect(safeReturnTo(value, '/')).toBe(expected)

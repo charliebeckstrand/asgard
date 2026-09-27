@@ -68,17 +68,24 @@ function callbackUrl(origin: string, provider: OAuthProvider): string {
 	return `${origin}/auth/oauth/${provider}/callback`
 }
 
+// Stands in for the app's origin, to check where a browser would resolve a path.
+const SAME_ORIGIN = 'http://return.to'
+
 /**
  * A path on the app to go to after the sign-in. Anything else, such as a full
  * URL or `//host`, falls back to `fallback`, so the callback never sends the
- * browser to another site.
+ * browser to another site. The path is parsed the way a browser parses it, so
+ * tricks such as `/\t/host`, whose tab the browser drops, resolve to their host
+ * and fall back too.
  */
 export function safeReturnTo(value: string | undefined, fallback: string): string {
-	if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) {
-		return fallback
-	}
+	if (!value?.startsWith('/')) return fallback
 
-	return value
+	const url = new URL(value, SAME_ORIGIN)
+
+	if (url.origin !== SAME_ORIGIN) return fallback
+
+	return `${url.pathname}${url.search}${url.hash}`
 }
 
 /**
