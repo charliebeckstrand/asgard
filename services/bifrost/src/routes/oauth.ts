@@ -19,7 +19,7 @@ import {
 // Read when the module loads, so they come from the module itself and not the
 // barrel that route tests mock.
 import { OAUTH_PROVIDERS, OAUTH_STATE_TTL_SECONDS } from '../auth/oauth.js'
-import { environment } from '../lib/env.js'
+import { appOrigin } from '../lib/app-origin.js'
 import { logger } from '../lib/log.js'
 import {
 	getSessionToken,
@@ -93,17 +93,6 @@ const unlinkIdentityRoute = createRoute({
 		409: errorResponse('Last way to sign in'),
 	},
 })
-
-/**
- * The app origin that the request came through, from the forwarded host. Only
- * an origin in `CORS_ORIGIN` counts, so the redirect URI is always one of the
- * apps.
- */
-function appOrigin(c: Context): string | undefined {
-	const host = c.req.header('x-forwarded-host') ?? c.req.header('host')
-
-	return environment().CORS_ORIGIN.find((origin) => new URL(origin).host === host)
-}
 
 function withError(path: string, code: string): string {
 	return `${path}?error=${encodeURIComponent(code)}`
