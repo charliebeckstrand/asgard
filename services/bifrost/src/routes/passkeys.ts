@@ -11,7 +11,7 @@ import {
 	requireRecentSignIn,
 } from '../auth/index.js'
 import { requireSecondStep, requireSession, type SessionEnv } from '../middleware/session.js'
-import { notifyOwner } from './security-notice.js'
+import { recordChange } from './activity.js'
 
 // A user manages only their own passkeys; no one else can add or remove them.
 
@@ -125,7 +125,7 @@ passkeysRoutes.openapi(addPasskeyRoute, async (c) => {
 	// A first factor has no second step to pass, so adding it is one.
 	await passSecondStep(session.id)
 
-	notifyOwner(c, session.user.id, 'A passkey was added to your account')
+	await recordChange(c, session.user.id, 'passkey_added', 'A passkey was added to your account')
 
 	return c.json(passkey, 201)
 })
@@ -137,7 +137,12 @@ passkeysRoutes.openapi(deletePasskeyRoute, async (c) => {
 
 	await deletePasskey(session.user.id, c.req.valid('param').id)
 
-	notifyOwner(c, session.user.id, 'A passkey was removed from your account')
+	await recordChange(
+		c,
+		session.user.id,
+		'passkey_removed',
+		'A passkey was removed from your account',
+	)
 
 	return c.body(null, 204)
 })

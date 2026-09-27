@@ -16,6 +16,7 @@ import {
 import { AuthError } from '../errors.js'
 import { hashToken } from '../sessions.js'
 import type {
+	ActivityRepository,
 	Email,
 	EmailTokenRepository,
 	MfaRepository,
@@ -41,8 +42,8 @@ let sendEmail: Mock<(email: Email) => Promise<void>>
 beforeEach(() => {
 	emailTokenRepository = {
 		createToken: vi.fn().mockResolvedValue(true),
-		verifyEmail: vi.fn().mockResolvedValue(true),
-		resetPassword: vi.fn().mockResolvedValue(true),
+		verifyEmail: vi.fn().mockResolvedValue('user-1'),
+		resetPassword: vi.fn().mockResolvedValue('user-1'),
 		deleteExpiredTokens: vi.fn(),
 		countSentEmail: vi.fn().mockResolvedValue(true),
 		deleteOldSentEmails: vi.fn(),
@@ -74,6 +75,7 @@ beforeEach(() => {
 		mfa: { issuer: 'localhost' },
 		oauthRepository: {} as OAuthRepository,
 		emailTokenRepository,
+		activityRepository: {} as ActivityRepository,
 		sendEmail,
 		oauth: {},
 	})
@@ -152,7 +154,7 @@ describe('verifyEmail', () => {
 	})
 
 	it('rejects an unknown, used or expired link', async () => {
-		emailTokenRepository.verifyEmail.mockResolvedValue(false)
+		emailTokenRepository.verifyEmail.mockResolvedValue(null)
 
 		await expect(verifyEmail('token')).rejects.toBeInstanceOf(AuthError)
 
@@ -333,7 +335,7 @@ describe('resetPassword', () => {
 	})
 
 	it('rejects an unknown, used or expired link', async () => {
-		emailTokenRepository.resetPassword.mockResolvedValue(false)
+		emailTokenRepository.resetPassword.mockResolvedValue(null)
 
 		await expect(resetPassword('token', 'new password')).rejects.toMatchObject({
 			code: 'link_expired',

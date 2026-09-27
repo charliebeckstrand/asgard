@@ -20,7 +20,7 @@ export function createEmailTokenRepository(db: Db): EmailTokenRepository {
 		},
 
 		async verifyEmail(id) {
-			const verified = await db.exec(
+			const verified = await db.first<{ id: string }>(
 				sql`
 					WITH used AS (
 						DELETE FROM email_tokens
@@ -29,10 +29,11 @@ export function createEmailTokenRepository(db: Db): EmailTokenRepository {
 					)
 					UPDATE users SET is_verified = true
 					WHERE id = (SELECT user_id FROM used)
+					RETURNING id
 				`,
 			)
 
-			return verified > 0
+			return verified?.id ?? null
 		},
 
 		async resetPassword(id, hashedPassword) {
@@ -45,7 +46,7 @@ export function createEmailTokenRepository(db: Db): EmailTokenRepository {
 					`,
 				)
 
-				if (!used) return false
+				if (!used) return null
 
 				// The link reached the inbox, so the email is the user's.
 				const user = await tx.one<{ email: string }>(
@@ -63,7 +64,7 @@ export function createEmailTokenRepository(db: Db): EmailTokenRepository {
 
 				await tx.exec(sql`DELETE FROM sessions WHERE user_id = ${used.user_id}`)
 
-				return true
+				return used.user_id
 			})
 		},
 

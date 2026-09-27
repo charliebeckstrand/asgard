@@ -24,6 +24,7 @@ import {
 	registerPasskey,
 } from '../passkeys.js'
 import type {
+	ActivityRepository,
 	EmailTokenRepository,
 	MfaRepository,
 	OAuthRepository,
@@ -95,6 +96,7 @@ beforeEach(() => {
 		mfa: { issuer: 'localhost' },
 		oauthRepository: {} as OAuthRepository,
 		emailTokenRepository: {} as EmailTokenRepository,
+		activityRepository: {} as ActivityRepository,
 		sendEmail: vi.fn(),
 		oauth: {},
 		onSecurityEvent,

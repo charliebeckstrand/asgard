@@ -23,6 +23,7 @@ import {
 } from '../mfa.js'
 import { encryptSecret, totpCode, totpStep } from '../totp.js'
 import type {
+	ActivityRepository,
 	EmailTokenRepository,
 	MfaRepository,
 	OAuthRepository,
@@ -74,6 +75,7 @@ function setUp(key?: string) {
 		mfa: { key, issuer: 'ivoryimage.dev' },
 		oauthRepository: {} as OAuthRepository,
 		emailTokenRepository: {} as EmailTokenRepository,
+		activityRepository: {} as ActivityRepository,
 		sendEmail: vi.fn(),
 		oauth: {},
 		onSecurityEvent,

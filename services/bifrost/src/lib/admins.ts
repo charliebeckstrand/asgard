@@ -1,9 +1,14 @@
-import { type Db, sql } from 'saga'
-import { normalizeEmail } from 'skuld'
+import { type Db, type Queryable, sql } from 'saga'
+import { type ActivityAction, normalizeEmail } from 'skuld'
 import { countSecondFactors } from './mfa-repository.js'
 
 // Admins are made and unmade by the operator from the command line, never through
 // the API, so a compromised admin can't make more admins.
+
+/** Records what the operator did, in the same transaction. The operator has no account. */
+function recordOperatorAction(q: Queryable, userId: string, action: ActivityAction) {
+	return q.exec(sql`INSERT INTO activity (user_id, action) VALUES (${userId}, ${action})`)
+}
 
 /**
  * Makes the user an admin. The user must have verified their email, so the
@@ -33,20 +38,29 @@ export function promote(
 
 		await tx.exec(sql`DELETE FROM sessions WHERE user_id = ${user.id}`)
 
+		await recordOperatorAction(tx, user.id, 'promoted')
+
 		return 'promoted'
 	})
 }
 
 /** Takes the admin role away. The user keeps their other roles. */
-export async function demote(db: Db, email: string): Promise<'demoted' | 'not_found'> {
-	const updated = await db.exec(
-		sql`
-			UPDATE users SET roles = array_remove(roles, 'admin')
-			WHERE email = ${normalizeEmail(email)}
-		`,
-	)
+export function demote(db: Db, email: string): Promise<'demoted' | 'not_found'> {
+	return db.tx(async (tx) => {
+		const user = await tx.first<{ id: string }>(
+			sql`
+				UPDATE users SET roles = array_remove(roles, 'admin')
+				WHERE email = ${normalizeEmail(email)}
+				RETURNING id
+			`,
+		)
 
-	return updated ? 'demoted' : 'not_found'
+		if (!user) return 'not_found'
+
+		await recordOperatorAction(tx, user.id, 'demoted')
+
+		return 'demoted'
+	})
 }
 
 /**
@@ -70,6 +84,8 @@ export function resetSecondFactors(db: Db, email: string): Promise<'reset' | 'no
 		await tx.exec(sql`DELETE FROM recovery_codes WHERE user_id = ${user.id}`)
 
 		await tx.exec(sql`DELETE FROM sessions WHERE user_id = ${user.id}`)
+
+		await recordOperatorAction(tx, user.id, 'second_factors_reset')
 
 		return 'reset'
 	})

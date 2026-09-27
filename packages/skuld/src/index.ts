@@ -1,3 +1,12 @@
+// Activity — what happened to an account
+export {
+	type Activity,
+	type ActivityAction,
+	ActivityActionSchema,
+	ActivityListSchema,
+	ActivitySchema,
+} from './activity.js'
+
 // Composites — structured schemas and schema factories
 export {
 	createListSchema,

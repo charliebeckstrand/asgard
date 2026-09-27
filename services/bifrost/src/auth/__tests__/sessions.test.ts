@@ -12,6 +12,7 @@ import {
 	SESSION_TTL_SECONDS,
 } from '../sessions.js'
 import type {
+	ActivityRepository,
 	EmailTokenRepository,
 	MfaRepository,
 	OAuthRepository,
@@ -60,6 +61,7 @@ beforeEach(() => {
 		mfa: { issuer: 'localhost' },
 		oauthRepository: {} as OAuthRepository,
 		emailTokenRepository: {} as EmailTokenRepository,
+		activityRepository: {} as ActivityRepository,
 		sendEmail: vi.fn(),
 		oauth: {},
 	})

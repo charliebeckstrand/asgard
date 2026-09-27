@@ -1,4 +1,5 @@
 import type {
+	ActivityRepository,
 	Email,
 	EmailTokenRepository,
 	MfaRepository,
@@ -24,6 +25,7 @@ export interface Config {
 	mfaRepository: MfaRepository
 	oauthRepository: OAuthRepository
 	emailTokenRepository: EmailTokenRepository
+	activityRepository: ActivityRepository
 	/** Sends an email, such as a link to verify the address or reset the password. */
 	sendEmail: (email: Email) => Promise<void>
 	/** Whether a new password is known from a data breach. Unset checks nothing. */

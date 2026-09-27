@@ -2,7 +2,13 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
 
-const { mockUserRepository, mockFindSession, mockDeleteUserSessions } = vi.hoisted(() => ({
+const {
+	mockUserRepository,
+	mockFindSession,
+	mockDeleteUserSessions,
+	mockRecordActivity,
+	mockGetActivity,
+} = vi.hoisted(() => ({
 	mockUserRepository: {
 		getUsers: vi.fn(),
 		getUserById: vi.fn(),
@@ -12,6 +18,8 @@ const { mockUserRepository, mockFindSession, mockDeleteUserSessions } = vi.hoist
 	},
 	mockFindSession: vi.fn(),
 	mockDeleteUserSessions: vi.fn(),
+	mockRecordActivity: vi.fn(),
+	mockGetActivity: vi.fn(),
 }))
 
 vi.mock('../../auth/index.js', async () => {
@@ -25,6 +33,8 @@ vi.mock('../../auth/index.js', async () => {
 		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
 		findSession: (...args: unknown[]) => mockFindSession(...args),
 		deleteUserSessions: (...args: unknown[]) => mockDeleteUserSessions(...args),
+		recordActivity: (...args: unknown[]) => mockRecordActivity(...args),
+		getActivity: (...args: unknown[]) => mockGetActivity(...args),
 	}
 })
 
@@ -102,6 +112,7 @@ describe('Users routes', () => {
 		it.each([
 			['GET', '/api/users'],
 			['GET', `/api/users/${USER_ID}`],
+			['GET', `/api/users/${USER_ID}/activity`],
 			['PATCH', `/api/users/${USER_ID}`],
 		] as const)('returns 401 for %s %s without a session', async (method, path) => {
 			const res = await app.request(path, {
@@ -116,6 +127,7 @@ describe('Users routes', () => {
 		it.each([
 			['GET', '/api/users'],
 			['GET', `/api/users/${USER_ID}`],
+			['GET', `/api/users/${USER_ID}/activity`],
 			['PATCH', `/api/users/${USER_ID}`],
 		] as const)('returns 403 for %s %s when the user is not an admin', async (method, path) => {
 			signedInAs(sampleUser)
@@ -136,6 +148,7 @@ describe('Users routes', () => {
 		it.each([
 			['GET', '/api/users'],
 			['GET', `/api/users/${USER_ID}`],
+			['GET', `/api/users/${USER_ID}/activity`],
 			['PATCH', `/api/users/${USER_ID}`],
 		] as const)('returns 403 for %s %s before the second step', async (method, path) => {
 			signedInAs(sampleAdmin, { twoStep: false })
@@ -208,6 +221,29 @@ describe('Users routes', () => {
 		})
 	})
 
+	describe('GET /api/users/:id/activity', () => {
+		it("returns the user's recent activity", async () => {
+			const entry = {
+				id: '00000000-0000-7000-8000-000000000003',
+				action: 'signed_in',
+				detail: 'password',
+				actor_id: USER_ID,
+				ip: '203.0.113.7',
+				created_at: '2026-09-27T00:00:00.000Z',
+			}
+
+			mockGetActivity.mockResolvedValueOnce([entry])
+
+			const res = await app.request(`/api/users/${USER_ID}/activity`, { headers })
+
+			expect(res.status).toBe(200)
+
+			expect(await res.json()).toEqual({ data: [entry], total: 1 })
+
+			expect(mockGetActivity).toHaveBeenCalledWith(USER_ID)
+		})
+	})
+
 	describe('PATCH /api/users/:id', () => {
 		it('deactivates a user and signs them out everywhere', async () => {
 			const updated = { ...sampleUser, is_active: false }
@@ -225,6 +261,10 @@ describe('Users routes', () => {
 			expect(mockUserRepository.setUserActive).toHaveBeenCalledWith(USER_ID, false)
 
 			expect(mockDeleteUserSessions).toHaveBeenCalledWith(USER_ID)
+
+			expect(mockRecordActivity).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: USER_ID, actorId: ADMIN_ID, action: 'deactivated' }),
+			)
 		})
 
 		it('reactivates a user without touching sessions', async () => {
@@ -237,6 +277,10 @@ describe('Users routes', () => {
 			expect(res.status).toBe(200)
 
 			expect(mockDeleteUserSessions).not.toHaveBeenCalled()
+
+			expect(mockRecordActivity).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: USER_ID, actorId: ADMIN_ID, action: 'reactivated' }),
+			)
 		})
 
 		it('refuses to change another admin', async () => {

@@ -1,3 +1,4 @@
+export { deleteOldActivity, getActivity, recordActivity } from './activity.js'
 export type { OAuthClient } from './config.js'
 export { configure, getConfig } from './config.js'
 export {

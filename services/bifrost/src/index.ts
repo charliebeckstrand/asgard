@@ -8,11 +8,13 @@ import {
 	deleteExpiredEmailTokens,
 	deleteExpiredOAuthStates,
 	deleteExpiredSessions,
+	deleteOldActivity,
 	deleteOldSentEmails,
 	deleteStaleFailedLogins,
 	deleteStaleFailedSteps,
 	type OAuthClient,
 } from './auth/index.js'
+import { createActivityRepository } from './lib/activity-repository.js'
 import { createBreachCheck } from './lib/breached-passwords.js'
 import { db } from './lib/db.js'
 import { createEmailTokenRepository } from './lib/email-token-repository.js'
@@ -46,6 +48,7 @@ configure({
 	mfaRepository: createMfaRepository(db),
 	oauthRepository: createOAuthRepository(db),
 	emailTokenRepository: createEmailTokenRepository(db),
+	activityRepository: createActivityRepository(db),
 	sendEmail: createMailer({
 		apiKey: env.RESEND_API_KEY,
 		from: env.EMAIL_FROM,
@@ -82,10 +85,11 @@ function sweep() {
 		deleteStaleFailedSteps(),
 		deleteExpiredEmailTokens(),
 		deleteOldSentEmails(),
+		deleteOldActivity(),
 	]).catch((err) => {
 		log.error(
 			{ err },
-			'failed to delete expired sessions, challenges, OAuth states, failed tries, email links and email counts',
+			'failed to delete expired sessions, challenges, OAuth states, failed tries, email links, email counts and old activity',
 		)
 	})
 }

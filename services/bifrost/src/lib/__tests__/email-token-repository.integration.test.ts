@@ -105,11 +105,11 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), 60)
 
-			expect(await tokens.verifyEmail('t1')).toBe(true)
+			expect(await tokens.verifyEmail('t1')).toBe(userId)
 
 			expect((await getUser(userId)).is_verified).toBe(true)
 
-			expect(await tokens.verifyEmail('t1')).toBe(false)
+			expect(await tokens.verifyEmail('t1')).toBeNull()
 		})
 
 		it('ignores an expired link', async () => {
@@ -117,7 +117,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			await tokens.createToken('t1', userId, 'verify_email', new Date(Date.now() - 1000), 60)
 
-			expect(await tokens.verifyEmail('t1')).toBe(false)
+			expect(await tokens.verifyEmail('t1')).toBeNull()
 
 			expect((await getUser(userId)).is_verified).toBe(false)
 		})
@@ -127,7 +127,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			await tokens.createToken('t1', userId, 'reset_password', inAnHour(), 60)
 
-			expect(await tokens.verifyEmail('t1')).toBe(false)
+			expect(await tokens.verifyEmail('t1')).toBeNull()
 
 			expect(await tokenIds(userId)).toEqual(['t1'])
 		})
@@ -150,7 +150,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 				[userId],
 			)
 
-			expect(await tokens.resetPassword('t1', 'new-hash')).toBe(true)
+			expect(await tokens.resetPassword('t1', 'new-hash')).toBe(userId)
 
 			expect(await getUser(userId)).toEqual({ hashed_password: 'new-hash', is_verified: true })
 
@@ -170,9 +170,9 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			await tokens.createToken('t1', userId, 'reset_password', new Date(Date.now() - 1000), 60)
 
-			expect(await tokens.resetPassword('t1', 'new-hash')).toBe(false)
+			expect(await tokens.resetPassword('t1', 'new-hash')).toBeNull()
 
-			expect(await tokens.resetPassword('nope', 'new-hash')).toBe(false)
+			expect(await tokens.resetPassword('nope', 'new-hash')).toBeNull()
 
 			expect(await getUser(userId)).toEqual({ hashed_password: 'old-hash', is_verified: false })
 		})
@@ -182,7 +182,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), 60)
 
-			expect(await tokens.resetPassword('t1', 'new-hash')).toBe(false)
+			expect(await tokens.resetPassword('t1', 'new-hash')).toBeNull()
 
 			expect((await getUser(userId)).hashed_password).toBe('old-hash')
 		})

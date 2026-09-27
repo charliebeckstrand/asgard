@@ -11,7 +11,7 @@ import {
 	startTotpSetup,
 } from '../auth/index.js'
 import { requireSecondStep, requireSession, type SessionEnv } from '../middleware/session.js'
-import { notifyOwner } from './security-notice.js'
+import { recordChange } from './activity.js'
 
 // A user manages only their own second factors. Passkeys have their own routes
 // under `/auth/passkeys`.
@@ -155,7 +155,12 @@ mfaRoutes.openapi(totpConfirmRoute, async (c) => {
 	// A first factor has no second step to pass, so adding it is one.
 	await passSecondStep(session.id)
 
-	notifyOwner(c, session.user.id, 'An authenticator app was added to your account')
+	await recordChange(
+		c,
+		session.user.id,
+		'authenticator_added',
+		'An authenticator app was added to your account',
+	)
 
 	return c.body(null, 204)
 })
@@ -167,7 +172,12 @@ mfaRoutes.openapi(totpDeleteRoute, async (c) => {
 
 	await deleteTotp(session.user.id)
 
-	notifyOwner(c, session.user.id, 'The authenticator app was removed from your account')
+	await recordChange(
+		c,
+		session.user.id,
+		'authenticator_removed',
+		'The authenticator app was removed from your account',
+	)
 
 	return c.body(null, 204)
 })
@@ -179,7 +189,12 @@ mfaRoutes.openapi(recoveryCodesRoute, async (c) => {
 
 	const codes = await generateRecoveryCodes(session.user.id)
 
-	notifyOwner(c, session.user.id, 'New recovery codes were made for your account')
+	await recordChange(
+		c,
+		session.user.id,
+		'recovery_codes_created',
+		'New recovery codes were made for your account',
+	)
 
 	c.header('Cache-Control', 'private, no-store')
 
