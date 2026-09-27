@@ -12,6 +12,7 @@ const messages = {
 	reset:
 		'has no second factors now and is signed out. An admin gets the admin pages back after adding one.',
 	not_found: 'has no account.',
+	unverified: 'has not verified their email. They must verify it before they can be an admin.',
 	no_second_factor:
 		'has no passkey or authenticator app. They must add one before they can be an admin.',
 } as const
@@ -32,4 +33,4 @@ console.log(`${email} ${messages[result]}`)
 
 await db.close()
 
-process.exit(result === 'not_found' || result === 'no_second_factor' ? 1 : 0)
+process.exit(result === 'promoted' || result === 'demoted' || result === 'reset' ? 0 : 1)

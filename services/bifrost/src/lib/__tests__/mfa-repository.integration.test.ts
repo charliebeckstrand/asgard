@@ -231,6 +231,8 @@ describeWithDocker('admins (integration)', () => {
 	it('promotes a user whose only second factor is an authenticator app', async () => {
 		const userId = await insertUser('carol@x.dev')
 
+		await pool.query('UPDATE users SET is_verified = true WHERE id = $1', [userId])
+
 		await addTotp(userId)
 
 		expect(await admins.promote('carol@x.dev')).toBe('promoted')
