@@ -72,7 +72,7 @@ export function requireSession(c: Context<SessionEnv>): Session {
 }
 
 // How long after signing in a session may still change how its user signs in.
-export const RECENT_SIGN_IN_SECONDS = 10 * 60
+const RECENT_SIGN_IN_SECONDS = 10 * 60
 
 /**
  * The current session, when it may change how its user signs in, or a 403.
