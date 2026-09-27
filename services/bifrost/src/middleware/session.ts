@@ -71,27 +71,37 @@ export function requireSession(c: Context<SessionEnv>): Session {
 	return current
 }
 
+// How long after signing in a session may still change how its user signs in.
+const RECENT_SIGN_IN_SECONDS = 10 * 60
+
 /**
- * The current session, when its email is verified and it passed the second
- * step, or a 403. A user with no second factor yet passes the step, so they can
- * add their first one. Guards every change to how a user signs in.
+ * The current session, when it may change how its user signs in, or a 403.
+ * Guards every such change, and asks for three things in turn:
  *
- * The email check stops someone who registered an email they don't own from
- * adding a passkey or a connected account that would outlive the owner's
- * password reset.
+ * - A verified email, so someone who registered an email they don't own can't
+ *   add a passkey or a connected account that would outlive the owner's
+ *   password reset.
+ * - A passed second step. A user with no second factor yet passes, so they can
+ *   add their first one.
+ * - A sign-in from the last ten minutes, so a stolen session can't add a factor
+ *   of its own and keep the account.
  */
-export async function requireSecondStep(c: Context<SessionEnv>): Promise<Session> {
+export async function authorizeSignInChange(c: Context<SessionEnv>): Promise<Session> {
 	const current = requireSession(c)
 
 	if (!current.user.is_verified) {
 		throw new AuthError('email_unverified', 'Verify your email to change how you sign in')
 	}
 
-	if (current.two_step) return current
+	if (!current.two_step && secondFactorMethods(await getFactors(current.user.id)).length > 0) {
+		throw new AuthError('second_step_required', 'Confirm that it is you with a second step')
+	}
 
-	if (secondFactorMethods(await getFactors(current.user.id)).length === 0) return current
+	if (Date.now() - new Date(current.created_at).getTime() > RECENT_SIGN_IN_SECONDS * 1000) {
+		throw new AuthError('sign_in_again', 'Sign in again to change how you sign in')
+	}
 
-	throw new AuthError('second_step_required', 'Confirm that it is you with a second step')
+	return current
 }
 
 // Roles whose routes also need a session that passed the second step.
@@ -99,7 +109,7 @@ const STEP_UP_ROLES: ReadonlySet<Role> = new Set(['admin'])
 
 /**
  * Lets only a user with `role` through. For a role in `STEP_UP_ROLES`, the
- * session must also have passed the second step. Unlike {@link requireSecondStep},
+ * session must also have passed the second step. Unlike {@link authorizeSignInChange},
  * it has no pass for a user without a second factor: after `reset-mfa`, the
  * admin adds a new one, which passes the step.
  */

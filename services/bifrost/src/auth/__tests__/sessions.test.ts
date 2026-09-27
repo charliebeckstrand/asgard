@@ -7,8 +7,6 @@ import {
 	findSession,
 	hashToken,
 	MAX_SESSIONS_PER_USER,
-	RECENT_SIGN_IN_SECONDS,
-	requireRecentSignIn,
 	SESSION_TTL_SECONDS,
 } from '../sessions.js'
 import type {
@@ -143,22 +141,5 @@ describe('deleteUserSessions', () => {
 		expect(sessionRepository.deleteUserSessions).toHaveBeenCalledWith(USER_ID, {
 			except: 'current',
 		})
-	})
-})
-
-describe('requireRecentSignIn', () => {
-	const startedAgo = (seconds: number): Session => ({
-		...session,
-		created_at: new Date(Date.now() - seconds * 1000).toISOString(),
-	})
-
-	it('allows a session started within the window', () => {
-		expect(() => requireRecentSignIn(startedAgo(RECENT_SIGN_IN_SECONDS - 5))).not.toThrow()
-	})
-
-	it('asks an older session to sign in again', () => {
-		expect(() => requireRecentSignIn(startedAgo(RECENT_SIGN_IN_SECONDS + 5))).toThrow(
-			expect.objectContaining({ code: 'sign_in_again', status: 403 }),
-		)
 	})
 })

@@ -34,16 +34,12 @@ vi.mock('../../auth/index.js', async () => {
 
 	const oauth = await vi.importActual<typeof import('../../auth/oauth.js')>('../../auth/oauth.js')
 
-	const sessions =
-		await vi.importActual<typeof import('../../auth/sessions.js')>('../../auth/sessions.js')
-
 	return {
 		configure: vi.fn(),
 		getConfig: vi.fn(),
 		AuthError: errors.AuthError,
 		OAuthFailure: oauth.OAuthFailure,
 		safeReturnTo: oauth.safeReturnTo,
-		requireRecentSignIn: sessions.requireRecentSignIn,
 		secondFactorMethods: mfa.secondFactorMethods,
 		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
 		findSession: (...args: unknown[]) => mockFindSession(...args),
@@ -294,7 +290,10 @@ describe('OAuth routes', () => {
 
 			expect(mockCompleteOAuth).toHaveBeenCalledWith('google', 'the-state', 'the-code', 'unknown')
 
-			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, { replacing: undefined })
+			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, {
+				replacing: undefined,
+				twoStep: false,
+			})
 
 			expect(cookies(res).some((c) => c.startsWith('__Host-session=session-token'))).toBe(true)
 
@@ -314,7 +313,10 @@ describe('OAuth routes', () => {
 
 			expect(res.headers.get('Location')).toBe('/users')
 
-			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, { replacing: undefined })
+			expect(mockCreateSession).toHaveBeenCalledWith(USER_ID, {
+				replacing: undefined,
+				twoStep: false,
+			})
 		})
 
 		it('goes to the return path after connecting an account', async () => {

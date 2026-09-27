@@ -9,7 +9,6 @@ const {
 	mockConfirmTotp,
 	mockDeleteTotp,
 	mockGenerateRecoveryCodes,
-	mockRequireRecentSignIn,
 	mockPassSecondStep,
 	mockSendSecurityNotice,
 	mockRecordActivity,
@@ -20,7 +19,6 @@ const {
 	mockConfirmTotp: vi.fn(),
 	mockDeleteTotp: vi.fn(),
 	mockGenerateRecoveryCodes: vi.fn(),
-	mockRequireRecentSignIn: vi.fn(),
 	mockPassSecondStep: vi.fn(),
 	mockSendSecurityNotice: vi.fn(),
 	mockRecordActivity: vi.fn(),
@@ -46,7 +44,6 @@ vi.mock('../../auth/index.js', async () => {
 		confirmTotp: (...args: unknown[]) => mockConfirmTotp(...args),
 		deleteTotp: (...args: unknown[]) => mockDeleteTotp(...args),
 		generateRecoveryCodes: (...args: unknown[]) => mockGenerateRecoveryCodes(...args),
-		requireRecentSignIn: (...args: unknown[]) => mockRequireRecentSignIn(...args),
 		passSecondStep: (...args: unknown[]) => mockPassSecondStep(...args),
 		sendSecurityNotice: async (...args: unknown[]) => mockSendSecurityNotice(...args),
 		recordActivity: (...args: unknown[]) => mockRecordActivity(...args),
@@ -74,7 +71,7 @@ const USER_ID = '00000000-0000-4000-8000-000000000001'
 
 const session = {
 	id: 'session-hash',
-	created_at: '2026-09-26T00:00:00.000Z',
+	created_at: new Date().toISOString(),
 	expires_at: '2026-10-26T00:00:00.000Z',
 	two_step: true,
 	user: {
@@ -125,9 +122,7 @@ describe('MFA routes', () => {
 		['DELETE', '/auth/mfa/totp', undefined],
 		['POST', '/auth/mfa/recovery-codes', undefined],
 	] as const)('asks for a recent sign-in on %s %s', async (method, path, body) => {
-		mockRequireRecentSignIn.mockImplementationOnce(() => {
-			throw new AuthError('sign_in_again', 'Sign in again to change how you sign in')
-		})
+		mockFindSession.mockResolvedValue({ ...session, created_at: '2026-01-01T00:00:00.000Z' })
 
 		const res = await app.request(path, {
 			method,
@@ -136,6 +131,8 @@ describe('MFA routes', () => {
 		})
 
 		expect(res.status).toBe(403)
+
+		expect(await res.json()).toMatchObject({ code: 'sign_in_again' })
 
 		expect(mockStartTotpSetup).not.toHaveBeenCalled()
 
@@ -176,6 +173,8 @@ describe('MFA routes', () => {
 	})
 
 	it('shows your second factors and whether two-step sign-in is on', async () => {
+		mockFindSession.mockResolvedValue({ ...session, created_at: '2026-01-01T00:00:00.000Z' })
+
 		mockGetFactors.mockResolvedValueOnce({ passkeys: 0, totp: true, recovery_codes: 8 })
 
 		const res = await app.request('/auth/mfa', { headers })
@@ -185,8 +184,6 @@ describe('MFA routes', () => {
 		expect(await res.json()).toEqual({ enabled: true, passkeys: 0, totp: true, recovery_codes: 8 })
 
 		expect(res.headers.get('cache-control')).toBe('private, no-store')
-
-		expect(mockRequireRecentSignIn).not.toHaveBeenCalled()
 	})
 
 	it('reports two-step sign-in off when only recovery codes are left', async () => {

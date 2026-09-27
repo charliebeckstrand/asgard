@@ -8,7 +8,6 @@ const {
 	mockCreateRegistrationOptions,
 	mockRegisterPasskey,
 	mockDeletePasskey,
-	mockRequireRecentSignIn,
 	mockGetFactors,
 	mockPassSecondStep,
 	mockSendSecurityNotice,
@@ -19,7 +18,6 @@ const {
 	mockCreateRegistrationOptions: vi.fn(),
 	mockRegisterPasskey: vi.fn(),
 	mockDeletePasskey: vi.fn(),
-	mockRequireRecentSignIn: vi.fn(),
 	mockGetFactors: vi.fn(),
 	mockPassSecondStep: vi.fn(),
 	mockSendSecurityNotice: vi.fn(),
@@ -44,7 +42,6 @@ vi.mock('../../auth/index.js', async () => {
 		createRegistrationOptions: (...args: unknown[]) => mockCreateRegistrationOptions(...args),
 		registerPasskey: (...args: unknown[]) => mockRegisterPasskey(...args),
 		deletePasskey: (...args: unknown[]) => mockDeletePasskey(...args),
-		requireRecentSignIn: (...args: unknown[]) => mockRequireRecentSignIn(...args),
 		secondFactorMethods: mfa.secondFactorMethods,
 		getFactors: (...args: unknown[]) => mockGetFactors(...args),
 		passSecondStep: (...args: unknown[]) => mockPassSecondStep(...args),
@@ -73,7 +70,7 @@ const USER_ID = '00000000-0000-4000-8000-000000000001'
 
 const session = {
 	id: 'session-hash',
-	created_at: '2026-09-26T00:00:00.000Z',
+	created_at: new Date().toISOString(),
 	expires_at: '2026-10-26T00:00:00.000Z',
 	two_step: true,
 	user: {
@@ -132,9 +129,7 @@ describe('Passkeys routes', () => {
 		['POST', '/auth/passkeys', credential],
 		['DELETE', '/auth/passkeys/credential-1', undefined],
 	] as const)('asks for a recent sign-in on %s %s', async (method, path, body) => {
-		mockRequireRecentSignIn.mockImplementationOnce(() => {
-			throw new AuthError('sign_in_again', 'Sign in again to change your passkeys')
-		})
+		mockFindSession.mockResolvedValue({ ...session, created_at: '2026-01-01T00:00:00.000Z' })
 
 		const res = await app.request(path, {
 			method,
@@ -143,6 +138,8 @@ describe('Passkeys routes', () => {
 		})
 
 		expect(res.status).toBe(403)
+
+		expect(await res.json()).toMatchObject({ code: 'sign_in_again' })
 
 		expect(mockCreateRegistrationOptions).not.toHaveBeenCalled()
 
@@ -225,6 +222,8 @@ describe('Passkeys routes', () => {
 	})
 
 	it('lists your passkeys without asking for a recent sign-in', async () => {
+		mockFindSession.mockResolvedValue({ ...session, created_at: '2026-01-01T00:00:00.000Z' })
+
 		mockGetPasskeys.mockResolvedValueOnce([passkey])
 
 		const res = await app.request('/auth/passkeys', { headers })
@@ -234,8 +233,6 @@ describe('Passkeys routes', () => {
 		expect(await res.json()).toEqual({ data: [passkey], total: 1 })
 
 		expect(mockGetPasskeys).toHaveBeenCalledWith(USER_ID)
-
-		expect(mockRequireRecentSignIn).not.toHaveBeenCalled()
 	})
 
 	it('returns registration options for your account', async () => {

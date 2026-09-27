@@ -6,11 +6,10 @@ import {
 	generateRecoveryCodes,
 	getFactors,
 	passSecondStep,
-	requireRecentSignIn,
 	secondFactorMethods,
 	startTotpSetup,
 } from '../auth/index.js'
-import { requireSecondStep, requireSession, type SessionEnv } from '../middleware/session.js'
+import { authorizeSignInChange, requireSession, type SessionEnv } from '../middleware/session.js'
 import { recordChange } from './activity.js'
 
 // A user manages only their own second factors. Passkeys have their own routes
@@ -136,9 +135,7 @@ mfaRoutes.openapi(getFactorsRoute, async (c) => {
 })
 
 mfaRoutes.openapi(totpSetupRoute, async (c) => {
-	const session = await requireSecondStep(c)
-
-	requireRecentSignIn(session)
+	const session = await authorizeSignInChange(c)
 
 	c.header('Cache-Control', 'private, no-store')
 
@@ -146,9 +143,7 @@ mfaRoutes.openapi(totpSetupRoute, async (c) => {
 })
 
 mfaRoutes.openapi(totpConfirmRoute, async (c) => {
-	const session = await requireSecondStep(c)
-
-	requireRecentSignIn(session)
+	const session = await authorizeSignInChange(c)
 
 	await confirmTotp(session.user.id, c.req.valid('json').code)
 
@@ -166,9 +161,7 @@ mfaRoutes.openapi(totpConfirmRoute, async (c) => {
 })
 
 mfaRoutes.openapi(totpDeleteRoute, async (c) => {
-	const session = await requireSecondStep(c)
-
-	requireRecentSignIn(session)
+	const session = await authorizeSignInChange(c)
 
 	await deleteTotp(session.user.id)
 
@@ -183,9 +176,7 @@ mfaRoutes.openapi(totpDeleteRoute, async (c) => {
 })
 
 mfaRoutes.openapi(recoveryCodesRoute, async (c) => {
-	const session = await requireSecondStep(c)
-
-	requireRecentSignIn(session)
+	const session = await authorizeSignInChange(c)
 
 	const codes = await generateRecoveryCodes(session.user.id)
 
