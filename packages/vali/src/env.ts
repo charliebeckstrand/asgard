@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 
 export const TEST_DATABASE_URL = 'postgres://test:test@localhost:5432/test'
-export const TEST_CORS_ORIGIN = 'http://localhost:3000'
+export const TEST_APP_ORIGINS = 'http://localhost:3000'
 
 /**
  * Default env vars stubbed by {@link stubServiceEnv}. Caller-supplied
@@ -9,7 +9,7 @@ export const TEST_CORS_ORIGIN = 'http://localhost:3000'
  */
 export const TEST_SERVICE_ENV = {
 	DATABASE_URL: TEST_DATABASE_URL,
-	CORS_ORIGIN: TEST_CORS_ORIGIN,
+	APP_ORIGINS: TEST_APP_ORIGINS,
 } as const
 
 /**
@@ -26,7 +26,7 @@ export const TEST_SERVICE_ENV = {
  *
  * stubServiceEnv()
  * // …or override individual vars:
- * stubServiceEnv({ CORS_ORIGIN: 'http://localhost:4000' })
+ * stubServiceEnv({ APP_ORIGINS: 'http://localhost:4000' })
  *
  * import { createBifrostApp } from '../app.js'
  * ```

@@ -7,7 +7,6 @@ import { type CheckIpResponse, CheckIpResponseSchema } from 'skuld'
 
 import type { VidarApp } from './app.js'
 import { type CircuitBreaker, createCircuitBreaker } from './circuit-breaker.js'
-import { createTokenBucket } from './rate-limit.js'
 
 export interface VidarClientConfig {
 	vidarUrl?: string
@@ -98,40 +97,16 @@ export function reportEvent(
 	})
 }
 
-export interface CreateVidarOptions {
-	/** Tokens refilled per second (default: 5) */
-	rate?: number
-	/** Maximum bucket size / burst capacity (default: 10) */
-	burst?: number
-	/** Route label included in reported events (e.g., '/auth') */
-	route?: string
-	/** Service name included in reported events (default: 'unknown') */
-	service?: string
-}
-
 /**
- * Create a unified Vidar middleware that performs ban checking and rate limiting.
- * Ban check fails open when Vidar is unreachable. Rate limiting is always enforced locally.
+ * Middleware that answers 403 to addresses Vidar has banned. Fails open when
+ * Vidar is unconfigured or unreachable. Needs grid's clientIp middleware.
  */
-export function createVidar(options?: CreateVidarOptions): MiddlewareHandler {
-	const bucket = createTokenBucket({ rate: options?.rate, burst: options?.burst })
-
-	const route = options?.route
-	const service = options?.service ?? 'unknown'
-
+export function banCheck(): MiddlewareHandler {
 	return async (c, next) => {
-		const ip = getIpAddress(c)
-
-		const result = await checkIpBan(ip)
+		const result = await checkIpBan(getIpAddress(c))
 
 		if (result?.banned) {
 			throw new HTTPException(403, { message: 'Unauthorized' })
-		}
-
-		if (!bucket.consume(ip)) {
-			reportEvent('rate_limited', ip, route ? { route } : {}, service)
-
-			throw new HTTPException(429, { message: 'Too many requests' })
 		}
 
 		await next()

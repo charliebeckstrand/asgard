@@ -25,7 +25,7 @@ export const environment = createEnvironment({
 	// every browser in one rate-limit bucket.
 	CLIENT_IP_SECRET:
 		process.env.NODE_ENV === 'production' ? clientIpSecret : clientIpSecret.optional(),
-	// The domain passkeys belong to. Every CORS origin must be on it or a subdomain of it.
+	// The domain passkeys belong to. Every app origin must be on it or a subdomain of it.
 	PASSKEY_DOMAIN: z.string().default('localhost'),
 	// Encrypts authenticator-app secrets. Unset turns authenticator apps off. Changing
 	// it breaks every authenticator app already added.
@@ -52,8 +52,9 @@ export const environment = createEnvironment({
 	TURNSTILE_SECRET_KEY: optionalValue,
 	// The sender of every email. Its domain must be verified in Resend.
 	EMAIL_FROM: z.string().default('Bifrost <no-reply@localhost>'),
-	// Comma-separated, so each consuming app's origin can be allowed.
-	CORS_ORIGIN: z
+	// Comma-separated origins of the apps that use Bifrost. They set CORS, CSRF,
+	// passkey origins and where redirects and emailed links may point.
+	APP_ORIGINS: z
 		.string()
 		.default('http://localhost:3000')
 		.transform((v) => v.split(',')),

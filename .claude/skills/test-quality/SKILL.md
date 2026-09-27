@@ -41,7 +41,7 @@ The `vali` package centralizes the patterns that used to be duplicated. When you
 
 | You need… | Import from |
 |---|---|
-| Stub the standard service env (`DATABASE_URL`, `CORS_ORIGIN`) | `stubServiceEnv` from `vali/env` |
+| Stub the standard service env (`DATABASE_URL`, `APP_ORIGINS`) | `stubServiceEnv` from `vali/env` |
 | Start a Postgres testcontainer | `startPostgres` from `vali/containers` |
 | Apply a service's migrations to it | `migrate` from `saga` |
 | Skip a suite when Docker is unavailable | `isDockerAvailable() ? describe : describe.skip` |
@@ -107,12 +107,12 @@ vi.mock('../lib/db.js', () => ({
 
 ### Mocking `vidar/client`
 
-Bifrost service tests should pass-through the Vidar middleware:
+Bifrost service tests should pass-through Vidar's ban check:
 
 ```ts
 vi.mock('vidar/client', () => ({
     configure: vi.fn(),
-    createVidar: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+    banCheck: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
         await next()
     }),
     reportEvent: vi.fn(),

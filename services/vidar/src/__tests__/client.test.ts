@@ -1,6 +1,6 @@
 import { clientIp } from 'grid/middleware'
 import { Hono } from 'hono'
-import { configure, createVidar, reportEvent } from '@/client'
+import { banCheck, configure, reportEvent } from '@/client'
 
 const VIDAR_URL = 'http://vidar.test'
 
@@ -9,7 +9,7 @@ function makeApp() {
 
 	app.use('*', clientIp({ header: 'do-connecting-ip' }))
 
-	app.use('*', createVidar({ rate: 100, burst: 100, route: '/test', service: 'unit' }))
+	app.use('*', banCheck())
 
 	app.get('/test', (c) => c.text('OK'))
 
@@ -35,7 +35,7 @@ afterEach(() => {
 	vi.unstubAllGlobals()
 })
 
-describe('createVidar middleware', () => {
+describe('banCheck middleware', () => {
 	describe('when unconfigured (no vidarUrl)', () => {
 		beforeEach(() => {
 			configure({})
@@ -49,24 +49,6 @@ describe('createVidar middleware', () => {
 			expect(res.status).toBe(200)
 
 			expect(fetchMock).not.toHaveBeenCalled()
-		})
-
-		it('still applies local rate limiting', async () => {
-			const app = new Hono()
-
-			app.use('*', clientIp({ header: 'do-connecting-ip' }))
-
-			app.use('*', createVidar({ rate: 0, burst: 1, service: 'unit' }))
-
-			app.get('/x', (c) => c.text('OK'))
-
-			const ok = await app.request('/x')
-
-			expect(ok.status).toBe(200)
-
-			const denied = await app.request('/x')
-
-			expect(denied.status).toBe(429)
 		})
 	})
 
@@ -147,37 +129,6 @@ describe('createVidar middleware', () => {
 			await app.request('/test')
 
 			expect(fetchMock.mock.calls.length).toBe(callsBefore)
-		})
-	})
-
-	describe('rate limiting + reportEvent', () => {
-		beforeEach(() => {
-			configure({ vidarUrl: VIDAR_URL })
-		})
-
-		it('returns 429 and reports rate_limited when bucket is empty', async () => {
-			fetchMock.mockResolvedValue(jsonResponse({ banned: false }))
-
-			const app = new Hono()
-
-			app.use('*', clientIp({ header: 'do-connecting-ip' }))
-
-			app.use('*', createVidar({ rate: 0, burst: 1, route: '/test', service: 'unit' }))
-
-			app.get('/test', (c) => c.text('OK'))
-
-			await app.request('/test')
-
-			const blocked = await app.request('/test')
-
-			expect(blocked.status).toBe(429)
-
-			// Fire-and-forget reportEvent eventually hits /vidar/events.
-			await vi.waitFor(() => {
-				expect(
-					fetchMock.mock.calls.find(([url]) => String(url).includes('/vidar/events')),
-				).toBeDefined()
-			})
 		})
 	})
 })
