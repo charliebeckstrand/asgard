@@ -10,6 +10,7 @@ import {
 	registerUser,
 } from '../credentials.js'
 import type {
+	ActivityRepository,
 	CredentialsRow,
 	EmailTokenRepository,
 	MfaRepository,
@@ -75,6 +76,7 @@ beforeEach(() => {
 		mfa: { issuer: 'localhost' },
 		oauthRepository: {} as OAuthRepository,
 		emailTokenRepository: {} as EmailTokenRepository,
+		activityRepository: {} as ActivityRepository,
 		sendEmail: vi.fn(),
 		oauth: {},
 	})
@@ -186,6 +188,7 @@ describe('authenticateUser', () => {
 			mfa: { issuer: 'localhost' },
 			oauthRepository: {} as OAuthRepository,
 			emailTokenRepository: {} as EmailTokenRepository,
+			activityRepository: {} as ActivityRepository,
 			sendEmail: vi.fn(),
 			oauth: {},
 			onSecurityEvent,
@@ -349,6 +352,7 @@ describe('registerUser', () => {
 			mfa: { issuer: 'localhost' },
 			oauthRepository: {} as OAuthRepository,
 			emailTokenRepository: {} as EmailTokenRepository,
+			activityRepository: {} as ActivityRepository,
 			sendEmail: vi.fn(),
 			oauth: {},
 			onSecurityEvent,

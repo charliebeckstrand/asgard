@@ -20,6 +20,8 @@ const {
 	mockRequestPasswordReset,
 	mockResetPassword,
 	mockCheckTurnstile,
+	mockRecordActivity,
+	mockGetActivity,
 } = vi.hoisted(() => ({
 	mockAuthenticateUser: vi.fn(),
 	mockRegisterUser: vi.fn(),
@@ -38,6 +40,8 @@ const {
 	mockRequestPasswordReset: vi.fn(),
 	mockResetPassword: vi.fn(),
 	mockCheckTurnstile: vi.fn(),
+	mockRecordActivity: vi.fn(),
+	mockGetActivity: vi.fn(),
 }))
 
 import { AuthError } from '../auth/errors.js'
@@ -71,6 +75,8 @@ vi.mock('../auth/index.js', async () => {
 		resetPassword: (...args: unknown[]) => mockResetPassword(...args),
 		checkTurnstile: (...args: unknown[]) => mockCheckTurnstile(...args),
 		turnstileSiteKey: () => 'site-key',
+		recordActivity: (...args: unknown[]) => mockRecordActivity(...args),
+		getActivity: (...args: unknown[]) => mockGetActivity(...args),
 	}
 })
 
@@ -171,6 +177,21 @@ describe('Auth routes', () => {
 				replacing: undefined,
 				twoStep: false,
 			})
+
+			expect(mockRecordActivity).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userId: USER_ID,
+					actorId: USER_ID,
+					action: 'signed_in',
+					detail: 'password',
+				}),
+			)
+		})
+
+		it('still signs in when the activity fails to record', async () => {
+			mockRecordActivity.mockRejectedValueOnce(new Error('database down'))
+
+			expect((await login()).status).toBe(200)
 		})
 
 		it('sets the token in a __Host- cookie', async () => {
@@ -415,6 +436,10 @@ describe('Auth routes', () => {
 			})
 
 			expect(res.headers.get('set-cookie')).toContain('__Host-session=new-token')
+
+			expect(mockRecordActivity).toHaveBeenCalledWith(
+				expect.objectContaining({ action: 'signed_in', detail: 'passkey' }),
+			)
 		})
 
 		it('passes the credential and the client IP to authenticatePasskey', async () => {
@@ -524,6 +549,43 @@ describe('Auth routes', () => {
 			expect(res.status).toBe(204)
 
 			expect(mockDeleteUserSessions).toHaveBeenCalledWith(USER_ID, session.id)
+
+			expect(mockRecordActivity).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: USER_ID, action: 'signed_out_elsewhere' }),
+			)
+		})
+	})
+
+	describe('GET /auth/activity', () => {
+		it("returns the signed-in user's recent activity", async () => {
+			const entry = {
+				id: '00000000-0000-7000-8000-000000000002',
+				action: 'signed_in',
+				detail: 'password',
+				actor_id: USER_ID,
+				ip: '203.0.113.9',
+				created_at: '2026-09-27T00:00:00.000Z',
+			}
+
+			mockGetActivity.mockResolvedValueOnce([entry])
+
+			const res = await app.request('/auth/activity', { headers: cookie() })
+
+			expect(res.status).toBe(200)
+
+			expect(await res.json()).toEqual({ data: [entry], total: 1 })
+
+			expect(mockGetActivity).toHaveBeenCalledWith(USER_ID)
+
+			expect(res.headers.get('cache-control')).toBe('private, no-store')
+		})
+
+		it('returns 401 without a session', async () => {
+			const res = await app.request('/auth/activity')
+
+			expect(res.status).toBe(401)
+
+			expect(mockGetActivity).not.toHaveBeenCalled()
 		})
 	})
 
@@ -667,11 +729,17 @@ describe('Auth routes', () => {
 
 	describe('POST /auth/verify-email/confirm', () => {
 		it('verifies the email of the link', async () => {
+			mockVerifyEmail.mockResolvedValueOnce(USER_ID)
+
 			const res = await post('/auth/verify-email/confirm', { token: 'abc' })
 
 			expect(res.status).toBe(204)
 
 			expect(mockVerifyEmail).toHaveBeenCalledWith('abc')
+
+			expect(mockRecordActivity).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: USER_ID, action: 'email_verified' }),
+			)
 		})
 
 		it('returns 400 for an expired link', async () => {
@@ -718,6 +786,8 @@ describe('Auth routes', () => {
 
 	describe('POST /auth/reset-password/confirm', () => {
 		it('sets the new password', async () => {
+			mockResetPassword.mockResolvedValueOnce(USER_ID)
+
 			const res = await post('/auth/reset-password/confirm', {
 				token: 'abc',
 				password: 'new password',
@@ -726,6 +796,10 @@ describe('Auth routes', () => {
 			expect(res.status).toBe(204)
 
 			expect(mockResetPassword).toHaveBeenCalledWith('abc', 'new password')
+
+			expect(mockRecordActivity).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: USER_ID, action: 'password_reset' }),
+			)
 		})
 
 		it('rejects a weak password', async () => {

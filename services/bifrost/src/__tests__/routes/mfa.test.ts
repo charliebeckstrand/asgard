@@ -12,6 +12,7 @@ const {
 	mockRequireRecentSignIn,
 	mockPassSecondStep,
 	mockSendSecurityNotice,
+	mockRecordActivity,
 } = vi.hoisted(() => ({
 	mockFindSession: vi.fn(),
 	mockGetFactors: vi.fn(),
@@ -22,6 +23,7 @@ const {
 	mockRequireRecentSignIn: vi.fn(),
 	mockPassSecondStep: vi.fn(),
 	mockSendSecurityNotice: vi.fn(),
+	mockRecordActivity: vi.fn(),
 }))
 
 import { AuthError } from '../../auth/errors.js'
@@ -47,6 +49,7 @@ vi.mock('../../auth/index.js', async () => {
 		requireRecentSignIn: (...args: unknown[]) => mockRequireRecentSignIn(...args),
 		passSecondStep: (...args: unknown[]) => mockPassSecondStep(...args),
 		sendSecurityNotice: async (...args: unknown[]) => mockSendSecurityNotice(...args),
+		recordActivity: (...args: unknown[]) => mockRecordActivity(...args),
 	}
 })
 
@@ -271,6 +274,14 @@ describe('MFA routes', () => {
 			USER_ID,
 			'The authenticator app was removed from your account',
 			undefined,
+		)
+
+		expect(mockRecordActivity).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: USER_ID,
+				actorId: USER_ID,
+				action: 'authenticator_removed',
+			}),
 		)
 	})
 

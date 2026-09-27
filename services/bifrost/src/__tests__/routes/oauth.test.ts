@@ -12,6 +12,7 @@ const {
 	mockGetIdentities,
 	mockUnlinkIdentity,
 	mockSendSecurityNotice,
+	mockRecordActivity,
 } = vi.hoisted(() => ({
 	mockFindSession: vi.fn(),
 	mockStartOAuth: vi.fn(),
@@ -22,6 +23,7 @@ const {
 	mockGetIdentities: vi.fn(),
 	mockUnlinkIdentity: vi.fn(),
 	mockSendSecurityNotice: vi.fn(),
+	mockRecordActivity: vi.fn(),
 }))
 
 vi.mock('../../auth/index.js', async () => {
@@ -53,6 +55,7 @@ vi.mock('../../auth/index.js', async () => {
 		getIdentities: (...args: unknown[]) => mockGetIdentities(...args),
 		unlinkIdentity: (...args: unknown[]) => mockUnlinkIdentity(...args),
 		sendSecurityNotice: async (...args: unknown[]) => mockSendSecurityNotice(...args),
+		recordActivity: (...args: unknown[]) => mockRecordActivity(...args),
 	}
 })
 
@@ -291,6 +294,10 @@ describe('OAuth routes', () => {
 			expect(cookies(res).some((c) => c.startsWith('__Host-oauth=;'))).toBe(true)
 
 			expect(limited).toContain('GET /auth/oauth/google/callback')
+
+			expect(mockRecordActivity).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: USER_ID, action: 'signed_in', detail: 'google' }),
+			)
 		})
 
 		it('starts a one-step session when the user has a second factor', async () => {
@@ -316,6 +323,10 @@ describe('OAuth routes', () => {
 				USER_ID,
 				'A Google account was connected to your account',
 				'http://localhost:3000',
+			)
+
+			expect(mockRecordActivity).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: USER_ID, action: 'account_connected', detail: 'google' }),
 			)
 		})
 

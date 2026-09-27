@@ -92,11 +92,15 @@ export async function sendVerificationEmail(
 	)
 }
 
-/** Marks the email of the link's user as verified. */
-export async function verifyEmail(token: string): Promise<void> {
-	if (!(await getConfig().emailTokenRepository.verifyEmail(hashToken(token)))) {
+/** Marks the email of the link's user as verified. Returns the user's id. */
+export async function verifyEmail(token: string): Promise<string> {
+	const userId = await getConfig().emailTokenRepository.verifyEmail(hashToken(token))
+
+	if (!userId) {
 		throw new AuthError('link_expired', 'This link has expired or was already used')
 	}
+
+	return userId
 }
 
 /**
@@ -178,14 +182,22 @@ export async function sendAccountExistsEmail(email: string, origin: string): Pro
 
 /**
  * Sets a new password with a reset link, and signs the user out everywhere. The
- * link reached their inbox, so their email counts as verified.
+ * link reached their inbox, so their email counts as verified. Returns the
+ * user's id.
  */
-export async function resetPassword(token: string, password: string): Promise<void> {
+export async function resetPassword(token: string, password: string): Promise<string> {
 	const hashedPassword = await hashNewPassword(password)
 
-	if (!(await getConfig().emailTokenRepository.resetPassword(hashToken(token), hashedPassword))) {
+	const userId = await getConfig().emailTokenRepository.resetPassword(
+		hashToken(token),
+		hashedPassword,
+	)
+
+	if (!userId) {
 		throw new AuthError('link_expired', 'This link has expired or was already used')
 	}
+
+	return userId
 }
 
 /**

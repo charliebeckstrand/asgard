@@ -1,4 +1,4 @@
-import type { Passkey, Session, User } from 'skuld'
+import type { Activity, ActivityAction, Passkey, Session, User } from 'skuld'
 
 export interface CredentialsRow {
 	id: string
@@ -41,14 +41,17 @@ export interface EmailTokenRepository {
 		expiresAt: Date,
 		interval: number,
 	): Promise<boolean>
-	/** Uses a live verification link and marks its user's email verified. */
-	verifyEmail(id: string): Promise<boolean>
+	/**
+	 * Uses a live verification link and marks its user's email verified. Returns
+	 * the user's id, or null when the link is not live.
+	 */
+	verifyEmail(id: string): Promise<string | null>
 	/**
 	 * Uses a live reset link: sets the password, marks the email verified,
 	 * clears the failed logins of the email, and deletes the user's sessions and
-	 * other links.
+	 * other links. Returns the user's id, or null when the link is not live.
 	 */
-	resetPassword(id: string, hashedPassword: string): Promise<boolean>
+	resetPassword(id: string, hashedPassword: string): Promise<string | null>
 	deleteExpiredTokens(): Promise<number>
 	/**
 	 * Counts an email to `to` as sent, unless it would pass one of `limits` for
@@ -221,4 +224,22 @@ export interface OAuthRepository {
 		userId: string,
 		provider: OAuthProvider,
 	): Promise<'deleted' | 'not_found' | 'last_sign_in'>
+}
+
+/** One thing that happened to an account, as it is recorded. */
+export interface ActivityEntry {
+	userId: string
+	/** Who did it: the user, an admin, or null for the operator. */
+	actorId: string | null
+	action: ActivityAction
+	detail?: string
+	ip?: string
+}
+
+export interface ActivityRepository {
+	record(entry: ActivityEntry): Promise<void>
+	/** The user's latest entries, newest first. */
+	listActivity(userId: string, limit: number): Promise<Activity[]>
+	/** Deletes the entries older than `days`. */
+	deleteOldActivity(days: number): Promise<number>
 }

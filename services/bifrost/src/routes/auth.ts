@@ -4,11 +4,13 @@ import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse }
 import { getIpAddress } from 'grid/middleware'
 import type { Context } from 'hono'
 import {
+	ActivityListSchema,
 	EmailSchema,
 	LoginPasswordSchema,
 	MessageSchema,
 	PasswordSchema,
 	SessionSchema,
+	toList,
 } from 'skuld'
 import {
 	AuthError,
@@ -20,6 +22,7 @@ import {
 	createSignInOptions,
 	deleteSession,
 	deleteUserSessions,
+	getActivity,
 	registerUser,
 	requestPasswordReset,
 	resetPassword,
@@ -39,6 +42,7 @@ import {
 	type SessionEnv,
 	setSessionCookie,
 } from '../middleware/session.js'
+import { record } from './activity.js'
 import { PasskeyCredentialSchema, PasskeyOptionsSchema } from './passkeys.js'
 
 const LoginRequestSchema = z
@@ -155,6 +159,19 @@ const sessionRoute = createRoute({
 	description: 'Returns the current session and its user, or 401.',
 	responses: {
 		200: jsonResponse(SessionSchema, 'Active session'),
+		401: errorResponse('Not authenticated'),
+	},
+})
+
+const activityRoute = createRoute({
+	method: 'get',
+	path: '/activity',
+	tags: ['Auth'],
+	summary: 'Get recent activity',
+	description:
+		"Returns the latest activity on the signed-in user's account, newest first: sign-ins, changes to how they sign in, and what admins did.",
+	responses: {
+		200: jsonResponse(ActivityListSchema, 'Recent activity'),
 		401: errorResponse('Not authenticated'),
 	},
 })
@@ -293,14 +310,19 @@ const resetPasswordRoute = createRoute({
 	},
 })
 
-/** Starts a session for `userId`, replacing the one the browser still holds, and sets its cookie. */
-async function signIn(c: Context, userId: string, twoStep = false) {
+/**
+ * Starts a session for `userId`, replacing the one the browser still holds, and
+ * sets its cookie. A passkey sign-in passes the second step.
+ */
+async function signIn(c: Context, userId: string, method: 'password' | 'passkey') {
 	const { token, session } = await createSession(userId, {
 		replacing: getSessionToken(c),
-		twoStep,
+		twoStep: method === 'passkey',
 	})
 
 	setSessionCookie(c, token)
+
+	await record(c, { userId, actorId: userId, action: 'signed_in', detail: method })
 
 	return session
 }
@@ -322,7 +344,7 @@ export const authRoutes = createRouter<SessionEnv>()
 
 		const userId = await authenticateUser(email, password, getIpAddress(c))
 
-		return c.json(await signIn(c, userId), 200)
+		return c.json(await signIn(c, userId, 'password'), 200)
 	})
 	.openapi(signInOptionsRoute, async (c) => {
 		return c.json(await createSignInOptions(), 200)
@@ -332,7 +354,7 @@ export const authRoutes = createRouter<SessionEnv>()
 
 		const userId = await authenticatePasskey(credential, getIpAddress(c))
 
-		return c.json(await signIn(c, userId, true), 200)
+		return c.json(await signIn(c, userId, 'passkey'), 200)
 	})
 	.openapi(logoutRoute, async (c) => {
 		const current = c.get('session')
@@ -356,6 +378,13 @@ export const authRoutes = createRouter<SessionEnv>()
 
 		return c.json(current, 200)
 	})
+	.openapi(activityRoute, async (c) => {
+		const current = requireSession(c)
+
+		c.header('Cache-Control', 'private, no-store')
+
+		return c.json(toList(await getActivity(current.user.id)), 200)
+	})
 	.openapi(deleteOtherSessionsRoute, async (c) => {
 		const current = c.get('session')
 
@@ -364,6 +393,12 @@ export const authRoutes = createRouter<SessionEnv>()
 		}
 
 		await deleteUserSessions(current.user.id, current.id)
+
+		await record(c, {
+			userId: current.user.id,
+			actorId: current.user.id,
+			action: 'signed_out_elsewhere',
+		})
 
 		return c.body(null, 204)
 	})
@@ -425,7 +460,9 @@ export const authRoutes = createRouter<SessionEnv>()
 		return c.body(null, 204)
 	})
 	.openapi(verifyEmailRoute, async (c) => {
-		await verifyEmail(c.req.valid('json').token)
+		const userId = await verifyEmail(c.req.valid('json').token)
+
+		await record(c, { userId, actorId: userId, action: 'email_verified' })
 
 		return c.body(null, 204)
 	})
@@ -443,7 +480,9 @@ export const authRoutes = createRouter<SessionEnv>()
 	.openapi(resetPasswordRoute, async (c) => {
 		const { token, password } = c.req.valid('json')
 
-		await resetPassword(token, password)
+		const userId = await resetPassword(token, password)
+
+		await record(c, { userId, actorId: userId, action: 'password_reset' })
 
 		return c.body(null, 204)
 	})

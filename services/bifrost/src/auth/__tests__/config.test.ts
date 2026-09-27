@@ -1,4 +1,5 @@
 import type {
+	ActivityRepository,
 	EmailTokenRepository,
 	MfaRepository,
 	OAuthRepository,
@@ -44,6 +45,7 @@ describe('auth config', () => {
 			mfa,
 			oauthRepository: {} as OAuthRepository,
 			emailTokenRepository: {} as EmailTokenRepository,
+			activityRepository: {} as ActivityRepository,
 			sendEmail: vi.fn(),
 			oauth: {},
 			onSecurityEvent,

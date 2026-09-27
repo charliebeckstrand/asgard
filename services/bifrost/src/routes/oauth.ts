@@ -29,7 +29,7 @@ import {
 	type SessionEnv,
 	setSessionCookie,
 } from '../middleware/session.js'
-import { notifyOwner } from './security-notice.js'
+import { record, recordChange } from './activity.js'
 
 // GitHub and Google sign-in. The browser goes to `/start`, then to the provider,
 // then back to `/callback`. Both answer with redirects, not JSON, since the
@@ -124,10 +124,17 @@ function sameState(cookie: string | undefined, query: string | undefined): boole
 }
 
 /** Signs the user in with a one-step session, like a password would. Returns the path to go to. */
-async function finishSignIn(c: Context, userId: string, returnTo: string): Promise<string> {
+async function finishSignIn(
+	c: Context,
+	userId: string,
+	provider: OAuthProvider,
+	returnTo: string,
+): Promise<string> {
 	const { token } = await createSession(userId, { replacing: getSessionToken(c) })
 
 	setSessionCookie(c, token)
+
+	await record(c, { userId, actorId: userId, action: 'signed_in', detail: provider })
 
 	return returnTo
 }
@@ -150,10 +157,12 @@ export const oauthRoutes = createRouter<SessionEnv>()
 
 		await unlinkIdentity(session.user.id, provider)
 
-		notifyOwner(
+		await recordChange(
 			c,
 			session.user.id,
+			'account_disconnected',
 			`A ${PROVIDER_NAMES[provider]} account was disconnected from your account`,
+			provider,
 		)
 
 		return c.body(null, 204)
@@ -235,16 +244,18 @@ oauthRoutes.get('/:provider/callback', async (c) => {
 		const outcome = await completeOAuth(provider.data, state, code, getIpAddress(c))
 
 		if (outcome.kind === 'linked') {
-			notifyOwner(
+			await recordChange(
 				c,
 				outcome.userId,
+				'account_connected',
 				`A ${PROVIDER_NAMES[provider.data]} account was connected to your account`,
+				provider.data,
 			)
 
 			return c.redirect(outcome.returnTo, 302)
 		}
 
-		return c.redirect(await finishSignIn(c, outcome.userId, outcome.returnTo), 302)
+		return c.redirect(await finishSignIn(c, outcome.userId, provider.data, outcome.returnTo), 302)
 	} catch (err) {
 		if (err instanceof OAuthFailure) {
 			return c.redirect(withError(err.linking ? '/account' : '/login', err.code), 302)
