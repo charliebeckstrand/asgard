@@ -11,6 +11,7 @@ const {
 	mockGenerateRecoveryCodes,
 	mockRequireRecentSignIn,
 	mockPassSecondStep,
+	mockSendSecurityNotice,
 } = vi.hoisted(() => ({
 	mockFindSession: vi.fn(),
 	mockGetFactors: vi.fn(),
@@ -20,6 +21,7 @@ const {
 	mockGenerateRecoveryCodes: vi.fn(),
 	mockRequireRecentSignIn: vi.fn(),
 	mockPassSecondStep: vi.fn(),
+	mockSendSecurityNotice: vi.fn(),
 }))
 
 import { AuthError } from '../../auth/errors.js'
@@ -44,6 +46,7 @@ vi.mock('../../auth/index.js', async () => {
 		generateRecoveryCodes: (...args: unknown[]) => mockGenerateRecoveryCodes(...args),
 		requireRecentSignIn: (...args: unknown[]) => mockRequireRecentSignIn(...args),
 		passSecondStep: (...args: unknown[]) => mockPassSecondStep(...args),
+		sendSecurityNotice: async (...args: unknown[]) => mockSendSecurityNotice(...args),
 	}
 })
 
@@ -263,6 +266,12 @@ describe('MFA routes', () => {
 		expect(res.status).toBe(204)
 
 		expect(mockDeleteTotp).toHaveBeenCalledWith(USER_ID)
+
+		expect(mockSendSecurityNotice).toHaveBeenCalledWith(
+			USER_ID,
+			'The authenticator app was removed from your account',
+			undefined,
+		)
 	})
 
 	it("returns 409 for an admin's last second factor", async () => {

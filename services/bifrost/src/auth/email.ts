@@ -150,6 +150,32 @@ export async function resetPassword(token: string, password: string): Promise<vo
 	}
 }
 
+/**
+ * Tells the user that `change` happened to how they sign in, such as "A passkey
+ * was added to your account", so a change they did not make never goes unseen.
+ * With `origin`, it links to the page that resets the password.
+ */
+export async function sendSecurityNotice(
+	userId: string,
+	change: string,
+	origin?: string,
+): Promise<void> {
+	const user = await getConfig().userRepository.getUserById(userId)
+
+	if (!user) return
+
+	const reset = origin ? ` at ${origin}/forgot-password` : ''
+
+	await getConfig().sendEmail({
+		to: user.email,
+		subject: change,
+		text: [
+			`${change}.`,
+			`If it was you, there is nothing to do. If it was not, reset your password${reset} and remove anything you do not recognize from your account.`,
+		].join('\n\n'),
+	})
+}
+
 export function deleteExpiredEmailTokens(): Promise<number> {
 	return getConfig().emailTokenRepository.deleteExpiredTokens()
 }
