@@ -8,6 +8,10 @@ const optionalValue = z
 
 const databaseCaCert = z.string().min(1, 'DATABASE_CA_CERT is required in production')
 
+const mimirUrl = z.string().min(1, 'MIMIR_URL is required in production')
+
+const mimirApiKey = z.string().min(32, 'MIMIR_API_KEY must be at least 32 characters')
+
 const clientIpSecret = z.string().min(32, 'CLIENT_IP_SECRET must be at least 32 characters')
 
 export const environment = createEnvironment({
@@ -20,6 +24,10 @@ export const environment = createEnvironment({
 	// Unset disables Vidar; login and register keep their local rate limits.
 	VIDAR_URL: z.string().optional(),
 	VIDAR_API_KEY: z.string().optional(),
+	// Mimir keeps the apps' data. Unset answers 503 on those routes, so production
+	// requires it: a lost setting fails the deploy instead of every app's data.
+	MIMIR_URL: process.env.NODE_ENV === 'production' ? mimirUrl : mimirUrl.optional(),
+	MIMIR_API_KEY: process.env.NODE_ENV === 'production' ? mimirApiKey : mimirApiKey.optional(),
 	// Shared with Midgard, whose proxy sends the browser address in `x-client-ip`.
 	// Required in production, so a lost secret fails the deploy instead of putting
 	// every browser in one rate-limit bucket.

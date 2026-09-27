@@ -11,6 +11,7 @@ import { session } from './middleware/session.js'
 import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
 import { mfaRoutes } from './routes/mfa.js'
+import { mimirRoutes } from './routes/mimir.js'
 import { oauthRoutes } from './routes/oauth.js'
 import { passkeysRoutes } from './routes/passkeys.js'
 import { securityRoutes } from './routes/security.js'
@@ -76,6 +77,13 @@ export function createBifrostApp() {
 	// Hashes a new password, like a sign-in checks one.
 	app.use('/auth/reset-password/confirm', loginLimit)
 
+	// The apps' data in Mimir. A page load reads a few lists, and each change is
+	// one request. Sixty, then two a second per address.
+	const appDataLimit = limit('/api/apps', { rate: 2, burst: 60 })
+
+	app.use('/api/places/*', appDataLimit)
+	app.use('/api/visits/*', appDataLimit)
+
 	return app
 		.route('/auth', authRoutes)
 		.route('/auth/passkeys', passkeysRoutes)
@@ -84,4 +92,5 @@ export function createBifrostApp() {
 		.route('/api', health)
 		.route('/api/users', usersRoutes)
 		.route('/api/security', securityRoutes)
+		.route('/api', mimirRoutes)
 }
