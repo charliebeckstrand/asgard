@@ -91,6 +91,19 @@ describe('requestLogger', () => {
 		expect(dest.lines()[0]).toMatchObject({ requestId: 'incoming-42' })
 	})
 
+	it.each([
+		['one with other characters', 'id with spaces'],
+		['one that is too long', 'a'.repeat(129)],
+	])('replaces an incoming X-Request-Id with its own for %s', async (_, incoming) => {
+		const { app } = createTestApp()
+
+		app.get('/', (c) => c.text('ok'))
+
+		const res = await app.request('/', { headers: { 'X-Request-Id': incoming } })
+
+		expect(res.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/)
+	})
+
 	it("exposes a request-scoped child logger via c.get('logger')", async () => {
 		const { app, dest } = createTestApp()
 
