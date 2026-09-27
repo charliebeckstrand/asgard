@@ -72,12 +72,20 @@ export function requireSession(c: Context<SessionEnv>): Session {
 }
 
 /**
- * The current session, when it passed the second step, or a 403
- * `second_step_required`. A user with no second factor yet passes, so they can
+ * The current session, when its email is verified and it passed the second
+ * step, or a 403. A user with no second factor yet passes the step, so they can
  * add their first one. Guards every change to how a user signs in.
+ *
+ * The email check stops someone who registered an email they don't own from
+ * adding a passkey or a connected account that would outlive the owner's
+ * password reset.
  */
 export async function requireSecondStep(c: Context<SessionEnv>): Promise<Session> {
 	const current = requireSession(c)
+
+	if (!current.user.is_verified) {
+		throw new AuthError('email_unverified', 'Verify your email to change how you sign in')
+	}
 
 	if (current.two_step) return current
 

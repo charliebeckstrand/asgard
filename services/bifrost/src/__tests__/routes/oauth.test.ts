@@ -87,7 +87,7 @@ const app = createBifrostApp()
 // The Midgard app forwards `/auth/*` with its own host in `x-forwarded-host`.
 const viaApp = { 'x-forwarded-host': 'localhost:3000' }
 
-function signedIn(createdAt = new Date().toISOString(), twoStep = true) {
+function signedIn(createdAt = new Date().toISOString(), twoStep = true, isVerified = true) {
 	mockFindSession.mockResolvedValue({
 		id: 'session-hash',
 		created_at: createdAt,
@@ -97,7 +97,7 @@ function signedIn(createdAt = new Date().toISOString(), twoStep = true) {
 			id: USER_ID,
 			email: 'alice@example.com',
 			is_active: true,
-			is_verified: true,
+			is_verified: isVerified,
 			roles: ['user'],
 			created_at: '2026-01-01T00:00:00.000Z',
 			updated_at: '2026-01-01T00:00:00.000Z',
@@ -251,6 +251,18 @@ describe('OAuth routes', () => {
 				})
 
 				expect(res.headers.get('Location')).toBe('/account?error=second_step_required')
+
+				expect(mockStartOAuth).not.toHaveBeenCalled()
+			})
+
+			it('asks for a verified email', async () => {
+				signedIn(undefined, true, false)
+
+				const res = await app.request('/auth/oauth/google/start?link=1', {
+					headers: { ...viaApp, Cookie: '__Host-session=token' },
+				})
+
+				expect(res.headers.get('Location')).toBe('/account?error=email_unverified')
 
 				expect(mockStartOAuth).not.toHaveBeenCalled()
 			})
