@@ -74,6 +74,12 @@ services:
         operator: GREATER_THAN
         value: 80
         window: TEN_MINUTES
+    # Sends the service's logs to Better Stack, which keeps them longer than App
+    # Platform does.
+    log_destinations:
+      - name: better-stack
+        logtail:
+          token: ${LOGTAIL_TOKEN}
     envs:
       - key: SERVICE
         scope: BUILD_TIME
