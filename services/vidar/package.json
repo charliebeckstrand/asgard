@@ -31,7 +31,6 @@
 	"packageManager": "pnpm@12.6.0",
 	"dependencies": {
 		"@hono/node-server": "^1.19.11",
-		"@hono/swagger-ui": "^0.6.0",
 		"@hono/zod-openapi": "^1.2.2",
 		"grid": "workspace:*",
 		"hono": "^4.12.5",
