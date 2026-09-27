@@ -226,6 +226,7 @@ describe('createDb', () => {
 				max: 5,
 				idleTimeoutMillis: 30_000,
 				connectionTimeoutMillis: 5_000,
+				statement_timeout: 30_000,
 			})
 		})
 
@@ -235,6 +236,7 @@ describe('createDb', () => {
 				max: 20,
 				idleTimeoutMillis: 60_000,
 				connectionTimeoutMillis: 10_000,
+				statementTimeoutMillis: 5_000,
 			}))
 
 			await db.ping()
@@ -244,6 +246,7 @@ describe('createDb', () => {
 					max: 20,
 					idleTimeoutMillis: 60_000,
 					connectionTimeoutMillis: 10_000,
+					statement_timeout: 5_000,
 				}),
 			)
 		})

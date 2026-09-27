@@ -8,9 +8,12 @@ export const BanSourceSchema = z
 
 export type BanSource = z.infer<typeof BanSourceSchema>
 
+// Named in SSE `event:` lines, which can't hold a line break.
 const eventType = z
 	.string()
 	.min(1)
+	.max(100)
+	.regex(/^[a-z0-9_]+$/)
 	.openapi({ description: 'Type of event', example: 'login_failed' })
 
 const serviceName = z

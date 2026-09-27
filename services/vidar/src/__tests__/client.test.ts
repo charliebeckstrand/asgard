@@ -115,6 +115,22 @@ describe('createVidar middleware', () => {
 			expect(res.status).toBe(200)
 		})
 
+		it('opens the circuit after repeated 401 responses from a wrong API key', async () => {
+			const app = makeApp()
+
+			for (let i = 0; i < 6; i++) {
+				fetchMock.mockResolvedValueOnce(new Response('nope', { status: 401 }))
+
+				await app.request('/test')
+			}
+
+			const callsBefore = fetchMock.mock.calls.length
+
+			await app.request('/test')
+
+			expect(fetchMock.mock.calls.length).toBe(callsBefore)
+		})
+
 		it('opens the circuit after repeated 5xx responses', async () => {
 			const app = makeApp()
 

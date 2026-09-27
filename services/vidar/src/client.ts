@@ -36,6 +36,14 @@ export function configure(config: VidarClientConfig): void {
 }
 
 /**
+ * A 5xx, or a 401 or 403 from a wrong API key, is Vidar failing rather than
+ * answering, so it counts toward opening the breaker, which logs it.
+ */
+function isVidarFault(status: number): boolean {
+	return status >= 500 || status === 401 || status === 403
+}
+
+/**
  * Run an HTTP call against Vidar through the circuit breaker.
  * Returns null when Vidar isn't configured, the breaker is open, or the
  * call throws — callers fail open so a Vidar outage can't lock them out.
@@ -60,7 +68,7 @@ async function checkIpBan(ip: string): Promise<CheckIpResponse | null> {
 			{ init: { signal: AbortSignal.timeout(3000) } },
 		)
 
-		if (!res.ok && res.status >= 500) throw new Error(`Vidar returned ${res.status}`)
+		if (isVidarFault(res.status)) throw new Error(`Vidar returned ${res.status}`)
 		if (!res.ok) return null
 
 		const parsed = CheckIpResponseSchema.safeParse(await res.json())
@@ -86,7 +94,7 @@ export function reportEvent(
 			{ init: { signal: AbortSignal.timeout(5000) } },
 		)
 
-		if (!res.ok && res.status >= 500) throw new Error(`Vidar returned ${res.status}`)
+		if (isVidarFault(res.status)) throw new Error(`Vidar returned ${res.status}`)
 	})
 }
 

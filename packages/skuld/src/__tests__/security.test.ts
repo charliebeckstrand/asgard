@@ -38,6 +38,21 @@ describe('IngestEventSchema', () => {
 
 		expect(result.success).toBe(false)
 	})
+
+	it.each([
+		'login\nfailed',
+		'Login Failed',
+		'a'.repeat(101),
+	])('rejects event_type %j', (eventType) => {
+		const result = IngestEventSchema.safeParse({
+			ip: '192.168.1.1',
+			event_type: eventType,
+			details: {},
+			service: 'bifrost',
+		})
+
+		expect(result.success).toBe(false)
+	})
 })
 
 describe('SecurityEventSchema', () => {

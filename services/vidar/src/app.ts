@@ -1,6 +1,5 @@
 import { createApp } from 'grid'
 
-import { environment } from './lib/env.js'
 import { logger } from './lib/log.js'
 import { apiKeyAuth } from './middleware/api-key.js'
 import { analyze } from './routes/analyze.js'
@@ -16,13 +15,10 @@ const BASE_PATH = '/vidar'
 const HEALTH_PATH = `${BASE_PATH}/health`
 
 export function createVidarApp() {
-	const env = environment()
-
 	const app = createApp({
 		basePath: BASE_PATH,
 		title: 'Vidar',
 		description: '',
-		port: env.PORT,
 		logger: logger(),
 	})
 

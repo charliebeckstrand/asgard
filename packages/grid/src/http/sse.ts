@@ -23,11 +23,15 @@ export function createSSEStream<T>(options: CreateSSEStreamOptions<T>): (c: Cont
 			const handler = (event: T) => {
 				if (filter && !filter(event, c)) return
 
-				stream.writeSSE({
-					data: mapping.data(event),
-					event: mapping.event(event),
-					id: mapping.id(event),
-				})
+				// writeSSE rejects an event or id holding a line break. Unhandled, that
+				// rejection would end the process.
+				stream
+					.writeSSE({
+						data: mapping.data(event),
+						event: mapping.event(event),
+						id: mapping.id(event),
+					})
+					.catch(() => {})
 			}
 
 			emitter.on('event', handler)
@@ -36,8 +40,12 @@ export function createSSEStream<T>(options: CreateSSEStreamOptions<T>): (c: Cont
 				emitter.off('event', handler)
 			})
 
-			while (true) {
+			// A comment line keeps proxies from closing an idle stream. The loop
+			// ends with the stream, so a closed one holds nothing.
+			while (!stream.aborted) {
 				await stream.sleep(keepAliveMs)
+
+				await stream.write(': ping\n\n')
 			}
 		})
 	}

@@ -4,13 +4,14 @@ const API_KEY = 'test-vidar-api-key-that-is-at-least-32-chars'
 
 stubServiceEnv({ VIDAR_API_KEY: API_KEY })
 
-const { mockListEvents, mockSetThreatResolved } = vi.hoisted(() => ({
+const { mockListEvents, mockSetThreatResolved, mockPing } = vi.hoisted(() => ({
 	mockListEvents: vi.fn(),
 	mockSetThreatResolved: vi.fn(),
+	mockPing: vi.fn(),
 }))
 
 vi.mock('../lib/db.js', () => ({
-	db: { ping: vi.fn().mockResolvedValue(true) },
+	db: { ping: mockPing },
 }))
 
 vi.mock('../handlers/events.js', () => ({
@@ -51,9 +52,21 @@ describe('api key auth', () => {
 	})
 
 	it('leaves health open', async () => {
+		mockPing.mockResolvedValue(true)
+
 		const res = await app.request('/vidar/health')
 
 		expect(res.status).toBe(200)
+	})
+})
+
+describe('GET /vidar/health', () => {
+	it('reports unhealthy when the database is down', async () => {
+		mockPing.mockResolvedValue(false)
+
+		const res = await app.request('/vidar/health')
+
+		expect(res.status).toBe(503)
 	})
 })
 

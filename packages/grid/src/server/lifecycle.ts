@@ -9,6 +9,9 @@ export interface LifecycleOptions {
 const MAX_RETRIES = 5
 const RETRY_DELAY_MS = 500
 
+// Open streams keep server.close() waiting, so shutdown gives up after this.
+const SHUTDOWN_TIMEOUT_MS = 10_000
+
 export function setupLifecycle({ server, name, onShutdown }: LifecycleOptions) {
 	let retries = 0
 
@@ -38,6 +41,12 @@ export function setupLifecycle({ server, name, onShutdown }: LifecycleOptions) {
 		if (shuttingDown) return
 
 		shuttingDown = true
+
+		setTimeout(() => {
+			console.error(`${name} did not shut down within ${SHUTDOWN_TIMEOUT_MS}ms after ${signal}`)
+
+			process.exit(1)
+		}, SHUTDOWN_TIMEOUT_MS).unref()
 
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => {
