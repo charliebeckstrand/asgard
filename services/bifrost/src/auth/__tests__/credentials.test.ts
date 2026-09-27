@@ -256,8 +256,9 @@ describe('registerUser', () => {
 	it('returns user row on success', async () => {
 		const user = await registerUser('new@example.com', 'password123')
 
-		expect(user.id).toBe(TEST_USER.id)
-		expect(user.email).toBe(TEST_USER.email)
+		expect(user?.id).toBe(TEST_USER.id)
+
+		expect(user?.email).toBe(TEST_USER.email)
 	})
 
 	it('normalizes email before inserting', async () => {
@@ -274,16 +275,10 @@ describe('registerUser', () => {
 		expect(hashed).toContain('$argon2')
 	})
 
-	it('throws email_exists on duplicate', async () => {
+	it('returns null when the email already has an account', async () => {
 		vi.mocked(mockRepo.insertUser).mockRejectedValue({ code: '23505' })
 
-		try {
-			await registerUser('alice@example.com', 'password123')
-
-			expect.unreachable('should have thrown')
-		} catch (err) {
-			expect((err as AuthError).code).toBe('email_exists')
-		}
+		expect(await registerUser('alice@example.com', 'password123')).toBeNull()
 	})
 
 	it('re-throws non-duplicate errors', async () => {

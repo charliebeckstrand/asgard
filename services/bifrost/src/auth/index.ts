@@ -12,6 +12,7 @@ export {
 	RESET_PASSWORD_TTL_SECONDS,
 	requestPasswordReset,
 	resetPassword,
+	sendAccountExistsEmail,
 	sendVerificationEmail,
 	VERIFY_EMAIL_TTL_SECONDS,
 	verifyEmail,

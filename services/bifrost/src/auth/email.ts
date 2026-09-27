@@ -74,23 +74,31 @@ export async function verifyEmail(token: string): Promise<void> {
 }
 
 /**
- * Emails a link that sets a new password, when an active user has the email.
- * Says nothing either way, so no one can learn who has an account.
+ * A link that sets a new password for the active user with `email`, or null when
+ * there is none or they were sent one less than a minute ago.
  */
-export async function requestPasswordReset(email: string, origin: string): Promise<void> {
-	const normalizedEmail = email.trim().toLowerCase()
+async function createResetLink(email: string, origin: string): Promise<string | null> {
+	const creds = await getConfig().userRepository.getCredentialsByEmail(email)
 
-	const creds = await getConfig().userRepository.getCredentialsByEmail(normalizedEmail)
+	if (!creds?.is_active) return null
 
-	if (!creds?.is_active) return
-
-	const link = await createLink(
+	return createLink(
 		creds.id,
 		'reset_password',
 		origin,
 		'/reset-password',
 		RESET_PASSWORD_TTL_SECONDS,
 	)
+}
+
+/**
+ * Emails a link that sets a new password, when an active user has the email.
+ * Says nothing either way, so no one can learn who has an account.
+ */
+export async function requestPasswordReset(email: string, origin: string): Promise<void> {
+	const normalizedEmail = email.trim().toLowerCase()
+
+	const link = await createResetLink(normalizedEmail, origin)
 
 	if (!link) return
 
@@ -101,6 +109,31 @@ export async function requestPasswordReset(email: string, origin: string): Promi
 			'Someone asked to reset the password of your account. Open this link to choose a new one:',
 			link,
 			'The link works for one hour. If it was not you, ignore this email and your password stays the same.',
+		].join('\n\n'),
+	})
+}
+
+/**
+ * Tells the owner of `email` that someone tried to sign up with it, in place of
+ * telling the one who tried. Carries a reset link in case the owner forgot
+ * their password, and like a reset, sends nothing to an inactive account or
+ * within a minute of the last link.
+ */
+export async function sendAccountExistsEmail(email: string, origin: string): Promise<void> {
+	const normalizedEmail = email.trim().toLowerCase()
+
+	const link = await createResetLink(normalizedEmail, origin)
+
+	if (!link) return
+
+	await getConfig().sendEmail({
+		to: normalizedEmail,
+		subject: 'You already have an account',
+		text: [
+			`Someone tried to sign up with this email, but it already has an account. Sign in at ${origin}/login.`,
+			'If you forgot your password, open this link to choose a new one:',
+			link,
+			'The link works for one hour. If it was not you, ignore this email and nothing changes.',
 		].join('\n\n'),
 	})
 }

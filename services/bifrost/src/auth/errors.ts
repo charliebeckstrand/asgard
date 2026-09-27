@@ -12,7 +12,6 @@ const AUTH_STATUS = {
 	totp_not_found: 404,
 	identity_not_found: 404,
 	oauth_unavailable: 404,
-	email_exists: 409,
 	email_verified: 409,
 	sign_in_expired: 410,
 	last_admin_factor: 409,

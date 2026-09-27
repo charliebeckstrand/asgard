@@ -6,6 +6,7 @@ import {
 	RESET_PASSWORD_TTL_SECONDS,
 	requestPasswordReset,
 	resetPassword,
+	sendAccountExistsEmail,
 	sendVerificationEmail,
 	VERIFY_EMAIL_TTL_SECONDS,
 	verifyEmail,
@@ -162,6 +163,45 @@ describe('requestPasswordReset', () => {
 		emailTokenRepository.createToken.mockResolvedValue(false)
 
 		await requestPasswordReset('alice@example.com', ORIGIN)
+
+		expect(sendEmail).not.toHaveBeenCalled()
+	})
+})
+
+describe('sendAccountExistsEmail', () => {
+	it('tells the owner, with a sign-in link and a reset link', async () => {
+		await sendAccountExistsEmail(' Alice@Example.com ', ORIGIN)
+
+		expect(sendEmail).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'alice@example.com', subject: 'You already have an account' }),
+		)
+
+		expect((sendEmail.mock.calls[0]?.[0] as Email).text).toContain(`${ORIGIN}/login`)
+
+		const [id, userId, purpose] = emailTokenRepository.createToken.mock.calls[0] as Parameters<
+			EmailTokenRepository['createToken']
+		>
+
+		expect([id, userId, purpose]).toEqual([
+			hashToken(sentToken('/reset-password')),
+			USER_ID,
+			'reset_password',
+		])
+	})
+
+	it.each([
+		['the user is inactive', false, true],
+		['a link went out less than a minute ago', true, false],
+	])('sends nothing when %s', async (_, isActive, created) => {
+		userRepository.getCredentialsByEmail.mockResolvedValue({
+			id: USER_ID,
+			hashed_password: 'h',
+			is_active: isActive,
+		})
+
+		emailTokenRepository.createToken.mockResolvedValue(created)
+
+		await sendAccountExistsEmail('alice@example.com', ORIGIN)
 
 		expect(sendEmail).not.toHaveBeenCalled()
 	})
