@@ -123,4 +123,20 @@ describe('rateLimit', () => {
 
 		expect(onLimited).toHaveBeenCalledWith('203.0.113.7')
 	})
+
+	it('counts by the key it is given', async () => {
+		const app = new Hono()
+
+		app.use('*', rateLimit({ rate: 0, burst: 1, key: (c) => c.req.header('x-user') ?? '' }))
+
+		app.get('/x', (c) => c.text('OK'))
+
+		const as = (user: string) => ({ headers: { 'x-user': user } })
+
+		await app.request('/x', as('a'))
+
+		expect((await app.request('/x', as('b'))).status).toBe(200)
+
+		expect((await app.request('/x', as('a'))).status).toBe(429)
+	})
 })
