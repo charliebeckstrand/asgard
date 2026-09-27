@@ -107,12 +107,12 @@ vi.mock('../lib/db.js', () => ({
 
 ### Mocking `vidar/client`
 
-Bifrost service tests should pass-through the Vidar middleware:
+Bifrost service tests should pass-through Vidar's ban check:
 
 ```ts
 vi.mock('vidar/client', () => ({
     configure: vi.fn(),
-    createVidar: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+    banCheck: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
         await next()
     }),
     reportEvent: vi.fn(),

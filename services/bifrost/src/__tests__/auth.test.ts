@@ -83,9 +83,9 @@ vi.mock('../auth/index.js', async () => {
 // Records each request that a rate limit sees, then lets it through.
 const { limited } = vi.hoisted(() => ({ limited: [] as string[] }))
 
-vi.mock('vidar/client', () => ({
-	configure: vi.fn(),
-	createVidar: vi
+vi.mock('grid/middleware', async (importOriginal) => ({
+	...(await importOriginal<typeof import('grid/middleware')>()),
+	rateLimit: vi
 		.fn()
 		.mockReturnValue(
 			async (c: { req: { method: string; path: string } }, next: () => Promise<void>) => {
@@ -94,6 +94,13 @@ vi.mock('vidar/client', () => ({
 				await next()
 			},
 		),
+}))
+
+vi.mock('vidar/client', () => ({
+	configure: vi.fn(),
+	banCheck: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+		await next()
+	}),
 	reportEvent: vi.fn(),
 }))
 
