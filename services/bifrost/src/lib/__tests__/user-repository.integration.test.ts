@@ -45,7 +45,7 @@ afterAll(async () => {
 beforeEach(async () => {
 	if (!isDockerAvailable()) return
 
-	await pool.query('TRUNCATE users CASCADE')
+	await pool.query('TRUNCATE users, failed_logins CASCADE')
 })
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
@@ -148,6 +148,68 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 		it('returns null for a missing user', async () => {
 			expect(await repo.setUserActive(randomUUID(), false)).toBeNull()
+		})
+	})
+
+	describe('countFailedLogin', () => {
+		it('counts tries up to the limit, then makes the next one wait', async () => {
+			for (let i = 0; i < 3; i++) {
+				expect(await repo.countFailedLogin('guess@example.com', 3, 60)).toBe(true)
+			}
+
+			expect(await repo.countFailedLogin('guess@example.com', 3, 60)).toBe(false)
+
+			const { rows } = await pool.query('SELECT count FROM failed_logins WHERE email = $1', [
+				'guess@example.com',
+			])
+
+			expect(rows[0].count).toBe(3)
+		})
+
+		it('lets a try through once the wait is over', async () => {
+			await repo.countFailedLogin('guess@example.com', 1, 60)
+
+			await pool.query(
+				`UPDATE failed_logins SET last_failed_at = now() - interval '61 seconds' WHERE email = $1`,
+				['guess@example.com'],
+			)
+
+			expect(await repo.countFailedLogin('guess@example.com', 1, 60)).toBe(true)
+
+			expect(await repo.countFailedLogin('guess@example.com', 1, 60)).toBe(false)
+		})
+
+		it('counts each email apart', async () => {
+			await repo.countFailedLogin('one@example.com', 1, 60)
+
+			expect(await repo.countFailedLogin('two@example.com', 1, 60)).toBe(true)
+		})
+
+		it('starts over after clearFailedLogins', async () => {
+			await repo.countFailedLogin('guess@example.com', 1, 60)
+
+			await repo.clearFailedLogins('guess@example.com')
+
+			expect(await repo.countFailedLogin('guess@example.com', 1, 60)).toBe(true)
+		})
+	})
+
+	describe('deleteStaleFailedLogins', () => {
+		it('deletes only counts older than the given age', async () => {
+			await repo.countFailedLogin('old@example.com', 5, 60)
+
+			await repo.countFailedLogin('new@example.com', 5, 60)
+
+			await pool.query(
+				`UPDATE failed_logins SET last_failed_at = now() - interval '2 days' WHERE email = $1`,
+				['old@example.com'],
+			)
+
+			expect(await repo.deleteStaleFailedLogins(24 * 60 * 60)).toBe(1)
+
+			const { rows } = await pool.query('SELECT email FROM failed_logins')
+
+			expect(rows).toEqual([{ email: 'new@example.com' }])
 		})
 	})
 })

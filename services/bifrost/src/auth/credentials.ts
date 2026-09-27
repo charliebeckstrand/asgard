@@ -10,7 +10,20 @@ export { AuthError } from './errors.js'
 // preventing timing-based email enumeration.
 const dummyHashPromise = hash('dummy-timing-pad', { algorithm: 2 /* Argon2id */ })
 
-/** Checks the credentials and returns the user's id. */
+/** Wrong passwords an email gets before its tries are spaced out. */
+export const MAX_FAILED_LOGINS = 5
+
+/** How long a try waits after the last one, past `MAX_FAILED_LOGINS`. */
+export const FAILED_LOGIN_WAIT_SECONDS = 60
+
+/** How long an email's wrong passwords are remembered. */
+export const FAILED_LOGIN_TTL_SECONDS = 24 * 60 * 60
+
+/**
+ * Checks the credentials and returns the user's id. Each email gets
+ * `MAX_FAILED_LOGINS` wrong passwords, then one try a minute, from any address.
+ * Unknown emails count the same, so the limit reveals no accounts.
+ */
 export async function authenticateUser(
 	email: string,
 	password: string,
@@ -19,6 +32,16 @@ export async function authenticateUser(
 	const normalizedEmail = email.trim().toLowerCase()
 
 	const { userRepository } = getConfig()
+
+	if (
+		!(await userRepository.countFailedLogin(
+			normalizedEmail,
+			MAX_FAILED_LOGINS,
+			FAILED_LOGIN_WAIT_SECONDS,
+		))
+	) {
+		throw new AuthError('too_many_logins', 'Too many wrong passwords. Try again in a minute')
+	}
 
 	const creds = await userRepository.getCredentialsByEmail(normalizedEmail)
 
@@ -41,11 +64,17 @@ export async function authenticateUser(
 		throw new AuthError('invalid_credentials', 'Incorrect email or password')
 	}
 
+	await userRepository.clearFailedLogins(normalizedEmail)
+
 	if (!creds.is_active) {
 		throw new AuthError('account_inactive', 'Account is inactive')
 	}
 
 	return creds.id
+}
+
+export function deleteStaleFailedLogins(): Promise<number> {
+	return getConfig().userRepository.deleteStaleFailedLogins(FAILED_LOGIN_TTL_SECONDS)
 }
 
 export async function registerUser(email: string, password: string, ip?: string): Promise<User> {
