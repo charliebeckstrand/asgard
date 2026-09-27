@@ -48,7 +48,7 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                service: [bifrost, vidar]
+                service: [bifrost, vidar, mimir]
         steps:
             - uses: actions/checkout@v6
 
