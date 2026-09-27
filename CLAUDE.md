@@ -1,5 +1,13 @@
 # CLAUDE.md
 
+## Docs
+
+The repo holds the canonical record of the project. Read these before working in the area they cover, and update them in the same pull request when that area changes.
+
+- `.claude/docs/overview.md`: layout, commands, environment, deploy, cloud-session notes
+- `.claude/docs/decisions.md`: choices made and alternatives turned down
+- `.claude/docs/midgard.md`: the contract with the midgard frontend
+
 ## Principles
 
 - Simplicity above all. The best solution is the simplest one that fully solves the problem. Speculative abstractions age poorly — earn complexity through proven need.
