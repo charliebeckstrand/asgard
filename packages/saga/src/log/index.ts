@@ -1,6 +1,6 @@
 import { type DestinationStream, type Level, type LevelWithSilent, type Logger, pino } from 'pino'
 
-export type { Logger, Level }
+export type { Level, Logger }
 
 export interface LoggerOptions {
 	/** Service name; emitted as the `service` binding on every log line. */

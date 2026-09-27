@@ -83,7 +83,8 @@ beforeEach(() => {
 
 /** The token in the link of the one email sent. */
 function sentToken(path: string): string {
-	const { text } = sendEmail.mock.calls[0]?.[0] as Email
+	const email = sendEmail.mock.calls[0]?.[0] as Email
+	const { text } = email
 
 	const link = text.split('\n').find((line) => line.startsWith(`${ORIGIN}${path}?token=`))
 
@@ -210,25 +211,25 @@ describe('requestPasswordReset', () => {
 		expect(sendEmail).not.toHaveBeenCalled()
 	})
 
-	it.each([
-		true,
-		false,
-	])('counts the email by whether the address is verified (%s)', async (isVerified) => {
-		userRepository.getCredentialsByEmail.mockResolvedValue({
-			id: USER_ID,
-			hashed_password: 'h',
-			is_active: true,
-			is_verified: isVerified,
-		})
+	it.each([true, false])(
+		'counts the email by whether the address is verified (%s)',
+		async (isVerified) => {
+			userRepository.getCredentialsByEmail.mockResolvedValue({
+				id: USER_ID,
+				hashed_password: 'h',
+				is_active: true,
+				is_verified: isVerified,
+			})
 
-		await requestPasswordReset('alice@example.com', ORIGIN)
+			await requestPasswordReset('alice@example.com', ORIGIN)
 
-		expect(emailTokenRepository.countSentEmail).toHaveBeenCalledWith(
-			'alice@example.com',
-			isVerified,
-			EMAIL_LIMITS,
-		)
-	})
+			expect(emailTokenRepository.countSentEmail).toHaveBeenCalledWith(
+				'alice@example.com',
+				isVerified,
+				EMAIL_LIMITS,
+			)
+		},
+	)
 
 	it("sends nothing past the day's limits", async () => {
 		emailTokenRepository.countSentEmail.mockResolvedValue(false)
@@ -249,7 +250,9 @@ describe('sendAccountExistsEmail', () => {
 			expect.objectContaining({ to: 'alice@example.com', subject: 'You already have an account' }),
 		)
 
-		expect((sendEmail.mock.calls[0]?.[0] as Email).text).toContain(`${ORIGIN}/login`)
+		const email = sendEmail.mock.calls[0]?.[0] as Email
+
+		expect(email.text).toContain(`${ORIGIN}/login`)
 
 		const [id, userId, purpose] = emailTokenRepository.createToken.mock.calls[0] as Parameters<
 			EmailTokenRepository['createToken']
