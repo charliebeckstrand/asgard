@@ -6,7 +6,7 @@ vi.mock('../../auth/index.js', { spy: true })
 
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
-	createVidar: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
+	banCheck: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
 		await next()
 	}),
 	reportEvent: vi.fn(),
