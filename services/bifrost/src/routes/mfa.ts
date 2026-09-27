@@ -1,5 +1,5 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { errorResponse, jsonRequest, jsonResponse, validationHook } from 'grid'
+import { createRoute, z } from '@hono/zod-openapi'
+import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
 import {
 	confirmTotp,
 	deleteTotp,
@@ -116,7 +116,7 @@ const recoveryCodesRoute = createRoute({
 	},
 })
 
-const mfaRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
+const mfaRoutes = createRouter<SessionEnv>()
 
 // Answers 401 before a body is validated.
 mfaRoutes.use('*', async (c, next) => {

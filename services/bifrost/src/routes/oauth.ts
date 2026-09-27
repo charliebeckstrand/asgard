@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { errorResponse, HTTPException, jsonResponse, validationHook } from 'grid'
+import { createRoute, z } from '@hono/zod-openapi'
+import { createRouter, errorResponse, HTTPException, jsonResponse } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import type { Context } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
@@ -132,7 +132,7 @@ async function finishSignIn(c: Context, userId: string, returnTo: string): Promi
 	return returnTo
 }
 
-export const oauthRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
+export const oauthRoutes = createRouter<SessionEnv>()
 	.openapi(providersRoute, (c) => c.json({ providers: enabledProviders() }, 200))
 	.openapi(listIdentitiesRoute, async (c) => {
 		const { user } = requireSession(c)
@@ -179,7 +179,7 @@ oauthRoutes.get('/:provider/start', async (c) => {
 	const origin = appOrigin(c)
 
 	if (!origin) {
-		return c.json({ message: 'Unknown app origin' }, 400)
+		throw new HTTPException(400, { message: 'Unknown app origin' })
 	}
 
 	try {

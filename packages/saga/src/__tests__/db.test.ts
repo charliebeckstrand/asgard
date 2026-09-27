@@ -9,8 +9,12 @@ const { pool, Pool } = vi.hoisted(() => {
 	return { pool, Pool }
 })
 
-vi.mock('pg', () => ({ Pool }))
+vi.mock('pg', async (importOriginal) => ({
+	...(await importOriginal<typeof import('pg')>()),
+	Pool,
+}))
 
+import { types as pgTypes } from 'pg'
 import { createDb, type DbConfig, NoRowsError } from '../db.js'
 import type { Logger } from '../log/index.js'
 import { sql } from '../sql.js'
@@ -227,7 +231,22 @@ describe('createDb', () => {
 				idleTimeoutMillis: 30_000,
 				connectionTimeoutMillis: 5_000,
 				statement_timeout: 30_000,
+				types: expect.any(Object),
 			})
+		})
+
+		it('parses timestamps into ISO strings in UTC', async () => {
+			const db = createDb(() => ({ url }))
+
+			await db.ping()
+
+			const [{ types }] = Pool.mock.lastCall as unknown as [{ types: typeof pgTypes }]
+
+			const parse = types.getTypeParser(pgTypes.builtins.TIMESTAMPTZ)
+
+			expect(parse('2026-09-27 08:38:06.123-07')).toBe('2026-09-27T15:38:06.123Z')
+
+			expect(types.getTypeParser(pgTypes.builtins.INT4)('42')).toBe(42)
 		})
 
 		it('uses the pool options from config', async () => {

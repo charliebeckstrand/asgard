@@ -29,6 +29,7 @@ export {
 	IpAddressSchema,
 	type LoginPassword,
 	LoginPasswordSchema,
+	normalizeEmail,
 	type Password,
 	PasswordSchema,
 	type Timestamp,

@@ -11,6 +11,8 @@ export interface RequestLoggerEnv {
 
 const REQUEST_ID_HEADER = 'x-request-id'
 
+const REQUEST_ID_PATTERN = /^[\w-]{1,128}$/
+
 /**
  * Hono middleware that creates a request-scoped child logger and emits a
  * structured access-log line when the response completes. The request ID
@@ -24,7 +26,8 @@ export function requestLogger(baseLogger: Logger): MiddlewareHandler<RequestLogg
 	return async (c, next) => {
 		const incoming = c.req.header(REQUEST_ID_HEADER)
 
-		const requestId = incoming ?? randomUUID()
+		// The header comes from the client, so only a plain, short ID goes into the logs.
+		const requestId = incoming && REQUEST_ID_PATTERN.test(incoming) ? incoming : randomUUID()
 
 		const logger = baseLogger.child({ requestId })
 

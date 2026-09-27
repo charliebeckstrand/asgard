@@ -156,6 +156,16 @@ describeWithDocker('createDb (integration)', () => {
 		})
 	})
 
+	describe('timestamps', () => {
+		it('returns timestamptz values as ISO strings in UTC', async () => {
+			const result = await db.val<string>(sql`
+				SELECT TIMESTAMPTZ '2026-09-27 08:38:06.123-07'
+			`)
+
+			expect(result).toBe('2026-09-27T15:38:06.123Z')
+		})
+	})
+
 	describe('tx', () => {
 		it('commits on success', async () => {
 			const result = await db.tx(async (tx) => {

@@ -73,7 +73,7 @@ const app = createBifrostApp()
 
 const SWEEP_INTERVAL_MS = 3_600_000 // 1 hour
 
-const sweepTimer = setInterval(() => {
+function sweep() {
 	Promise.all([
 		deleteExpiredSessions(),
 		deleteExpiredChallenges(),
@@ -88,7 +88,12 @@ const sweepTimer = setInterval(() => {
 			'failed to delete expired sessions, challenges, OAuth states, failed tries, email links and email counts',
 		)
 	})
-}, SWEEP_INTERVAL_MS)
+}
+
+// Also on start, so deploys more often than hourly don't skip it.
+sweep()
+
+const sweepTimer = setInterval(sweep, SWEEP_INTERVAL_MS)
 
 const server = serve(
 	{

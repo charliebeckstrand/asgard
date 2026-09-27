@@ -1,5 +1,5 @@
-import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
-import { errorResponse, jsonResponse } from 'grid'
+import { createRoute } from '@hono/zod-openapi'
+import { createRouter, errorResponse, jsonResponse } from 'grid'
 import { toList } from 'skuld'
 import { getRules } from '../handlers/rules.js'
 import { RuleListSchema } from '../lib/schemas.js'
@@ -17,7 +17,7 @@ const listRulesRoute = createRoute({
 	},
 })
 
-const app = new OpenAPIHono()
+const app = createRouter()
 
 export const rules = app.openapi(listRulesRoute, (c) => {
 	return c.json(toList(getRules()), 200)

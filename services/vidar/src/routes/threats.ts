@@ -1,5 +1,5 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
+import { createRoute, z } from '@hono/zod-openapi'
+import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
 import { IdSchema, IpAddressSchema } from 'skuld'
 import { listThreats, setThreatResolved } from '../handlers/threats.js'
 import { ResolveThreatSchema, ThreatListSchema, ThreatSchema } from '../lib/schemas.js'
@@ -44,7 +44,7 @@ const resolveThreatRoute = createRoute({
 	},
 })
 
-const app = new OpenAPIHono()
+const app = createRouter()
 
 export const threats = app
 	.openapi(listThreatsRoute, async (c) => {

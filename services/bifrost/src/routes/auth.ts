@@ -1,6 +1,6 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { createRoute, z } from '@hono/zod-openapi'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
-import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
+import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import type { Context } from 'hono'
 import {
@@ -316,7 +316,7 @@ function requireAppOrigin(c: Context): string {
 	return origin
 }
 
-export const authRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
+export const authRoutes = createRouter<SessionEnv>()
 	.openapi(loginRoute, async (c) => {
 		const { email, password } = c.req.valid('json')
 

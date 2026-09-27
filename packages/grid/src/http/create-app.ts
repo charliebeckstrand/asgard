@@ -30,8 +30,17 @@ interface CreateAppOptions {
 
 const MAX_BODY_BYTES = 64 * 1024
 
+/**
+ * A router whose invalid requests get the shared error body. Hono applies the
+ * validation hook of the router a route is added to, not the app it is mounted
+ * on, so every router needs its own.
+ */
+export function createRouter<E extends Env = Env>(): OpenAPIHono<E> {
+	return new OpenAPIHono<E>({ defaultHook: validationHook })
+}
+
 export function createApp<E extends Env = Env>(options: CreateAppOptions): OpenAPIHono<E> {
-	const app = new OpenAPIHono<E>({ defaultHook: validationHook })
+	const app = createRouter<E>()
 
 	app.use(trimTrailingSlash())
 

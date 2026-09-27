@@ -92,6 +92,8 @@ describe('GET /vidar/events', () => {
 
 		expect(res.status).toBe(400)
 
+		expect(await res.json()).toMatchObject({ error: 'Validation Error', statusCode: 400 })
+
 		expect(mockListEvents).not.toHaveBeenCalled()
 	})
 })

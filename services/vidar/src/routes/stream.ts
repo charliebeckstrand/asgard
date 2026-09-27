@@ -1,9 +1,8 @@
-import { OpenAPIHono } from '@hono/zod-openapi'
-import { createSSEStream } from 'grid'
+import { createRouter, createSSEStream } from 'grid'
 import type { SecurityEvent } from 'skuld'
 import { eventEmitter } from '../lib/emitter.js'
 
-const app = new OpenAPIHono()
+const app = createRouter()
 
 app.get(
 	'/stream',
