@@ -31,15 +31,15 @@
 	"packageManager": "pnpm@12.6.0",
 	"dependencies": {
 		"@hono/node-server": "^1.19.11",
-		"@hono/zod-openapi": "^1.2.2",
+		"@hono/zod-openapi": "^1.6.3",
 		"grid": "workspace:*",
-		"hono": "^4.12.5",
+		"hono": "^4.13.9",
 		"saga": "workspace:*",
 		"skuld": "workspace:*",
-		"zod": "^4.3.6"
+		"zod": "^4.6.5"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.6",
+		"@biomejs/biome": "^2.5.14",
 		"@types/node": "^24.13.6",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
