@@ -1,4 +1,4 @@
-import { Pool, type QueryConfig, type QueryResult, type QueryResultRow } from 'pg'
+import { Pool, type QueryConfig, type QueryResult, type QueryResultRow, types } from 'pg'
 import { type ConnectionOptions, connectionConfig } from './connection.js'
 import type { Logger } from './log/index.js'
 import type { SqlFragment } from './sql.js'
@@ -87,6 +87,17 @@ function createQueryable(run: Run): Queryable {
 	}
 }
 
+const parseTimestamp = types.getTypeParser(types.builtins.TIMESTAMPTZ)
+
+// Timestamps come back as ISO strings, the shape rows and API schemas use,
+// rather than the Date objects node-postgres makes by default.
+const typeParsers = {
+	getTypeParser: ((oid: number, format?: 'text' | 'binary') =>
+		oid === types.builtins.TIMESTAMPTZ
+			? (value: string) => parseTimestamp(value).toISOString()
+			: types.getTypeParser(oid, format)) as typeof types.getTypeParser,
+}
+
 function createPool({
 	max,
 	idleTimeoutMillis,
@@ -101,6 +112,7 @@ function createPool({
 		idleTimeoutMillis: idleTimeoutMillis ?? 30_000,
 		connectionTimeoutMillis: connectionTimeoutMillis ?? 5_000,
 		statement_timeout: statementTimeoutMillis ?? 30_000,
+		types: typeParsers,
 	})
 
 	// An idle connection can drop (network blip, database restart). Without a
