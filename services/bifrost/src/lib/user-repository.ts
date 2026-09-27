@@ -51,5 +51,30 @@ export function createUserRepository(): UserRepository {
 				`,
 			)
 		},
+
+		async countFailedLogin(email, limit, waitSeconds) {
+			// The row lock orders concurrent tries, so each sees the count of the last.
+			const counted = await db.exec(
+				sql`
+					INSERT INTO failed_logins (email) VALUES (${email})
+					ON CONFLICT (email) DO UPDATE
+					SET count = failed_logins.count + 1, last_failed_at = now()
+					WHERE failed_logins.count < ${limit}
+					OR failed_logins.last_failed_at <= now() - make_interval(secs => ${waitSeconds})
+				`,
+			)
+
+			return counted > 0
+		},
+
+		async clearFailedLogins(email) {
+			await db.exec(sql`DELETE FROM failed_logins WHERE email = ${email}`)
+		},
+
+		async deleteStaleFailedLogins(seconds) {
+			return db.exec(
+				sql`DELETE FROM failed_logins WHERE last_failed_at <= now() - make_interval(secs => ${seconds})`,
+			)
+		},
 	}
 }
