@@ -31,6 +31,8 @@ jobs:
                   OAUTH_GOOGLE_CLIENT_ID: ${{ secrets.OAUTH_GOOGLE_CLIENT_ID }}
                   OAUTH_GOOGLE_CLIENT_SECRET: ${{ secrets.OAUTH_GOOGLE_CLIENT_SECRET }}
                   RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+                  TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+                  TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
               with:
                   token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
                   # Only applies when the app is created; moving it later is done in DO.

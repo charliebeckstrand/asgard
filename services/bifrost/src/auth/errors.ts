@@ -5,6 +5,7 @@ const AUTH_STATUS = {
 	code_rejected: 400,
 	link_expired: 400,
 	password_breached: 400,
+	turnstile_failed: 400,
 	invalid_credentials: 401,
 	account_inactive: 403,
 	sign_in_again: 403,

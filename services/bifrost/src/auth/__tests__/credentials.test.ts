@@ -4,6 +4,7 @@ import { configure, getConfig } from '../config.js'
 import {
 	AuthError,
 	authenticateUser,
+	checkTurnstile,
 	FAILED_LOGIN_WAIT_SECONDS,
 	MAX_FAILED_LOGINS,
 	registerUser,
@@ -255,6 +256,37 @@ describe('failed login limit', () => {
 		await authenticateUser('alice@example.com', 'wrong-password').catch(() => {})
 
 		expect(mockRepo.clearFailedLogins).not.toHaveBeenCalled()
+	})
+})
+
+describe('checkTurnstile', () => {
+	it('lets a sign-up through when Turnstile is off', async () => {
+		await expect(checkTurnstile(undefined)).resolves.toBeUndefined()
+	})
+
+	it('passes a token that Cloudflare accepts', async () => {
+		const verify = vi.fn().mockResolvedValue(true)
+
+		configure({ ...getConfig(), turnstile: { siteKey: 'key', verify } })
+
+		await checkTurnstile('token', '203.0.113.1')
+
+		expect(verify).toHaveBeenCalledWith('token', '203.0.113.1')
+	})
+
+	it.each([
+		['a missing token', undefined, true],
+		['a token that Cloudflare refuses', 'token', false],
+	])('refuses %s', async (_, token, accepted) => {
+		configure({
+			...getConfig(),
+			turnstile: { siteKey: 'key', verify: vi.fn().mockResolvedValue(accepted) },
+		})
+
+		await expect(checkTurnstile(token)).rejects.toMatchObject({
+			code: 'turnstile_failed',
+			status: 400,
+		})
 	})
 })
 

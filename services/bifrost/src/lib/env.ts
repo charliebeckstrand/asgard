@@ -46,6 +46,10 @@ export const environment = createEnvironment({
 	// Sends email, such as verification and password reset links, through Resend.
 	// Unset logs each email instead.
 	RESEND_API_KEY: optionalValue,
+	// Cloudflare Turnstile on sign-up, so scripts can't make accounts or spend the
+	// day's emails. Without both values, sign-up has no check.
+	TURNSTILE_SITE_KEY: optionalValue,
+	TURNSTILE_SECRET_KEY: optionalValue,
 	// The sender of every email. Its domain must be verified in Resend.
 	EMAIL_FROM: z.string().default('Bifrost <no-reply@localhost>'),
 	// Comma-separated, so each consuming app's origin can be allowed.

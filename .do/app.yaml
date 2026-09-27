@@ -113,6 +113,14 @@ services:
       - key: EMAIL_FROM
         scope: RUN_TIME
         value: Ivory Image <no-reply@ivoryimage.dev>
+      # Cloudflare Turnstile on sign-up. Without both values, sign-up has no check.
+      - key: TURNSTILE_SITE_KEY
+        scope: RUN_TIME
+        value: ${TURNSTILE_SITE_KEY}
+      - key: TURNSTILE_SECRET_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${TURNSTILE_SECRET_KEY}
 
 # Applies bifrost's pending migrations before each deploy. If it fails, the
 # deploy stops and the running version keeps serving.
