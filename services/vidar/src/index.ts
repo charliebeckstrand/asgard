@@ -17,7 +17,7 @@ const app = createVidarApp()
 const CLEANUP_INTERVAL_MS = 3_600_000 // 1 hour
 const EVENT_RETENTION_DAYS = 30
 
-const cleanupTimer = setInterval(() => {
+function cleanUp() {
 	cleanExpiredBans().catch((err) => {
 		log.error({ err }, 'failed to clean expired bans')
 	})
@@ -25,7 +25,12 @@ const cleanupTimer = setInterval(() => {
 	purgeOldEvents(EVENT_RETENTION_DAYS).catch((err) => {
 		log.error({ err }, 'failed to purge old events')
 	})
-}, CLEANUP_INTERVAL_MS)
+}
+
+// Also on start, so deploys more often than hourly don't skip it.
+cleanUp()
+
+const cleanupTimer = setInterval(cleanUp, CLEANUP_INTERVAL_MS)
 
 const server = serve(
 	{
