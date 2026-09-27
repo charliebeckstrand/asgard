@@ -1,0 +1,9 @@
+{
+	"name": "mimir",
+	"port": 4002,
+	"database": { "name": "mimir", "role": "mimir", "password": "mimir" },
+	"vars": {
+		"DATABASE_URL": { "type": "value", "default": "postgres://mimir:mimir@localhost:5432/mimir" },
+		"MIMIR_API_KEY": { "type": "secret" }
+	}
+}

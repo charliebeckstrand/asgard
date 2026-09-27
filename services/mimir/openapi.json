@@ -1,0 +1,631 @@
+{
+	"openapi": "3.0.0",
+	"info": {
+		"title": "Mimir",
+		"description": "App data, reached through bifrost",
+		"version": "0.1.0"
+	},
+	"components": {
+		"schemas": {
+			"HealthResponse": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "string",
+						"enum": [
+							"healthy",
+							"degraded",
+							"unhealthy"
+						],
+						"description": "Service health status"
+					},
+					"version": {
+						"type": "string"
+					},
+					"uptime": {
+						"type": "number"
+					},
+					"services": {
+						"type": "object",
+						"additionalProperties": {
+							"type": "object",
+							"properties": {
+								"status": {
+									"type": "string",
+									"enum": [
+										"up",
+										"down",
+										"unknown"
+									],
+									"description": "Connection status"
+								},
+								"latency": {
+									"type": "number"
+								}
+							},
+							"required": [
+								"status"
+							]
+						}
+					}
+				},
+				"required": [
+					"status",
+					"version",
+					"uptime"
+				]
+			},
+			"PlaceList": {
+				"type": "array",
+				"items": {
+					"$ref": "#/components/schemas/Place"
+				}
+			},
+			"Place": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/PlaceDraft"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"minLength": 1
+							},
+							"createdAt": {
+								"type": "string",
+								"description": "When the place was added, ISO 8601"
+							}
+						},
+						"required": [
+							"id",
+							"createdAt"
+						]
+					}
+				]
+			},
+			"PlaceCategory": {
+				"type": "string",
+				"enum": [
+					"food",
+					"entertainment",
+					"nature",
+					"shopping",
+					"other"
+				]
+			},
+			"PlaceDraft": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 2000
+					},
+					"category": {
+						"$ref": "#/components/schemas/PlaceCategory"
+					},
+					"address": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 2000
+					},
+					"city": {
+						"type": "string",
+						"maxLength": 2000
+					},
+					"state": {
+						"type": "string",
+						"maxLength": 2000
+					},
+					"country": {
+						"type": "string",
+						"maxLength": 2000
+					},
+					"latitude": {
+						"type": "number",
+						"minimum": -90,
+						"maximum": 90
+					},
+					"longitude": {
+						"type": "number",
+						"minimum": -180,
+						"maximum": 180
+					},
+					"rating": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 5,
+						"description": "1 to 5, or 0 for none"
+					},
+					"review": {
+						"type": "string",
+						"maxLength": 2000
+					},
+					"url": {
+						"type": "string",
+						"maxLength": 2000,
+						"format": "uri"
+					},
+					"photo": {
+						"type": "string",
+						"maxLength": 2000,
+						"format": "uri"
+					},
+					"visitedAt": {
+						"type": "string",
+						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+						"description": "The day of the visit",
+						"example": "2026-09-27"
+					}
+				},
+				"required": [
+					"name",
+					"category",
+					"address",
+					"latitude",
+					"longitude",
+					"rating",
+					"visitedAt"
+				]
+			},
+			"Error": {
+				"type": "object",
+				"properties": {
+					"error": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					},
+					"statusCode": {
+						"type": "number"
+					},
+					"code": {
+						"type": "string",
+						"description": "A stable name for the error, when the service gives one"
+					}
+				},
+				"required": [
+					"error",
+					"message",
+					"statusCode"
+				]
+			},
+			"Visits": {
+				"type": "object",
+				"properties": {
+					"states": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"countries": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				},
+				"required": [
+					"states",
+					"countries"
+				]
+			},
+			"SetVisit": {
+				"type": "object",
+				"properties": {
+					"visited": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"visited"
+				]
+			}
+		},
+		"parameters": {}
+	},
+	"paths": {
+		"/api/health": {
+			"get": {
+				"tags": [
+					"System"
+				],
+				"summary": "Health check",
+				"description": "Returns the health status of the service and its database",
+				"responses": {
+					"200": {
+						"description": "Service is healthy or degraded",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HealthResponse"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Service is unhealthy",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HealthResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/places": {
+			"get": {
+				"tags": [
+					"Places"
+				],
+				"summary": "List your places",
+				"description": "Newest visit first.",
+				"responses": {
+					"200": {
+						"description": "Places",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PlaceList"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Places"
+				],
+				"summary": "Add a place",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PlaceDraft"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Place added",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Place"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid place",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Already keeping 1000 places",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/places/{id}": {
+			"put": {
+				"tags": [
+					"Places"
+				],
+				"summary": "Replace a place",
+				"description": "Keeps its id and when it was added.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"description": "The id of the place"
+						},
+						"required": true,
+						"description": "The id of the place",
+						"name": "id",
+						"in": "path"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PlaceDraft"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Place replaced",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Place"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid place",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No place with that id",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Places"
+				],
+				"summary": "Remove a place",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"description": "The id of the place"
+						},
+						"required": true,
+						"description": "The id of the place",
+						"name": "id",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Place removed"
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No place with that id",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/visits": {
+			"get": {
+				"tags": [
+					"Visits"
+				],
+				"summary": "List your visited regions",
+				"description": "Each scope alphabetical. Before the first change, the regions of your places count as visited.",
+				"responses": {
+					"200": {
+						"description": "Visited regions",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Visits"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/visits/{scope}/{region}": {
+			"put": {
+				"tags": [
+					"Visits"
+				],
+				"summary": "Mark a region visited or not",
+				"description": "Answers with both scopes. Sending it twice leaves the same set.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"enum": [
+								"states",
+								"countries"
+							],
+							"description": "The atlas a region is named by. Kept apart because names collide: Georgia is a state and a country."
+						},
+						"required": true,
+						"description": "The atlas a region is named by. Kept apart because names collide: Georgia is a state and a country.",
+						"name": "scope",
+						"in": "path"
+					},
+					{
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 100,
+							"description": "The name its atlas gives the region"
+						},
+						"required": true,
+						"description": "The name its atlas gives the region",
+						"name": "region",
+						"in": "path"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SetVisit"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Visited regions",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Visits"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid scope, region or body",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Already marking 1000 regions in the scope",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
