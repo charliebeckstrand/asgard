@@ -20,7 +20,6 @@ export function createBifrostApp() {
 		basePath: '/api',
 		title: 'Bifrost',
 		description: '',
-		port: env.PORT,
 		cors: { origin: env.CORS_ORIGIN, credentials: true },
 		logger: logger(),
 	})

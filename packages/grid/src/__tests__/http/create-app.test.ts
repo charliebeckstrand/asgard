@@ -6,7 +6,6 @@ describe('createApp', () => {
 			basePath: '/test',
 			title: 'Test Service',
 			description: 'A test service',
-			port: 4000,
 		})
 
 		expect(app).toBeDefined()
@@ -17,7 +16,6 @@ describe('createApp', () => {
 			basePath: '/test',
 			title: 'Test Service',
 			description: 'A test service',
-			port: 4000,
 		})
 
 		const res = await app.request('/test')
@@ -42,7 +40,6 @@ describe('createApp', () => {
 			basePath: '/api',
 			title: 'API',
 			description: 'Main API',
-			port: 4000,
 		})
 
 		const res = await app.request('/api/openapi.json')
@@ -61,7 +58,6 @@ describe('createApp', () => {
 			basePath: '/api',
 			title: 'API',
 			description: 'Main API',
-			port: 4000,
 		})
 
 		app.post('/api/echo', async (c) => c.text(await c.req.text()))
@@ -80,7 +76,6 @@ describe('createApp', () => {
 			basePath: '/test',
 			title: 'Test',
 			description: '',
-			port: 4000,
 		})
 
 		app.get('/test/boom', () => {
@@ -101,7 +96,6 @@ describe('createApp', () => {
 			basePath: '/test',
 			title: 'Test',
 			description: '',
-			port: 4000,
 		})
 
 		const res = await app.request('/test/nonexistent')

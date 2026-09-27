@@ -18,7 +18,6 @@ interface CreateAppOptions {
 	basePath: string
 	title: string
 	description: string
-	port: number
 	cors?: Parameters<typeof cors>[0]
 	/**
 	 * Service-scoped Pino logger. When set, Hono's built-in request logger
@@ -80,7 +79,6 @@ export function createApp<E extends Env = Env>(options: CreateAppOptions): OpenA
 	app.doc(`${options.basePath}/openapi.json`, {
 		openapi: '3.0.0',
 		info: { title: options.title, description: options.description, version: '0.1.0' },
-		servers: [{ url: `http://localhost:${options.port}`, description: 'Local development' }],
 	})
 
 	app.onError(errorHandler)
