@@ -351,7 +351,7 @@ export const authRoutes = createRouter<SessionEnv>()
 		return c.json(await createSignInOptions(), 200)
 	})
 	.openapi(passkeyLoginRoute, async (c) => {
-		const credential = c.req.valid('json') as unknown as AuthenticationResponseJSON
+		const credential = c.req.valid('json') as AuthenticationResponseJSON
 
 		const userId = await authenticatePasskey(credential, getIpAddress(c))
 

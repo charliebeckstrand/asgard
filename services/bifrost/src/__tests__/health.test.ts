@@ -93,6 +93,8 @@ describe('OpenAPI', () => {
 	it('matches the committed openapi.json', async () => {
 		const res = await app.request('/api/openapi.json')
 
+		expect(res.status).toBe(200)
+
 		const spec = await res.json()
 
 		await expect(`${JSON.stringify(spec, null, '\t')}\n`).toMatchFileSnapshot('../../openapi.json')

@@ -15,18 +15,26 @@ import { recordChange } from './activity.js'
 
 // A user manages only their own passkeys; no one else can add or remove them.
 
+// WebAuthn JSON, which @simplewebauthn builds and checks. OpenAPI cannot name its
+// types, so these schemas leave the spec open (`unknown`), and each client takes
+// the types of its WebAuthn library.
+
 export const PasskeyOptionsSchema = z
-	.record(z.string(), z.unknown())
+	.unknown()
 	.openapi('PasskeyOptions', { description: 'WebAuthn options, as the browser API expects them' })
 
+const CredentialShape = z.looseObject({
+	id: z.string(),
+	rawId: z.string(),
+	type: z.literal('public-key'),
+	response: z.record(z.string(), z.unknown()),
+	clientExtensionResults: z.record(z.string(), z.unknown()),
+})
+
+// A malformed credential still gets a 400 before @simplewebauthn reads it.
 export const PasskeyCredentialSchema = z
-	.looseObject({
-		id: z.string(),
-		rawId: z.string(),
-		type: z.literal('public-key'),
-		response: z.record(z.string(), z.unknown()),
-		clientExtensionResults: z.record(z.string(), z.unknown()),
-	})
+	.unknown()
+	.refine((value) => CredentialShape.safeParse(value).success, 'Not a WebAuthn credential')
 	.openapi('PasskeyCredential', { description: 'The credential the browser API returned' })
 
 const PasskeyListSchema = createListSchema(PasskeySchema, 'PasskeyList')
@@ -118,7 +126,7 @@ passkeysRoutes.openapi(addPasskeyRoute, async (c) => {
 
 	requireRecentSignIn(session)
 
-	const credential = c.req.valid('json') as unknown as RegistrationResponseJSON
+	const credential = c.req.valid('json') as RegistrationResponseJSON
 
 	const passkey = await registerPasskey(session.user.id, credential)
 

@@ -141,50 +141,10 @@
 				]
 			},
 			"PasskeyOptions": {
-				"type": "object",
-				"additionalProperties": {
-					"nullable": true
-				},
+				"nullable": true,
 				"description": "WebAuthn options, as the browser API expects them"
 			},
 			"PasskeyCredential": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"rawId": {
-						"type": "string"
-					},
-					"type": {
-						"type": "string",
-						"enum": [
-							"public-key"
-						]
-					},
-					"response": {
-						"type": "object",
-						"additionalProperties": {
-							"nullable": true
-						}
-					},
-					"clientExtensionResults": {
-						"type": "object",
-						"additionalProperties": {
-							"nullable": true
-						}
-					}
-				},
-				"required": [
-					"id",
-					"rawId",
-					"type",
-					"response",
-					"clientExtensionResults"
-				],
-				"additionalProperties": {
-					"nullable": true
-				},
 				"description": "The credential the browser API returned"
 			},
 			"Message": {
