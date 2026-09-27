@@ -1,6 +1,6 @@
 import { clientIp } from 'grid/middleware'
 import { Hono } from 'hono'
-import { banCheck, configure, reportEvent } from '@/client'
+import { banCheck, configure, listThreats, removeBan, reportEvent, resolveThreat } from '@/client'
 
 const VIDAR_URL = 'http://vidar.test'
 
@@ -177,5 +177,64 @@ describe('reportEvent', () => {
 			details: { user_id: 'u1' },
 			service: 'bifrost',
 		})
+	})
+})
+
+describe('admin calls', () => {
+	const threat = {
+		id: '00000000-0000-4000-8000-000000000003',
+		threat_type: 'brute_force',
+		severity: 'medium',
+		ip: '203.0.113.7',
+		details: {},
+		action_taken: 'Banned for 1h',
+		resolved: false,
+		created_at: '2026-09-27T00:00:00.000Z',
+	}
+
+	beforeEach(() => {
+		configure({ vidarUrl: VIDAR_URL })
+	})
+
+	it('lists threats with the resolved filter', async () => {
+		fetchMock.mockResolvedValueOnce(jsonResponse({ data: [threat], total: 1 }))
+
+		const result = await listThreats(false)
+
+		expect(result).toEqual({ data: [threat], total: 1 })
+
+		expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`${VIDAR_URL}/vidar/threats?resolved=false`)
+	})
+
+	it('answers null for an unknown threat', async () => {
+		fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'Not found' }, 404))
+
+		expect(await resolveThreat(threat.id, true)).toBeNull()
+	})
+
+	it('answers false when the address is not banned', async () => {
+		fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'Not found' }, 404))
+
+		expect(await removeBan('203.0.113.7')).toBe(false)
+	})
+
+	it('fails with 503 when Vidar is unconfigured', async () => {
+		configure({})
+
+		await expect(listThreats()).rejects.toMatchObject({ status: 503 })
+
+		expect(fetchMock).not.toHaveBeenCalled()
+	})
+
+	it('fails with 503 when Vidar is down', async () => {
+		fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'Oops' }, 500))
+
+		await expect(listThreats()).rejects.toMatchObject({ status: 503 })
+	})
+
+	it('fails with 503 on a response it does not recognize', async () => {
+		fetchMock.mockResolvedValueOnce(jsonResponse({ nope: true }))
+
+		await expect(listThreats()).rejects.toMatchObject({ status: 503 })
 	})
 })
