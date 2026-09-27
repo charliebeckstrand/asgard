@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto'
+import { normalizeEmail } from 'skuld'
 import { getConfig } from './config.js'
 import { hashNewPassword } from './credentials.js'
 import { AuthError } from './errors.js'
@@ -127,7 +128,7 @@ async function createResetLink(
  * Says nothing either way, so no one can learn who has an account.
  */
 export async function requestPasswordReset(email: string, origin: string): Promise<void> {
-	const normalizedEmail = email.trim().toLowerCase()
+	const normalizedEmail = normalizeEmail(email)
 
 	const reset = await createResetLink(normalizedEmail, origin)
 
@@ -154,7 +155,7 @@ export async function requestPasswordReset(email: string, origin: string): Promi
  * within a minute of the last link.
  */
 export async function sendAccountExistsEmail(email: string, origin: string): Promise<void> {
-	const normalizedEmail = email.trim().toLowerCase()
+	const normalizedEmail = normalizeEmail(email)
 
 	const reset = await createResetLink(normalizedEmail, origin)
 

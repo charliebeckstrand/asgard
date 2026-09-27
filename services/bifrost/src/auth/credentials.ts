@@ -1,5 +1,6 @@
 import { hash, verify } from '@node-rs/argon2'
 import type { User } from 'skuld'
+import { normalizeEmail } from 'skuld'
 import { getConfig } from './config.js'
 import { AuthError } from './errors.js'
 
@@ -29,7 +30,7 @@ export async function authenticateUser(
 	password: string,
 	ip?: string,
 ): Promise<string> {
-	const normalizedEmail = email.trim().toLowerCase()
+	const normalizedEmail = normalizeEmail(email)
 
 	const { userRepository } = getConfig()
 
@@ -115,7 +116,7 @@ export async function registerUser(
 	password: string,
 	ip?: string,
 ): Promise<User | null> {
-	const normalizedEmail = email.trim().toLowerCase()
+	const normalizedEmail = normalizeEmail(email)
 
 	const hashedPassword = await hashNewPassword(password)
 

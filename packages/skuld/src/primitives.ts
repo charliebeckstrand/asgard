@@ -17,6 +17,11 @@ export const EmailSchema = z.email('Invalid email address').openapi({ example: '
 
 export type Email = z.infer<typeof EmailSchema>
 
+/** The form every email is stored and looked up in. */
+export function normalizeEmail(email: string): string {
+	return email.trim().toLowerCase()
+}
+
 export const PasswordSchema = z
 	.string()
 	.min(8, 'Password must be at least 8 characters')

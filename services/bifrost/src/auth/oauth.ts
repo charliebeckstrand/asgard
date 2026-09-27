@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { normalizeEmail } from 'skuld'
 import { getConfig, type OAuthClient } from './config.js'
 import { AuthError } from './errors.js'
 import { hashToken } from './sessions.js'
@@ -185,7 +186,7 @@ export async function completeOAuth(
 
 		const created = await oauthRepository.createUserWithIdentity({
 			...identity,
-			email: identity.email.toLowerCase(),
+			email: normalizeEmail(identity.email),
 		})
 
 		if (created === 'email_exists') {

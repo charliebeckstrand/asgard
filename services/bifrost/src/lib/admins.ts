@@ -1,4 +1,5 @@
 import { sql } from 'saga'
+import { normalizeEmail } from 'skuld'
 import { db } from './db.js'
 import { countSecondFactors } from './mfa-repository.js'
 
@@ -16,7 +17,7 @@ export function promote(
 ): Promise<'promoted' | 'not_found' | 'unverified' | 'no_second_factor'> {
 	return db.tx(async (tx) => {
 		const user = await tx.first<{ id: string; is_verified: boolean }>(
-			sql`SELECT id, is_verified FROM users WHERE email = ${email.trim().toLowerCase()} FOR UPDATE`,
+			sql`SELECT id, is_verified FROM users WHERE email = ${normalizeEmail(email)} FOR UPDATE`,
 		)
 
 		if (!user) return 'not_found'
@@ -41,7 +42,7 @@ export async function demote(email: string): Promise<'demoted' | 'not_found'> {
 	const updated = await db.exec(
 		sql`
 			UPDATE users SET roles = array_remove(roles, 'admin')
-			WHERE email = ${email.trim().toLowerCase()}
+			WHERE email = ${normalizeEmail(email)}
 		`,
 	)
 
@@ -57,7 +58,7 @@ export async function demote(email: string): Promise<'demoted' | 'not_found'> {
 export function resetSecondFactors(email: string): Promise<'reset' | 'not_found'> {
 	return db.tx(async (tx) => {
 		const user = await tx.first<{ id: string }>(
-			sql`SELECT id FROM users WHERE email = ${email.trim().toLowerCase()} FOR UPDATE`,
+			sql`SELECT id FROM users WHERE email = ${normalizeEmail(email)} FOR UPDATE`,
 		)
 
 		if (!user) return 'not_found'
