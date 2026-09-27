@@ -5,6 +5,7 @@ export {
 	AuthError,
 	authenticateUser,
 	checkTurnstile,
+	deleteOldSignUps,
 	deleteStaleFailedLogins,
 	registerUser,
 	turnstileSiteKey,

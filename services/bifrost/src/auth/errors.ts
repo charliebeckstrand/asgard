@@ -22,6 +22,7 @@ const AUTH_STATUS = {
 	no_second_factor: 409,
 	last_sign_in: 409,
 	too_many_logins: 429,
+	too_many_sign_ups: 429,
 	too_many_steps: 429,
 	email_recently_sent: 429,
 	too_many_emails: 429,

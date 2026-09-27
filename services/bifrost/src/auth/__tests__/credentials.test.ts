@@ -6,6 +6,7 @@ import {
 	authenticateUser,
 	checkTurnstile,
 	FAILED_LOGIN_WAIT_SECONDS,
+	MAX_DAILY_SIGN_UPS,
 	MAX_FAILED_LOGINS,
 	registerUser,
 } from '../credentials.js'
@@ -55,6 +56,8 @@ beforeEach(() => {
 		countFailedLogin: vi.fn().mockResolvedValue(true),
 		clearFailedLogins: vi.fn(),
 		deleteStaleFailedLogins: vi.fn(),
+		countSignUp: vi.fn().mockResolvedValue(true),
+		deleteOldSignUps: vi.fn(),
 	}
 
 	mockSessionRepo = {
@@ -338,6 +341,39 @@ describe('registerUser', () => {
 		await expect(registerUser('bob@example.com', 'password123')).rejects.toThrow(
 			'connection refused',
 		)
+	})
+
+	it("counts the sign-up against the address's network", async () => {
+		await registerUser('new@example.com', 'password123', '1.2.3.4')
+
+		expect(mockRepo.countSignUp).toHaveBeenCalledWith('1.2.3.4', MAX_DAILY_SIGN_UPS)
+	})
+
+	it('counts a sign-up for a taken email the same way', async () => {
+		vi.mocked(mockRepo.insertUser).mockRejectedValue({ code: '23505' })
+
+		await registerUser('alice@example.com', 'password123', '1.2.3.4')
+
+		expect(mockRepo.countSignUp).toHaveBeenCalledOnce()
+	})
+
+	it('refuses a sign-up past the daily limit without making the account', async () => {
+		vi.mocked(mockRepo.countSignUp).mockResolvedValue(false)
+
+		await expect(registerUser('new@example.com', 'password123', '1.2.3.4')).rejects.toMatchObject({
+			code: 'too_many_sign_ups',
+			status: 429,
+		})
+
+		expect(mockRepo.insertUser).not.toHaveBeenCalled()
+	})
+
+	it('does not count a password refused for a data breach', async () => {
+		configure({ ...getConfig(), isBreachedPassword: vi.fn().mockResolvedValue(true) })
+
+		await expect(registerUser('bob@example.com', 'password123', '1.2.3.4')).rejects.toThrow()
+
+		expect(mockRepo.countSignUp).not.toHaveBeenCalled()
 	})
 
 	it('calls onSecurityEvent on registration', async () => {

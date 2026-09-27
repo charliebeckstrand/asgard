@@ -194,4 +194,57 @@ describeWithDocker('createUserRepository (integration)', () => {
 			expect(rows).toEqual([{ email: 'new@example.com' }])
 		})
 	})
+	describe('countSignUp', () => {
+		it('counts sign-ups up to the limit, then refuses the next', async () => {
+			for (let i = 0; i < 3; i++) {
+				expect(await repo.countSignUp('1.2.3.4', 3)).toBe(true)
+			}
+
+			expect(await repo.countSignUp('1.2.3.4', 3)).toBe(false)
+
+			const { rows } = await pool.query('SELECT count(*)::int AS count FROM sign_ups')
+
+			expect(rows[0].count).toBe(3)
+		})
+
+		it('counts each IPv4 address apart', async () => {
+			await repo.countSignUp('1.2.3.4', 1)
+
+			expect(await repo.countSignUp('1.2.3.5', 1)).toBe(true)
+		})
+
+		it('counts IPv6 addresses in one /64 together', async () => {
+			await repo.countSignUp('2001:db8:1:2::1', 1)
+
+			expect(await repo.countSignUp('2001:db8:1:2:ffff::9', 1)).toBe(false)
+
+			expect(await repo.countSignUp('2001:db8:1:3::1', 1)).toBe(true)
+		})
+
+		it('lets a sign-up through once the oldest is a day old', async () => {
+			await repo.countSignUp('1.2.3.4', 1)
+
+			await pool.query(`UPDATE sign_ups SET created_at = now() - interval '1 day'`)
+
+			expect(await repo.countSignUp('1.2.3.4', 1)).toBe(true)
+		})
+	})
+
+	describe('deleteOldSignUps', () => {
+		it('deletes only counts a day old', async () => {
+			await repo.countSignUp('1.2.3.4', 5)
+
+			await repo.countSignUp('5.6.7.8', 5)
+
+			await pool.query(
+				`UPDATE sign_ups SET created_at = now() - interval '2 days' WHERE network = '1.2.3.4'`,
+			)
+
+			expect(await repo.deleteOldSignUps()).toBe(1)
+
+			const { rows } = await pool.query('SELECT network FROM sign_ups')
+
+			expect(rows).toEqual([{ network: '5.6.7.8/32' }])
+		})
+	})
 })

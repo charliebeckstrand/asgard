@@ -235,7 +235,7 @@ const registerRoute = createRoute({
 	tags: ['Auth'],
 	summary: 'Register a new account',
 	description:
-		'Creates an account and emails a link that verifies its address. When the email already has an account, emails its owner instead. Answers the same either way, so no one can learn who has an account.',
+		'Creates an account and emails a link that verifies its address. When the email already has an account, emails its owner instead. Answers the same either way, so no one can learn who has an account. A network gets three sign-ups a day, counted either way.',
 	request: {
 		body: jsonRequest(RegisterRequestSchema),
 	},
@@ -244,6 +244,7 @@ const registerRoute = createRoute({
 		400: errorResponse(
 			'Validation error, a failed Turnstile check, or a password known from a data breach',
 		),
+		429: errorResponse('Too many sign-ups from this network today'),
 	},
 })
 
