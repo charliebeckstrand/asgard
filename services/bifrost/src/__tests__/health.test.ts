@@ -89,6 +89,15 @@ describe('OpenAPI', () => {
 		expect(spec.paths['/api/health']).toBeDefined()
 	})
 
+	// Midgard generates its client types from this file. Run `pnpm openapi` after an API change.
+	it('matches the committed openapi.json', async () => {
+		const res = await app.request('/api/openapi.json')
+
+		const spec = await res.json()
+
+		await expect(`${JSON.stringify(spec, null, '\t')}\n`).toMatchFileSnapshot('../../openapi.json')
+	})
+
 	it('GET /api/docs returns Swagger UI HTML', async () => {
 		const res = await app.request('/api/docs')
 
