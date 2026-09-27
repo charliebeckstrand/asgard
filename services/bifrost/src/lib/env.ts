@@ -6,15 +6,17 @@ const optionalValue = z
 	.optional()
 	.transform((v) => (v && v.length > 0 ? v : undefined))
 
+const databaseCaCert = z.string().min(1, 'DATABASE_CA_CERT is required in production')
+
 const clientIpSecret = z.string().min(32, 'CLIENT_IP_SECRET must be at least 32 characters')
 
 export const environment = createEnvironment({
 	DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
-	// PEM of the database server's CA. Unset encrypts without verifying the server.
-	DATABASE_CA_CERT: z
-		.string()
-		.optional()
-		.transform((v) => (v && v.length > 0 ? v : undefined)),
+	// PEM of the database server's CA. Unset encrypts without verifying the server,
+	// so production requires it: a lost binding fails the deploy instead of letting
+	// anyone on the path pose as the database.
+	DATABASE_CA_CERT:
+		process.env.NODE_ENV === 'production' ? databaseCaCert : databaseCaCert.optional(),
 	// Unset disables Vidar; login and register keep their local rate limits.
 	VIDAR_URL: z.string().optional(),
 	VIDAR_API_KEY: z.string().optional(),

@@ -14,7 +14,7 @@ Options:
   --env-file <path>   Load environment variables from a file first
 
 migrate and status connect with DATABASE_URL, and verify the server with
-DATABASE_CA_CERT when it is set.`
+DATABASE_CA_CERT when it is set. Production requires DATABASE_CA_CERT.`
 
 const { values, positionals } = parseArgs({
 	allowPositionals: true,
@@ -39,7 +39,14 @@ function connection() {
 		throw new MigrationError('DATABASE_URL is not set')
 	}
 
-	return { url, ca: process.env.DATABASE_CA_CERT || undefined }
+	const ca = process.env.DATABASE_CA_CERT || undefined
+
+	// Without a CA, TLS trusts any certificate, so production never runs without one.
+	if (!ca && process.env.NODE_ENV === 'production') {
+		throw new MigrationError('DATABASE_CA_CERT is required in production')
+	}
+
+	return { url, ca }
 }
 
 async function run(): Promise<void> {
