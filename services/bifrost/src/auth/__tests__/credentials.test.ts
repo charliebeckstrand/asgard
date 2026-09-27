@@ -45,6 +45,7 @@ beforeEach(() => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
+			is_verified: true,
 		} satisfies CredentialsRow),
 		getUsers: vi.fn().mockResolvedValue([]),
 		getUserById: vi.fn().mockResolvedValue(TEST_USER),
@@ -121,6 +122,7 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: null,
 			is_active: true,
+			is_verified: true,
 		})
 
 		await expect(authenticateUser('alice@example.com', 'dummy-timing-pad')).rejects.toMatchObject({
@@ -133,6 +135,7 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: false,
+			is_verified: true,
 		})
 
 		try {
@@ -149,6 +152,7 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
+			is_verified: true,
 		})
 
 		await expect(authenticateUser('alice@example.com', 'correct-password')).resolves.toBe(
@@ -161,6 +165,7 @@ describe('authenticateUser', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
+			is_verified: true,
 		})
 
 		const err = await authenticateUser('alice@example.com', 'wrong-password').catch((e) => e)
@@ -238,6 +243,7 @@ describe('failed login limit', () => {
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: false,
+			is_verified: true,
 		})
 
 		await authenticateUser('alice@example.com', 'correct-password').catch(() => {})

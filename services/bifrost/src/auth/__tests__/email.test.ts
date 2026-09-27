@@ -3,6 +3,7 @@ import type { Mock } from 'vitest'
 import { configure, getConfig } from '../config.js'
 import {
 	EMAIL_INTERVAL_SECONDS,
+	EMAIL_LIMITS,
 	RESET_PASSWORD_TTL_SECONDS,
 	requestPasswordReset,
 	resetPassword,
@@ -43,12 +44,14 @@ beforeEach(() => {
 		verifyEmail: vi.fn().mockResolvedValue(true),
 		resetPassword: vi.fn().mockResolvedValue(true),
 		deleteExpiredTokens: vi.fn(),
+		countSentEmail: vi.fn().mockResolvedValue(true),
+		deleteOldSentEmails: vi.fn(),
 	}
 
 	userRepository = {
 		getCredentialsByEmail: vi
 			.fn()
-			.mockResolvedValue({ id: USER_ID, hashed_password: 'h', is_active: true }),
+			.mockResolvedValue({ id: USER_ID, hashed_password: 'h', is_active: true, is_verified: true }),
 		getUserById: vi.fn().mockResolvedValue({
 			id: USER_ID,
 			email: 'alice@example.com',
@@ -110,6 +113,26 @@ describe('sendVerificationEmail', () => {
 		expect(expiresAt.getTime()).toBeCloseTo(Date.now() + VERIFY_EMAIL_TTL_SECONDS * 1000, -4)
 	})
 
+	it('counts the email as one to an unverified address', async () => {
+		await sendVerificationEmail({ id: USER_ID, email: 'alice@example.com' }, ORIGIN)
+
+		expect(emailTokenRepository.countSentEmail).toHaveBeenCalledWith(
+			'alice@example.com',
+			false,
+			EMAIL_LIMITS,
+		)
+	})
+
+	it("refuses to send past the day's limits", async () => {
+		emailTokenRepository.countSentEmail.mockResolvedValue(false)
+
+		const sending = sendVerificationEmail({ id: USER_ID, email: 'alice@example.com' }, ORIGIN)
+
+		await expect(sending).rejects.toMatchObject({ code: 'too_many_emails', status: 429 })
+
+		expect(sendEmail).not.toHaveBeenCalled()
+	})
+
 	it('refuses to send another link within a minute', async () => {
 		emailTokenRepository.createToken.mockResolvedValue(false)
 
@@ -161,7 +184,10 @@ describe('requestPasswordReset', () => {
 
 	it.each([
 		['no user has the email', null],
-		['the user is inactive', { id: USER_ID, hashed_password: 'h', is_active: false }],
+		[
+			'the user is inactive',
+			{ id: USER_ID, hashed_password: 'h', is_active: false, is_verified: true },
+		],
 	])('sends nothing when %s', async (_, creds) => {
 		userRepository.getCredentialsByEmail.mockResolvedValue(creds)
 
@@ -176,6 +202,38 @@ describe('requestPasswordReset', () => {
 		emailTokenRepository.createToken.mockResolvedValue(false)
 
 		await requestPasswordReset('alice@example.com', ORIGIN)
+
+		expect(emailTokenRepository.countSentEmail).not.toHaveBeenCalled()
+
+		expect(sendEmail).not.toHaveBeenCalled()
+	})
+
+	it.each([
+		true,
+		false,
+	])('counts the email by whether the address is verified (%s)', async (isVerified) => {
+		userRepository.getCredentialsByEmail.mockResolvedValue({
+			id: USER_ID,
+			hashed_password: 'h',
+			is_active: true,
+			is_verified: isVerified,
+		})
+
+		await requestPasswordReset('alice@example.com', ORIGIN)
+
+		expect(emailTokenRepository.countSentEmail).toHaveBeenCalledWith(
+			'alice@example.com',
+			isVerified,
+			EMAIL_LIMITS,
+		)
+	})
+
+	it("sends nothing past the day's limits", async () => {
+		emailTokenRepository.countSentEmail.mockResolvedValue(false)
+
+		await expect(requestPasswordReset('alice@example.com', ORIGIN)).rejects.toMatchObject({
+			code: 'too_many_emails',
+		})
 
 		expect(sendEmail).not.toHaveBeenCalled()
 	})
@@ -210,6 +268,7 @@ describe('sendAccountExistsEmail', () => {
 			id: USER_ID,
 			hashed_password: 'h',
 			is_active: isActive,
+			is_verified: true,
 		})
 
 		emailTokenRepository.createToken.mockResolvedValue(created)
@@ -231,6 +290,12 @@ describe('sendSecurityNotice', () => {
 		expect(email.subject).toBe('A passkey was added to your account')
 
 		expect(email.text).toContain(`${ORIGIN}/forgot-password`)
+
+		expect(emailTokenRepository.countSentEmail).toHaveBeenCalledWith(
+			'alice@example.com',
+			true,
+			EMAIL_LIMITS,
+		)
 	})
 
 	it('sends nothing for an unknown user', async () => {

@@ -5,6 +5,7 @@ export interface CredentialsRow {
 	/** Null for an account made with GitHub or Google. */
 	hashed_password: string | null
 	is_active: boolean
+	is_verified: boolean
 }
 
 export interface UserRepository {
@@ -49,6 +50,23 @@ export interface EmailTokenRepository {
 	 */
 	resetPassword(id: string, hashedPassword: string): Promise<boolean>
 	deleteExpiredTokens(): Promise<number>
+	/**
+	 * Counts an email to `to` as sent, unless it would pass one of `limits` for
+	 * the last day. Returns false, and counts nothing, when it would.
+	 */
+	countSentEmail(to: string, verified: boolean, limits: EmailLimits): Promise<boolean>
+	/** Deletes the counts of emails sent more than a day ago. */
+	deleteOldSentEmails(): Promise<number>
+}
+
+/** The most emails that can go out in a day. */
+export interface EmailLimits {
+	/** To all addresses. */
+	total: number
+	/** To addresses no one has proven are theirs. */
+	unverified: number
+	/** To any one address. */
+	recipient: number
 }
 
 /** A plain-text email. */

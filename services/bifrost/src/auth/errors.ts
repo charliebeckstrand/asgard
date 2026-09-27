@@ -23,6 +23,7 @@ const AUTH_STATUS = {
 	too_many_logins: 429,
 	too_many_steps: 429,
 	email_recently_sent: 429,
+	too_many_emails: 429,
 	mfa_unavailable: 503,
 } as const
 

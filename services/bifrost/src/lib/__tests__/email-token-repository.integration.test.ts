@@ -46,7 +46,7 @@ afterAll(async () => {
 beforeEach(async () => {
 	if (!isDockerAvailable()) return
 
-	await pool.query('TRUNCATE users CASCADE')
+	await pool.query('TRUNCATE users, sent_emails CASCADE')
 })
 
 const inAnHour = () => new Date(Date.now() + 60 * 60 * 1000)
@@ -214,5 +214,57 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		expect(await tokens.deleteExpiredTokens()).toBe(1)
 
 		expect(await tokenIds(userId)).toEqual(['t2'])
+	})
+
+	describe('countSentEmail', () => {
+		const limits = { total: 3, unverified: 2, recipient: 2 }
+
+		it('counts emails until the total is reached', async () => {
+			expect(await tokens.countSentEmail('a@x.dev', true, limits)).toBe(true)
+
+			expect(await tokens.countSentEmail('b@x.dev', true, limits)).toBe(true)
+
+			expect(await tokens.countSentEmail('c@x.dev', true, limits)).toBe(true)
+
+			expect(await tokens.countSentEmail('d@x.dev', true, limits)).toBe(false)
+		})
+
+		it('keeps the rest of the total for verified addresses', async () => {
+			await tokens.countSentEmail('a@x.dev', false, limits)
+
+			await tokens.countSentEmail('b@x.dev', false, limits)
+
+			expect(await tokens.countSentEmail('c@x.dev', false, limits)).toBe(false)
+
+			expect(await tokens.countSentEmail('c@x.dev', true, limits)).toBe(true)
+		})
+
+		it('limits the emails to one address', async () => {
+			await tokens.countSentEmail('a@x.dev', true, limits)
+
+			await tokens.countSentEmail('a@x.dev', true, limits)
+
+			expect(await tokens.countSentEmail('a@x.dev', true, limits)).toBe(false)
+
+			expect(await tokens.countSentEmail('b@x.dev', true, limits)).toBe(true)
+		})
+
+		it('lets only as many through at once as there is room for', async () => {
+			const counted = await Promise.all(
+				Array.from({ length: 10 }, (_, i) => tokens.countSentEmail(`${i}@x.dev`, true, limits)),
+			)
+
+			expect(counted.filter(Boolean)).toHaveLength(3)
+		})
+
+		it('forgets emails sent more than a day ago', async () => {
+			await pool.query(
+				"INSERT INTO sent_emails (recipient, verified, sent_at) VALUES ('a@x.dev', true, now() - interval '25 hours'), ('a@x.dev', true, now() - interval '25 hours')",
+			)
+
+			expect(await tokens.countSentEmail('a@x.dev', true, limits)).toBe(true)
+
+			expect(await tokens.deleteOldSentEmails()).toBe(2)
+		})
 	})
 })

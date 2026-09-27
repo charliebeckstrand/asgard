@@ -8,6 +8,7 @@ export {
 } from './credentials.js'
 export {
 	deleteExpiredEmailTokens,
+	deleteOldSentEmails,
 	EMAIL_INTERVAL_SECONDS,
 	RESET_PASSWORD_TTL_SECONDS,
 	requestPasswordReset,
