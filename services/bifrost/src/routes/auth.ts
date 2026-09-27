@@ -199,7 +199,7 @@ const registerRoute = createRoute({
 	},
 	responses: {
 		202: jsonResponse(MessageSchema, 'Check your email'),
-		400: errorResponse('Validation error'),
+		400: errorResponse('Validation error, or a password known from a data breach'),
 	},
 })
 
@@ -262,7 +262,7 @@ const resetPasswordRoute = createRoute({
 	},
 	responses: {
 		204: { description: 'Password set' },
-		400: errorResponse('Link expired or already used'),
+		400: errorResponse('Link expired or already used, or a password known from a data breach'),
 	},
 })
 

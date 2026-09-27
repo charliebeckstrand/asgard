@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
-import { hash } from '@node-rs/argon2'
 import { getConfig } from './config.js'
+import { hashNewPassword } from './credentials.js'
 import { AuthError } from './errors.js'
 import { hashToken } from './sessions.js'
 import type { EmailPurpose } from './types.js'
@@ -143,7 +143,7 @@ export async function sendAccountExistsEmail(email: string, origin: string): Pro
  * link reached their inbox, so their email counts as verified.
  */
 export async function resetPassword(token: string, password: string): Promise<void> {
-	const hashedPassword = await hash(password, { algorithm: 2 /* Argon2id */ })
+	const hashedPassword = await hashNewPassword(password)
 
 	if (!(await getConfig().emailTokenRepository.resetPassword(hashToken(token), hashedPassword))) {
 		throw new AuthError('link_expired', 'This link has expired or was already used')

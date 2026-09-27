@@ -12,6 +12,7 @@ import {
 	deleteStaleFailedSteps,
 	type OAuthClient,
 } from './auth/index.js'
+import { createBreachCheck } from './lib/breached-passwords.js'
 import { db } from './lib/db.js'
 import { createEmailTokenRepository } from './lib/email-token-repository.js'
 import { environment } from './lib/env.js'
@@ -49,6 +50,7 @@ configure({
 		production: env.NODE_ENV === 'production',
 		log,
 	}),
+	isBreachedPassword: createBreachCheck(log),
 	passkeys: { domain: env.PASSKEY_DOMAIN, origins: env.CORS_ORIGIN },
 	mfa: { key: env.MFA_ENCRYPTION_KEY, issuer: env.PASSKEY_DOMAIN },
 	oauth: {

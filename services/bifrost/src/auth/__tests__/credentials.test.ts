@@ -1,6 +1,6 @@
 import { hash } from '@node-rs/argon2'
 import type { User } from 'skuld'
-import { configure } from '../config.js'
+import { configure, getConfig } from '../config.js'
 import {
 	AuthError,
 	authenticateUser,
@@ -273,6 +273,16 @@ describe('registerUser', () => {
 		const hashed = vi.mocked(mockRepo.insertUser).mock.calls[0][1] as string
 
 		expect(hashed).toContain('$argon2')
+	})
+
+	it('refuses a password known from a data breach before making the account', async () => {
+		configure({ ...getConfig(), isBreachedPassword: vi.fn().mockResolvedValue(true) })
+
+		await expect(registerUser('bob@example.com', 'password123')).rejects.toMatchObject({
+			code: 'password_breached',
+		})
+
+		expect(mockRepo.insertUser).not.toHaveBeenCalled()
 	})
 
 	it('returns null when the email already has an account', async () => {
