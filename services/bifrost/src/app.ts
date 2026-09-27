@@ -38,14 +38,14 @@ export function createBifrostApp() {
 		basePath: '/api',
 		title: 'Bifrost',
 		description: '',
-		cors: { origin: env.CORS_ORIGIN, credentials: true },
+		cors: { origin: env.APP_ORIGINS, credentials: true },
 		logger: logger(),
 	})
 
 	// App Platform overwrites `do-connecting-ip` with the client address on every request.
 	app.use('*', clientIp({ header: 'do-connecting-ip', secret: env.CLIENT_IP_SECRET }))
 	app.use('*', session())
-	app.use('*', csrf({ origin: env.CORS_ORIGIN }))
+	app.use('*', csrf({ origin: env.APP_ORIGINS }))
 
 	// Also covers `/auth/login` itself and the second step of a session, so passkey
 	// sign-ins and second steps share the password budget.
