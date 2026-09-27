@@ -1,8 +1,13 @@
 import { createRoute, z } from '@hono/zod-openapi'
 import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
-import { IdSchema, IpAddressSchema } from 'skuld'
+import {
+	IdSchema,
+	IpAddressSchema,
+	ResolveThreatSchema,
+	ThreatListSchema,
+	ThreatSchema,
+} from 'skuld'
 import { listThreats, setThreatResolved } from '../handlers/threats.js'
-import { ResolveThreatSchema, ThreatListSchema, ThreatSchema } from '../lib/schemas.js'
 
 const listThreatsRoute = createRoute({
 	method: 'get',

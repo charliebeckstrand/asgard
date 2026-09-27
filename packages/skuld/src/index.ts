@@ -59,8 +59,15 @@ export {
 	CreateBanSchema,
 	type IngestEvent,
 	IngestEventSchema,
+	ResolveThreatSchema,
+	type RuleSeverity,
+	RuleSeveritySchema,
 	type SecurityEvent,
 	SecurityEventSchema,
+	type Threat,
+	type ThreatList,
+	ThreatListSchema,
+	ThreatSchema,
 } from './security.js'
 
 // Session — a signed-in session and its user

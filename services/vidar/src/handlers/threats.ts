@@ -1,7 +1,7 @@
 import { type SqlFragment, sql } from 'saga'
+import type { RuleSeverity } from 'skuld'
 import { toList } from 'skuld'
 import { db } from '../lib/db.js'
-import type { RuleSeverity } from '../lib/schemas.js'
 
 export interface ThreatRow {
 	id: string
