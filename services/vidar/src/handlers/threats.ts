@@ -1,7 +1,7 @@
 import { type SqlFragment, sql } from 'saga'
+import type { RuleSeverity } from 'skuld'
 import { toList } from 'skuld'
 import { db } from '../lib/db.js'
-import type { RuleSeverity } from '../lib/schemas.js'
 
 export interface ThreatRow {
 	id: string
@@ -65,4 +65,11 @@ export async function setThreatResolved(id: string, resolved: boolean): Promise<
 			RETURNING *
 		`,
 	)
+}
+
+export async function purgeOldThreats(retentionDays: number): Promise<number> {
+	return db.exec(sql`
+		DELETE FROM vdr_threats
+		WHERE created_at < now() - make_interval(days => ${retentionDays}::int)
+	`)
 }

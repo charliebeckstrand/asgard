@@ -100,3 +100,34 @@ export type Ban = z.infer<typeof BanSchema>
 export const BanListSchema = createListSchema(BanSchema, 'BanList')
 
 export type BanList = z.infer<typeof BanListSchema>
+
+export const RuleSeveritySchema = z
+	.enum(['low', 'medium', 'high'])
+	.openapi({ description: 'Rule / threat severity' })
+
+export type RuleSeverity = z.infer<typeof RuleSeveritySchema>
+
+export const ThreatSchema = z
+	.object({
+		id: IdSchema,
+		threat_type: z.string(),
+		severity: RuleSeveritySchema,
+		ip: IpAddressSchema,
+		details: z.record(z.string(), z.unknown()),
+		action_taken: z.string().nullable(),
+		resolved: z.boolean(),
+		created_at: TimestampSchema,
+	})
+	.openapi('Threat')
+
+export type Threat = z.infer<typeof ThreatSchema>
+
+export const ThreatListSchema = createListSchema(ThreatSchema, 'ThreatList')
+
+export type ThreatList = z.infer<typeof ThreatListSchema>
+
+export const ResolveThreatSchema = z
+	.object({
+		resolved: z.boolean().openapi({ description: 'Whether the threat has been handled' }),
+	})
+	.openapi('ResolveThreat')

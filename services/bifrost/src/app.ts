@@ -13,6 +13,7 @@ import { health } from './routes/health.js'
 import { mfaRoutes } from './routes/mfa.js'
 import { oauthRoutes } from './routes/oauth.js'
 import { passkeysRoutes } from './routes/passkeys.js'
+import { securityRoutes } from './routes/security.js'
 import { usersRoutes } from './routes/users.js'
 
 /**
@@ -82,4 +83,5 @@ export function createBifrostApp() {
 		.route('/auth/oauth', oauthRoutes)
 		.route('/api', health)
 		.route('/api/users', usersRoutes)
+		.route('/api/security', securityRoutes)
 }

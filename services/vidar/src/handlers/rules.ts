@@ -1,7 +1,7 @@
 import { sql } from 'saga'
+import type { RuleSeverity } from 'skuld'
 import { db } from '../lib/db.js'
 import { logger } from '../lib/log.js'
-import type { RuleSeverity } from '../lib/schemas.js'
 import { createBan, isIpBanned } from './bans.js'
 import { createThreat } from './threats.js'
 

@@ -20,10 +20,11 @@ domains:
 # Binds the existing managed cluster, so the data outlives the app. Binding
 # also adds the app to the cluster's trusted sources.
 #
-# The cluster is bound twice, once for each user. The migrate job connects as
-# the admin user, which owns the tables and can change them. The service
-# connects as `bifrost`, which can only read and write rows, so a flaw in the
-# service can't change the schema.
+# Each database is bound twice, once for each user. The migrate jobs connect as
+# the admin user, which owns the tables and can change them. Each service
+# connects as its own user, which can only read and write rows, so a flaw in a
+# service can't change the schema. Bifrost's tables live in `defaultdb` and
+# Vidar's in `vidar`, so neither service can read the other's.
 databases:
   - name: asgard-db
     engine: PG
@@ -38,6 +39,19 @@ databases:
     cluster_name: app-60313cef-8ae5-4240-9538-6a5b4fc46c0f
     db_name: defaultdb
     db_user: bifrost
+  - name: vidar-admin-db
+    engine: PG
+    version: '18'
+    production: true
+    cluster_name: app-60313cef-8ae5-4240-9538-6a5b4fc46c0f
+    db_name: vidar
+  - name: vidar-db
+    engine: PG
+    version: '18'
+    production: true
+    cluster_name: app-60313cef-8ae5-4240-9538-6a5b4fc46c0f
+    db_name: vidar
+    db_user: vidar
 
 ingress:
   rules:
@@ -148,8 +162,66 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: ${TURNSTILE_SECRET_KEY}
+      # Vidar bans addresses that keep failing to sign in. It's reached over the
+      # app's private network, and the key must match Vidar's.
+      - key: VIDAR_URL
+        scope: RUN_TIME
+        value: ${vidar.PRIVATE_URL}
+      - key: VIDAR_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${VIDAR_API_KEY}
 
-# Applies bifrost's pending migrations before each deploy. If it fails, the
+  # Private: no route or domain, so only the app's own services reach it. One
+  # instance, because its live event stream is kept in memory. Admins read it
+  # through bifrost's /api/security routes.
+  - name: vidar
+    github:
+      repo: charliebeckstrand/asgard
+      branch: main
+      deploy_on_push: false
+    dockerfile_path: Dockerfile
+    internal_ports:
+      - 8000
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    health_check:
+      http_path: /vidar/health
+      port: 8000
+    alerts:
+      - rule: RESTART_COUNT
+        operator: GREATER_THAN
+        value: 2
+        window: FIVE_MINUTES
+      - rule: MEM_UTILIZATION
+        operator: GREATER_THAN
+        value: 80
+        window: TEN_MINUTES
+    # Each ban logs "rule triggered", which Better Stack can alert on.
+    log_destinations:
+      - name: better-stack
+        logtail:
+          token: ${LOGTAIL_TOKEN}
+    envs:
+      - key: SERVICE
+        scope: BUILD_TIME
+        value: vidar
+      # Reported as the version by /vidar/health.
+      - key: COMMIT_HASH
+        scope: RUN_TIME
+        value: ${_self.COMMIT_HASH}
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${vidar-db.DATABASE_URL}
+      - key: DATABASE_CA_CERT
+        scope: RUN_TIME
+        value: ${vidar-db.CA_CERT}
+      - key: VIDAR_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${VIDAR_API_KEY}
+
+# Apply each service's pending migrations before each deploy. If one fails, the
 # deploy stops and the running version keeps serving.
 jobs:
   - name: migrate
@@ -173,3 +245,22 @@ jobs:
       - key: DATABASE_CA_CERT
         scope: RUN_TIME
         value: ${asgard-db.CA_CERT}
+  - name: migrate-vidar
+    kind: PRE_DEPLOY
+    github:
+      repo: charliebeckstrand/asgard
+      branch: main
+      deploy_on_push: false
+    dockerfile_path: Dockerfile
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    run_command: node packages/saga/bin/saga.js migrate --dir services/vidar/migrations
+    envs:
+      - key: SERVICE
+        scope: BUILD_TIME
+        value: vidar
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${vidar-admin-db.DATABASE_URL}
+      - key: DATABASE_CA_CERT
+        scope: RUN_TIME
+        value: ${vidar-admin-db.CA_CERT}

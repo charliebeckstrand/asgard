@@ -3,7 +3,16 @@ import type { MiddlewareHandler } from 'hono'
 import { hc } from 'hono/client'
 import { HTTPException } from 'hono/http-exception'
 import type { Logger } from 'saga/log'
-import { type CheckIpResponse, CheckIpResponseSchema } from 'skuld'
+import {
+	type BanList,
+	BanListSchema,
+	type CheckIpResponse,
+	CheckIpResponseSchema,
+	type Threat,
+	type ThreatList,
+	ThreatListSchema,
+	ThreatSchema,
+} from 'skuld'
 
 import type { VidarApp } from './app.js'
 import { type CircuitBreaker, createCircuitBreaker } from './circuit-breaker.js'
@@ -94,6 +103,84 @@ export function reportEvent(
 		)
 
 		if (isVidarFault(res.status)) throw new Error(`Vidar returned ${res.status}`)
+	})
+}
+
+const ADMIN_TIMEOUT_MS = 5000
+
+/**
+ * Run a call for an admin page through the circuit breaker. Unlike
+ * callVidar, it fails closed: an admin must see that Vidar is unconfigured,
+ * down or answering nonsense, so each of those is a 503.
+ */
+async function askVidar<T>(fn: (client: VidarClient) => Promise<T>): Promise<T> {
+	const client = _client
+	const breaker = _breaker
+
+	if (!client || !breaker) throw unavailable()
+
+	try {
+		return await breaker.execute(() => fn(client))
+	} catch {
+		throw unavailable()
+	}
+}
+
+function unavailable(): HTTPException {
+	return new HTTPException(503, { message: 'Security monitoring is unavailable' })
+}
+
+function init() {
+	return { init: { signal: AbortSignal.timeout(ADMIN_TIMEOUT_MS) } }
+}
+
+/** The newest threats, optionally only resolved or only open ones. */
+export function listThreats(resolved?: boolean): Promise<ThreatList> {
+	return askVidar(async (client) => {
+		const query = resolved === undefined ? {} : ({ resolved: resolved ? 'true' : 'false' } as const)
+		const res = await client.vidar.threats.$get({ query }, init())
+
+		if (!res.ok) throw new Error(`Vidar returned ${res.status}`)
+
+		return ThreatListSchema.parse(await res.json())
+	})
+}
+
+/** Marks a threat handled, or reopens it. Null when there is no such threat. */
+export function resolveThreat(id: string, resolved: boolean): Promise<Threat | null> {
+	return askVidar(async (client) => {
+		const res = await client.vidar.threats[':id'].$patch(
+			{ param: { id }, json: { resolved } },
+			init(),
+		)
+
+		if (res.status === 404) return null
+		if (!res.ok) throw new Error(`Vidar returned ${res.status}`)
+
+		return ThreatSchema.parse(await res.json())
+	})
+}
+
+/** The bans in force. */
+export function listBans(): Promise<BanList> {
+	return askVidar(async (client) => {
+		const res = await client.vidar.bans.$get({}, init())
+
+		if (!res.ok) throw new Error(`Vidar returned ${res.status}`)
+
+		return BanListSchema.parse(await res.json())
+	})
+}
+
+/** Lifts the ban on `ip`. False when it wasn't banned. */
+export function removeBan(ip: string): Promise<boolean> {
+	return askVidar(async (client) => {
+		const res = await client.vidar.bans[':ip'].$delete({ param: { ip } }, init())
+
+		if (res.status === 404) return false
+		if (!res.ok) throw new Error(`Vidar returned ${res.status}`)
+
+		return true
 	})
 }
 

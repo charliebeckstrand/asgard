@@ -1,38 +1,5 @@
-import {
-	createListSchema,
-	IdSchema,
-	IpAddressSchema,
-	SecurityEventSchema,
-	TimestampSchema,
-} from 'skuld'
+import { createListSchema, IpAddressSchema, RuleSeveritySchema, SecurityEventSchema } from 'skuld'
 import { z } from 'zod'
-
-const RuleSeveritySchema = z
-	.enum(['low', 'medium', 'high'])
-	.openapi({ description: 'Rule / threat severity' })
-
-export type RuleSeverity = z.infer<typeof RuleSeveritySchema>
-
-export const ThreatSchema = z
-	.object({
-		id: IdSchema,
-		threat_type: z.string(),
-		severity: RuleSeveritySchema,
-		ip: IpAddressSchema,
-		details: z.record(z.string(), z.unknown()),
-		action_taken: z.string().nullable(),
-		resolved: z.boolean(),
-		created_at: TimestampSchema,
-	})
-	.openapi('Threat')
-
-export const ThreatListSchema = createListSchema(ThreatSchema, 'ThreatList')
-
-export const ResolveThreatSchema = z
-	.object({
-		resolved: z.boolean().openapi({ description: 'Whether the threat has been handled' }),
-	})
-	.openapi('ResolveThreat')
 
 export const SecurityEventListSchema = createListSchema(SecurityEventSchema, 'SecurityEventList')
 
