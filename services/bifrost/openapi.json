@@ -616,6 +616,183 @@
 				"required": [
 					"is_active"
 				]
+			},
+			"ThreatList": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Threat"
+						}
+					},
+					"total": {
+						"type": "number",
+						"description": "Total number of items"
+					}
+				},
+				"required": [
+					"data",
+					"total"
+				]
+			},
+			"Threat": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Unique identifier (UUID)",
+						"example": "550e8400-e29b-41d4-a716-446655440000"
+					},
+					"threat_type": {
+						"type": "string"
+					},
+					"severity": {
+						"type": "string",
+						"enum": [
+							"low",
+							"medium",
+							"high"
+						],
+						"description": "Rule / threat severity"
+					},
+					"ip": {
+						"anyOf": [
+							{
+								"type": "string",
+								"format": "ip"
+							},
+							{
+								"type": "string",
+								"format": "ip"
+							}
+						],
+						"description": "IPv4 or IPv6 address",
+						"example": "192.168.1.100"
+					},
+					"details": {
+						"type": "object",
+						"additionalProperties": {
+							"nullable": true
+						}
+					},
+					"action_taken": {
+						"type": "string",
+						"nullable": true
+					},
+					"resolved": {
+						"type": "boolean"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time",
+						"description": "ISO 8601 datetime",
+						"example": "2026-01-01T00:00:00.000Z"
+					}
+				},
+				"required": [
+					"id",
+					"threat_type",
+					"severity",
+					"ip",
+					"details",
+					"action_taken",
+					"resolved",
+					"created_at"
+				]
+			},
+			"ResolveThreat": {
+				"type": "object",
+				"properties": {
+					"resolved": {
+						"type": "boolean",
+						"description": "Whether the threat has been handled"
+					}
+				},
+				"required": [
+					"resolved"
+				]
+			},
+			"BanList": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Ban"
+						}
+					},
+					"total": {
+						"type": "number",
+						"description": "Total number of items"
+					}
+				},
+				"required": [
+					"data",
+					"total"
+				]
+			},
+			"Ban": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Unique identifier (UUID)",
+						"example": "550e8400-e29b-41d4-a716-446655440000"
+					},
+					"ip": {
+						"anyOf": [
+							{
+								"type": "string",
+								"format": "ip"
+							},
+							{
+								"type": "string",
+								"format": "ip"
+							}
+						],
+						"description": "IPv4 or IPv6 address",
+						"example": "192.168.1.100"
+					},
+					"reason": {
+						"type": "string"
+					},
+					"rule_id": {
+						"type": "string",
+						"nullable": true
+					},
+					"created_by": {
+						"type": "string",
+						"enum": [
+							"system",
+							"manual",
+							"vidar"
+						],
+						"description": "Origin of the ban"
+					},
+					"expires_at": {
+						"type": "string",
+						"nullable": true,
+						"format": "date-time"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time",
+						"description": "ISO 8601 datetime",
+						"example": "2026-01-01T00:00:00.000Z"
+					}
+				},
+				"required": [
+					"id",
+					"ip",
+					"reason",
+					"rule_id",
+					"created_by",
+					"expires_at",
+					"created_at"
+				]
 			}
 		},
 		"parameters": {}
@@ -1962,6 +2139,202 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ActivityList"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/security/threats": {
+			"get": {
+				"tags": [
+					"Security"
+				],
+				"summary": "List detected threats",
+				"description": "Newest first, at most 100.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"enum": [
+								"true",
+								"false"
+							],
+							"description": "Only resolved, or only open, threats"
+						},
+						"required": false,
+						"description": "Only resolved, or only open, threats",
+						"name": "resolved",
+						"in": "query"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Threats",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ThreatList"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Security monitoring is unavailable",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/security/threats/{id}": {
+			"patch": {
+				"tags": [
+					"Security"
+				],
+				"summary": "Resolve or reopen a threat",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"format": "uuid",
+							"description": "Unique identifier (UUID)",
+							"example": "550e8400-e29b-41d4-a716-446655440000"
+						},
+						"required": true,
+						"description": "Unique identifier (UUID)",
+						"name": "id",
+						"in": "path"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ResolveThreat"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Threat updated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Threat"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Threat not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Security monitoring is unavailable",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/security/bans": {
+			"get": {
+				"tags": [
+					"Security"
+				],
+				"summary": "List the bans in force",
+				"responses": {
+					"200": {
+						"description": "Bans",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BanList"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Security monitoring is unavailable",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/security/bans/{ip}": {
+			"delete": {
+				"tags": [
+					"Security"
+				],
+				"summary": "Lift a ban",
+				"parameters": [
+					{
+						"schema": {
+							"anyOf": [
+								{
+									"type": "string",
+									"format": "ip"
+								},
+								{
+									"type": "string",
+									"format": "ip"
+								}
+							],
+							"description": "IPv4 or IPv6 address",
+							"example": "192.168.1.100"
+						},
+						"required": true,
+						"description": "IPv4 or IPv6 address",
+						"name": "ip",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Ban lifted"
+					},
+					"404": {
+						"description": "Address not banned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Security monitoring is unavailable",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
 								}
 							}
 						}
