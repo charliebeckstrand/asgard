@@ -41,4 +41,8 @@ ENV PORT=8000
 ENV SERVICE=${SERVICE}
 EXPOSE 8000
 
+# The node image's unprivileged user. The app only reads its files, so root can keep
+# owning them.
+USER node
+
 CMD node services/${SERVICE}/dist/index.js
