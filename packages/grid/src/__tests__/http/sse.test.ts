@@ -22,6 +22,14 @@ function createStreamApp(emitter: EventEmitter) {
 	return app
 }
 
+async function openStream(emitter: EventEmitter) {
+	const res = await createStreamApp(emitter).request('/stream')
+
+	if (!res.body) throw new Error('Expected a streaming body')
+
+	return res.body.getReader()
+}
+
 async function readUntil(reader: ReadableStreamDefaultReader<Uint8Array>, text: string) {
 	const decoder = new TextDecoder()
 
@@ -42,9 +50,7 @@ describe('createSSEStream', () => {
 	it('sends emitted events and pings an idle stream', async () => {
 		const emitter = new EventEmitter()
 
-		const res = await createStreamApp(emitter).request('/stream')
-
-		const reader = res.body!.getReader()
+		const reader = await openStream(emitter)
 
 		expect(await readUntil(reader, ': ping')).toContain(': ping')
 
@@ -62,9 +68,7 @@ describe('createSSEStream', () => {
 
 		process.on('unhandledRejection', unhandled)
 
-		const res = await createStreamApp(emitter).request('/stream')
-
-		const reader = res.body!.getReader()
+		const reader = await openStream(emitter)
 
 		emitter.emit('event', { id: '1', type: 'bad\nevent' })
 
@@ -80,9 +84,7 @@ describe('createSSEStream', () => {
 	it('stops listening once the client leaves', async () => {
 		const emitter = new EventEmitter()
 
-		const res = await createStreamApp(emitter).request('/stream')
-
-		const reader = res.body!.getReader()
+		const reader = await openStream(emitter)
 
 		await readUntil(reader, ': ping')
 
