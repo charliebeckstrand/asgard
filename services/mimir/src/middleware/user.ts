@@ -46,6 +46,11 @@ export function forwardedUser(): MiddlewareHandler<UserEnv> {
 	}
 }
 
+/** The id of the signed-in user, which rate limits count by. Empty without one. */
+export function userKey(c: Context<UserEnv>): string {
+	return c.get('user')?.id ?? ''
+}
+
 /** The signed-in user, or a 401. */
 export function requireUser(c: Context<UserEnv>): ForwardedUser {
 	const user = c.get('user')

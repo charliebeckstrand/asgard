@@ -258,6 +258,26 @@ describe('writes', () => {
 	})
 })
 
+describe('rate limit', () => {
+	it('counts each user apart', async () => {
+		mockListPlaces.mockResolvedValue([])
+
+		const other = { ...member, id: '00000000-0000-4000-8000-000000000009' }
+
+		const statuses: number[] = []
+
+		for (let i = 0; i < 61; i++) {
+			statuses.push((await app.request('/api/places', { headers: headers(other) })).status)
+		}
+
+		expect(statuses.slice(0, 60).every((status) => status === 200)).toBe(true)
+
+		expect(statuses[60]).toBe(429)
+
+		expect((await app.request('/api/places', { headers: headers() })).status).toBe(200)
+	})
+})
+
 describe('OpenAPI', () => {
 	// Midgard generates its client types from this file. Run `pnpm openapi` after an API change.
 	it('matches the committed openapi.json', async () => {

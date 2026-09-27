@@ -1,8 +1,9 @@
 import { createApp } from 'grid'
+import { rateLimit } from 'grid/middleware'
 
 import { logger } from './lib/log.js'
 import { apiKeyAuth } from './middleware/api-key.js'
-import { forwardedUser, type UserEnv } from './middleware/user.js'
+import { forwardedUser, type UserEnv, userKey } from './middleware/user.js'
 import { health } from './routes/health.js'
 import { placesRoutes } from './routes/places.js'
 import { visitsRoutes } from './routes/visits.js'
@@ -28,8 +29,14 @@ export function createMimirApp() {
 		return auth(c, next)
 	})
 
-	app.use(`${BASE_PATH}/places/*`, forwardedUser())
-	app.use(`${BASE_PATH}/visits/*`, forwardedUser())
+	// Per user, not per address: Midgard's server reads for its pages, so many
+	// users share its address. A page load reads a few lists, and each change is
+	// one request. Sixty, then two a second.
+	const limit = rateLimit({ rate: 2, burst: 60, key: userKey })
+
+	for (const path of [`${BASE_PATH}/places/*`, `${BASE_PATH}/visits/*`]) {
+		app.use(path, forwardedUser(), limit)
+	}
 
 	return app.route(BASE_PATH, health).route(BASE_PATH, placesRoutes).route(BASE_PATH, visitsRoutes)
 }

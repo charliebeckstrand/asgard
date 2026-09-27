@@ -77,13 +77,6 @@ export function createBifrostApp() {
 	// Hashes a new password, like a sign-in checks one.
 	app.use('/auth/reset-password/confirm', loginLimit)
 
-	// The apps' data in Mimir. A page load reads a few lists, and each change is
-	// one request. Sixty, then two a second per address.
-	const appDataLimit = limit('/api/apps', { rate: 2, burst: 60 })
-
-	app.use('/api/places/*', appDataLimit)
-	app.use('/api/visits/*', appDataLimit)
-
 	return app
 		.route('/auth', authRoutes)
 		.route('/auth/passkeys', passkeysRoutes)

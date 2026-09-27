@@ -7,14 +7,14 @@ Asgard is the backend for Ivory Image: Hono services in one pnpm and Turborepo w
 Shared packages in `packages/` never import from `services/`.
 
 - `skuld`: shared Zod schemas.
-- `grid`: the service kit. `createApp` (OpenAPI docs at `<basePath>/docs`), error handling, request logging, SSE, the health route, `createEnvironment`, the manifest-driven env sync, `setupLifecycle`, and the `clientIp` and `rateLimit` middleware.
+- `grid`: the service kit. `createApp` (OpenAPI docs at `<basePath>/docs`), error handling, request logging, SSE, the health route, `createEnvironment`, the manifest-driven env sync, `setupLifecycle`, and the `clientIp` and `rateLimit` middleware (per address, or per any key).
 - `saga`: Postgres. `createDb`, the `sql` template, file migrations and the `saga` CLI (`migrate`, `status`, `new <name>`), pino logging, and `saga-bootstrap` for local roles and databases.
 - `vali`: test helpers. See the `test-quality` skill.
 
 Services in `services/`. Each has `manifest.json`, `migrations/`, `src/index.ts` (starts the server), `src/app.ts` (builds the routes) and `src/lib/{db,env,log}.ts`.
 
 - `bifrost` (port 4000, `/api`, public at auth.ivoryimage.dev): accounts and sign-in. Passwords, passkeys, authenticator apps, GitHub and Google OAuth, email verification and password reset through Resend, sessions, roles, and the admin-only `/api/security` routes that read Vidar.
-- `mimir` (port 4002, `/api`, private): apps' data, today the places app's places and visited regions, stored as one JSON document per user and name. Behind an API key. Bifrost checks the session and forwards `/api/places/*` and `/api/visits/*` unchanged with the user in `x-mimir-user`; Mimir declares each route's role. A new app's data gets its own routes and handlers here, not a new service.
+- `mimir` (port 4002, `/api`, private): apps' data, today the places app's places and visited regions, stored as one JSON document per user and name. Behind an API key. Bifrost checks the session and forwards `/api/places/*` and `/api/visits/*` unchanged with the user in `x-mimir-user`; Mimir declares each route's role and limits each user's requests. A new app's data gets its own routes and handlers here, not a new service.
 - `vidar` (port 4001, `/vidar`, private): security events, threat rules and IP bans, behind an API key. Bifrost uses `vidar/client`: `banCheck`, `reportEvent`, and the admin reads, which answer 503 when Vidar is down.
 
 ## Commands
