@@ -12,7 +12,6 @@ import {
 	getIdentities,
 	OAuthFailure,
 	type OAuthProvider,
-	requireRecentSignIn,
 	safeReturnTo,
 	startOAuth,
 	unlinkIdentity,
@@ -23,8 +22,8 @@ import { OAUTH_PROVIDERS, OAUTH_STATE_TTL_SECONDS } from '../auth/oauth.js'
 import { appOrigin } from '../lib/app-origin.js'
 import { logger } from '../lib/log.js'
 import {
+	authorizeSignInChange,
 	getSessionToken,
-	requireSecondStep,
 	requireSession,
 	type SessionEnv,
 	setSessionCookie,
@@ -149,9 +148,7 @@ export const oauthRoutes = createRouter<SessionEnv>()
 		return c.json({ identities: await getIdentities(user.id) }, 200)
 	})
 	.openapi(unlinkIdentityRoute, async (c) => {
-		const session = await requireSecondStep(c)
-
-		requireRecentSignIn(session)
+		const session = await authorizeSignInChange(c)
 
 		const { provider } = c.req.valid('param')
 
@@ -195,9 +192,7 @@ oauthRoutes.get('/:provider/start', async (c) => {
 		let linkUserId: string | undefined
 
 		if (linking) {
-			const session = await requireSecondStep(c)
-
-			requireRecentSignIn(session)
+			const session = await authorizeSignInChange(c)
 
 			linkUserId = session.user.id
 		}

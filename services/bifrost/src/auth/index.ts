@@ -58,7 +58,6 @@ export {
 	deleteUserSessions,
 	findSession,
 	passSecondStep,
-	requireRecentSignIn,
 	SESSION_TTL_SECONDS,
 } from './sessions.js'
 export type { Email, OAuthProvider } from './types.js'
