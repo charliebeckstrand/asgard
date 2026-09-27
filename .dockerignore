@@ -1,0 +1,12 @@
+# The image copies services/ and packages/ whole, so keep local builds, installs
+# and secrets out of it. App Platform builds from a clean checkout either way.
+.git
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+**/.env
+**/.env.*
+!**/.env.example
+**/.secrets.json
+**/*.log

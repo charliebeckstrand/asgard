@@ -35,3 +35,33 @@ jobs:
 
             # Keep the saved cache from growing without bound.
             - run: find .turbo/cache -type f -mtime +7 -delete
+
+    # App Platform builds this same Dockerfile at deploy, so a broken image
+    # fails here instead of after merge.
+    docker:
+        name: Build ${{ matrix.service }} image
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                service: [bifrost, vidar]
+        steps:
+            - uses: actions/checkout@v6
+
+            - uses: docker/setup-buildx-action@v3
+
+            - uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  build-args: SERVICE=${{ matrix.service }}
+                  load: true
+                  tags: asgard-${{ matrix.service }}
+                  cache-from: type=gha,scope=${{ matrix.service }}
+                  cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+            # The pre-deploy job runs migrations with this command, so check it
+            # starts. With no database set it should stop at that check.
+            - name: Check the migrate command runs
+              run: |
+                  output=$(docker run --rm asgard-${{ matrix.service }} node packages/saga/bin/saga.js migrate 2>&1 || true)
+                  echo "$output"
+                  grep -q 'DATABASE_URL is not set' <<< "$output"
