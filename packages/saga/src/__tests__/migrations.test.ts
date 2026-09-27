@@ -61,20 +61,18 @@ describe('readMigrations', () => {
 		expect(migrations.map((m) => m.name)).toEqual(['0001_create_users.sql'])
 	})
 
-	it.each([
-		'1_x.sql',
-		'0001_Bad.sql',
-		'0001-dash.sql',
-		'create_users.sql',
-	])('rejects the misnamed file %s', async (name) => {
-		await tmp.writeFile(name, 'SELECT 1')
+	it.each(['1_x.sql', '0001_Bad.sql', '0001-dash.sql', 'create_users.sql'])(
+		'rejects the misnamed file %s',
+		async (name) => {
+			await tmp.writeFile(name, 'SELECT 1')
 
-		const result = readMigrations(tmp.path)
+			const result = readMigrations(tmp.path)
 
-		await expect(result).rejects.toThrow(MigrationError)
+			await expect(result).rejects.toThrow(MigrationError)
 
-		await expect(result).rejects.toThrow(`${name} must be named NNNN_name.sql in lowercase`)
-	})
+			await expect(result).rejects.toThrow(`${name} must be named NNNN_name.sql in lowercase`)
+		},
+	)
 
 	it('rejects two files that share a number', async () => {
 		await tmp.writeFile('0001_a.sql', 'SELECT 1')
