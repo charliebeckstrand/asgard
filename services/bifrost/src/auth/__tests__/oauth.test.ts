@@ -12,6 +12,7 @@ import {
 } from '../oauth.js'
 import { hashToken } from '../sessions.js'
 import type {
+	EmailTokenRepository,
 	MfaRepository,
 	OAuthRepository,
 	PasskeyRepository,
@@ -113,6 +114,8 @@ beforeEach(() => {
 		passkeys: { domain: 'ivoryimage.dev', origins: [ORIGIN] },
 		mfa: { issuer: 'ivoryimage.dev' },
 		oauthRepository,
+		emailTokenRepository: {} as EmailTokenRepository,
+		sendEmail: vi.fn(),
 		oauth: {
 			google: { clientId: 'google-id', clientSecret: 'google-secret' },
 			github: { clientId: 'github-id', clientSecret: 'github-secret' },
@@ -135,6 +138,8 @@ describe('enabledProviders', () => {
 			passkeys: { domain: 'ivoryimage.dev', origins: [ORIGIN] },
 			mfa: { issuer: 'ivoryimage.dev' },
 			oauthRepository,
+			emailTokenRepository: {} as EmailTokenRepository,
+			sendEmail: vi.fn(),
 			oauth: { google: { clientId: 'id', clientSecret: 'secret' } },
 		})
 
@@ -209,6 +214,8 @@ describe('startOAuth', () => {
 			passkeys: { domain: 'ivoryimage.dev', origins: [ORIGIN] },
 			mfa: { issuer: 'ivoryimage.dev' },
 			oauthRepository,
+			emailTokenRepository: {} as EmailTokenRepository,
+			sendEmail: vi.fn(),
 			oauth: {},
 		})
 

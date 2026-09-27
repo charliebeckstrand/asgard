@@ -61,6 +61,21 @@ export function createBifrostApp() {
 		createVidar({ rate: 1 / 60, burst: 3, route: '/auth/register', service: 'bifrost' }),
 	)
 
+	// Each request can send an email. Three, then one a minute per address. A
+	// user also gets at most one email of each kind a minute.
+	const emailLimit = createVidar({
+		rate: 1 / 60,
+		burst: 3,
+		route: '/auth/email',
+		service: 'bifrost',
+	})
+
+	app.use('/auth/verify-email', emailLimit)
+	app.use('/auth/reset-password', emailLimit)
+
+	// Hashes a new password, like a sign-in checks one.
+	app.use('/auth/reset-password/confirm', loginLimit)
+
 	return app
 		.route('/auth', authRoutes)
 		.route('/auth/passkeys', passkeysRoutes)

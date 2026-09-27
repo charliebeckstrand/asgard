@@ -104,6 +104,15 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: ${OAUTH_GOOGLE_CLIENT_SECRET}
+      # Sends verification and password reset emails through Resend. Unset logs
+      # each email instead of sending it.
+      - key: RESEND_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${RESEND_API_KEY}
+      - key: EMAIL_FROM
+        scope: RUN_TIME
+        value: Ivory Image <no-reply@ivoryimage.dev>
 
 # Applies bifrost's pending migrations before each deploy. If it fails, the
 # deploy stops and the running version keeps serving.

@@ -2,6 +2,16 @@ export type { Config, OAuthClient } from './config.js'
 export { configure, getConfig } from './config.js'
 export { AuthError, authenticateUser, registerUser } from './credentials.js'
 export {
+	deleteExpiredEmailTokens,
+	EMAIL_INTERVAL_SECONDS,
+	RESET_PASSWORD_TTL_SECONDS,
+	requestPasswordReset,
+	resetPassword,
+	sendVerificationEmail,
+	VERIFY_EMAIL_TTL_SECONDS,
+	verifyEmail,
+} from './email.js'
+export {
 	confirmTotp,
 	deleteTotp,
 	generateRecoveryCodes,
@@ -54,6 +64,9 @@ export {
 } from './sessions.js'
 export type {
 	CredentialsRow,
+	Email,
+	EmailPurpose,
+	EmailTokenRepository,
 	Factors,
 	LinkedIdentity,
 	MfaRepository,

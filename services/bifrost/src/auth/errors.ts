@@ -3,6 +3,7 @@ import { HTTPException } from 'grid'
 const AUTH_STATUS = {
 	passkey_rejected: 400,
 	code_rejected: 400,
+	link_expired: 400,
 	invalid_credentials: 401,
 	account_inactive: 403,
 	sign_in_again: 403,
@@ -12,11 +13,13 @@ const AUTH_STATUS = {
 	identity_not_found: 404,
 	oauth_unavailable: 404,
 	email_exists: 409,
+	email_verified: 409,
 	sign_in_expired: 410,
 	last_admin_factor: 409,
 	totp_exists: 409,
 	no_second_factor: 409,
 	last_sign_in: 409,
+	email_recently_sent: 429,
 	mfa_unavailable: 503,
 } as const
 
