@@ -179,7 +179,7 @@ oauthRoutes.get('/:provider/start', async (c) => {
 	const origin = appOrigin(c)
 
 	if (!origin) {
-		return c.json({ message: 'Unknown app origin' }, 400)
+		throw new HTTPException(400, { message: 'Unknown app origin' })
 	}
 
 	try {
