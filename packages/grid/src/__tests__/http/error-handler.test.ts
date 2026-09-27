@@ -5,7 +5,7 @@ import { errorHandler, notFoundHandler } from '../../http/error-handler.js'
 const app = new Hono()
 
 app.get('/error-with-status', () => {
-	const err = new Error('Forbidden') as Error & { status: number }
+	const err = new Error('Upstream said no') as Error & { status: number }
 
 	err.status = 403
 
@@ -16,14 +16,12 @@ app.get('/http-exception', () => {
 	throw new HTTPException(422, { message: 'Validation failed' })
 })
 
+class CodedError extends HTTPException {
+	readonly code = 'second_step_required'
+}
+
 app.get('/error-with-code', () => {
-	const err = new Error('Confirm it is you') as Error & { status: number; code: string }
-
-	err.status = 403
-
-	err.code = 'second_step_required'
-
-	throw err
+	throw new CodedError(403, { message: 'Confirm it is you' })
 })
 
 app.get('/unexpected-error', () => {
@@ -41,18 +39,14 @@ type ErrorResponse = {
 }
 
 describe('errorHandler', () => {
-	it('returns structured JSON for errors with status property', async () => {
+	it('hides the message of an error that only carries a status', async () => {
 		const res = await app.request('/error-with-status')
 
-		expect(res.status).toBe(403)
+		expect(res.status).toBe(500)
 
 		const body = (await res.json()) as ErrorResponse
 
-		expect(body.error).toBe('Forbidden')
-
-		expect(body.message).toBe('Forbidden')
-
-		expect(body.statusCode).toBe(403)
+		expect(body.message).toBe('An unexpected error occurred')
 	})
 
 	it('returns structured JSON for HTTPException instances', async () => {

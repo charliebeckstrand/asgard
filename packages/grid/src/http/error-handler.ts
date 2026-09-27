@@ -1,5 +1,6 @@
 import { STATUS_CODES } from 'node:http'
 import type { Context, Env } from 'hono'
+import { HTTPException } from 'hono/http-exception'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { RequestLoggerEnv } from './request-logger.js'
 
@@ -13,7 +14,9 @@ export function errorBody(status: number, message: string, error?: string, code?
 }
 
 export function errorHandler<E extends Env>(err: Error, c: Context<E>) {
-	if ('status' in err && typeof err.status === 'number') {
+	// Only an HTTPException is meant for the client. Another error that happens
+	// to carry a `status`, such as one from an SDK, stays internal.
+	if (err instanceof HTTPException) {
 		const status = err.status as ContentfulStatusCode
 
 		// An error with a string `code`, such as an auth error, names itself so a
