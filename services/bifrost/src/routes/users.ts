@@ -1,5 +1,5 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { errorResponse, HTTPException, jsonRequest, jsonResponse, validationHook } from 'grid'
+import { createRoute, z } from '@hono/zod-openapi'
+import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
 import { createListSchema, IdSchema, toList, UserSchema } from 'skuld'
 import { deleteUserSessions, getConfig } from '../auth/index.js'
 import { requireRole, type SessionEnv } from '../middleware/session.js'
@@ -62,7 +62,7 @@ const updateUserRoute = createRoute({
 	},
 })
 
-const usersRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
+const usersRoutes = createRouter<SessionEnv>()
 
 usersRoutes.use('*', requireRole('admin'))
 

@@ -1,5 +1,5 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
+import { createRoute, z } from '@hono/zod-openapi'
+import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
 import { BanListSchema, BanSchema, CreateBanSchema, MessageSchema } from 'skuld'
 import { createBan, listActiveBans, removeBan } from '../handlers/bans.js'
 
@@ -51,7 +51,7 @@ const removeBanRoute = createRoute({
 	},
 })
 
-const app = new OpenAPIHono()
+const app = createRouter()
 
 export const bans = app
 	.openapi(listBansRoute, async (c) => {

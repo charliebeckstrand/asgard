@@ -1,5 +1,5 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import { errorResponse, jsonRequest, jsonResponse } from 'grid'
+import { createRoute, z } from '@hono/zod-openapi'
+import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
 import { IngestEventSchema, IpAddressSchema, SecurityEventSchema } from 'skuld'
 import { ingestEvent, listEvents } from '../handlers/events.js'
 import { SecurityEventListSchema } from '../lib/schemas.js'
@@ -47,7 +47,7 @@ const listRoute = createRoute({
 	},
 })
 
-const app = new OpenAPIHono()
+const app = createRouter()
 
 export const events = app
 	.openapi(ingestRoute, async (c) => {

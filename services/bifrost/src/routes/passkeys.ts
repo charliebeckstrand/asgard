@@ -1,6 +1,6 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { createRoute, z } from '@hono/zod-openapi'
 import type { RegistrationResponseJSON } from '@simplewebauthn/server'
-import { errorResponse, jsonRequest, jsonResponse, validationHook } from 'grid'
+import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
 import { createListSchema, PasskeySchema, toList } from 'skuld'
 import {
 	createRegistrationOptions,
@@ -90,7 +90,7 @@ const deletePasskeyRoute = createRoute({
 	},
 })
 
-const passkeysRoutes = new OpenAPIHono<SessionEnv>({ defaultHook: validationHook })
+const passkeysRoutes = createRouter<SessionEnv>()
 
 // Answers 401 before a body is validated.
 passkeysRoutes.use('*', async (c, next) => {
