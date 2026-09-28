@@ -27,3 +27,4 @@ Choices Charlie made that the code doesn't explain, with what was turned down. A
 ## Hosting
 
 - **Everything runs on DigitalOcean App Platform**, in the DO project "Ivory Image". The domain ivoryimage.dev is managed there. Charlie turned down a dedicated egress IP ($25 a month) and merging asgard and midgard into one app.
+- **Renovate owns npm updates, as in Midgard; Dependabot keeps GitHub Actions.** Minor and patch updates wait three days after release, then Renovate merges them once CI passes, and the merge deploys. Majors, lock file maintenance and Actions updates wait for Charlie. Turned down: a workflow that merges Dependabot's pull requests, because merges made with the workflow token start no deploy. Renovate's merges come from its app, so they do.
