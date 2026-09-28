@@ -15,6 +15,7 @@ export {
 	deleteOldSentEmails,
 	requestPasswordReset,
 	resetPassword,
+	sendAccountDeletedEmail,
 	sendAccountExistsEmail,
 	sendSecurityNotice,
 	sendVerificationEmail,

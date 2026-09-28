@@ -53,6 +53,7 @@ beforeEach(() => {
 		getUsers: vi.fn().mockResolvedValue([]),
 		getUserById: vi.fn().mockResolvedValue(TEST_USER),
 		setUserActive: vi.fn().mockResolvedValue(TEST_USER),
+		deleteUser: vi.fn().mockResolvedValue(TEST_USER),
 		countFailedLogin: vi.fn().mockResolvedValue(true),
 		clearFailedLogins: vi.fn(),
 		deleteStaleFailedLogins: vi.fn(),
