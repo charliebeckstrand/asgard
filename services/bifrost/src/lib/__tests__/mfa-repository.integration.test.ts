@@ -121,6 +121,18 @@ describeWithDocker('createMfaRepository (integration)', () => {
 		})
 	})
 
+	describe('getLatestSecret', () => {
+		it('returns null when no one has a secret', async () => {
+			expect(await mfa.getLatestSecret()).toBeNull()
+		})
+
+		it('returns a stored secret, pending or confirmed', async () => {
+			await mfa.setPendingTotp(await insertUser(), secret)
+
+			expect(await mfa.getLatestSecret()).toEqual(secret)
+		})
+	})
+
 	describe('removing second factors', () => {
 		it('removes an authenticator app, and the recovery codes with the last factor', async () => {
 			const userId = await insertUser()

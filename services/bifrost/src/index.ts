@@ -3,6 +3,7 @@ import { setupLifecycle } from 'grid/server-lifecycle'
 import { configure as configureVidar, reportEvent } from 'vidar/client'
 import { createBifrostApp } from './app.js'
 import {
+	checkMfaKey,
 	configure,
 	deleteExpiredChallenges,
 	deleteExpiredEmailTokens,
@@ -72,6 +73,22 @@ configure({
 	},
 	onSecurityEvent: (event) => reportEvent(event.type, event.ip, event.details ?? {}, 'bifrost'),
 })
+
+// A key that can't read the stored secrets would break every authenticator app,
+// so bifrost doesn't start. The health check then fails the deploy, and the old
+// version keeps serving. When the database can't be reached, bifrost starts
+// anyway, as it would without this check.
+const mfaKeyProblem = await checkMfaKey().catch((err: unknown) => {
+	log.error({ err }, 'could not check MFA_ENCRYPTION_KEY')
+
+	return null
+})
+
+if (mfaKeyProblem) {
+	log.fatal(mfaKeyProblem)
+
+	process.exit(1)
+}
 
 const app = createBifrostApp()
 

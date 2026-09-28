@@ -35,8 +35,8 @@ export const environment = createEnvironment({
 		process.env.NODE_ENV === 'production' ? clientIpSecret : clientIpSecret.optional(),
 	// The domain passkeys belong to. Every app origin must be on it or a subdomain of it.
 	PASSKEY_DOMAIN: z.string().default('localhost'),
-	// Encrypts authenticator-app secrets. Unset turns authenticator apps off. Changing
-	// it breaks every authenticator app already added.
+	// Encrypts authenticator-app secrets. Unset turns authenticator apps off. Bifrost
+	// won't start with a key that can't read the secrets already stored.
 	MFA_ENCRYPTION_KEY: z
 		.string()
 		.optional()

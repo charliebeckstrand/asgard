@@ -77,6 +77,14 @@ export function createMfaRepository(db: Db): MfaRepository {
 			} satisfies StoredTotp
 		},
 
+		async getLatestSecret() {
+			const row = await db.first<{ secret: Buffer }>(
+				sql`SELECT secret FROM totp_secrets ORDER BY created_at DESC LIMIT 1`,
+			)
+
+			return row ? new Uint8Array(row.secret) : null
+		},
+
 		async setPendingTotp(userId, secret) {
 			const written = await db.exec(
 				sql`

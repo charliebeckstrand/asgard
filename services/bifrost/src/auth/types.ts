@@ -156,6 +156,8 @@ export interface StoredTotp {
 export interface MfaRepository {
 	getFactors(userId: string): Promise<Factors>
 	getTotp(userId: string): Promise<StoredTotp | null>
+	/** The most recently added secret of any user, or null when no one has one. */
+	getLatestSecret(): Promise<Uint8Array | null>
 	/** Stores an unconfirmed secret, replacing an earlier unconfirmed one. Refuses when one is confirmed. */
 	setPendingTotp(userId: string, secret: Uint8Array): Promise<'created' | 'exists'>
 	/** Confirms the pending secret and records `step` as used. */
