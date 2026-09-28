@@ -8,6 +8,7 @@ import { banCheck, reportEvent } from 'vidar/client'
 import { environment } from './lib/env.js'
 import { logger } from './lib/log.js'
 import { session } from './middleware/session.js'
+import { accountRoutes } from './routes/account.js'
 import { authRoutes } from './routes/auth.js'
 import { health } from './routes/health.js'
 import { mfaRoutes } from './routes/mfa.js'
@@ -79,6 +80,7 @@ export function createBifrostApp() {
 
 	return app
 		.route('/auth', authRoutes)
+		.route('/auth/account', accountRoutes)
 		.route('/auth/passkeys', passkeysRoutes)
 		.route('/auth/mfa', mfaRoutes)
 		.route('/auth/oauth', oauthRoutes)

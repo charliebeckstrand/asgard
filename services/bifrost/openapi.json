@@ -372,23 +372,56 @@
 					"password"
 				]
 			},
-			"PasskeyList": {
+			"AccountExport": {
 				"type": "object",
 				"properties": {
-					"data": {
+					"exported_at": {
+						"type": "string",
+						"format": "date-time",
+						"description": "ISO 8601 datetime",
+						"example": "2026-01-01T00:00:00.000Z"
+					},
+					"user": {
+						"$ref": "#/components/schemas/User"
+					},
+					"passkeys": {
 						"type": "array",
 						"items": {
 							"$ref": "#/components/schemas/Passkey"
 						}
 					},
-					"total": {
-						"type": "number",
-						"description": "Total number of items"
+					"connected_accounts": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Identity"
+						}
+					},
+					"authenticator_app": {
+						"type": "boolean",
+						"description": "Whether an authenticator app is on"
+					},
+					"activity": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Activity"
+						}
+					},
+					"app_data": {
+						"type": "object",
+						"additionalProperties": {
+							"nullable": true
+						},
+						"description": "Each app's data, as Mimir keeps it"
 					}
 				},
 				"required": [
-					"data",
-					"total"
+					"exported_at",
+					"user",
+					"passkeys",
+					"connected_accounts",
+					"authenticator_app",
+					"activity",
+					"app_data"
 				]
 			},
 			"Passkey": {
@@ -408,6 +441,50 @@
 				"required": [
 					"id",
 					"created_at"
+				]
+			},
+			"Identity": {
+				"type": "object",
+				"properties": {
+					"provider": {
+						"type": "string",
+						"enum": [
+							"github",
+							"google"
+						]
+					},
+					"email": {
+						"type": "string",
+						"nullable": true,
+						"description": "The verified email of the account"
+					},
+					"created_at": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"provider",
+					"email",
+					"created_at"
+				]
+			},
+			"PasskeyList": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Passkey"
+						}
+					},
+					"total": {
+						"type": "number",
+						"description": "Total number of items"
+					}
+				},
+				"required": [
+					"data",
+					"total"
 				]
 			},
 			"Factors": {
@@ -512,31 +589,6 @@
 				},
 				"required": [
 					"identities"
-				]
-			},
-			"Identity": {
-				"type": "object",
-				"properties": {
-					"provider": {
-						"type": "string",
-						"enum": [
-							"github",
-							"google"
-						]
-					},
-					"email": {
-						"type": "string",
-						"nullable": true,
-						"description": "The verified email of the account"
-					},
-					"created_at": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"provider",
-					"email",
-					"created_at"
 				]
 			},
 			"HealthResponse": {
@@ -1362,6 +1414,91 @@
 					},
 					"400": {
 						"description": "Link expired or already used, or a password known from a data breach",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/account/export": {
+			"get": {
+				"tags": [
+					"Account"
+				],
+				"summary": "Export your account",
+				"description": "Everything kept about the signed-in user, as one JSON file: the account, how they sign in, recent activity, and the data of each app. Secrets and password hashes stay out.",
+				"responses": {
+					"200": {
+						"description": "Your account",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccountExport"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "App data is unavailable",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/account": {
+			"delete": {
+				"tags": [
+					"Account"
+				],
+				"summary": "Delete your account",
+				"description": "Deletes the signed-in user's account and all of its data, ends every session, and emails the owner. Needs the second step, when the user has a second factor, and a sign-in from the last ten minutes. An admin can't delete their account until the admin role is removed.",
+				"responses": {
+					"204": {
+						"description": "Account deleted"
+					},
+					"401": {
+						"description": "Not authenticated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Second step or a new sign-in needed, or an admin account",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "App data is unavailable, so nothing was deleted",
 						"content": {
 							"application/json": {
 								"schema": {

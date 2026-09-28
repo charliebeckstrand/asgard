@@ -55,6 +55,16 @@ export function createUserRepository(db: Db): UserRepository {
 			)
 		},
 
+		async deleteUser(id) {
+			return db.first<User>(
+				sql`
+					DELETE FROM users
+					WHERE id = ${id} AND NOT 'admin' = ANY(roles)
+					RETURNING id, email, is_active, is_verified, roles, created_at, updated_at
+				`,
+			)
+		},
+
 		async countFailedLogin(email, limit, waitSeconds) {
 			// The row lock orders concurrent tries, so each sees the count of the last.
 			const counted = await db.exec(

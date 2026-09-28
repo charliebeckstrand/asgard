@@ -133,6 +133,35 @@ describeWithDocker('createUserRepository (integration)', () => {
 		})
 	})
 
+	describe('deleteUser', () => {
+		it('deletes the user and everything that names them', async () => {
+			const { id } = await repo.insertUser('gone@example.com', 'h')
+
+			await pool.query(
+				`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s', $1, now() + interval '1 day')`,
+				[id],
+			)
+
+			expect((await repo.deleteUser(id))?.email).toBe('gone@example.com')
+
+			expect(await repo.getUserById(id)).toBeNull()
+
+			const { rowCount } = await pool.query('SELECT 1 FROM sessions WHERE user_id = $1', [id])
+
+			expect(rowCount).toBe(0)
+		})
+
+		it('leaves admins alone', async () => {
+			const { id } = await repo.insertUser('admin@example.com', 'h')
+
+			await pool.query(`UPDATE users SET roles = '{user,admin}' WHERE id = $1`, [id])
+
+			expect(await repo.deleteUser(id)).toBeNull()
+
+			expect(await repo.getUserById(id)).not.toBeNull()
+		})
+	})
+
 	describe('countFailedLogin', () => {
 		it('counts tries up to the limit, then makes the next one wait', async () => {
 			for (let i = 0; i < 3; i++) {

@@ -116,3 +116,10 @@ export const RegionSchema = z
 export const SetVisitSchema = z
 	.object({ visited: z.boolean('`visited` must be a boolean.') })
 	.openapi('SetVisit')
+
+export const AccountDataSchema = z
+	.object({
+		places: PlaceListSchema,
+		visits: VisitsSchema,
+	})
+	.openapi('AccountData')

@@ -16,6 +16,11 @@ export interface UserRepository {
 	/** Returns null for admins and unknown ids. */
 	setUserActive(id: string, isActive: boolean): Promise<User | null>
 	/**
+	 * Deletes the user, and with them everything that names them. Returns null
+	 * for admins and unknown ids.
+	 */
+	deleteUser(id: string): Promise<User | null>
+	/**
 	 * Counts a login for `email` as failed until its password proves right. Past
 	 * `limit`, one try is let through each `waitSeconds`; returns false when this
 	 * one must wait.

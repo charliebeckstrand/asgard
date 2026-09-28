@@ -10,6 +10,7 @@ Choices Charlie made that the code doesn't explain, with what was turned down. A
 - **Roles are hats, not ranks.** `roles text[]`. New accounts get `user`. `requireSession` covers reads and managing your own account, `requireRole('user')` covers writes, and `requireRole('admin')` also needs the second step. An account with no roles can sign in and read. `is_active = false` turns an account off and ends its sessions.
 - **Admins are made from the command line only**, with `node services/bifrost/dist/cli.js promote|demote|reset-mfa <email>` in the App Platform console. Promotion needs a verified email and a second factor. Charlie turned down a migration that promotes a hard-coded email.
 - **The owner is emailed when a sign-in method changes.** A password reset sends no extra notice, by design.
+- **Users can export and delete their own account.** `GET /auth/account/export` returns everything kept about them, app data from Mimir included. `DELETE /auth/account` asks for the second step (when the user has a second factor) and a sign-in from the last ten minutes, like a sign-in change, but not a verified email. It ends the other sessions, deletes the user's data in Mimir, then the user, and emails the owner. When Mimir fails, nothing is deleted. An admin account must lose the admin role first. Backups keep a deleted account for their seven days.
 - **The breached-password check fails open**, so an outage never blocks a sign-up.
 
 ## Data

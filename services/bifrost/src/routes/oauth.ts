@@ -43,7 +43,7 @@ const ProvidersSchema = z
 	})
 	.openapi('OAuthProviders')
 
-const IdentitySchema = z
+export const IdentitySchema = z
 	.object({
 		provider: z.enum(OAUTH_PROVIDERS),
 		email: z.string().nullable().openapi({ description: 'The verified email of the account' }),

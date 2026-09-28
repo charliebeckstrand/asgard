@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { normalizeEmail } from 'skuld'
+import { normalizeEmail, type User } from 'skuld'
 import { getConfig } from './config.js'
 import { hashNewPassword } from './credentials.js'
 import { AuthError } from './errors.js'
@@ -223,6 +223,24 @@ export async function sendSecurityNotice(
 			text: [
 				`${change}.`,
 				`If it was you, there is nothing to do. If it was not, reset your password${reset} and remove anything you do not recognize from your account.`,
+			].join('\n\n'),
+		},
+		user.is_verified,
+	)
+}
+
+/**
+ * Tells a user their account was deleted, so a deletion they did not make never
+ * goes unseen. Takes the user as they were, since their row is gone.
+ */
+export async function sendAccountDeletedEmail(user: User): Promise<void> {
+	await send(
+		{
+			to: user.email,
+			subject: 'Your account was deleted',
+			text: [
+				'Your account and all of its data were deleted.',
+				'If it was not you, someone else could sign in to your account. You can sign up again with this email, with a new password.',
 			].join('\n\n'),
 		},
 		user.is_verified,

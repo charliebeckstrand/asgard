@@ -76,15 +76,10 @@ const RECENT_SIGN_IN_SECONDS = 10 * 60
 
 /**
  * The current session, when it may change how its user signs in, or a 403.
- * Guards every such change, and asks for three things in turn:
- *
- * - A verified email, so someone who registered an email they don't own can't
- *   add a passkey or a connected account that would outlive the owner's
- *   password reset.
- * - A passed second step. A user with no second factor yet passes, so they can
- *   add their first one.
- * - A sign-in from the last ten minutes, so a stolen session can't add a factor
- *   of its own and keep the account.
+ * Guards every such change. It asks first for a verified email, so someone who
+ * registered an email they don't own can't add a passkey or a connected
+ * account that would outlive the owner's password reset, and then for what
+ * {@link confirmRecentSecondStep} asks.
  */
 export async function authorizeSignInChange(c: Context<SessionEnv>): Promise<Session> {
 	const current = requireSession(c)
@@ -93,12 +88,33 @@ export async function authorizeSignInChange(c: Context<SessionEnv>): Promise<Ses
 		throw new AuthError('email_unverified', 'Verify your email to change how you sign in')
 	}
 
+	return confirmRecentSecondStep(current, 'change how you sign in')
+}
+
+/**
+ * The current session, when it may delete its account, or a 403. An unverified
+ * email is no bar: an account made with someone else's email is its maker's
+ * to delete.
+ */
+export function authorizeAccountDeletion(c: Context<SessionEnv>): Promise<Session> {
+	return confirmRecentSecondStep(requireSession(c), 'delete your account')
+}
+
+/**
+ * Returns `current` when it may `action`, or a 403. Asks for two things in turn:
+ *
+ * - A passed second step. A user with no second factor yet passes, so they can
+ *   add their first one.
+ * - A sign-in from the last ten minutes, so a stolen session can't add a factor
+ *   of its own and keep the account, or delete it.
+ */
+async function confirmRecentSecondStep(current: Session, action: string): Promise<Session> {
 	if (!current.two_step && secondFactorMethods(await getFactors(current.user.id)).length > 0) {
 		throw new AuthError('second_step_required', 'Confirm that it is you with a second step')
 	}
 
 	if (Date.now() - new Date(current.created_at).getTime() > RECENT_SIGN_IN_SECONDS * 1000) {
-		throw new AuthError('sign_in_again', 'Sign in again to change how you sign in')
+		throw new AuthError('sign_in_again', `Sign in again to ${action}`)
 	}
 
 	return current
