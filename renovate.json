@@ -1,0 +1,30 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended"],
+	"schedule": ["before 6am on monday"],
+	"semanticCommits": "enabled",
+	"rangeStrategy": "update-lockfile",
+	"minimumReleaseAge": "3 days",
+	"prConcurrentLimit": 5,
+	"lockFileMaintenance": {
+		"enabled": true,
+		"schedule": ["before 6am on the first day of the month"]
+	},
+	"vulnerabilityAlerts": {
+		"labels": ["security"]
+	},
+	"packageRules": [
+		{
+			"description": "Dependabot owns GitHub Actions; see .github/dependabot.yml. Two bots on one ecosystem open a duplicate pull request for every bump.",
+			"matchManagers": ["github-actions"],
+			"enabled": false
+		},
+		{
+			"description": "The minor and patch tail as one pull request, merged once CI passes. Renovate merges it itself rather than through GitHub's auto-merge, which would not wait for CI because main has no required checks. Its merge is a push, so the deploy follows.",
+			"groupName": "non-major",
+			"matchUpdateTypes": ["minor", "patch"],
+			"automerge": true,
+			"platformAutomerge": false
+		}
+	]
+}
