@@ -3,6 +3,11 @@ ARG NODE_VERSION=24
 FROM node:${NODE_VERSION}-alpine AS base
 RUN npm install -g pnpm@12.6.0
 
+# The install steps below skip lifecycle scripts, since the image has no git for
+# lefthook's `prepare`. Without this, `pnpm run` checks the install first and,
+# when it judges it stale, installs again with scripts, which fails the build.
+ENV pnpm_config_verify_deps_before_run=false
+
 # Extract just the package.json files from services/ and packages/ for dependency installation.
 # This layer is cached independently so code changes don't re-trigger pnpm install.
 FROM base AS manifests
