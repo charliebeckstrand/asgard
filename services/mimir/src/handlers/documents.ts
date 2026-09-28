@@ -60,3 +60,12 @@ export function changeDocument<T>(
 		return result
 	})
 }
+
+/**
+ * Deletes every document of the user, for when their account is deleted. A
+ * write already on its way would write its document again, so bifrost ends
+ * the user's other sessions before it asks for this.
+ */
+export async function deleteDocuments(userId: string): Promise<void> {
+	await db.exec(sql`DELETE FROM documents WHERE user_id = ${userId}`)
+}

@@ -14,7 +14,7 @@ vi.mock('../../lib/db.js', () => ({
 }))
 
 import { createDb, migrate } from 'saga'
-import { changeDocument, readDocument } from '../../handlers/documents.js'
+import { changeDocument, deleteDocuments, readDocument } from '../../handlers/documents.js'
 
 const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../migrations')
 
@@ -69,5 +69,21 @@ describeWithDocker('documents', () => {
 		await Promise.all(Array.from({ length: 10 }, add))
 
 		expect(await readDocument(user, 'places')).toHaveLength(10)
+	})
+
+	it("deletes every document of the user and no one else's", async () => {
+		const other = '00000000-0000-4000-8000-000000000003'
+
+		await changeDocument(USER, 'visits', () => ({ result: null, value: [] }))
+
+		await changeDocument(other, 'places', () => ({ result: null, value: [] }))
+
+		await deleteDocuments(USER)
+
+		expect(await readDocument(USER, 'places')).toBeUndefined()
+
+		expect(await readDocument(USER, 'visits')).toBeUndefined()
+
+		expect(await readDocument(other, 'places')).toEqual([])
 	})
 })

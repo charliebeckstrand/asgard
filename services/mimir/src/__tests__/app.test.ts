@@ -4,15 +4,25 @@ const API_KEY = 'test-mimir-api-key-that-is-at-least-32-chars'
 
 stubServiceEnv({ MIMIR_API_KEY: API_KEY })
 
-const { mockPing, mockListPlaces, mockAddPlace, mockUpdatePlace, mockRemovePlace, mockSetVisit } =
-	vi.hoisted(() => ({
-		mockPing: vi.fn(),
-		mockListPlaces: vi.fn(),
-		mockAddPlace: vi.fn(),
-		mockUpdatePlace: vi.fn(),
-		mockRemovePlace: vi.fn(),
-		mockSetVisit: vi.fn(),
-	}))
+const {
+	mockPing,
+	mockListPlaces,
+	mockAddPlace,
+	mockUpdatePlace,
+	mockRemovePlace,
+	mockListVisits,
+	mockSetVisit,
+	mockDeleteDocuments,
+} = vi.hoisted(() => ({
+	mockPing: vi.fn(),
+	mockListPlaces: vi.fn(),
+	mockAddPlace: vi.fn(),
+	mockUpdatePlace: vi.fn(),
+	mockRemovePlace: vi.fn(),
+	mockListVisits: vi.fn(),
+	mockSetVisit: vi.fn(),
+	mockDeleteDocuments: vi.fn(),
+}))
 
 vi.mock('../lib/db.js', () => ({
 	db: { ping: mockPing },
@@ -28,8 +38,12 @@ vi.mock('../handlers/places.js', () => ({
 
 vi.mock('../handlers/visits.js', () => ({
 	MAX_VISITS: 1000,
-	listVisits: vi.fn(),
+	listVisits: (...args: unknown[]) => mockListVisits(...args),
 	setVisit: (...args: unknown[]) => mockSetVisit(...args),
+}))
+
+vi.mock('../handlers/documents.js', () => ({
+	deleteDocuments: (...args: unknown[]) => mockDeleteDocuments(...args),
 }))
 
 import { createMimirApp } from '../app.js'
@@ -133,6 +147,44 @@ describe('forwarded user', () => {
 		const res = await app.request('/api/places', { headers: headers(null) })
 
 		expect(res.headers.get('cache-control')).toBe('private, no-store')
+	})
+})
+
+describe('account', () => {
+	it("returns all of the user's data", async () => {
+		mockListPlaces.mockResolvedValue([place])
+
+		mockListVisits.mockResolvedValue({ states: ['Ohio'], countries: [] })
+
+		const res = await app.request('/api/account', { headers: headers() })
+
+		expect(res.status).toBe(200)
+
+		expect(await res.json()).toEqual({
+			places: [place],
+			visits: { states: ['Ohio'], countries: [] },
+		})
+
+		expect(res.headers.get('cache-control')).toBe('private, no-store')
+	})
+
+	it("deletes all of the user's data, whatever their roles", async () => {
+		const res = await app.request('/api/account', {
+			method: 'DELETE',
+			headers: headers({ ...member, roles: [], is_verified: false }),
+		})
+
+		expect(res.status).toBe(204)
+
+		expect(mockDeleteDocuments).toHaveBeenCalledWith(USER_ID)
+	})
+
+	it('needs a user', async () => {
+		const res = await app.request('/api/account', { method: 'DELETE', headers: headers(null) })
+
+		expect(res.status).toBe(401)
+
+		expect(mockDeleteDocuments).not.toHaveBeenCalled()
 	})
 })
 

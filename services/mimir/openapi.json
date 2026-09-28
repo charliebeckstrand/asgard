@@ -55,6 +55,21 @@
 					"uptime"
 				]
 			},
+			"AccountData": {
+				"type": "object",
+				"properties": {
+					"places": {
+						"$ref": "#/components/schemas/PlaceList"
+					},
+					"visits": {
+						"$ref": "#/components/schemas/Visits"
+					}
+				},
+				"required": [
+					"places",
+					"visits"
+				]
+			},
 			"PlaceList": {
 				"type": "array",
 				"items": {
@@ -175,6 +190,27 @@
 					"visitedAt"
 				]
 			},
+			"Visits": {
+				"type": "object",
+				"properties": {
+					"states": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"countries": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				},
+				"required": [
+					"states",
+					"countries"
+				]
+			},
 			"Error": {
 				"type": "object",
 				"properties": {
@@ -196,27 +232,6 @@
 					"error",
 					"message",
 					"statusCode"
-				]
-			},
-			"Visits": {
-				"type": "object",
-				"properties": {
-					"states": {
-						"type": "array",
-						"items": {
-							"type": "string"
-						}
-					},
-					"countries": {
-						"type": "array",
-						"items": {
-							"type": "string"
-						}
-					}
-				},
-				"required": [
-					"states",
-					"countries"
 				]
 			},
 			"SetVisit": {
@@ -258,6 +273,59 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/HealthResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/account": {
+			"get": {
+				"tags": [
+					"Account"
+				],
+				"summary": "Get all of a user's data",
+				"description": "Every app's data of the user, for their export.",
+				"responses": {
+					"200": {
+						"description": "The user's data",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccountData"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No user",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Account"
+				],
+				"summary": "Delete all of a user's data",
+				"description": "Deletes every app's data of the user, when their account is deleted.",
+				"responses": {
+					"204": {
+						"description": "Data deleted"
+					},
+					"401": {
+						"description": "No user",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
 								}
 							}
 						}
