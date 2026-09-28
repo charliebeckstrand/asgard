@@ -117,6 +117,30 @@ async function checkProof(userId: string, proof: SecondFactorProof): Promise<boo
 	return step !== null && mfaRepository.useTotpStep(userId, step)
 }
 
+/**
+ * Returns an error message when `MFA_ENCRYPTION_KEY` can't read the stored
+ * authenticator-app secrets, or null when it can or there are none. Bifrost
+ * checks this before it starts, so a lost or changed key fails the deploy while
+ * the old version keeps serving, instead of breaking every authenticator app.
+ */
+export async function checkMfaKey(): Promise<string | null> {
+	const { mfaRepository, mfa } = getConfig()
+
+	const secret = await mfaRepository.getLatestSecret()
+
+	if (!secret) return null
+
+	if (!mfa.key) return 'MFA_ENCRYPTION_KEY is unset, but authenticator-app secrets exist'
+
+	try {
+		decryptSecret(secret, mfa.key)
+
+		return null
+	} catch {
+		return 'MFA_ENCRYPTION_KEY does not decrypt the stored authenticator-app secrets'
+	}
+}
+
 function mfaKey(): string {
 	const { key } = getConfig().mfa
 

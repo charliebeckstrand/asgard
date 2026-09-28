@@ -22,6 +22,7 @@ export {
 	verifyEmail,
 } from './email.js'
 export {
+	checkMfaKey,
 	confirmTotp,
 	deleteStaleFailedSteps,
 	deleteTotp,

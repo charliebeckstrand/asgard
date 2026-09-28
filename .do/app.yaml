@@ -136,8 +136,9 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: ${CLIENT_IP_SECRET}
-      # Encrypts authenticator-app secrets. Unset turns authenticator apps off;
-      # changing it breaks every authenticator app already added.
+      # Encrypts authenticator-app secrets. Unset turns authenticator apps off.
+      # Bifrost won't start with a key that can't read the stored secrets, so a
+      # lost or changed value fails the deploy. Keep a copy outside GitHub and DO.
       - key: MFA_ENCRYPTION_KEY
         scope: RUN_TIME
         type: SECRET

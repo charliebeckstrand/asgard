@@ -11,6 +11,7 @@ import type { Session, User } from 'skuld'
 import type { Mock } from 'vitest'
 import { type AuthSecurityEvent, configure } from '../config.js'
 import {
+	checkMfaKey,
 	confirmTotp,
 	deleteTotp,
 	FAILED_STEP_WAIT_SECONDS,
@@ -90,6 +91,7 @@ beforeEach(() => {
 		getTotp: vi
 			.fn()
 			.mockResolvedValue({ secret: encryptSecret(secret, KEY), last_step: 0, confirmed: true }),
+		getLatestSecret: vi.fn().mockResolvedValue(encryptSecret(secret, KEY)),
 		setPendingTotp: vi.fn().mockResolvedValue('created'),
 		confirmTotp: vi.fn().mockResolvedValue(true),
 		useTotpStep: vi.fn().mockResolvedValue(true),
@@ -120,6 +122,34 @@ describe('secondFactorMethods', () => {
 		[{ passkeys: 1, totp: true, recovery_codes: 3 }, ['passkey', 'totp', 'recovery_code']],
 	])('offers %o as %o', (factors, methods) => {
 		expect(secondFactorMethods(factors)).toEqual(methods)
+	})
+})
+
+describe('checkMfaKey', () => {
+	it('accepts a key that decrypts the stored secrets', async () => {
+		expect(await checkMfaKey()).toBeNull()
+	})
+
+	it('accepts any key, or none, when no secrets are stored', async () => {
+		mfaRepository.getLatestSecret.mockResolvedValue(null)
+
+		expect(await checkMfaKey()).toBeNull()
+
+		setUp(undefined)
+
+		expect(await checkMfaKey()).toBeNull()
+	})
+
+	it('refuses a different key', async () => {
+		setUp('d'.repeat(32))
+
+		expect(await checkMfaKey()).toMatch('does not decrypt')
+	})
+
+	it('refuses a missing key when secrets are stored', async () => {
+		setUp(undefined)
+
+		expect(await checkMfaKey()).toMatch('is unset')
 	})
 })
 
