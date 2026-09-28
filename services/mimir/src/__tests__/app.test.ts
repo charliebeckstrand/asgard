@@ -259,6 +259,15 @@ describe('writes', () => {
 })
 
 describe('rate limit', () => {
+	// The bucket refills with the clock, so a slow run would earn back tokens mid-burst.
+	beforeEach(() => {
+		vi.useFakeTimers({ toFake: ['Date'] })
+	})
+
+	afterEach(() => {
+		vi.useRealTimers()
+	})
+
 	it('counts each user apart', async () => {
 		mockListPlaces.mockResolvedValue([])
 
