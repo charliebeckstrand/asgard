@@ -40,6 +40,7 @@ const KEY = 'k'.repeat(32)
 const user: User = {
 	id: USER_ID,
 	email: 'alice@example.com',
+	name: null,
 	is_active: true,
 	is_verified: false,
 	roles: ['user'],

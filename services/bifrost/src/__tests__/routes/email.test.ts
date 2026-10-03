@@ -49,6 +49,7 @@ const session: Session = {
 	user: {
 		id: USER_ID,
 		email: 'test@example.com',
+		name: null,
 		is_active: true,
 		is_verified: false,
 		roles: ['user'],
@@ -130,6 +131,23 @@ describe('Email routes', () => {
 			expect(auth.sendVerificationEmail).toHaveBeenCalledWith(user, 'http://localhost:3000')
 
 			expect(auth.sendAccountExistsEmail).not.toHaveBeenCalled()
+		})
+
+		it('passes the trimmed name to the new account', async () => {
+			vi.mocked(auth.registerUser).mockResolvedValueOnce(null)
+
+			await post('/auth/register', {
+				email: 'new@example.com',
+				password: 'password123',
+				name: '  Ada Lovelace  ',
+			})
+
+			expect(auth.registerUser).toHaveBeenCalledWith(
+				'new@example.com',
+				'password123',
+				expect.any(String),
+				'Ada Lovelace',
+			)
 		})
 
 		it('answers a taken email the same way and emails its owner', async () => {

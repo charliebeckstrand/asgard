@@ -9,7 +9,7 @@ export interface CredentialsRow {
 }
 
 export interface UserRepository {
-	insertUser(email: string, hashedPassword: string): Promise<User>
+	insertUser(email: string, hashedPassword: string, name?: string | null): Promise<User>
 	getCredentialsByEmail(email: string): Promise<CredentialsRow | null>
 	getUsers(): Promise<User[]>
 	getUserById(id: string): Promise<User | null>

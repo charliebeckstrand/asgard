@@ -24,6 +24,7 @@ import type {
 const TEST_USER: User = {
 	id: 'user-123',
 	email: 'alice@example.com',
+	name: null,
 	is_active: true,
 	is_verified: true,
 	roles: ['user'],
@@ -309,7 +310,21 @@ describe('registerUser', () => {
 	it('normalizes email before inserting', async () => {
 		await registerUser('  Bob@EXAMPLE.COM  ', 'password123')
 
-		expect(mockRepo.insertUser).toHaveBeenCalledWith('bob@example.com', expect.any(String))
+		expect(mockRepo.insertUser).toHaveBeenCalledWith(
+			'bob@example.com',
+			expect.any(String),
+			undefined,
+		)
+	})
+
+	it('stores the name the user gave', async () => {
+		await registerUser('bob@example.com', 'password123', undefined, 'Bob Smith')
+
+		expect(mockRepo.insertUser).toHaveBeenCalledWith(
+			'bob@example.com',
+			expect.any(String),
+			'Bob Smith',
+		)
 	})
 
 	it('hashes the password with Argon2id', async () => {

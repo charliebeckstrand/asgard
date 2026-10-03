@@ -29,6 +29,7 @@ const ORIGIN = 'https://admin.ivoryimage.dev'
 const user: User = {
 	id: USER_ID,
 	email: 'alice@example.com',
+	name: null,
 	is_active: true,
 	is_verified: true,
 	roles: ['user'],

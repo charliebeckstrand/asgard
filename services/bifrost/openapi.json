@@ -56,6 +56,11 @@
 						"format": "email",
 						"example": "user@example.com"
 					},
+					"name": {
+						"type": "string",
+						"nullable": true,
+						"description": "The name the user gave at sign-up, or null when none"
+					},
 					"is_active": {
 						"type": "boolean"
 					},
@@ -90,6 +95,7 @@
 				"required": [
 					"id",
 					"email",
+					"name",
 					"is_active",
 					"is_verified",
 					"roles",
@@ -313,7 +319,8 @@
 					},
 					"name": {
 						"type": "string",
-						"minLength": 1
+						"minLength": 1,
+						"maxLength": 255
 					},
 					"turnstile_token": {
 						"type": "string",

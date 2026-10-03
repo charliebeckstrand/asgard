@@ -8,12 +8,12 @@ const network = (ip: string) =>
 
 export function createUserRepository(db: Db): UserRepository {
 	return {
-		async insertUser(email, hashedPassword) {
+		async insertUser(email, hashedPassword, name = null) {
 			return db.one<User>(
 				sql`
-					INSERT INTO users (email, hashed_password)
-					VALUES (${email}, ${hashedPassword})
-					RETURNING id, email, is_active, is_verified, roles, created_at, updated_at
+					INSERT INTO users (email, hashed_password, name)
+					VALUES (${email}, ${hashedPassword}, ${name})
+					RETURNING id, email, name, is_active, is_verified, roles, created_at, updated_at
 				`,
 			)
 		},
@@ -30,14 +30,14 @@ export function createUserRepository(db: Db): UserRepository {
 
 		async getUsers() {
 			return db.many<User>(
-				sql`SELECT id, email, is_active, is_verified, roles, created_at, updated_at FROM users ORDER BY created_at`,
+				sql`SELECT id, email, name, is_active, is_verified, roles, created_at, updated_at FROM users ORDER BY created_at`,
 			)
 		},
 
 		async getUserById(id) {
 			return db.first<User>(
 				sql`
-					SELECT id, email, is_active, is_verified, roles, created_at, updated_at
+					SELECT id, email, name, is_active, is_verified, roles, created_at, updated_at
 					FROM users
 					WHERE id = ${id}
 				`,
@@ -50,7 +50,7 @@ export function createUserRepository(db: Db): UserRepository {
 					UPDATE users
 					SET is_active = ${isActive}
 					WHERE id = ${id} AND NOT 'admin' = ANY(roles)
-					RETURNING id, email, is_active, is_verified, roles, created_at, updated_at
+					RETURNING id, email, name, is_active, is_verified, roles, created_at, updated_at
 				`,
 			)
 		},
@@ -60,7 +60,7 @@ export function createUserRepository(db: Db): UserRepository {
 				sql`
 					DELETE FROM users
 					WHERE id = ${id} AND NOT 'admin' = ANY(roles)
-					RETURNING id, email, is_active, is_verified, roles, created_at, updated_at
+					RETURNING id, email, name, is_active, is_verified, roles, created_at, updated_at
 				`,
 			)
 		},

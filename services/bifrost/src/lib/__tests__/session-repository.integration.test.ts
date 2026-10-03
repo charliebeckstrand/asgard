@@ -79,6 +79,8 @@ describeWithDocker('createSessionRepository (integration)', () => {
 
 			expect(session.user.id).toBe(userId)
 
+			expect(session.user.name).toBeNull()
+
 			expect(session.user.roles).toEqual(['user'])
 		})
 

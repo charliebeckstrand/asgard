@@ -9,6 +9,7 @@ interface SessionRow {
 	two_step: boolean
 	user_id: string
 	email: string
+	name: string | null
 	is_active: boolean
 	is_verified: boolean
 	roles: Role[]
@@ -18,7 +19,7 @@ interface SessionRow {
 
 const selectSession = sql`
 	SELECT s.id, s.created_at, s.expires_at, s.two_step,
-		u.id AS user_id, u.email, u.is_active, u.is_verified, u.roles,
+		u.id AS user_id, u.email, u.name, u.is_active, u.is_verified, u.roles,
 		u.created_at AS user_created_at, u.updated_at AS user_updated_at
 	FROM sessions s
 	JOIN users u ON u.id = s.user_id
@@ -33,6 +34,7 @@ function toSession(row: SessionRow): Session {
 		user: {
 			id: row.user_id,
 			email: row.email,
+			name: row.name,
 			is_active: row.is_active,
 			is_verified: row.is_verified,
 			roles: row.roles,

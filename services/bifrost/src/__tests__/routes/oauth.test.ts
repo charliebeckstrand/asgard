@@ -105,6 +105,7 @@ function signedIn(createdAt = new Date().toISOString(), twoStep = true, isVerifi
 		user: {
 			id: USER_ID,
 			email: 'alice@example.com',
+			name: null,
 			is_active: true,
 			is_verified: isVerified,
 			roles: ['user'],

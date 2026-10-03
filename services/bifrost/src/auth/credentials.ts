@@ -115,15 +115,16 @@ export async function checkTurnstile(token: string | undefined, ip?: string): Pr
 }
 
 /**
- * Creates an account for `email`, or returns null when it already has one. The
- * password is hashed either way, so the two take the same time. Each network
- * gets `MAX_DAILY_SIGN_UPS` a day, and a taken email counts too, so the limit
- * reveals no accounts.
+ * Creates an account for `email`, with the `name` the user gave, or returns null
+ * when it already has one. The password is hashed either way, so the two take
+ * the same time. Each network gets `MAX_DAILY_SIGN_UPS` a day, and a taken email
+ * counts too, so the limit reveals no accounts.
  */
 export async function registerUser(
 	email: string,
 	password: string,
 	ip?: string,
+	name?: string,
 ): Promise<User | null> {
 	const normalizedEmail = normalizeEmail(email)
 
@@ -139,7 +140,7 @@ export async function registerUser(
 	}
 
 	try {
-		const user = await userRepository.insertUser(normalizedEmail, hashedPassword)
+		const user = await userRepository.insertUser(normalizedEmail, hashedPassword, name)
 
 		if (ip)
 			getConfig().onSecurityEvent?.({
