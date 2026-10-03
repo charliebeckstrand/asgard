@@ -40,6 +40,8 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 			expect(inserted.email).toBe('alice@example.com')
 
+			expect(inserted.name).toBeNull()
+
 			expect(inserted.is_active).toBe(true)
 
 			expect(inserted.is_verified).toBe(false)
@@ -51,6 +53,12 @@ describeWithDocker('createUserRepository (integration)', () => {
 			expect(fetched).not.toBeNull()
 
 			expect(fetched?.email).toBe('alice@example.com')
+		})
+
+		it('stores the name given at sign-up', async () => {
+			const { id } = await repo.insertUser('ada@example.com', 'hash', 'Ada Lovelace')
+
+			expect((await repo.getUserById(id))?.name).toBe('Ada Lovelace')
 		})
 
 		it('returns null for an unknown id', async () => {

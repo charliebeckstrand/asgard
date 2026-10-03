@@ -6,6 +6,10 @@ export const UserSchema = z
 	.object({
 		id: IdSchema,
 		email: EmailSchema,
+		name: z
+			.string()
+			.nullable()
+			.openapi({ description: 'The name the user gave at sign-up, or null when none' }),
 		is_active: z.boolean(),
 		is_verified: z.boolean(),
 		roles: z

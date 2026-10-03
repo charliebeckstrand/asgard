@@ -57,7 +57,7 @@ const RegisterRequestSchema = z
 	.object({
 		email: EmailSchema,
 		password: PasswordSchema,
-		name: z.string().min(1).optional(),
+		name: z.string().trim().min(1).max(255).optional(),
 		turnstile_token: z
 			.string()
 			.max(2048)
@@ -431,13 +431,13 @@ export const authRoutes = createRouter<SessionEnv>()
 	})
 	.openapi(registerOptionsRoute, (c) => c.json({ turnstile_site_key: turnstileSiteKey() }, 200))
 	.openapi(registerRoute, async (c) => {
-		const { email, password, turnstile_token } = c.req.valid('json')
+		const { email, password, name, turnstile_token } = c.req.valid('json')
 
 		const ip = getIpAddress(c)
 
 		await checkTurnstile(turnstile_token, ip)
 
-		const user = await registerUser(email, password, ip)
+		const user = await registerUser(email, password, ip, name)
 
 		const origin = appOrigin(c)
 

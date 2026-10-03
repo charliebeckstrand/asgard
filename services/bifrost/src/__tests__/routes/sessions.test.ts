@@ -32,6 +32,7 @@ const session: Session = {
 	user: {
 		id: USER_ID,
 		email: 'test@example.com',
+		name: null,
 		is_active: true,
 		is_verified: false,
 		roles: ['user'],
