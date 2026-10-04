@@ -7,10 +7,11 @@ import { forwardedUser, type UserEnv, userKey } from './middleware/user.js'
 import { accountRoutes } from './routes/account.js'
 import { health } from './routes/health.js'
 import { placesRoutes } from './routes/places.js'
+import { predictionsRoutes } from './routes/predictions.js'
 import { visitsRoutes } from './routes/visits.js'
 
-// The same base path as bifrost, which forwards `/api/places` and `/api/visits`
-// here unchanged, so the paths in this spec are the ones apps call.
+// The same base path as bifrost, which forwards `/api/places`, `/api/visits` and
+// `/api/predictions` here unchanged, so the paths in this spec are the ones apps call.
 const BASE_PATH = '/api'
 const HEALTH_PATH = `${BASE_PATH}/health`
 
@@ -35,7 +36,12 @@ export function createMimirApp() {
 	// one request. Sixty, then two a second.
 	const limit = rateLimit({ rate: 2, burst: 60, key: userKey })
 
-	for (const path of [`${BASE_PATH}/account`, `${BASE_PATH}/places/*`, `${BASE_PATH}/visits/*`]) {
+	for (const path of [
+		`${BASE_PATH}/account`,
+		`${BASE_PATH}/places/*`,
+		`${BASE_PATH}/visits/*`,
+		`${BASE_PATH}/predictions/*`,
+	]) {
 		app.use(path, forwardedUser(), limit)
 	}
 
@@ -44,6 +50,7 @@ export function createMimirApp() {
 		.route(BASE_PATH, accountRoutes)
 		.route(BASE_PATH, placesRoutes)
 		.route(BASE_PATH, visitsRoutes)
+		.route(BASE_PATH, predictionsRoutes)
 }
 
 export type MimirApp = ReturnType<typeof createMimirApp>

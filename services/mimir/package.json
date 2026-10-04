@@ -1,7 +1,7 @@
 {
 	"name": "mimir",
 	"version": "0.1.0",
-	"description": "App data service: each user's places and visited regions",
+	"description": "App data service: each user's places, visited regions and NFL picks",
 	"type": "module",
 	"exports": {
 		".": {

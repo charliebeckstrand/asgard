@@ -11,7 +11,7 @@ import { db } from '../lib/db.js'
  * old places routes, which took the same lock while both were live.
  */
 
-export type DocumentName = 'places' | 'visits'
+export type DocumentName = 'places' | 'visits' | 'predictions'
 
 /**
  * What a change gives back: the result for the caller, and the new document.

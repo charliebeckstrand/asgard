@@ -63,11 +63,19 @@
 					},
 					"visits": {
 						"$ref": "#/components/schemas/Visits"
+					},
+					"predictions": {
+						"type": "object",
+						"additionalProperties": {
+							"$ref": "#/components/schemas/SeasonPicks"
+						},
+						"description": "The NFL picks, by season"
 					}
 				},
 				"required": [
 					"places",
-					"visits"
+					"visits",
+					"predictions"
 				]
 			},
 			"PlaceList": {
@@ -211,6 +219,21 @@
 					"countries"
 				]
 			},
+			"SeasonPicks": {
+				"type": "object",
+				"additionalProperties": {
+					"$ref": "#/components/schemas/WeekPicks"
+				},
+				"description": "The picks of each week with any, by week number"
+			},
+			"WeekPicks": {
+				"type": "object",
+				"additionalProperties": {
+					"type": "string",
+					"pattern": "^[A-Za-z0-9_-]{1,32}$"
+				},
+				"description": "The id of the picked team for each game id"
+			},
 			"Error": {
 				"type": "object",
 				"properties": {
@@ -243,6 +266,17 @@
 				},
 				"required": [
 					"visited"
+				]
+			},
+			"SavePicks": {
+				"type": "object",
+				"properties": {
+					"picks": {
+						"$ref": "#/components/schemas/WeekPicks"
+					}
+				},
+				"required": [
+					"picks"
 				]
 			}
 		},
@@ -689,6 +723,221 @@
 					},
 					"409": {
 						"description": "Already marking 1000 regions in the scope",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/predictions/{season}": {
+			"get": {
+				"tags": [
+					"Predictions"
+				],
+				"summary": "List your picks of a season",
+				"description": "Each week with picks, by week number. A week with none is absent.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "integer",
+							"minimum": 2000,
+							"maximum": 2100,
+							"description": "The year the season starts in",
+							"example": 2026
+						},
+						"required": true,
+						"description": "The year the season starts in",
+						"name": "season",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Picks",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SeasonPicks"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid season",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/predictions/{season}/{week}": {
+			"put": {
+				"tags": [
+					"Predictions"
+				],
+				"summary": "Replace your picks of a week",
+				"description": "The picks app checks which games can still take a pick before it sends them.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "integer",
+							"minimum": 2000,
+							"maximum": 2100,
+							"description": "The year the season starts in",
+							"example": 2026
+						},
+						"required": true,
+						"description": "The year the season starts in",
+						"name": "season",
+						"in": "path"
+					},
+					{
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 19,
+							"description": "The week of the regular season, from 1",
+							"example": 5
+						},
+						"required": true,
+						"description": "The week of the regular season, from 1",
+						"name": "week",
+						"in": "path"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SavePicks"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Picks saved",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WeekPicks"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid season, week or picks",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Predictions"
+				],
+				"summary": "Delete your picks of a week",
+				"description": "Sending it twice leaves the same picks.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "integer",
+							"minimum": 2000,
+							"maximum": 2100,
+							"description": "The year the season starts in",
+							"example": 2026
+						},
+						"required": true,
+						"description": "The year the season starts in",
+						"name": "season",
+						"in": "path"
+					},
+					{
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 19,
+							"description": "The week of the regular season, from 1",
+							"example": 5
+						},
+						"required": true,
+						"description": "The week of the regular season, from 1",
+						"name": "week",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Picks deleted"
+					},
+					"400": {
+						"description": "Invalid season or week",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
 						"content": {
 							"application/json": {
 								"schema": {

@@ -1,0 +1,73 @@
+const { documents } = vi.hoisted(() => ({ documents: new Map<string, unknown>() }))
+
+// The documents as a map, so these tests cover what the handlers do with a
+// document. documents.integration.test.ts covers the database.
+vi.mock('../../handlers/documents.js', () => ({
+	readDocument: async (userId: string, name: string) => documents.get(`${userId}:${name}`),
+	changeDocument: async (
+		userId: string,
+		name: string,
+		change: (document: unknown) => Promise<{ result: unknown; value?: unknown }>,
+	) => {
+		const { result, value } = await change(documents.get(`${userId}:${name}`))
+
+		if (value !== undefined) documents.set(`${userId}:${name}`, value)
+
+		return result
+	},
+}))
+
+import { deletePicks, listAllPicks, listPicks, savePicks } from '../../handlers/predictions.js'
+
+const USER = 'user-1'
+
+beforeEach(() => {
+	documents.clear()
+})
+
+describe('predictions', () => {
+	it('starts empty', async () => {
+		expect(await listPicks(USER, 2026)).toEqual({})
+	})
+
+	it('saves the picks of each week apart', async () => {
+		await savePicks(USER, 2026, 1, { g1: 't1' })
+
+		await savePicks(USER, 2026, 2, { g2: 't2' })
+
+		await savePicks(USER, 2026, 1, { g1: 't3' })
+
+		expect(await listPicks(USER, 2026)).toEqual({ 1: { g1: 't3' }, 2: { g2: 't2' } })
+
+		expect(await listPicks(USER, 2025)).toEqual({})
+	})
+
+	it('deletes one week, the same when sent twice', async () => {
+		await savePicks(USER, 2026, 1, { g1: 't1' })
+
+		await savePicks(USER, 2026, 2, { g2: 't2' })
+
+		await deletePicks(USER, 2026, 1)
+
+		await deletePicks(USER, 2026, 1)
+
+		expect(await listPicks(USER, 2026)).toEqual({ 2: { g2: 't2' } })
+	})
+
+	it('leaves out a stored week that does not read as picks', async () => {
+		documents.set(`${USER}:predictions`, { 2026: { 1: { g1: 't1' }, 2: 'broken' } })
+
+		expect(await listPicks(USER, 2026)).toEqual({ 1: { g1: 't1' } })
+	})
+
+	it('lists every season for the export', async () => {
+		await savePicks(USER, 2025, 18, { g1: 't1' })
+
+		await savePicks(USER, 2026, 1, { g2: 't2' })
+
+		expect(await listAllPicks(USER)).toEqual({
+			2025: { 18: { g1: 't1' } },
+			2026: { 1: { g2: 't2' } },
+		})
+	})
+})

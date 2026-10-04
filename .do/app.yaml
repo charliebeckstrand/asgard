@@ -125,7 +125,7 @@ services:
         value: ${bifrost-db.CA_CERT}
       - key: APP_ORIGINS
         scope: RUN_TIME
-        value: https://admin.ivoryimage.dev,https://places.ivoryimage.dev
+        value: https://admin.ivoryimage.dev,https://places.ivoryimage.dev,https://picks.ivoryimage.dev
       # Passkeys belong to the parent domain, so one works on every app under it.
       - key: PASSKEY_DOMAIN
         scope: RUN_TIME

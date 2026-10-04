@@ -2,6 +2,7 @@ import { createRoute } from '@hono/zod-openapi'
 import { createRouter, errorResponse, jsonResponse } from 'grid'
 import { deleteDocuments } from '../handlers/documents.js'
 import { listPlaces } from '../handlers/places.js'
+import { listAllPicks } from '../handlers/predictions.js'
 import { listVisits } from '../handlers/visits.js'
 import { AccountDataSchema } from '../lib/schemas.js'
 import { requireUser, type UserEnv } from '../middleware/user.js'
@@ -38,9 +39,13 @@ const accountRoutes = createRouter<UserEnv>()
 accountRoutes.openapi(getAccountDataRoute, async (c) => {
 	const { id } = requireUser(c)
 
-	const [places, visits] = await Promise.all([listPlaces(id), listVisits(id)])
+	const [places, visits, predictions] = await Promise.all([
+		listPlaces(id),
+		listVisits(id),
+		listAllPicks(id),
+	])
 
-	return c.json({ places, visits }, 200)
+	return c.json({ places, visits, predictions }, 200)
 })
 
 accountRoutes.openapi(deleteAccountDataRoute, async (c) => {

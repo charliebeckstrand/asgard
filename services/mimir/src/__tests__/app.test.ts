@@ -13,6 +13,10 @@ const {
 	mockListVisits,
 	mockSetVisit,
 	mockDeleteDocuments,
+	mockListPicks,
+	mockListAllPicks,
+	mockSavePicks,
+	mockDeletePicks,
 } = vi.hoisted(() => ({
 	mockPing: vi.fn(),
 	mockListPlaces: vi.fn(),
@@ -22,6 +26,10 @@ const {
 	mockListVisits: vi.fn(),
 	mockSetVisit: vi.fn(),
 	mockDeleteDocuments: vi.fn(),
+	mockListPicks: vi.fn(),
+	mockListAllPicks: vi.fn(),
+	mockSavePicks: vi.fn(),
+	mockDeletePicks: vi.fn(),
 }))
 
 vi.mock('../lib/db.js', () => ({
@@ -40,6 +48,13 @@ vi.mock('../handlers/visits.js', () => ({
 	MAX_VISITS: 1000,
 	listVisits: (...args: unknown[]) => mockListVisits(...args),
 	setVisit: (...args: unknown[]) => mockSetVisit(...args),
+}))
+
+vi.mock('../handlers/predictions.js', () => ({
+	listPicks: (...args: unknown[]) => mockListPicks(...args),
+	listAllPicks: (...args: unknown[]) => mockListAllPicks(...args),
+	savePicks: (...args: unknown[]) => mockSavePicks(...args),
+	deletePicks: (...args: unknown[]) => mockDeletePicks(...args),
 }))
 
 vi.mock('../handlers/documents.js', () => ({
@@ -156,6 +171,8 @@ describe('account', () => {
 
 		mockListVisits.mockResolvedValue({ states: ['Ohio'], countries: [] })
 
+		mockListAllPicks.mockResolvedValue({ 2026: { 1: { g1: 't1' } } })
+
 		const res = await app.request('/api/account', { headers: headers() })
 
 		expect(res.status).toBe(200)
@@ -163,6 +180,7 @@ describe('account', () => {
 		expect(await res.json()).toEqual({
 			places: [place],
 			visits: { states: ['Ohio'], countries: [] },
+			predictions: { 2026: { 1: { g1: 't1' } } },
 		})
 
 		expect(res.headers.get('cache-control')).toBe('private, no-store')
@@ -194,6 +212,8 @@ describe('writes', () => {
 		['PUT', '/api/places/place-1'],
 		['DELETE', '/api/places/place-1'],
 		['PUT', '/api/visits/states/Ohio'],
+		['PUT', '/api/predictions/2026/5'],
+		['DELETE', '/api/predictions/2026/5'],
 	])('%s %s needs the user role', async (method, path) => {
 		const res = await app.request(path, {
 			method,
@@ -349,5 +369,60 @@ describe('OpenAPI', () => {
 		const spec = await res.json()
 
 		await expect(`${JSON.stringify(spec, null, '\t')}\n`).toMatchFileSnapshot('../../openapi.json')
+	})
+})
+
+describe('predictions', () => {
+	it('lists the picks of a season', async () => {
+		mockListPicks.mockResolvedValue({ 5: { g1: 't1' } })
+
+		const res = await app.request('/api/predictions/2026', { headers: headers() })
+
+		expect(res.status).toBe(200)
+
+		expect(await res.json()).toEqual({ 5: { g1: 't1' } })
+
+		expect(mockListPicks).toHaveBeenCalledWith(USER_ID, 2026)
+	})
+
+	it('saves the picks of a week', async () => {
+		mockSavePicks.mockImplementation(async (_user, _season, _week, picks) => picks)
+
+		const res = await app.request('/api/predictions/2026/5', {
+			method: 'PUT',
+			headers: headers(),
+			body: JSON.stringify({ picks: { g1: 't1' } }),
+		})
+
+		expect(res.status).toBe(200)
+
+		expect(mockSavePicks).toHaveBeenCalledWith(USER_ID, 2026, 5, { g1: 't1' })
+	})
+
+	it('deletes the picks of a week', async () => {
+		const res = await app.request('/api/predictions/2026/5', {
+			method: 'DELETE',
+			headers: headers(),
+		})
+
+		expect(res.status).toBe(204)
+
+		expect(mockDeletePicks).toHaveBeenCalledWith(USER_ID, 2026, 5)
+	})
+
+	it.each([
+		['/api/predictions/1999/5', { g1: 't1' }],
+		['/api/predictions/2026/0', { g1: 't1' }],
+		['/api/predictions/2026/5', { g1: '<script>' }],
+	])('refuses PUT %s with %j', async (path, picks) => {
+		const res = await app.request(path, {
+			method: 'PUT',
+			headers: headers(),
+			body: JSON.stringify({ picks }),
+		})
+
+		expect(res.status).toBe(400)
+
+		expect(mockSavePicks).not.toHaveBeenCalled()
 	})
 })
