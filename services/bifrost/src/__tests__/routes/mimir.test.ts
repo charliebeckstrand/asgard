@@ -90,6 +90,9 @@ describe('Mimir routes', () => {
 		['DELETE', '/api/places/abc'],
 		['GET', '/api/visits'],
 		['PUT', '/api/visits/states/Ohio'],
+		['GET', '/api/predictions/2026'],
+		['PUT', '/api/predictions/2026/5'],
+		['DELETE', '/api/predictions/2026/5'],
 	])('forwards %s %s to the same path on Mimir', async (method, path) => {
 		await app.request(path, { method, headers, body: method === 'GET' ? undefined : '{}' })
 

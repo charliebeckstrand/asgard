@@ -95,5 +95,6 @@ const mimirRoutes = new Hono<SessionEnv>()
 
 mimirRoutes.all('/places/*', forward)
 mimirRoutes.all('/visits/*', forward)
+mimirRoutes.all('/predictions/*', forward)
 
 export { mimirRoutes }

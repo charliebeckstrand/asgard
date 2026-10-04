@@ -4,6 +4,12 @@ const MAX_TEXT = 2_000
 
 const MAX_RATING = 5
 
+/** Weeks in a regular season, with room for one more. */
+const MAX_WEEK = 19
+
+/** Games in an NFL week, with room for a larger league. */
+const MAX_GAMES = 32
+
 /** Longer than any country or state name, so a region can't carry a payload. */
 const MAX_REGION = 100
 
@@ -117,9 +123,49 @@ export const SetVisitSchema = z
 	.object({ visited: z.boolean('`visited` must be a boolean.') })
 	.openapi('SetVisit')
 
+/** An id of the scoreboard feed, such as a game or a team. Short, so a pick can't carry a payload. */
+const FeedIdSchema = z
+	.string()
+	.regex(/^[A-Za-z0-9_-]{1,32}$/, 'An id must be 1 to 32 letters, digits, `_` or `-`.')
+
+export const SeasonSchema = z.coerce
+	.number('`season` must be a year.')
+	.int('`season` must be a year.')
+	.min(2000, '`season` must be a year.')
+	.max(2100, '`season` must be a year.')
+	.openapi({ description: 'The year the season starts in', example: 2026 })
+
+export const WeekSchema = z.coerce
+	.number('`week` must be a week number.')
+	.int('`week` must be a week number.')
+	.min(1, '`week` must be a week number.')
+	.max(MAX_WEEK, '`week` must be a week number.')
+	.openapi({ description: 'The week of the regular season, from 1', example: 5 })
+
+export const WeekPicksSchema = z
+	.record(FeedIdSchema, FeedIdSchema)
+	.refine(
+		(picks) => Object.keys(picks).length <= MAX_GAMES,
+		`A week holds at most ${MAX_GAMES} picks.`,
+	)
+	.openapi('WeekPicks', { description: 'The id of the picked team for each game id' })
+
+export type WeekPicks = z.infer<typeof WeekPicksSchema>
+
+export const SeasonPicksSchema = z
+	.record(z.string(), WeekPicksSchema)
+	.openapi('SeasonPicks', { description: 'The picks of each week with any, by week number' })
+
+export type SeasonPicks = z.infer<typeof SeasonPicksSchema>
+
+export const SavePicksSchema = z.object({ picks: WeekPicksSchema }).openapi('SavePicks')
+
 export const AccountDataSchema = z
 	.object({
 		places: PlaceListSchema,
 		visits: VisitsSchema,
+		predictions: z.record(z.string(), SeasonPicksSchema).openapi({
+			description: 'The NFL picks, by season',
+		}),
 	})
 	.openapi('AccountData')
