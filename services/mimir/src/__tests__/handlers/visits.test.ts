@@ -40,8 +40,7 @@ describe('visits', () => {
 			country: 'United States',
 			latitude: 40,
 			longitude: -80,
-			rating: 0,
-			visitedAt: '2026-09-27',
+			visits: [{ visitedAt: '2026-09-27', rating: 0, photos: [] }],
 		})
 
 		expect(await listVisits(USER)).toEqual({ states: ['Ohio'], countries: ['United States'] })
