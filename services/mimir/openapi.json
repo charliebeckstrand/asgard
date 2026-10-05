@@ -261,10 +261,25 @@
 			"WeekPicks": {
 				"type": "object",
 				"additionalProperties": {
-					"type": "string",
-					"pattern": "^[A-Za-z0-9_-]{1,32}$"
+					"type": "object",
+					"properties": {
+						"team": {
+							"type": "string",
+							"pattern": "^[A-Za-z0-9_-]{1,32}$"
+						},
+						"line": {
+							"type": "number",
+							"nullable": true,
+							"minimum": -50,
+							"maximum": 50
+						}
+					},
+					"required": [
+						"team",
+						"line"
+					]
 				},
-				"description": "The id of the picked team for each game id"
+				"description": "The pick of each game id: the picked team and its line when it was saved"
 			},
 			"Error": {
 				"type": "object",
