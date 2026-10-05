@@ -54,7 +54,7 @@ const PlaceCategorySchema = z
 	})
 	.openapi('PlaceCategory')
 
-export const VisitDraftSchema = z
+const VisitDraftSchema = z
 	.object({
 		id: z.string().min(1).max(64).optional().openapi({
 			description: 'The id of a stored visit, kept on a write. Mimir gives a new visit its id.',
@@ -78,9 +78,7 @@ export const VisitDraftSchema = z
 	})
 	.openapi('VisitDraft')
 
-export type VisitDraft = z.infer<typeof VisitDraftSchema>
-
-export const VisitSchema = VisitDraftSchema.extend({ id: z.string().min(1) }).openapi('Visit')
+const VisitSchema = VisitDraftSchema.extend({ id: z.string().min(1) }).openapi('Visit')
 
 export type Visit = z.infer<typeof VisitSchema>
 
