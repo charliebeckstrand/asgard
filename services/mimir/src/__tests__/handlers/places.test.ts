@@ -34,8 +34,12 @@ const draft: PlaceDraft = {
 	address: '1 Main St',
 	latitude: 40,
 	longitude: -80,
-	rating: 4,
-	visitedAt: '2026-09-27',
+	visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [] }],
+}
+
+/** The draft with one visit on `visitedAt`. */
+function visitedOn(visitedAt: string): PlaceDraft {
+	return { ...draft, visits: [{ visitedAt, rating: 4, photos: [] }] }
 }
 
 beforeEach(() => {
@@ -46,7 +50,11 @@ describe('places', () => {
 	it('adds a place with an id and when it was added', async () => {
 		const place = await addPlace(USER, draft)
 
-		expect(place).toMatchObject({ ...draft, id: expect.any(String) })
+		expect(place).toMatchObject({
+			...draft,
+			id: expect.any(String),
+			visits: [{ ...draft.visits[0], id: expect.any(String) }],
+		})
 
 		expect(Date.parse(place?.createdAt ?? '')).not.toBeNaN()
 
@@ -54,13 +62,66 @@ describe('places', () => {
 	})
 
 	it('lists the newest visit first', async () => {
-		await addPlace(USER, { ...draft, visitedAt: '2026-01-01' })
+		await addPlace(USER, visitedOn('2026-01-01'))
 
-		await addPlace(USER, { ...draft, visitedAt: '2026-06-01' })
+		await addPlace(USER, visitedOn('2026-06-01'))
 
-		const days = (await listPlaces(USER)).map((place) => place.visitedAt)
+		const days = (await listPlaces(USER)).map((place) => place.visits[0]?.visitedAt)
 
 		expect(days).toEqual(['2026-06-01', '2026-01-01'])
+	})
+
+	it('stores the visits newest first, and keeps the id of each stored visit', async () => {
+		const place = await addPlace(USER, visitedOn('2026-01-01'))
+
+		const first = place?.visits[0]
+
+		const updated = await updatePlace(USER, place?.id ?? '', {
+			...draft,
+			visits: [...(place?.visits ?? []), { visitedAt: '2026-06-01', rating: 5, photos: [] }],
+		})
+
+		expect(updated?.visits.map((visit) => visit.visitedAt)).toEqual(['2026-06-01', '2026-01-01'])
+
+		expect(updated?.visits[1]).toEqual(first)
+
+		expect(updated?.visits[0]?.id).not.toBe(first?.id)
+	})
+
+	it('reads a place stored before visits as a place with one visit', async () => {
+		documents.set(`${USER}:places`, [
+			{
+				id: 'old',
+				createdAt: '2026-09-27T12:00:00.000Z',
+				name: 'Cafe',
+				category: 'food',
+				address: '1 Main St',
+				latitude: 40,
+				longitude: -80,
+				rating: 4,
+				review: 'Good',
+				photo: 'https://example.com/a.jpg',
+				visitedAt: '2026-09-27',
+			},
+		])
+
+		const [place] = await listPlaces(USER)
+
+		expect(place?.visits).toEqual([
+			{
+				id: 'old',
+				visitedAt: '2026-09-27',
+				rating: 4,
+				review: 'Good',
+				photos: ['https://example.com/a.jpg'],
+			},
+		])
+
+		expect(place).not.toHaveProperty('visitedAt')
+
+		const updated = await updatePlace(USER, 'old', { ...draft, visits: place?.visits ?? [] })
+
+		expect(documents.get(`${USER}:places`)).toEqual([updated])
 	})
 
 	it('keeps each user apart', async () => {
@@ -81,7 +142,11 @@ describe('places', () => {
 	it('replaces a place, keeping its id and when it was added', async () => {
 		const place = await addPlace(USER, draft)
 
-		const updated = await updatePlace(USER, place?.id ?? '', { ...draft, name: 'Diner' })
+		const updated = await updatePlace(USER, place?.id ?? '', {
+			...draft,
+			name: 'Diner',
+			visits: place?.visits ?? [],
+		})
 
 		expect(updated).toEqual({ ...place, name: 'Diner' })
 	})

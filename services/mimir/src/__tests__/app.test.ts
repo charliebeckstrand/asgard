@@ -83,11 +83,15 @@ const draft = {
 	address: '1 Main St',
 	latitude: 40,
 	longitude: -80,
-	rating: 4,
-	visitedAt: '2026-09-27',
+	visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [] }],
 }
 
-const place = { ...draft, id: 'place-1', createdAt: '2026-09-27T12:00:00.000Z' }
+const place = {
+	...draft,
+	id: 'place-1',
+	createdAt: '2026-09-27T12:00:00.000Z',
+	visits: [{ ...draft.visits[0], id: 'visit-1' }],
+}
 
 function post(body: unknown, user: object | null = member) {
 	return app.request('/api/places', {
@@ -247,7 +251,12 @@ describe('writes', () => {
 	})
 
 	it('names every field that is wrong', async () => {
-		const res = await post({ ...draft, name: ' ', latitude: 91, visitedAt: '2026-02-31' })
+		const res = await post({
+			...draft,
+			name: ' ',
+			latitude: 91,
+			visits: [{ visitedAt: '2026-02-31', rating: 4, photos: [] }],
+		})
 
 		expect(res.status).toBe(400)
 
