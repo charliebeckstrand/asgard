@@ -148,6 +148,7 @@ await vi.waitFor(() => {
 - `beforeEach(() => { vi.clearAllMocks() })` to reset call history. `vi.resetAllMocks()` if the mock impl needs to be re-stubbed.
 - `afterAll` to stop containers and close pools.
 - Don't share mutable state between tests — declare per-test fixtures in the `it` body or a `beforeEach`.
+- Freeze the clock in tests that depend on elapsed time, such as rate-limit buckets: `vi.useFakeTimers()` in `beforeEach` (`{ toFake: ['Date'] }` when only `Date.now()` matters) and `vi.useRealTimers()` in `afterEach`. On a slow runner the bucket refills mid-test.
 
 ## Naming
 
