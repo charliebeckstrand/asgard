@@ -204,10 +204,10 @@
 						"example": "2026-09-27"
 					},
 					"rating": {
-						"type": "integer",
+						"type": "number",
 						"minimum": 0,
 						"maximum": 5,
-						"description": "1 to 5, or 0 for none"
+						"description": "0.5 to 5 in half steps, or 0 for none"
 					},
 					"review": {
 						"type": "string",

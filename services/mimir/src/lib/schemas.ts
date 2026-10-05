@@ -66,10 +66,10 @@ export const VisitDraftSchema = z
 			.openapi({ description: 'The day of the visit', example: '2026-09-27' }),
 		rating: z
 			.number()
-			.int(`\`rating\` must be a whole number from 0 to ${MAX_RATING}.`)
-			.min(0, `\`rating\` must be a whole number from 0 to ${MAX_RATING}.`)
-			.max(MAX_RATING, `\`rating\` must be a whole number from 0 to ${MAX_RATING}.`)
-			.openapi({ description: `1 to ${MAX_RATING}, or 0 for none` }),
+			.multipleOf(0.5, `\`rating\` must be a half step from 0 to ${MAX_RATING}.`)
+			.min(0, `\`rating\` must be a half step from 0 to ${MAX_RATING}.`)
+			.max(MAX_RATING, `\`rating\` must be a half step from 0 to ${MAX_RATING}.`)
+			.openapi({ description: `0.5 to ${MAX_RATING} in half steps, or 0 for none` }),
 		review: optionalText('review'),
 		photos: z
 			.array(webAddress('photos'))

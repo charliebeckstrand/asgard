@@ -269,6 +269,25 @@ describe('writes', () => {
 		expect(message).toContain('`visitedAt` must be a YYYY-MM-DD day.')
 	})
 
+	it('takes a half-step rating and refuses any other fraction', async () => {
+		const visit = (rating: number) => ({
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating, photos: [] }],
+		})
+
+		mockAddPlace.mockResolvedValue(place)
+
+		expect((await post(visit(3.5))).status).toBe(201)
+
+		const res = await post(visit(3.3))
+
+		expect(res.status).toBe(400)
+
+		expect(await res.json()).toMatchObject({
+			message: '`rating` must be a half step from 0 to 5.',
+		})
+	})
+
 	it('refuses an address that is not http or https', async () => {
 		const res = await post({ ...draft, url: 'javascript:alert(1)' })
 
