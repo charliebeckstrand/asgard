@@ -10,6 +10,9 @@ const MAX_WEEK = 19
 /** Games in an NFL week, with room for a larger league. */
 const MAX_GAMES = 32
 
+/** The largest point spread a pick can carry, well past any NFL line. */
+const MAX_LINE = 50
+
 /** Photos on one visit, so a visit can't fill the document. */
 const MAX_PHOTOS = 12
 
@@ -180,13 +183,29 @@ export const WeekSchema = z.coerce
 	.max(MAX_WEEK, '`week` must be a week number.')
 	.openapi({ description: 'The week of the regular season, from 1', example: 5 })
 
+/**
+ * One pick: the picked team, and the point spread of that team when the pick
+ * was saved. The line is `null` when the sportsbooks had no line yet, and the
+ * picks app then scores the pick on the closing line.
+ */
+const PickSchema = z.object({
+	team: FeedIdSchema,
+	line: z
+		.number('`line` must be a number or null.')
+		.min(-MAX_LINE, `\`line\` must be within ${MAX_LINE} points.`)
+		.max(MAX_LINE, `\`line\` must be within ${MAX_LINE} points.`)
+		.nullable(),
+})
+
 export const WeekPicksSchema = z
-	.record(FeedIdSchema, FeedIdSchema)
+	.record(FeedIdSchema, PickSchema)
 	.refine(
 		(picks) => Object.keys(picks).length <= MAX_GAMES,
 		`A week holds at most ${MAX_GAMES} picks.`,
 	)
-	.openapi('WeekPicks', { description: 'The id of the picked team for each game id' })
+	.openapi('WeekPicks', {
+		description: 'The pick of each game id: the picked team and its line when it was saved',
+	})
 
 export type WeekPicks = z.infer<typeof WeekPicksSchema>
 

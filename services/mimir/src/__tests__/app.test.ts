@@ -175,7 +175,7 @@ describe('account', () => {
 
 		mockListVisits.mockResolvedValue({ states: ['Ohio'], countries: [] })
 
-		mockListAllPicks.mockResolvedValue({ 2026: { 1: { g1: 't1' } } })
+		mockListAllPicks.mockResolvedValue({ 2026: { 1: { g1: { team: 't1', line: null } } } })
 
 		const res = await app.request('/api/account', { headers: headers() })
 
@@ -184,7 +184,7 @@ describe('account', () => {
 		expect(await res.json()).toEqual({
 			places: [place],
 			visits: { states: ['Ohio'], countries: [] },
-			predictions: { 2026: { 1: { g1: 't1' } } },
+			predictions: { 2026: { 1: { g1: { team: 't1', line: null } } } },
 		})
 
 		expect(res.headers.get('cache-control')).toBe('private, no-store')
@@ -402,13 +402,13 @@ describe('OpenAPI', () => {
 
 describe('predictions', () => {
 	it('lists the picks of a season', async () => {
-		mockListPicks.mockResolvedValue({ 5: { g1: 't1' } })
+		mockListPicks.mockResolvedValue({ 5: { g1: { team: 't1', line: null } } })
 
 		const res = await app.request('/api/predictions/2026', { headers: headers() })
 
 		expect(res.status).toBe(200)
 
-		expect(await res.json()).toEqual({ 5: { g1: 't1' } })
+		expect(await res.json()).toEqual({ 5: { g1: { team: 't1', line: null } } })
 
 		expect(mockListPicks).toHaveBeenCalledWith(USER_ID, 2026)
 	})
@@ -419,12 +419,14 @@ describe('predictions', () => {
 		const res = await app.request('/api/predictions/2026/5', {
 			method: 'PUT',
 			headers: headers(),
-			body: JSON.stringify({ picks: { g1: 't1' } }),
+			body: JSON.stringify({ picks: { g1: { team: 't1', line: -3.5 } } }),
 		})
 
 		expect(res.status).toBe(200)
 
-		expect(mockSavePicks).toHaveBeenCalledWith(USER_ID, 2026, 5, { g1: 't1' })
+		expect(mockSavePicks).toHaveBeenCalledWith(USER_ID, 2026, 5, {
+			g1: { team: 't1', line: -3.5 },
+		})
 	})
 
 	it('deletes the picks of a week', async () => {
@@ -439,9 +441,12 @@ describe('predictions', () => {
 	})
 
 	it.each([
-		['/api/predictions/1999/5', { g1: 't1' }],
-		['/api/predictions/2026/0', { g1: 't1' }],
-		['/api/predictions/2026/5', { g1: '<script>' }],
+		['/api/predictions/1999/5', { g1: { team: 't1', line: null } }],
+		['/api/predictions/2026/0', { g1: { team: 't1', line: null } }],
+		['/api/predictions/2026/5', { g1: { team: '<script>', line: null } }],
+		['/api/predictions/2026/5', { g1: 't1' }],
+		['/api/predictions/2026/5', { g1: { team: 't1', line: 99 } }],
+		['/api/predictions/2026/5', { g1: { team: 't1' } }],
 	])('refuses PUT %s with %j', async (path, picks) => {
 		const res = await app.request(path, {
 			method: 'PUT',
