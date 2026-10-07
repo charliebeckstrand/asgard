@@ -17,10 +17,10 @@ App Platform overwrites `do-connecting-ip` on every hop, so requests from Midgar
 
 ## Types
 
-Bifrost's OpenAPI spec is committed at `services/bifrost/openapi.json`, and Mimir's at `services/mimir/openapi.json`. Midgard generates `packages/auth/src/openapi.d.ts` from bifrost's and `apps/places/src/api/openapi.d.ts` and `apps/picks/src/api/openapi.d.ts` from Mimir's, both from asgard's `main`, and calls each through an openapi-fetch client. After an API change:
+Bifrost's OpenAPI spec is committed at `services/bifrost/openapi.json`, and Mimir's at `services/mimir/openapi.json`. Midgard generates `packages/auth/src/openapi.d.ts` from bifrost's and `packages/shared/src/mimir/openapi.d.ts` from Mimir's, both from asgard's `main`, and calls each through an openapi-fetch client. The places and picks apps both import Mimir's types from that one file (`shared/mimir`), so they can't drift apart. After an API change:
 
 1. In asgard, run `pnpm --filter bifrost openapi` or `pnpm --filter mimir openapi` and merge.
-2. In midgard, run `pnpm --filter auth openapi`, or `pnpm --filter places openapi` and `pnpm --filter picks openapi`.
+2. In midgard, run `pnpm --filter auth openapi` or `pnpm --filter shared openapi`.
 
 ## Second step
 
