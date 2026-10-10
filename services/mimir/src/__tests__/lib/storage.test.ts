@@ -10,7 +10,7 @@ stubServiceEnv({
 	SPACES_ENDPOINT: 'https://ivory-photos.nyc3.digitaloceanspaces.com',
 })
 
-import { photoUrl, uploadUrl } from '../../lib/storage.js'
+import { isOwnPhoto, photoUrl, savedKey, uploadUrl } from '../../lib/storage.js'
 
 const KEY = 'users/00000000-0000-4000-8000-000000000001/a.jpg'
 
@@ -49,5 +49,19 @@ describe('storage', () => {
 		vi.setSystemTime(new Date('2026-10-10T12:30:00Z'))
 
 		expect(await photoUrl(KEY)).not.toBe(first)
+	})
+
+	it('keeps an upload under the same name in the saved photos', () => {
+		expect(savedKey('uploads/u1/a.jpg')).toBe('users/u1/a.jpg')
+
+		expect(savedKey('users/u1/a.jpg')).toBe('users/u1/a.jpg')
+	})
+
+	it("counts a user's uploads and saved photos as their own, and no one else's", () => {
+		expect(isOwnPhoto('u1', 'uploads/u1/a.jpg')).toBe(true)
+
+		expect(isOwnPhoto('u1', 'users/u1/a.jpg')).toBe(true)
+
+		expect(isOwnPhoto('u1', 'uploads/u2/a.jpg')).toBe(false)
 	})
 })

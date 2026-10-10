@@ -43,7 +43,7 @@ const createTripRoute = createRoute({
 		401: errorResponse('Not signed in'),
 		403: errorResponse('No user role, or email not verified'),
 		409: errorResponse(
-			`Already keeping ${MAX_TRIPS} trips, or as many places or visits as allowed, or a photo is no longer in the bucket (\`photo-missing\`)`,
+			`Already keeping ${MAX_TRIPS} trips, or as many places or visits as allowed, or a photo is no longer available (\`photo-missing\`)`,
 		),
 	},
 })
@@ -66,7 +66,7 @@ const updateTripRoute = createRoute({
 		403: errorResponse('No user role, or email not verified'),
 		404: errorResponse('No trip with that id'),
 		409: errorResponse(
-			'The new days would leave out one of its visits (`trip-days-exclude-visits`), or a photo is no longer in the bucket (`photo-missing`)',
+			'The new days would leave out one of its visits (`trip-days-exclude-visits`), or a photo is no longer available (`photo-missing`)',
 		),
 	},
 })
@@ -76,7 +76,7 @@ const removeTripRoute = createRoute({
 	path: '/trips/{id}',
 	tags: ['Trips'],
 	summary: 'Remove a trip',
-	description: 'Its visits stay on their places, without the trip.',
+	description: 'Its visits stay on their places, without the trip. Its photos are deleted.',
 	middleware: [requireRole('user')] as const,
 	request: {
 		params,

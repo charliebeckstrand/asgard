@@ -9,7 +9,6 @@
 		"SPACES_SECRET": { "type": "value", "default": "" },
 		"SPACES_REGION": { "type": "value", "default": "" },
 		"SPACES_BUCKET": { "type": "value", "default": "" },
-		"SPACES_ENDPOINT": { "type": "value", "default": "" },
-		"PHOTO_SWEEP_DELETE": { "type": "value", "default": "false" }
+		"SPACES_ENDPOINT": { "type": "value", "default": "" }
 	}
 }

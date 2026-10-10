@@ -1,15 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import {
+	CopyObjectCommand,
 	DeleteObjectCommand,
 	GetObjectCommand,
-	HeadObjectCommand,
 	ListObjectsV2Command,
 	PutObjectCommand,
 	S3Client,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { HTTPException } from 'grid'
-import { IdSchema } from 'skuld'
 import { environment } from './env.js'
 import type { PhotoType } from './schemas.js'
 
@@ -17,6 +16,10 @@ import type { PhotoType } from './schemas.js'
  * Photos live in a DigitalOcean Spaces bucket, which speaks the S3 API. The
  * bucket is private: browsers upload and read through presigned URLs, and
  * documents keep each photo's object key, never a URL.
+ *
+ * A browser uploads under `uploads/`, where a lifecycle rule on the bucket
+ * deletes whatever is left after a day. The save that keeps a photo copies it
+ * to the same name under `users/`, so an upload no save keeps cleans itself up.
  */
 
 /** How long an upload URL lasts. */
@@ -36,14 +39,14 @@ type Bucket = { client: S3Client; name: string }
 
 let cached: Bucket | null = null
 
-/** The bucket, or a 503 where it isn't set, as in development without Spaces. */
-function bucket(): Bucket {
+/** The bucket, or `null` where it isn't set, as in development without Spaces. */
+function configuredBucket(): Bucket | null {
 	if (cached) return cached
 
 	const { SPACES_KEY, SPACES_SECRET, SPACES_REGION, SPACES_BUCKET, SPACES_ENDPOINT } = environment()
 
 	if (!SPACES_KEY || !SPACES_SECRET || !SPACES_REGION || !SPACES_BUCKET || !SPACES_ENDPOINT) {
-		throw new HTTPException(503, { message: 'Photos are unavailable' })
+		return null
 	}
 
 	// The dashboard shows the bucket's own endpoint too, with the bucket name in
@@ -68,31 +71,42 @@ function bucket(): Bucket {
 	return cached
 }
 
-/** Where every user's photos live in the bucket. */
-const USERS_PREFIX = 'users/'
+/** The bucket, or a 503 where it isn't set. */
+function bucket(): Bucket {
+	const configured = configuredBucket()
 
-/** Where a user's photos live in the bucket. */
-function userPrefix(userId: string): string {
-	return `${USERS_PREFIX}${userId}/`
+	if (!configured) throw new HTTPException(503, { message: 'Photos are unavailable' })
+
+	return configured
 }
 
-/** A new key for a photo of the user. */
+const SAVED = 'users/'
+
+const UPLOADS = 'uploads/'
+
+/** Where a user's saved photos live in the bucket. */
+function userPrefix(userId: string): string {
+	return `${SAVED}${userId}/`
+}
+
+/** A new key for a saved photo of the user, such as one Mimir copied from the web. */
 export function newPhotoKey(userId: string, extension: string): string {
 	return `${userPrefix(userId)}${randomUUID()}.${extension}`
 }
 
-/** The id of the user whose photo a key is, or `undefined` where it isn't one. */
-export function photoOwner(key: string): string | undefined {
-	const [root, userId, file, ...rest] = key.split('/')
-
-	if (`${root}/` !== USERS_PREFIX || !file || rest.length > 0) return undefined
-
-	return IdSchema.safeParse(userId).success ? userId : undefined
+/** A new key for a photo the user uploads, which a save then keeps. */
+export function newUploadKey(userId: string, extension: string): string {
+	return `${UPLOADS}${userId}/${randomUUID()}.${extension}`
 }
 
-/** Whether a key is under the user's own prefix. */
+/** The key a photo has once saved. An upload's is the same name under `users/`. */
+export function savedKey(key: string): string {
+	return key.startsWith(UPLOADS) ? `${SAVED}${key.slice(UPLOADS.length)}` : key
+}
+
+/** Whether a key is one of the user's own, saved or uploaded. */
 export function isOwnPhoto(userId: string, key: string): boolean {
-	return key.startsWith(userPrefix(userId))
+	return savedKey(key).startsWith(userPrefix(userId))
 }
 
 /**
@@ -131,17 +145,21 @@ export async function putPhoto(key: string, body: Uint8Array, contentType: strin
 	)
 }
 
-/** How long a call to the bucket may hold the user's lock, so a save waits at most this. */
-export const REQUEST_TIMEOUT_MS = 10_000
-
-/** Whether the bucket holds the photo. */
-export async function photoExists(key: string): Promise<boolean> {
+/**
+ * Copies an upload to its saved key. `false` where the upload isn't there: it
+ * never finished, or the lifecycle rule deleted it.
+ */
+export async function keepUpload(key: string): Promise<boolean> {
 	const { client, name } = bucket()
 
 	try {
-		await client.send(new HeadObjectCommand({ Bucket: name, Key: key }), {
-			abortSignal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-		})
+		await client.send(
+			new CopyObjectCommand({
+				Bucket: name,
+				CopySource: `${name}/${encodeURI(key)}`,
+				Key: savedKey(key),
+			}),
+		)
 
 		return true
 	} catch (err) {
@@ -153,63 +171,41 @@ export async function photoExists(key: string): Promise<boolean> {
 	}
 }
 
-/** A photo in the bucket, and when it was last written. */
-type StoredObject = { key: string; modified: Date }
+/** Deletes photos. Deleting one that isn't there succeeds, as does deleting with no bucket. */
+export async function deletePhotos(keys: Iterable<string>): Promise<void> {
+	const configured = configuredBucket()
 
-/** Every photo in the bucket, under every user's prefix. */
-export async function listPhotos(): Promise<StoredObject[]> {
-	const { client, name } = bucket()
+	if (!configured) return
 
-	const objects: StoredObject[] = []
+	const { client, name } = configured
+
+	await Promise.all(
+		[...keys].map((key) => client.send(new DeleteObjectCommand({ Bucket: name, Key: key }))),
+	)
+}
+
+/** Deletes every photo under the user's prefix, saved or not, for when their account is deleted. */
+export async function deleteUserPhotos(userId: string): Promise<void> {
+	const configured = configuredBucket()
+
+	// With no bucket there are no photos, so deleting an account still works.
+	if (!configured) return
+
+	const { client, name } = configured
 
 	let token: string | undefined
 
 	do {
 		const page = await client.send(
-			new ListObjectsV2Command({ Bucket: name, Prefix: USERS_PREFIX, ContinuationToken: token }),
+			new ListObjectsV2Command({
+				Bucket: name,
+				Prefix: userPrefix(userId),
+				ContinuationToken: token,
+			}),
 		)
 
-		for (const { Key, LastModified } of page.Contents ?? []) {
-			if (Key && LastModified) objects.push({ key: Key, modified: LastModified })
-		}
+		await deletePhotos((page.Contents ?? []).flatMap((object) => object.Key ?? []))
 
 		token = page.IsTruncated ? page.NextContinuationToken : undefined
 	} while (token)
-
-	return objects
-}
-
-/** How many deletes go out at once. */
-const DELETE_BATCH = 100
-
-/**
- * Deletes photos, and gives back each one it couldn't delete with the reason.
- * Deleting one that isn't there succeeds. Every delete shares `signal`, so a
- * caller holding a lock can bound how long it holds it.
- *
- * One request per photo rather than DeleteObjects: since 3.729 the SDK signs
- * DeleteObjects with a CRC32 checksum instead of Content-MD5, which some
- * S3-compatible stores refuse. A single delete needs neither.
- */
-export async function deletePhotos(
-	keys: string[],
-	signal: AbortSignal,
-): Promise<{ key: string; err: unknown }[]> {
-	const { client, name } = bucket()
-
-	const failed: { key: string; err: unknown }[] = []
-
-	for (let start = 0; start < keys.length; start += DELETE_BATCH) {
-		await Promise.all(
-			keys.slice(start, start + DELETE_BATCH).map((key) =>
-				client
-					.send(new DeleteObjectCommand({ Bucket: name, Key: key }), { abortSignal: signal })
-					.catch((err: unknown) => {
-						failed.push({ key, err })
-					}),
-			),
-		)
-	}
-
-	return failed
 }

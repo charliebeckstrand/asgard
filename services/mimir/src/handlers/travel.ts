@@ -1,4 +1,5 @@
 import { DataError } from '../lib/errors.js'
+import { logger } from '../lib/log.js'
 import {
 	type Place,
 	type StoredPlace,
@@ -7,13 +8,13 @@ import {
 	StoredTripSchema,
 	type Trip,
 } from '../lib/schemas.js'
-import { isOwnPhoto, photoExists, photoUrl } from '../lib/storage.js'
+import { deletePhotos, isOwnPhoto, keepUpload, photoUrl, savedKey } from '../lib/storage.js'
 import { changeDocuments } from './documents.js'
 
 /**
  * What places and trips share. A visit can name a trip, so a write of either
- * reads both documents under one lock, and the rules between them hold. The
- * photo sweep takes the same lock, so no write adds a photo it is deleting.
+ * reads both documents under one lock, and the rules between them hold. Each
+ * write also keeps the photos it adds and deletes the ones it leaves unused.
  */
 
 /** The stored records of a document, or none where it doesn't exist yet. */
@@ -84,42 +85,83 @@ function photoKeys(places: unknown[], trips: unknown[]): Set<string> {
 /** What a change of places and trips gives back: the result, and each new document. */
 type TravelChange<T> = { result: T; places?: unknown[]; trips?: unknown[] }
 
+/** The value with each string that `keys` maps replaced, however deep. */
+function replaceKeys<V>(value: V, keys: Map<string, string>): V {
+	if (typeof value === 'string') return (keys.get(value) ?? value) as V
+
+	if (Array.isArray(value)) return value.map((item) => replaceKeys(item, keys)) as V
+
+	if (typeof value === 'object' && value !== null) {
+		return Object.fromEntries(
+			Object.entries(value).map(([name, item]) => [name, replaceKeys(item, keys)]),
+		) as V
+	}
+
+	return value
+}
+
 /**
  * Reads the user's places and trips, gives their records to `change`, and
  * writes the documents it gives back, in one transaction.
  *
- * Each photo key the change adds must name an object in the bucket. That
- * proves the upload finished, and refuses a photo the sweep has deleted since
- * the draft was opened. Keys the documents already hold need no check.
+ * A draft holds each photo by a key the documents already hold, or by the key
+ * of an upload. The write copies each new upload to its saved key and stores
+ * that, so the result answers with saved keys. A key that is neither is a
+ * photo gone since the draft was opened, and the write is refused. Once it
+ * commits, deletes the photos no place or trip holds anymore.
  */
 export async function changeTravel<T>(
 	userId: string,
 	change: (places: unknown[], trips: unknown[]) => TravelChange<T> | Promise<TravelChange<T>>,
 ): Promise<T> {
-	return changeDocuments(userId, ['places', 'trips'], async ([placesDoc, tripsDoc]) => {
-		const places = records(placesDoc)
+	let unused: string[] = []
 
-		const trips = records(tripsDoc)
+	const result = await changeDocuments(
+		userId,
+		['places', 'trips'],
+		async ([placesDoc, tripsDoc]) => {
+			const places = records(placesDoc)
 
-		const changed = await change(places, trips)
+			const trips = records(tripsDoc)
 
-		const held = photoKeys(places, trips)
+			const changed = await change(places, trips)
 
-		const added = [...photoKeys(changed.places ?? places, changed.trips ?? trips)].filter(
-			(key) => !held.has(key),
-		)
+			const held = photoKeys(places, trips)
 
-		const exists = await Promise.all(added.map((key) => photoExists(key)))
+			const drafted = photoKeys(changed.places ?? places, changed.trips ?? trips)
 
-		if (exists.includes(false)) {
-			throw new DataError(
-				'photo-missing',
-				'A photo is no longer available. Remove it and save again.',
-			)
-		}
+			const saved = new Map([...drafted].map((key) => [key, savedKey(key)]))
 
-		return { result: changed.result, values: [changed.places, changed.trips] }
-	})
+			const uploads = [...saved].filter(([key, kept]) => key !== kept && !held.has(kept))
+
+			const gone = [...saved].some(([key, kept]) => key === kept && !held.has(key))
+
+			if (gone || (await Promise.all(uploads.map(([key]) => keepUpload(key)))).includes(false)) {
+				throw new DataError(
+					'photo-missing',
+					'A photo is no longer available. Remove it and save again.',
+				)
+			}
+
+			const kept = new Set(saved.values())
+
+			unused = [...held].filter((key) => !kept.has(key))
+
+			return {
+				result: replaceKeys(changed.result, saved),
+				values: [replaceKeys(changed.places, saved), replaceKeys(changed.trips, saved)],
+			}
+		},
+	)
+
+	if (unused.length > 0) {
+		// The write stands either way. A photo left behind is only storage.
+		await deletePhotos(unused).catch((err: unknown) => {
+			logger().error({ err, userId, keys: unused }, 'photo delete failed')
+		})
+	}
+
+	return result
 }
 
 /** Refuses a photo key outside the user's own prefix. */

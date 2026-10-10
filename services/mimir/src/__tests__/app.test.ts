@@ -22,6 +22,7 @@ const {
 	mockUpdateTrip,
 	mockRemoveTrip,
 	mockUploadUrl,
+	mockDeleteUserPhotos,
 } = vi.hoisted(() => ({
 	mockPing: vi.fn(),
 	mockListPlaces: vi.fn(),
@@ -40,6 +41,7 @@ const {
 	mockUpdateTrip: vi.fn(),
 	mockRemoveTrip: vi.fn(),
 	mockUploadUrl: vi.fn(),
+	mockDeleteUserPhotos: vi.fn(),
 }))
 
 vi.mock('../lib/db.js', () => ({
@@ -78,6 +80,7 @@ vi.mock('../handlers/trips.js', () => ({
 vi.mock('../lib/storage.js', async (original) => ({
 	...(await original<typeof import('../lib/storage.js')>()),
 	uploadUrl: (...args: unknown[]) => mockUploadUrl(...args),
+	deleteUserPhotos: (...args: unknown[]) => mockDeleteUserPhotos(...args),
 }))
 
 vi.mock('../handlers/documents.js', () => ({
@@ -226,6 +229,8 @@ describe('account', () => {
 		expect(res.status).toBe(204)
 
 		expect(mockDeleteDocuments).toHaveBeenCalledWith(USER_ID)
+
+		expect(mockDeleteUserPhotos).toHaveBeenCalledWith(USER_ID)
 	})
 
 	it('needs a user', async () => {
@@ -594,7 +599,7 @@ describe('photo uploads', () => {
 		})
 	}
 
-	it("answers with a key under the user's prefix and its upload URL", async () => {
+	it("answers with an upload key under the user's id and its upload URL", async () => {
 		mockUploadUrl.mockResolvedValue('https://bucket.test/upload')
 
 		const res = await start({ contentType: 'image/webp', size: 1000 })
@@ -603,7 +608,7 @@ describe('photo uploads', () => {
 
 		const { key, uploadUrl } = (await res.json()) as { key: string; uploadUrl: string }
 
-		expect(key).toMatch(new RegExp(`^users/${USER_ID}/[0-9a-f-]{36}\\.webp$`))
+		expect(key).toMatch(new RegExp(`^uploads/${USER_ID}/[0-9a-f-]{36}\\.webp$`))
 
 		expect(uploadUrl).toBe('https://bucket.test/upload')
 

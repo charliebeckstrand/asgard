@@ -2,14 +2,18 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv({ MIMIR_API_KEY: 'test-mimir-api-key-that-is-at-least-32-chars' })
 
-const { mockPhotoExists } = vi.hoisted(() => ({ mockPhotoExists: vi.fn() }))
+const { mockDeletePhotos, mockKeepUpload } = vi.hoisted(() => ({
+	mockDeletePhotos: vi.fn(),
+	mockKeepUpload: vi.fn(),
+}))
 
 vi.mock('../../handlers/documents.js', () => import('./documents-mock.js'))
 
 vi.mock('../../lib/storage.js', async (original) => ({
 	...(await original<typeof import('../../lib/storage.js')>()),
 	photoUrl: async (key: string) => `https://bucket.test/${key}?signed`,
-	photoExists: mockPhotoExists,
+	deletePhotos: mockDeletePhotos,
+	keepUpload: mockKeepUpload,
 }))
 
 import { addPlace, listPlaces } from '../../handlers/places.js'
@@ -19,7 +23,11 @@ import { documents } from './documents-mock.js'
 
 const USER = '00000000-0000-4000-8000-000000000001'
 
-const photo = (name: string) => `users/${USER}/${name}.jpg`
+/** The key of an upload. */
+const photo = (name: string) => `uploads/${USER}/${name}.jpg`
+
+/** The key the save keeps an upload under. */
+const saved = (name: string) => `users/${USER}/${name}.jpg`
 
 const draft: TripDraft = {
 	name: 'Pittsburgh',
@@ -45,7 +53,9 @@ const visitOn = (visitedAt: string) => ({ visitedAt, rating: 5, photos: [] })
 beforeEach(() => {
 	documents.clear()
 
-	mockPhotoExists.mockReset().mockResolvedValue(true)
+	mockDeletePhotos.mockReset().mockResolvedValue(undefined)
+
+	mockKeepUpload.mockReset().mockResolvedValue(true)
 })
 
 describe('trips', () => {
@@ -75,7 +85,7 @@ describe('trips', () => {
 		const { trip } = await createTrip(USER, { ...draft, photos: [photo('a')] })
 
 		expect(trip.photos).toEqual([
-			{ key: photo('a'), url: `https://bucket.test/${photo('a')}?signed` },
+			{ key: saved('a'), url: `https://bucket.test/${saved('a')}?signed` },
 		])
 	})
 
@@ -169,23 +179,17 @@ describe('trips', () => {
 			expect(await updateTrip(USER, trip.id, { ...draft, endsOn: '2026-09-25' })).not.toBeNull()
 		})
 
-		it('refuses a photo no longer in the bucket, and checks only the ones it adds', async () => {
-			const { trip } = await createTrip(USER, { ...draft, photos: [photo('a')] })
+		it('deletes the photos it drops', async () => {
+			const { trip } = await createTrip(USER, { ...draft, photos: [photo('a'), photo('b')] })
 
-			mockPhotoExists.mockReset().mockResolvedValue(false)
+			await updateTrip(USER, trip.id, { ...draft, photos: [photo('b')] })
 
-			await expect(
-				updateTrip(USER, trip.id, { ...draft, photos: [photo('a'), photo('b')] }),
-			).rejects.toMatchObject({ status: 409, code: 'photo-missing' })
-
-			expect(mockPhotoExists).toHaveBeenCalledExactlyOnceWith(photo('b'))
-
-			expect(await updateTrip(USER, trip.id, { ...draft, photos: [photo('a')] })).not.toBeNull()
+			expect(mockDeletePhotos).toHaveBeenCalledExactlyOnceWith([saved('a')])
 		})
 	})
 
 	describe('removing', () => {
-		it('keeps its visits without the trip', async () => {
+		it('keeps its visits without the trip, and deletes its photos', async () => {
 			const { trip } = await createTrip(USER, {
 				...draft,
 				photos: [photo('a')],
@@ -201,6 +205,8 @@ describe('trips', () => {
 			expect(kept?.visits).toHaveLength(1)
 
 			expect(kept?.visits[0]).not.toHaveProperty('tripId')
+
+			expect(mockDeletePhotos).toHaveBeenCalledExactlyOnceWith([saved('a')])
 		})
 
 		it('says when there was none', async () => {
