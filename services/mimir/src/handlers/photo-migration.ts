@@ -65,7 +65,13 @@ async function copyPhoto(userId: string, address: string): Promise<Copy> {
 
 	const key = newPhotoKey(userId, extension)
 
-	await putPhoto(key, body, type)
+	// A bucket that refuses the write keeps the address for a later run, rather
+	// than failing the deploy that runs this.
+	try {
+		await putPhoto(key, body, type)
+	} catch (err) {
+		return { kept: `bucket refused: ${err instanceof Error ? err.message : String(err)}` }
+	}
 
 	return { key }
 }

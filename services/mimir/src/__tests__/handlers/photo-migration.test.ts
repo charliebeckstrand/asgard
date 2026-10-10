@@ -107,6 +107,16 @@ describe('photo migration', () => {
 		expect(mockPutPhoto).not.toHaveBeenCalled()
 	})
 
+	it('keeps the address when the bucket refuses the copy', async () => {
+		mockPutPhoto.mockRejectedValue(new Error('Access Denied.'))
+
+		documents.set(`${USER}:places`, [place(['https://example.com/a.jpg'])])
+
+		expect(await migratePhotos()).toEqual({ copied: 0, dropped: 0, kept: 1 })
+
+		expect(storedPhotos()).toEqual(['https://example.com/a.jpg'])
+	})
+
 	it('copies the photo of a place stored before visits', async () => {
 		const { visits: _visits, ...rest } = place([])
 
