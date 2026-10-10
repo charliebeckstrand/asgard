@@ -14,7 +14,13 @@ vi.mock('../../lib/db.js', () => ({
 }))
 
 import { createDb, migrate } from 'saga'
-import { changeDocument, deleteDocuments, readDocument } from '../../handlers/documents.js'
+import {
+	changeDocument,
+	changeDocuments,
+	deleteDocuments,
+	documentOwners,
+	readDocument,
+} from '../../handlers/documents.js'
 
 const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../migrations')
 
@@ -69,6 +75,59 @@ describeWithDocker('documents', () => {
 		await Promise.all(Array.from({ length: 10 }, add))
 
 		expect(await readDocument(user, 'places')).toHaveLength(10)
+	})
+
+	it('changes several documents together, writing only those given a value', async () => {
+		const user = '00000000-0000-4000-8000-000000000004'
+
+		await changeDocument(user, 'trips', () => ({ result: null, value: [{ id: 't' }] }))
+
+		const read = await changeDocuments(user, ['places', 'trips'], (documents) => ({
+			result: documents,
+			values: [[{ id: 'p' }], undefined],
+		}))
+
+		expect(read).toEqual([undefined, [{ id: 't' }]])
+
+		expect(await readDocument(user, 'places')).toEqual([{ id: 'p' }])
+
+		expect(await readDocument(user, 'trips')).toEqual([{ id: 't' }])
+	})
+
+	it('writes none of the documents when a change throws', async () => {
+		const user = '00000000-0000-4000-8000-000000000005'
+
+		await expect(
+			changeDocuments(user, ['places', 'trips'], () => {
+				throw new Error('refused')
+			}),
+		).rejects.toThrow('refused')
+
+		expect(await readDocument(user, 'places')).toBeUndefined()
+	})
+
+	it('runs changes that share a document one at a time, whatever their order', async () => {
+		const user = '00000000-0000-4000-8000-000000000006'
+
+		const add = (names: ('places' | 'trips')[]) =>
+			changeDocuments(user, names, (documents) => ({
+				result: null,
+				values: documents.map((document) => [...((document as unknown[] | undefined) ?? []), {}]),
+			}))
+
+		await Promise.all(
+			Array.from({ length: 10 }, (_, i) => add(i % 2 ? ['places', 'trips'] : ['trips', 'places'])),
+		)
+
+		expect(await readDocument(user, 'places')).toHaveLength(10)
+
+		expect(await readDocument(user, 'trips')).toHaveLength(10)
+	})
+
+	it('lists the users who have a document of a name', async () => {
+		expect(await documentOwners('trips')).toContain('00000000-0000-4000-8000-000000000004')
+
+		expect(await documentOwners('trips')).not.toContain(USER)
 	})
 
 	it("deletes every document of the user and no one else's", async () => {
