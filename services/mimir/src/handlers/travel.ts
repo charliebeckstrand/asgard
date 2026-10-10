@@ -8,13 +8,13 @@ import {
 	StoredTripSchema,
 	type Trip,
 } from '../lib/schemas.js'
-import { deletePhotos, isOwnPhoto, photoUrl } from '../lib/storage.js'
+import { deletePhotos, isOwnPhoto, keepUpload, photoUrl, savedKey } from '../lib/storage.js'
 import { changeDocuments } from './documents.js'
 
 /**
  * What places and trips share. A visit can name a trip, so a write of either
  * reads both documents under one lock, and the rules between them hold. Each
- * write also deletes the photos it leaves unused.
+ * write also keeps the photos it adds and deletes the ones it leaves unused.
  */
 
 /** The stored records of a document, or none where it doesn't exist yet. */
@@ -85,10 +85,30 @@ function photoKeys(places: unknown[], trips: unknown[]): Set<string> {
 /** What a change of places and trips gives back: the result, and each new document. */
 type TravelChange<T> = { result: T; places?: unknown[]; trips?: unknown[] }
 
+/** The value with each string that `keys` maps replaced, however deep. */
+function replaceKeys<V>(value: V, keys: Map<string, string>): V {
+	if (typeof value === 'string') return (keys.get(value) ?? value) as V
+
+	if (Array.isArray(value)) return value.map((item) => replaceKeys(item, keys)) as V
+
+	if (typeof value === 'object' && value !== null) {
+		return Object.fromEntries(
+			Object.entries(value).map(([name, item]) => [name, replaceKeys(item, keys)]),
+		) as V
+	}
+
+	return value
+}
+
 /**
  * Reads the user's places and trips, gives their records to `change`, and
- * writes the documents it gives back, in one transaction. Once that commits,
- * deletes the photos no place or trip uses anymore.
+ * writes the documents it gives back, in one transaction.
+ *
+ * A draft holds each photo by a key the documents already hold, or by the key
+ * of an upload. The write copies each new upload to its saved key and stores
+ * that, so the result answers with saved keys. A key that is neither is a
+ * photo gone since the draft was opened, and the write is refused. Once it
+ * commits, deletes the photos no place or trip holds anymore.
  */
 export async function changeTravel<T>(
 	userId: string,
@@ -106,11 +126,31 @@ export async function changeTravel<T>(
 
 			const changed = await change(places, trips)
 
-			const kept = photoKeys(changed.places ?? places, changed.trips ?? trips)
+			const held = photoKeys(places, trips)
 
-			unused = [...photoKeys(places, trips)].filter((key) => !kept.has(key))
+			const drafted = photoKeys(changed.places ?? places, changed.trips ?? trips)
 
-			return { result: changed.result, values: [changed.places, changed.trips] }
+			const saved = new Map([...drafted].map((key) => [key, savedKey(key)]))
+
+			const uploads = [...saved].filter(([key, kept]) => key !== kept && !held.has(kept))
+
+			const gone = [...saved].some(([key, kept]) => key === kept && !held.has(key))
+
+			if (gone || (await Promise.all(uploads.map(([key]) => keepUpload(key)))).includes(false)) {
+				throw new DataError(
+					'photo-missing',
+					'A photo is no longer available. Remove it and save again.',
+				)
+			}
+
+			const kept = new Set(saved.values())
+
+			unused = [...held].filter((key) => !kept.has(key))
+
+			return {
+				result: replaceKeys(changed.result, saved),
+				values: [replaceKeys(changed.places, saved), replaceKeys(changed.trips, saved)],
+			}
 		},
 	)
 

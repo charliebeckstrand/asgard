@@ -2,7 +2,10 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv({ MIMIR_API_KEY: 'test-mimir-api-key-that-is-at-least-32-chars' })
 
-const { mockDeletePhotos } = vi.hoisted(() => ({ mockDeletePhotos: vi.fn() }))
+const { mockDeletePhotos, mockKeepUpload } = vi.hoisted(() => ({
+	mockDeletePhotos: vi.fn(),
+	mockKeepUpload: vi.fn(),
+}))
 
 vi.mock('../../handlers/documents.js', () => import('./documents-mock.js'))
 
@@ -10,6 +13,7 @@ vi.mock('../../lib/storage.js', async (original) => ({
 	...(await original<typeof import('../../lib/storage.js')>()),
 	photoUrl: async (key: string) => `https://bucket.test/${key}?signed`,
 	deletePhotos: mockDeletePhotos,
+	keepUpload: mockKeepUpload,
 }))
 
 import {
@@ -24,7 +28,11 @@ import { documents } from './documents-mock.js'
 
 const USER = '00000000-0000-4000-8000-000000000001'
 
-const photo = (name: string) => `users/${USER}/${name}.jpg`
+/** The key of an upload. */
+const photo = (name: string) => `uploads/${USER}/${name}.jpg`
+
+/** The key the save keeps an upload under. */
+const saved = (name: string) => `users/${USER}/${name}.jpg`
 
 const draft: PlaceDraft = {
 	name: 'Cafe',
@@ -55,6 +63,8 @@ beforeEach(() => {
 	documents.clear()
 
 	mockDeletePhotos.mockReset().mockResolvedValue(undefined)
+
+	mockKeepUpload.mockReset().mockResolvedValue(true)
 })
 
 describe('places', () => {
@@ -200,19 +210,62 @@ describe('places', () => {
 		expect(documents.get(`${USER}:places`)).toEqual([unreadable])
 	})
 
-	it('answers with a URL for each photo, and stores only its key', async () => {
+	it('keeps each upload under its saved key, and answers with a URL for it', async () => {
 		const place = await addPlace(USER, {
 			...draft,
 			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
 		})
 
+		expect(mockKeepUpload).toHaveBeenCalledExactlyOnceWith(photo('a'))
+
 		expect(place?.visits[0]?.photos).toEqual([
-			{ key: photo('a'), url: `https://bucket.test/${photo('a')}?signed` },
+			{ key: saved('a'), url: `https://bucket.test/${saved('a')}?signed` },
 		])
 
 		expect(documents.get(`${USER}:places`)).toEqual([
-			expect.objectContaining({ visits: [expect.objectContaining({ photos: [photo('a')] })] }),
+			expect.objectContaining({ visits: [expect.objectContaining({ photos: [saved('a')] })] }),
 		])
+	})
+
+	it('copies nothing for photos the places already hold, by either key', async () => {
+		const place = await addPlace(USER, {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a'), photo('b')] }],
+		})
+
+		mockKeepUpload.mockClear()
+
+		const updated = await updatePlace(USER, place?.id ?? '', {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [saved('a'), photo('b')] }],
+		})
+
+		expect(mockKeepUpload).not.toHaveBeenCalled()
+
+		expect(updated?.visits[0]?.photos.map((stored) => stored.key)).toEqual([saved('a'), saved('b')])
+	})
+
+	it('refuses an upload that is gone, and a saved photo the places no longer hold', async () => {
+		mockKeepUpload.mockResolvedValue(false)
+
+		const gone = {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
+		}
+
+		await expect(addPlace(USER, gone)).rejects.toMatchObject({ status: 409, code: 'photo-missing' })
+
+		const deleted = {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [saved('a')] }],
+		}
+
+		await expect(addPlace(USER, deleted)).rejects.toMatchObject({
+			status: 409,
+			code: 'photo-missing',
+		})
+
+		expect(documents.has(`${USER}:places`)).toBe(false)
 	})
 
 	it("refuses another user's photo", async () => {
@@ -244,7 +297,7 @@ describe('places', () => {
 			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [] }],
 		})
 
-		expect(mockDeletePhotos).toHaveBeenCalledExactlyOnceWith([photo('a')])
+		expect(mockDeletePhotos).toHaveBeenCalledExactlyOnceWith([saved('a')])
 	})
 
 	it("deletes a removed place's photos", async () => {
@@ -255,7 +308,7 @@ describe('places', () => {
 
 		await removePlace(USER, place?.id ?? '')
 
-		expect(mockDeletePhotos).toHaveBeenCalledWith([photo('a')])
+		expect(mockDeletePhotos).toHaveBeenCalledWith([saved('a')])
 	})
 
 	it('keeps the write when deleting a photo fails', async () => {

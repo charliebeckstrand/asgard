@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import {
+	CopyObjectCommand,
 	DeleteObjectCommand,
 	GetObjectCommand,
 	ListObjectsV2Command,
@@ -15,6 +16,10 @@ import type { PhotoType } from './schemas.js'
  * Photos live in a DigitalOcean Spaces bucket, which speaks the S3 API. The
  * bucket is private: browsers upload and read through presigned URLs, and
  * documents keep each photo's object key, never a URL.
+ *
+ * A browser uploads under `uploads/`, where a lifecycle rule on the bucket
+ * deletes whatever is left after a day. The save that keeps a photo copies it
+ * to the same name under `users/`, so an upload no save keeps cleans itself up.
  */
 
 /** How long an upload URL lasts. */
@@ -75,19 +80,33 @@ function bucket(): Bucket {
 	return configured
 }
 
-/** Where a user's photos live in the bucket. */
+const SAVED = 'users/'
+
+const UPLOADS = 'uploads/'
+
+/** Where a user's saved photos live in the bucket. */
 function userPrefix(userId: string): string {
-	return `users/${userId}/`
+	return `${SAVED}${userId}/`
 }
 
-/** A new key for a photo of the user. */
+/** A new key for a saved photo of the user, such as one Mimir copied from the web. */
 export function newPhotoKey(userId: string, extension: string): string {
 	return `${userPrefix(userId)}${randomUUID()}.${extension}`
 }
 
-/** Whether a key is under the user's own prefix. */
+/** A new key for a photo the user uploads, which a save then keeps. */
+export function newUploadKey(userId: string, extension: string): string {
+	return `${UPLOADS}${userId}/${randomUUID()}.${extension}`
+}
+
+/** The key a photo has once saved. An upload's is the same name under `users/`. */
+export function savedKey(key: string): string {
+	return key.startsWith(UPLOADS) ? `${SAVED}${key.slice(UPLOADS.length)}` : key
+}
+
+/** Whether a key is one of the user's own, saved or uploaded. */
 export function isOwnPhoto(userId: string, key: string): boolean {
-	return key.startsWith(userPrefix(userId))
+	return savedKey(key).startsWith(userPrefix(userId))
 }
 
 /**
@@ -124,6 +143,32 @@ export async function putPhoto(key: string, body: Uint8Array, contentType: strin
 	await client.send(
 		new PutObjectCommand({ Bucket: name, Key: key, Body: body, ContentType: contentType }),
 	)
+}
+
+/**
+ * Copies an upload to its saved key. `false` where the upload isn't there: it
+ * never finished, or the lifecycle rule deleted it.
+ */
+export async function keepUpload(key: string): Promise<boolean> {
+	const { client, name } = bucket()
+
+	try {
+		await client.send(
+			new CopyObjectCommand({
+				Bucket: name,
+				CopySource: `${name}/${encodeURI(key)}`,
+				Key: savedKey(key),
+			}),
+		)
+
+		return true
+	} catch (err) {
+		if ((err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) {
+			return false
+		}
+
+		throw err
+	}
 }
 
 /** Deletes photos. Deleting one that isn't there succeeds, as does deleting with no bucket. */

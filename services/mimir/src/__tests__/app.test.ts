@@ -599,7 +599,7 @@ describe('photo uploads', () => {
 		})
 	}
 
-	it("answers with a key under the user's prefix and its upload URL", async () => {
+	it("answers with an upload key under the user's id and its upload URL", async () => {
 		mockUploadUrl.mockResolvedValue('https://bucket.test/upload')
 
 		const res = await start({ contentType: 'image/webp', size: 1000 })
@@ -608,7 +608,7 @@ describe('photo uploads', () => {
 
 		const { key, uploadUrl } = (await res.json()) as { key: string; uploadUrl: string }
 
-		expect(key).toMatch(new RegExp(`^users/${USER_ID}/[0-9a-f-]{36}\\.webp$`))
+		expect(key).toMatch(new RegExp(`^uploads/${USER_ID}/[0-9a-f-]{36}\\.webp$`))
 
 		expect(uploadUrl).toBe('https://bucket.test/upload')
 
