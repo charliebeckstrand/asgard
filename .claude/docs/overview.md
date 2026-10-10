@@ -14,7 +14,7 @@ Shared packages in `packages/` never import from `services/`.
 Services in `services/`. Each has `manifest.json`, `migrations/`, `src/index.ts` (starts the server), `src/app.ts` (builds the routes) and `src/lib/{db,env,log}.ts`.
 
 - `bifrost` (port 4000, `/api`, public at auth.ivoryimage.dev): accounts and sign-in. Passwords, passkeys, authenticator apps, GitHub and Google OAuth, email verification and password reset through Resend, sessions, roles, and the admin-only `/api/security` routes that read Vidar.
-- `mimir` (port 4002, `/api`, private): apps' data, today the places app's places, trips and visited regions and the picks app's NFL picks, stored as one JSON document per user and name. Photos live in a DigitalOcean Spaces bucket (`src/lib/storage.ts`), and documents keep their keys. Places and trips change together under one lock (`handlers/travel.ts`), which also deletes the photos a write leaves unused. Behind an API key. Bifrost checks the session and forwards `/api/places/*`, `/api/visits/*`, `/api/trips/*`, `/api/photos/*` and `/api/predictions/*` unchanged with the user in `x-mimir-user`; Mimir declares each route's role and limits each user's requests. Bifrost itself calls Mimir's `/api/account` to export or delete all of a user's data. A new app's data gets its own routes and handlers here, not a new service. A document changes shape without a migration: its handler reads every shape already stored, and the next write stores the new one.
+- `mimir` (port 4002, `/api`, private): apps' data, today the places app's places, trips and visited regions and the picks app's NFL picks, stored as one JSON document per user and name. Photos live in a DigitalOcean Spaces bucket (`src/lib/storage.ts`), and documents keep their keys. Places and trips change together under one lock (`handlers/travel.ts`). A daily job (`handlers/photo-sweep.ts`) deletes the photos nothing holds, under the same lock. Behind an API key. Bifrost checks the session and forwards `/api/places/*`, `/api/visits/*`, `/api/trips/*`, `/api/photos/*` and `/api/predictions/*` unchanged with the user in `x-mimir-user`; Mimir declares each route's role and limits each user's requests. Bifrost itself calls Mimir's `/api/account` to export or delete all of a user's data. A new app's data gets its own routes and handlers here, not a new service. A document changes shape without a migration: its handler reads every shape already stored, and the next write stores the new one.
 - `vidar` (port 4001, `/vidar`, private): security events, threat rules and IP bans, behind an API key. Bifrost uses `vidar/client`: `banCheck`, `reportEvent`, and the admin reads, which answer 503 when Vidar is down.
 
 ## Commands
@@ -24,6 +24,7 @@ Services in `services/`. Each has `manifest.json`, `migrations/`, `src/index.ts`
 - `pnpm dev` starts Postgres in Docker, creates the local roles and databases, applies migrations, and runs every service through `hlidskjalf`.
 - `pnpm --filter <service> db:migrate` and `db:status` run against the service's `.env`. `pnpm --filter <service> exec saga new <name>` adds a migration.
 - `pnpm --filter bifrost openapi` and `pnpm --filter mimir openapi` rewrite each service's `openapi.json`. A test fails when a spec and its routes differ.
+- `node services/mimir/dist/cli.js sweep-photos` deletes the photos no visit or trip holds once they are a day old, or with `PHOTO_SWEEP_DELETE` off only logs them. A scheduled job runs it daily at 10:00 UTC.
 - `node services/mimir/dist/cli.js migrate-photos` copies the photos visits kept as web addresses into the bucket. The deploy runs it after each release until its job is removed.
 
 ## Environment
@@ -32,7 +33,7 @@ Each service's `.env` is generated from its `manifest.json` and the secrets cach
 
 ## Deploy
 
-A push to `main` runs CI, then applies `.do/app.yaml` to the `asgard` app on DigitalOcean App Platform. The spec's comments explain each part. In short: bifrost, vidar and mimir run from the one Dockerfile (`SERVICE` build arg); a `PRE_DEPLOY` job per service runs `saga migrate` as the admin user; each service connects as its own user, which can read and write rows but not change the schema; logs go to Better Stack. A `POST_DEPLOY` job runs Mimir's photo migration once the new version is live.
+A push to `main` runs CI, then applies `.do/app.yaml` to the `asgard` app on DigitalOcean App Platform. The spec's comments explain each part. In short: bifrost, vidar and mimir run from the one Dockerfile (`SERVICE` build arg); a `PRE_DEPLOY` job per service runs `saga migrate` as the admin user; each service connects as its own user, which can read and write rows but not change the schema; logs go to Better Stack. A `POST_DEPLOY` job runs Mimir's photo migration once the new version is live. A `SCHEDULED` job runs Mimir's photo sweep each day.
 
 Renovate's minor and patch updates (`renovate.json`) merge themselves once CI passes, so they deploy like any other push.
 

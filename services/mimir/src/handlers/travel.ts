@@ -1,5 +1,4 @@
 import { DataError } from '../lib/errors.js'
-import { logger } from '../lib/log.js'
 import {
 	type Place,
 	type StoredPlace,
@@ -8,13 +7,13 @@ import {
 	StoredTripSchema,
 	type Trip,
 } from '../lib/schemas.js'
-import { deletePhotos, isOwnPhoto, photoUrl } from '../lib/storage.js'
+import { isOwnPhoto, photoExists, photoUrl } from '../lib/storage.js'
 import { changeDocuments } from './documents.js'
 
 /**
  * What places and trips share. A visit can name a trip, so a write of either
- * reads both documents under one lock, and the rules between them hold. Each
- * write also deletes the photos it leaves unused.
+ * reads both documents under one lock, and the rules between them hold. The
+ * photo sweep takes the same lock, so no write adds a photo it is deleting.
  */
 
 /** The stored records of a document, or none where it doesn't exist yet. */
@@ -87,41 +86,40 @@ type TravelChange<T> = { result: T; places?: unknown[]; trips?: unknown[] }
 
 /**
  * Reads the user's places and trips, gives their records to `change`, and
- * writes the documents it gives back, in one transaction. Once that commits,
- * deletes the photos no place or trip uses anymore.
+ * writes the documents it gives back, in one transaction.
+ *
+ * Each photo key the change adds must name an object in the bucket. That
+ * proves the upload finished, and refuses a photo the sweep has deleted since
+ * the draft was opened. Keys the documents already hold need no check.
  */
 export async function changeTravel<T>(
 	userId: string,
 	change: (places: unknown[], trips: unknown[]) => TravelChange<T> | Promise<TravelChange<T>>,
 ): Promise<T> {
-	let unused: string[] = []
+	return changeDocuments(userId, ['places', 'trips'], async ([placesDoc, tripsDoc]) => {
+		const places = records(placesDoc)
 
-	const result = await changeDocuments(
-		userId,
-		['places', 'trips'],
-		async ([placesDoc, tripsDoc]) => {
-			const places = records(placesDoc)
+		const trips = records(tripsDoc)
 
-			const trips = records(tripsDoc)
+		const changed = await change(places, trips)
 
-			const changed = await change(places, trips)
+		const held = photoKeys(places, trips)
 
-			const kept = photoKeys(changed.places ?? places, changed.trips ?? trips)
+		const added = [...photoKeys(changed.places ?? places, changed.trips ?? trips)].filter(
+			(key) => !held.has(key),
+		)
 
-			unused = [...photoKeys(places, trips)].filter((key) => !kept.has(key))
+		const exists = await Promise.all(added.map((key) => photoExists(key)))
 
-			return { result: changed.result, values: [changed.places, changed.trips] }
-		},
-	)
+		if (exists.includes(false)) {
+			throw new DataError(
+				'photo-missing',
+				'A photo is no longer available. Remove it and save again.',
+			)
+		}
 
-	if (unused.length > 0) {
-		// The write stands either way. A photo left behind is only storage.
-		await deletePhotos(unused).catch((err: unknown) => {
-			logger().error({ err, userId, keys: unused }, 'photo delete failed')
-		})
-	}
-
-	return result
+		return { result: changed.result, values: [changed.places, changed.trips] }
+	})
 }
 
 /** Refuses a photo key outside the user's own prefix. */

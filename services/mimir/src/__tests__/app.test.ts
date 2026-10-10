@@ -22,7 +22,6 @@ const {
 	mockUpdateTrip,
 	mockRemoveTrip,
 	mockUploadUrl,
-	mockDeleteUserPhotos,
 } = vi.hoisted(() => ({
 	mockPing: vi.fn(),
 	mockListPlaces: vi.fn(),
@@ -41,7 +40,6 @@ const {
 	mockUpdateTrip: vi.fn(),
 	mockRemoveTrip: vi.fn(),
 	mockUploadUrl: vi.fn(),
-	mockDeleteUserPhotos: vi.fn(),
 }))
 
 vi.mock('../lib/db.js', () => ({
@@ -80,7 +78,6 @@ vi.mock('../handlers/trips.js', () => ({
 vi.mock('../lib/storage.js', async (original) => ({
 	...(await original<typeof import('../lib/storage.js')>()),
 	uploadUrl: (...args: unknown[]) => mockUploadUrl(...args),
-	deleteUserPhotos: (...args: unknown[]) => mockDeleteUserPhotos(...args),
 }))
 
 vi.mock('../handlers/documents.js', () => ({
@@ -229,8 +226,6 @@ describe('account', () => {
 		expect(res.status).toBe(204)
 
 		expect(mockDeleteDocuments).toHaveBeenCalledWith(USER_ID)
-
-		expect(mockDeleteUserPhotos).toHaveBeenCalledWith(USER_ID)
 	})
 
 	it('needs a user', async () => {

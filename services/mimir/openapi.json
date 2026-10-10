@@ -715,7 +715,7 @@
 					"Account"
 				],
 				"summary": "Delete all of a user's data",
-				"description": "Deletes every app's data of the user and all their photos, when their account is deleted.",
+				"description": "Deletes every app's data of the user, when their account is deleted. The daily photo sweep deletes their photos once nothing holds them.",
 				"responses": {
 					"204": {
 						"description": "Data deleted"
@@ -820,7 +820,7 @@
 						}
 					},
 					"409": {
-						"description": "Already keeping 1000 places",
+						"description": "Already keeping 1000 places, or a photo is no longer in the bucket (`photo-missing`)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -905,6 +905,16 @@
 					},
 					"404": {
 						"description": "No place with that id",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "A photo is no longer in the bucket (`photo-missing`)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1188,7 +1198,7 @@
 						}
 					},
 					"409": {
-						"description": "Already keeping 1000 trips, or as many places or visits as allowed",
+						"description": "Already keeping 1000 trips, or as many places or visits as allowed, or a photo is no longer in the bucket (`photo-missing`)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1282,7 +1292,7 @@
 						}
 					},
 					"409": {
-						"description": "The new days would leave out one of its visits (`trip-days-exclude-visits`)",
+						"description": "The new days would leave out one of its visits (`trip-days-exclude-visits`), or a photo is no longer in the bucket (`photo-missing`)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1298,7 +1308,7 @@
 					"Trips"
 				],
 				"summary": "Remove a trip",
-				"description": "Its visits stay on their places, without the trip. Its photos are deleted.",
+				"description": "Its visits stay on their places, without the trip.",
 				"parameters": [
 					{
 						"schema": {
@@ -1355,7 +1365,7 @@
 					"Photos"
 				],
 				"summary": "Start a photo upload",
-				"description": "Answers with a key and a URL to PUT the photo to. Once uploaded, a visit or trip draft sends the key. A photo no visit or trip keeps is deleted with the account.",
+				"description": "Answers with a key and a URL to PUT the photo to. Once uploaded, a visit or trip draft sends the key. A photo no visit or trip holds is deleted once it is a day old.",
 				"requestBody": {
 					"required": true,
 					"content": {

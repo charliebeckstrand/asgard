@@ -2,14 +2,14 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv({ MIMIR_API_KEY: 'test-mimir-api-key-that-is-at-least-32-chars' })
 
-const { mockDeletePhotos } = vi.hoisted(() => ({ mockDeletePhotos: vi.fn() }))
+const { mockPhotoExists } = vi.hoisted(() => ({ mockPhotoExists: vi.fn() }))
 
 vi.mock('../../handlers/documents.js', () => import('./documents-mock.js'))
 
 vi.mock('../../lib/storage.js', async (original) => ({
 	...(await original<typeof import('../../lib/storage.js')>()),
 	photoUrl: async (key: string) => `https://bucket.test/${key}?signed`,
-	deletePhotos: mockDeletePhotos,
+	photoExists: mockPhotoExists,
 }))
 
 import {
@@ -54,7 +54,7 @@ function asDraft(place: Place | null): PlaceDraft {
 beforeEach(() => {
 	documents.clear()
 
-	mockDeletePhotos.mockReset().mockResolvedValue(undefined)
+	mockPhotoExists.mockReset().mockResolvedValue(true)
 })
 
 describe('places', () => {
@@ -228,47 +228,39 @@ describe('places', () => {
 		expect(documents.has(`${USER}:places`)).toBe(false)
 	})
 
-	it('deletes the photos a write drops, and keeps those still in use', async () => {
-		const place = await addPlace(USER, {
-			...draft,
-			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a'), photo('b')] }],
-		})
-
-		await addPlace(USER, {
-			...draft,
-			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('b')] }],
-		})
-
-		await updatePlace(USER, place?.id ?? '', {
-			...draft,
-			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [] }],
-		})
-
-		expect(mockDeletePhotos).toHaveBeenCalledExactlyOnceWith([photo('a')])
-	})
-
-	it("deletes a removed place's photos", async () => {
+	it('checks each photo a write adds, and refuses one no longer in the bucket', async () => {
 		const place = await addPlace(USER, {
 			...draft,
 			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
 		})
+
+		expect(mockPhotoExists).toHaveBeenCalledExactlyOnceWith(photo('a'))
+
+		mockPhotoExists.mockImplementation(async (key: string) => key !== photo('b'))
+
+		await expect(
+			updatePlace(USER, place?.id ?? '', {
+				...draft,
+				visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a'), photo('b')] }],
+			}),
+		).rejects.toMatchObject({ status: 409, code: 'photo-missing' })
+
+		expect(await listPlaces(USER)).toEqual([place])
+	})
+
+	it('makes no check for photos the places already hold', async () => {
+		const place = await addPlace(USER, {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
+		})
+
+		mockPhotoExists.mockClear()
+
+		await updatePlace(USER, place?.id ?? '', { ...asDraft(place), name: 'Diner' })
 
 		await removePlace(USER, place?.id ?? '')
 
-		expect(mockDeletePhotos).toHaveBeenCalledWith([photo('a')])
-	})
-
-	it('keeps the write when deleting a photo fails', async () => {
-		mockDeletePhotos.mockRejectedValue(new Error('down'))
-
-		const place = await addPlace(USER, {
-			...draft,
-			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
-		})
-
-		expect(await removePlace(USER, place?.id ?? '')).toBe(true)
-
-		expect(await listPlaces(USER)).toEqual([])
+		expect(mockPhotoExists).not.toHaveBeenCalled()
 	})
 
 	describe('trips', () => {

@@ -20,7 +20,8 @@ This file is the one record of how the two repos fit together. Midgard links her
 
 - Photos live in a private DigitalOcean Spaces bucket. To add one, call `POST /api/photos/uploads` with `{ contentType, size }` (JPEG, PNG or WebP, at most 15 MB). It answers `{ key, uploadUrl }`. PUT the file to `uploadUrl` within five minutes, with the same `content-type` and exactly `size` bytes, then send `key` in the visit's or trip's `photos`.
 - Drafts send keys. Reads answer each photo as `{ key, url }`; `url` is a presigned GET that works for at least 45 minutes and stays the same for a quarter hour, so the browser caches it. A key outside the user's own is refused with 400 and `code: "photo-not-yours"`.
-- A write that drops a key deletes the photo, and so does deleting a trip, visit, place or account. An upload that is never saved stays until the account is deleted.
+- A daily sweep deletes each photo that no visit or trip holds once it is 24 hours old: photos a write dropped, those of deleted trips, visits, places and accounts, and uploads never saved. Writes delete nothing themselves. Upload a photo right before the save that sends its key.
+- `POST` and `PUT` on `/api/places` and `/api/trips` check each key they add, one the stored records don't already hold, and answer 409 with `code: "photo-missing"` and the message "A photo is no longer available. Remove it and save again." when its object is gone, as when a draft kept a photo the sweep has since deleted.
 - The bucket's CORS allows PUT and GET from https://places.ivoryimage.dev and http://localhost:3001, with the `content-type` header. It is set in the Spaces dashboard, not in this repo.
 - Visits saved before uploads kept photos as web addresses. The deploy copies them into the bucket. Until it has, such a photo reads as `{ key, url }` with the address in both, and sending it back is refused, so Midgard should drop it from a draft rather than send it.
 

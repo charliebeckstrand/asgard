@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import {
 	DeleteObjectCommand,
 	GetObjectCommand,
+	HeadObjectCommand,
 	ListObjectsV2Command,
 	PutObjectCommand,
 	S3Client,
@@ -126,41 +127,80 @@ export async function putPhoto(key: string, body: Uint8Array, contentType: strin
 	)
 }
 
-/** Deletes photos. Deleting one that isn't there succeeds, as does deleting with no bucket. */
-export async function deletePhotos(keys: Iterable<string>): Promise<void> {
-	const configured = configuredBucket()
+/** Whether the bucket holds the photo. */
+export async function photoExists(key: string): Promise<boolean> {
+	const { client, name } = bucket()
 
-	if (!configured) return
+	try {
+		await client.send(new HeadObjectCommand({ Bucket: name, Key: key }))
 
-	const { client, name } = configured
+		return true
+	} catch (err) {
+		if ((err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) {
+			return false
+		}
 
-	await Promise.all(
-		[...keys].map((key) => client.send(new DeleteObjectCommand({ Bucket: name, Key: key }))),
-	)
+		throw err
+	}
 }
 
-/** Deletes every photo under the user's prefix, saved or not, for when their account is deleted. */
-export async function deleteUserPhotos(userId: string): Promise<void> {
-	const configured = configuredBucket()
+/** A photo in the bucket, and when it was last written. */
+export type StoredObject = { key: string; modified: Date }
 
-	// With no bucket there are no photos, so deleting an account still works.
-	if (!configured) return
+/** Every photo in the bucket, under every user's prefix. */
+export async function listPhotos(): Promise<StoredObject[]> {
+	const { client, name } = bucket()
 
-	const { client, name } = configured
+	const objects: StoredObject[] = []
 
 	let token: string | undefined
 
 	do {
 		const page = await client.send(
-			new ListObjectsV2Command({
-				Bucket: name,
-				Prefix: userPrefix(userId),
-				ContinuationToken: token,
-			}),
+			new ListObjectsV2Command({ Bucket: name, Prefix: 'users/', ContinuationToken: token }),
 		)
 
-		await deletePhotos((page.Contents ?? []).flatMap((object) => object.Key ?? []))
+		for (const { Key, LastModified } of page.Contents ?? []) {
+			if (Key && LastModified) objects.push({ key: Key, modified: LastModified })
+		}
 
 		token = page.IsTruncated ? page.NextContinuationToken : undefined
 	} while (token)
+
+	return objects
+}
+
+/** How many deletes go out at once. */
+const DELETE_BATCH = 100
+
+/**
+ * Deletes photos, and gives back each one it couldn't delete with the reason.
+ * Deleting one that isn't there succeeds. Every delete shares `signal`, so a
+ * caller holding a lock can bound how long it holds it.
+ *
+ * One request per photo rather than DeleteObjects: since 3.729 the SDK signs
+ * DeleteObjects with a CRC32 checksum instead of Content-MD5, which some
+ * S3-compatible stores refuse. A single delete needs neither.
+ */
+export async function deletePhotos(
+	keys: string[],
+	signal: AbortSignal,
+): Promise<{ key: string; err: unknown }[]> {
+	const { client, name } = bucket()
+
+	const failed: { key: string; err: unknown }[] = []
+
+	for (let start = 0; start < keys.length; start += DELETE_BATCH) {
+		await Promise.all(
+			keys.slice(start, start + DELETE_BATCH).map((key) =>
+				client
+					.send(new DeleteObjectCommand({ Bucket: name, Key: key }), { abortSignal: signal })
+					.catch((err: unknown) => {
+						failed.push({ key, err })
+					}),
+			),
+		)
+	}
+
+	return failed
 }

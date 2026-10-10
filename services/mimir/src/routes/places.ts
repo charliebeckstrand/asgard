@@ -34,7 +34,9 @@ const addPlaceRoute = createRoute({
 		),
 		401: errorResponse('Not signed in'),
 		403: errorResponse('No user role, or email not verified'),
-		409: errorResponse(`Already keeping ${MAX_PLACES} places`),
+		409: errorResponse(
+			`Already keeping ${MAX_PLACES} places, or a photo is no longer in the bucket (\`photo-missing\`)`,
+		),
 	},
 })
 
@@ -57,6 +59,7 @@ const updatePlaceRoute = createRoute({
 		401: errorResponse('Not signed in'),
 		403: errorResponse('No user role, or email not verified'),
 		404: errorResponse('No place with that id'),
+		409: errorResponse('A photo is no longer in the bucket (`photo-missing`)'),
 	},
 })
 

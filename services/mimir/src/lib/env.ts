@@ -27,4 +27,9 @@ export const environment = createEnvironment({
 	SPACES_REGION: spacesValue('SPACES_REGION'),
 	SPACES_BUCKET: spacesValue('SPACES_BUCKET'),
 	SPACES_ENDPOINT: spacesValue('SPACES_ENDPOINT'),
+	// Whether the photo sweep deletes. Off, it only logs what it would delete.
+	PHOTO_SWEEP_DELETE: z
+		.enum(['true', 'false'])
+		.default('false')
+		.transform((value) => value === 'true'),
 })

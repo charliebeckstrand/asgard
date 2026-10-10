@@ -10,7 +10,7 @@ const createUploadRoute = createRoute({
 	tags: ['Photos'],
 	summary: 'Start a photo upload',
 	description:
-		'Answers with a key and a URL to PUT the photo to. Once uploaded, a visit or trip draft sends the key. A photo no visit or trip keeps is deleted with the account.',
+		'Answers with a key and a URL to PUT the photo to. Once uploaded, a visit or trip draft sends the key. A photo no visit or trip holds is deleted once it is a day old.',
 	middleware: [requireRole('user')] as const,
 	request: {
 		body: jsonRequest(PhotoUploadRequestSchema),
