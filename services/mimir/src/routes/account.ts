@@ -3,8 +3,10 @@ import { createRouter, errorResponse, jsonResponse } from 'grid'
 import { deleteDocuments } from '../handlers/documents.js'
 import { listPlaces } from '../handlers/places.js'
 import { listAllPicks } from '../handlers/predictions.js'
+import { listTrips } from '../handlers/trips.js'
 import { listVisits } from '../handlers/visits.js'
 import { AccountDataSchema } from '../lib/schemas.js'
+import { deleteUserPhotos } from '../lib/storage.js'
 import { requireUser, type UserEnv } from '../middleware/user.js'
 
 // Bifrost calls these itself when a user exports or deletes their account. It
@@ -27,7 +29,8 @@ const deleteAccountDataRoute = createRoute({
 	path: '/account',
 	tags: ['Account'],
 	summary: "Delete all of a user's data",
-	description: "Deletes every app's data of the user, when their account is deleted.",
+	description:
+		"Deletes every app's data of the user and all their photos, when their account is deleted.",
 	responses: {
 		204: { description: 'Data deleted' },
 		401: errorResponse('No user'),
@@ -39,17 +42,24 @@ const accountRoutes = createRouter<UserEnv>()
 accountRoutes.openapi(getAccountDataRoute, async (c) => {
 	const { id } = requireUser(c)
 
-	const [places, visits, predictions] = await Promise.all([
+	const [places, visits, trips, predictions] = await Promise.all([
 		listPlaces(id),
 		listVisits(id),
+		listTrips(id),
 		listAllPicks(id),
 	])
 
-	return c.json({ places, visits, predictions }, 200)
+	return c.json({ places, visits, trips, predictions }, 200)
 })
 
 accountRoutes.openapi(deleteAccountDataRoute, async (c) => {
-	await deleteDocuments(requireUser(c).id)
+	const { id } = requireUser(c)
+
+	await deleteDocuments(id)
+
+	// After the documents, so no write can save a photo this misses. A failure
+	// answers 500, and bifrost keeps the account until a retry finishes.
+	await deleteUserPhotos(id)
 
 	return c.body(null, 204)
 })

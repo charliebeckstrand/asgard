@@ -1,61 +1,45 @@
 import { randomUUID } from 'node:crypto'
-import { type Place, type PlaceDraft, PlaceSchema, type Visit } from '../lib/schemas.js'
-import { changeDocument, readDocument } from './documents.js'
+import type { Place, PlaceDraft, StoredPlace, StoredVisit } from '../lib/schemas.js'
+import { readDocument } from './documents.js'
+import {
+	changeTravel,
+	checkOwnPhotos,
+	checkVisitsOnTrips,
+	hasId,
+	presentPlace,
+	readPlace,
+	records,
+} from './travel.js'
 
 /** The most places one user keeps, so no account can fill the database. */
 export const MAX_PLACES = 1000
 
-/** The stored records of a document, or none where it doesn't exist yet. */
-function records(document: unknown): unknown[] {
-	return Array.isArray(document) ? document : []
-}
-
 /** The day of the newest visit to a place. Its visits are stored newest first. */
-function lastVisit(place: Place): string {
+function lastVisit(place: StoredPlace): string {
 	return place.visits[0]?.visitedAt ?? ''
 }
 
-/** Whether a stored record carries this id, whether or not the rest of it reads as a place. */
-function hasId(record: unknown, id: string): boolean {
-	return typeof record === 'object' && record !== null && (record as { id?: unknown }).id === id
-}
-
-/**
- * A stored record in the shape the schema reads.
- *
- * A place stored before visits kept one visit in its own fields: `visitedAt`,
- * `rating`, `review` and `photo`. Such a record reads as a place with that one
- * visit, under the id of the place. The next write of the place stores the new
- * shape.
- */
-function upgradeRecord(record: unknown): unknown {
-	if (typeof record !== 'object' || record === null || 'visits' in record) return record
-
-	const { visitedAt, rating, review, photo, ...place } = record as Record<string, unknown>
-
-	return {
-		...place,
-		visits: [
-			{ id: place.id, visitedAt, rating, review, photos: photo === undefined ? [] : [photo] },
-		],
-	}
-}
-
-/** The stored place under a record, or `undefined` where the record doesn't read as one. */
-function readPlace(record: unknown): Place | undefined {
-	const parsed = PlaceSchema.safeParse(upgradeRecord(record))
-
-	return parsed.success ? parsed.data : undefined
+/** Newest visit first, the order visits are stored in. */
+export function newestFirst(visits: StoredVisit[]): StoredVisit[] {
+	return visits.sort((a, b) => b.visitedAt.localeCompare(a.visitedAt))
 }
 
 /**
  * The visits of a draft as Mimir stores them: each with an id, newest first.
  * A visit without an id is new, and gets one.
  */
-function storedVisits(draft: PlaceDraft): Visit[] {
-	return draft.visits
-		.map((visit) => ({ ...visit, id: visit.id ?? randomUUID() }))
-		.sort((a, b) => b.visitedAt.localeCompare(a.visitedAt))
+function storedVisits(draft: PlaceDraft): StoredVisit[] {
+	return newestFirst(draft.visits.map((visit) => ({ ...visit, id: visit.id ?? randomUUID() })))
+}
+
+/** Refuses a draft with another user's photos, or a visit outside its trip. */
+function checkDraft(userId: string, draft: PlaceDraft, trips: unknown[]): void {
+	checkOwnPhotos(
+		userId,
+		draft.visits.flatMap((visit) => visit.photos),
+	)
+
+	checkVisitsOnTrips(draft.visits, trips)
 }
 
 /**
@@ -66,8 +50,8 @@ function storedVisits(draft: PlaceDraft): Visit[] {
  * and keep the others as they are, so a record a stricter schema can't read
  * stays in the document instead of disappearing on the next write.
  */
-export async function listPlaces(userId: string): Promise<Place[]> {
-	const places: Place[] = []
+export async function storedPlaces(userId: string): Promise<StoredPlace[]> {
+	const places: StoredPlace[] = []
 
 	for (const record of records(await readDocument(userId, 'places'))) {
 		const place = readPlace(record)
@@ -78,54 +62,70 @@ export async function listPlaces(userId: string): Promise<Place[]> {
 	return places.sort((a, b) => lastVisit(b).localeCompare(lastVisit(a)))
 }
 
+/** Every place, newest visit first, with a URL for each photo. */
+export async function listPlaces(userId: string): Promise<Place[]> {
+	return Promise.all((await storedPlaces(userId)).map(presentPlace))
+}
+
 /** Adds one place. `null` where the user already keeps {@link MAX_PLACES}. */
-export function addPlace(userId: string, draft: PlaceDraft): Promise<Place | null> {
-	return changeDocument(userId, 'places', (document) => {
-		const stored = records(document)
+export async function addPlace(userId: string, draft: PlaceDraft): Promise<Place | null> {
+	const place = await changeTravel(userId, (places, trips) => {
+		checkDraft(userId, draft, trips)
 
-		if (stored.length >= MAX_PLACES) return { result: null }
+		if (places.length >= MAX_PLACES) return { result: null }
 
-		const place: Place = {
+		const added: StoredPlace = {
 			...draft,
 			id: randomUUID(),
 			createdAt: new Date().toISOString(),
 			visits: storedVisits(draft),
 		}
 
-		return { result: place, value: [place, ...stored] }
+		return { result: added, places: [added, ...places] }
 	})
+
+	return place && presentPlace(place)
 }
 
 /**
  * Replaces one place, keeping its id and when it was added. `null` where no
  * place carries that id, rather than writing one under an id the caller made up.
  */
-export function updatePlace(userId: string, id: string, draft: PlaceDraft): Promise<Place | null> {
-	return changeDocument(userId, 'places', (document) => {
-		const stored = records(document)
+export async function updatePlace(
+	userId: string,
+	id: string,
+	draft: PlaceDraft,
+): Promise<Place | null> {
+	const place = await changeTravel(userId, (places, trips) => {
+		checkDraft(userId, draft, trips)
 
-		const held = stored.map(readPlace).find((place) => place?.id === id)
+		const held = places.map(readPlace).find((stored) => stored?.id === id)
 
 		if (held === undefined) return { result: null }
 
-		const updated: Place = { ...draft, id, createdAt: held.createdAt, visits: storedVisits(draft) }
+		const updated: StoredPlace = {
+			...draft,
+			id,
+			createdAt: held.createdAt,
+			visits: storedVisits(draft),
+		}
 
 		return {
 			result: updated,
-			value: stored.map((record) => (hasId(record, id) ? updated : record)),
+			places: places.map((record) => (hasId(record, id) ? updated : record)),
 		}
 	})
+
+	return place && presentPlace(place)
 }
 
-/** Removes one place. `false` where none carried that id. */
+/** Removes one place and its photos. `false` where none carried that id. */
 export function removePlace(userId: string, id: string): Promise<boolean> {
-	return changeDocument(userId, 'places', (document) => {
-		const stored = records(document)
+	return changeTravel(userId, (places) => {
+		const kept = places.filter((record) => !hasId(record, id))
 
-		const kept = stored.filter((record) => !hasId(record, id))
+		if (kept.length === places.length) return { result: false }
 
-		if (kept.length === stored.length) return { result: false }
-
-		return { result: true, value: kept }
+		return { result: true, places: kept }
 	})
 }

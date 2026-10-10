@@ -1,24 +1,8 @@
-const { documents } = vi.hoisted(() => ({ documents: new Map<string, unknown>() }))
-
-// The documents as a map, so these tests cover what the handlers do with a
-// document. documents.integration.test.ts covers the database.
-vi.mock('../../handlers/documents.js', () => ({
-	readDocument: async (userId: string, name: string) => documents.get(`${userId}:${name}`),
-	changeDocument: async (
-		userId: string,
-		name: string,
-		change: (document: unknown) => Promise<{ result: unknown; value?: unknown }>,
-	) => {
-		const { result, value } = await change(documents.get(`${userId}:${name}`))
-
-		if (value !== undefined) documents.set(`${userId}:${name}`, value)
-
-		return result
-	},
-}))
+vi.mock('../../handlers/documents.js', () => import('./documents-mock.js'))
 
 import { addPlace } from '../../handlers/places.js'
 import { listVisits, MAX_VISITS, setVisit } from '../../handlers/visits.js'
+import { documents } from './documents-mock.js'
 
 const USER = 'user-1'
 
