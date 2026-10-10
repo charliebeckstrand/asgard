@@ -19,7 +19,8 @@ vi.mock('../../handlers/documents.js', async () => {
 	}
 })
 
-vi.mock('../../lib/storage.js', () => ({
+vi.mock('../../lib/storage.js', async (original) => ({
+	...(await original<typeof import('../../lib/storage.js')>()),
 	listPhotos: mockListPhotos,
 	deletePhotos: mockDeletePhotos,
 }))

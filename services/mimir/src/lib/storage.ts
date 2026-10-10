@@ -9,6 +9,7 @@ import {
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { HTTPException } from 'grid'
+import { IdSchema } from 'skuld'
 import { environment } from './env.js'
 import type { PhotoType } from './schemas.js'
 
@@ -35,14 +36,14 @@ type Bucket = { client: S3Client; name: string }
 
 let cached: Bucket | null = null
 
-/** The bucket, or `null` where it isn't set, as in development without Spaces. */
-function configuredBucket(): Bucket | null {
+/** The bucket, or a 503 where it isn't set, as in development without Spaces. */
+function bucket(): Bucket {
 	if (cached) return cached
 
 	const { SPACES_KEY, SPACES_SECRET, SPACES_REGION, SPACES_BUCKET, SPACES_ENDPOINT } = environment()
 
 	if (!SPACES_KEY || !SPACES_SECRET || !SPACES_REGION || !SPACES_BUCKET || !SPACES_ENDPOINT) {
-		return null
+		throw new HTTPException(503, { message: 'Photos are unavailable' })
 	}
 
 	// The dashboard shows the bucket's own endpoint too, with the bucket name in
@@ -67,23 +68,26 @@ function configuredBucket(): Bucket | null {
 	return cached
 }
 
-/** The bucket, or a 503 where it isn't set. */
-function bucket(): Bucket {
-	const configured = configuredBucket()
-
-	if (!configured) throw new HTTPException(503, { message: 'Photos are unavailable' })
-
-	return configured
-}
+/** Where every user's photos live in the bucket. */
+const USERS_PREFIX = 'users/'
 
 /** Where a user's photos live in the bucket. */
 function userPrefix(userId: string): string {
-	return `users/${userId}/`
+	return `${USERS_PREFIX}${userId}/`
 }
 
 /** A new key for a photo of the user. */
 export function newPhotoKey(userId: string, extension: string): string {
 	return `${userPrefix(userId)}${randomUUID()}.${extension}`
+}
+
+/** The id of the user whose photo a key is, or `undefined` where it isn't one. */
+export function photoOwner(key: string): string | undefined {
+	const [root, userId, file, ...rest] = key.split('/')
+
+	if (`${root}/` !== USERS_PREFIX || !file || rest.length > 0) return undefined
+
+	return IdSchema.safeParse(userId).success ? userId : undefined
 }
 
 /** Whether a key is under the user's own prefix. */
@@ -127,12 +131,17 @@ export async function putPhoto(key: string, body: Uint8Array, contentType: strin
 	)
 }
 
+/** How long a call to the bucket may hold the user's lock, so a save waits at most this. */
+export const REQUEST_TIMEOUT_MS = 10_000
+
 /** Whether the bucket holds the photo. */
 export async function photoExists(key: string): Promise<boolean> {
 	const { client, name } = bucket()
 
 	try {
-		await client.send(new HeadObjectCommand({ Bucket: name, Key: key }))
+		await client.send(new HeadObjectCommand({ Bucket: name, Key: key }), {
+			abortSignal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+		})
 
 		return true
 	} catch (err) {
@@ -145,7 +154,7 @@ export async function photoExists(key: string): Promise<boolean> {
 }
 
 /** A photo in the bucket, and when it was last written. */
-export type StoredObject = { key: string; modified: Date }
+type StoredObject = { key: string; modified: Date }
 
 /** Every photo in the bucket, under every user's prefix. */
 export async function listPhotos(): Promise<StoredObject[]> {
@@ -157,7 +166,7 @@ export async function listPhotos(): Promise<StoredObject[]> {
 
 	do {
 		const page = await client.send(
-			new ListObjectsV2Command({ Bucket: name, Prefix: 'users/', ContinuationToken: token }),
+			new ListObjectsV2Command({ Bucket: name, Prefix: USERS_PREFIX, ContinuationToken: token }),
 		)
 
 		for (const { Key, LastModified } of page.Contents ?? []) {
