@@ -85,16 +85,18 @@ const createdAt = z
 	.openapi({ description: 'When it was added, ISO 8601' })
 
 /**
- * The key of an uploaded photo: `users/{userId}/{uuid}.{ext}`. A document keeps
- * keys, never URLs, so a stored photo can't point anywhere else.
+ * A photo in a draft: the key `POST /api/photos/uploads` gave for a new photo,
+ * `uploads/{userId}/{uuid}.{ext}`, or the stored key of a kept one,
+ * `users/{userId}/{uuid}.{ext}`. A document keeps keys, never URLs, so a
+ * stored photo can't point anywhere else.
  */
 const PhotoKeySchema = z
 	.string('A photo must be the key of an uploaded photo.')
 	.regex(
-		/^users\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z]{3,4}$/,
+		/^(users|uploads)\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z]{3,4}$/,
 		'A photo must be the key of an uploaded photo.',
 	)
-	.openapi({ description: 'The key `POST /api/photos/uploads` gave' })
+	.openapi({ description: 'The key `POST /api/photos/uploads` gave, or a stored photo’s key' })
 
 const PhotoSchema = z
 	.object({

@@ -537,6 +537,34 @@ describe('trips', () => {
 		expect(mockCreateTrip).toHaveBeenCalledWith(USER_ID, { ...trip, stops })
 	})
 
+	it('takes the key an upload gave, beside the key of a kept photo', async () => {
+		mockUploadUrl.mockResolvedValue('https://bucket.test/upload')
+
+		mockCreateTrip.mockResolvedValue({ trip: stored, places: [] })
+
+		mockUpdatePlace.mockResolvedValue(place)
+
+		const upload = await app.request('/api/photos/uploads', {
+			method: 'POST',
+			headers: headers(),
+			body: JSON.stringify({ contentType: 'image/jpeg', size: 1000 }),
+		})
+
+		const { key } = (await upload.json()) as { key: string }
+
+		const photos = [key, ...trip.photos]
+
+		expect((await send('POST', '/api/trips', { ...trip, photos })).status).toBe(201)
+
+		expect(mockCreateTrip).toHaveBeenCalledWith(USER_ID, { ...trip, photos })
+
+		const visits = [{ ...draft.visits[0], photos }]
+
+		expect((await send('PUT', '/api/places/place-1', { ...draft, visits })).status).toBe(200)
+
+		expect(mockUpdatePlace).toHaveBeenCalledWith(USER_ID, 'place-1', { ...draft, visits })
+	})
+
 	it.each([
 		['ends before it starts', { ...trip, endsOn: '2026-09-24' }, '`endsOn` must be on or after'],
 		['has a photo address', { ...trip, photos: ['https://example.com/a.jpg'] }, 'A photo must be'],

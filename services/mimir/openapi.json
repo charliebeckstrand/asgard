@@ -449,8 +449,8 @@
 						"type": "array",
 						"items": {
 							"type": "string",
-							"pattern": "^users\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}\\.[a-z]{3,4}$",
-							"description": "The key `POST /api/photos/uploads` gave"
+							"pattern": "^(users|uploads)\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}\\.[a-z]{3,4}$",
+							"description": "The key `POST /api/photos/uploads` gave, or a stored photo’s key"
 						},
 						"maxItems": 12,
 						"description": "Pictures of the visit, in the order the user put them"
@@ -578,8 +578,8 @@
 								"type": "array",
 								"items": {
 									"type": "string",
-									"pattern": "^users\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}\\.[a-z]{3,4}$",
-									"description": "The key `POST /api/photos/uploads` gave"
+									"pattern": "^(users|uploads)\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}\\.[a-z]{3,4}$",
+									"description": "The key `POST /api/photos/uploads` gave, or a stored photo’s key"
 								},
 								"maxItems": 50,
 								"description": "Pictures of the trip, in the order the user put them"
