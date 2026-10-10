@@ -29,7 +29,9 @@ const addPlaceRoute = createRoute({
 	},
 	responses: {
 		201: jsonResponse(PlaceSchema, 'Place added'),
-		400: errorResponse('Invalid place'),
+		400: errorResponse(
+			'Invalid place, a visit outside its trip (`visit-outside-trip`), or another user’s photo (`photo-not-yours`)',
+		),
 		401: errorResponse('Not signed in'),
 		403: errorResponse('No user role, or email not verified'),
 		409: errorResponse(`Already keeping ${MAX_PLACES} places`),
@@ -49,7 +51,9 @@ const updatePlaceRoute = createRoute({
 	},
 	responses: {
 		200: jsonResponse(PlaceSchema, 'Place replaced'),
-		400: errorResponse('Invalid place'),
+		400: errorResponse(
+			'Invalid place, a visit outside its trip (`visit-outside-trip`), or another user’s photo (`photo-not-yours`)',
+		),
 		401: errorResponse('Not signed in'),
 		403: errorResponse('No user role, or email not verified'),
 		404: errorResponse('No place with that id'),

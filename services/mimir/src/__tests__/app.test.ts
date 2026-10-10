@@ -17,6 +17,12 @@ const {
 	mockListAllPicks,
 	mockSavePicks,
 	mockDeletePicks,
+	mockListTrips,
+	mockCreateTrip,
+	mockUpdateTrip,
+	mockRemoveTrip,
+	mockUploadUrl,
+	mockDeleteUserPhotos,
 } = vi.hoisted(() => ({
 	mockPing: vi.fn(),
 	mockListPlaces: vi.fn(),
@@ -30,6 +36,12 @@ const {
 	mockListAllPicks: vi.fn(),
 	mockSavePicks: vi.fn(),
 	mockDeletePicks: vi.fn(),
+	mockListTrips: vi.fn(),
+	mockCreateTrip: vi.fn(),
+	mockUpdateTrip: vi.fn(),
+	mockRemoveTrip: vi.fn(),
+	mockUploadUrl: vi.fn(),
+	mockDeleteUserPhotos: vi.fn(),
 }))
 
 vi.mock('../lib/db.js', () => ({
@@ -57,11 +69,26 @@ vi.mock('../handlers/predictions.js', () => ({
 	deletePicks: (...args: unknown[]) => mockDeletePicks(...args),
 }))
 
+vi.mock('../handlers/trips.js', () => ({
+	MAX_TRIPS: 1000,
+	listTrips: (...args: unknown[]) => mockListTrips(...args),
+	createTrip: (...args: unknown[]) => mockCreateTrip(...args),
+	updateTrip: (...args: unknown[]) => mockUpdateTrip(...args),
+	removeTrip: (...args: unknown[]) => mockRemoveTrip(...args),
+}))
+
+vi.mock('../lib/storage.js', async (original) => ({
+	...(await original<typeof import('../lib/storage.js')>()),
+	uploadUrl: (...args: unknown[]) => mockUploadUrl(...args),
+	deleteUserPhotos: (...args: unknown[]) => mockDeleteUserPhotos(...args),
+}))
+
 vi.mock('../handlers/documents.js', () => ({
 	deleteDocuments: (...args: unknown[]) => mockDeleteDocuments(...args),
 }))
 
 import { createMimirApp } from '../app.js'
+import { DataError } from '../lib/errors.js'
 
 const app = createMimirApp()
 
@@ -177,6 +204,8 @@ describe('account', () => {
 
 		mockListAllPicks.mockResolvedValue({ 2026: { 1: { g1: { team: 't1', line: null } } } })
 
+		mockListTrips.mockResolvedValue([])
+
 		const res = await app.request('/api/account', { headers: headers() })
 
 		expect(res.status).toBe(200)
@@ -184,6 +213,7 @@ describe('account', () => {
 		expect(await res.json()).toEqual({
 			places: [place],
 			visits: { states: ['Ohio'], countries: [] },
+			trips: [],
 			predictions: { 2026: { 1: { g1: { team: 't1', line: null } } } },
 		})
 
@@ -199,6 +229,8 @@ describe('account', () => {
 		expect(res.status).toBe(204)
 
 		expect(mockDeleteDocuments).toHaveBeenCalledWith(USER_ID)
+
+		expect(mockDeleteUserPhotos).toHaveBeenCalledWith(USER_ID)
 	})
 
 	it('needs a user', async () => {
@@ -216,6 +248,10 @@ describe('writes', () => {
 		['PUT', '/api/places/place-1'],
 		['DELETE', '/api/places/place-1'],
 		['PUT', '/api/visits/states/Ohio'],
+		['POST', '/api/trips'],
+		['PUT', '/api/trips/trip-1'],
+		['DELETE', '/api/trips/trip-1'],
+		['POST', '/api/photos/uploads'],
 		['PUT', '/api/predictions/2026/5'],
 		['DELETE', '/api/predictions/2026/5'],
 	])('%s %s needs the user role', async (method, path) => {
@@ -457,5 +493,137 @@ describe('predictions', () => {
 		expect(res.status).toBe(400)
 
 		expect(mockSavePicks).not.toHaveBeenCalled()
+	})
+})
+
+describe('trips', () => {
+	const trip = {
+		name: 'Pittsburgh',
+		address: 'Pittsburgh, PA',
+		latitude: 40,
+		longitude: -80,
+		startsOn: '2026-09-25',
+		endsOn: '2026-09-28',
+		photos: [`users/${USER_ID}/00000000-0000-4000-8000-00000000000a.jpg`],
+	}
+
+	const stored = { ...trip, id: 'trip-1', createdAt: '2026-09-27T12:00:00.000Z', photos: [] }
+
+	function send(method: string, path: string, body: unknown) {
+		return app.request(path, { method, headers: headers(), body: JSON.stringify(body) })
+	}
+
+	it('lists your trips', async () => {
+		mockListTrips.mockResolvedValue([stored])
+
+		const res = await app.request('/api/trips', { headers: headers() })
+
+		expect(res.status).toBe(200)
+
+		expect(await res.json()).toEqual([stored])
+
+		expect(mockListTrips).toHaveBeenCalledWith(USER_ID)
+	})
+
+	it('adds a trip with its stops', async () => {
+		mockCreateTrip.mockResolvedValue({ trip: stored, places: [] })
+
+		const stops = [{ place: draft }, { placeId: 'place-1', visit: draft.visits[0] }]
+
+		const res = await send('POST', '/api/trips', { ...trip, stops })
+
+		expect(res.status).toBe(201)
+
+		expect(mockCreateTrip).toHaveBeenCalledWith(USER_ID, { ...trip, stops })
+	})
+
+	it.each([
+		['ends before it starts', { ...trip, endsOn: '2026-09-24' }, '`endsOn` must be on or after'],
+		['has a photo address', { ...trip, photos: ['https://example.com/a.jpg'] }, 'A photo must be'],
+		[
+			'has a new place with two visits',
+			{ ...trip, stops: [{ place: { ...draft, visits: [...draft.visits, ...draft.visits] } }] },
+			'A new place on a trip has one visit.',
+		],
+	])('refuses a trip that %s', async (_, body, message) => {
+		const res = await send('POST', '/api/trips', body)
+
+		expect(res.status).toBe(400)
+
+		expect(((await res.json()) as { message: string }).message).toContain(message)
+
+		expect(mockCreateTrip).not.toHaveBeenCalled()
+	})
+
+	it('names the rule a write breaks', async () => {
+		mockUpdateTrip.mockRejectedValue(
+			new DataError('trip-days-exclude-visits', 'The new days would leave out a visit'),
+		)
+
+		const res = await send('PUT', '/api/trips/trip-1', trip)
+
+		expect(res.status).toBe(409)
+
+		expect(await res.json()).toMatchObject({ code: 'trip-days-exclude-visits' })
+	})
+
+	it('returns 404 when replacing or removing a trip that is not there', async () => {
+		mockUpdateTrip.mockResolvedValue(null)
+
+		mockRemoveTrip.mockResolvedValue(false)
+
+		expect((await send('PUT', '/api/trips/nope', trip)).status).toBe(404)
+
+		expect(
+			(await app.request('/api/trips/nope', { method: 'DELETE', headers: headers() })).status,
+		).toBe(404)
+	})
+
+	it('removes a trip', async () => {
+		mockRemoveTrip.mockResolvedValue(true)
+
+		const res = await app.request('/api/trips/trip-1', { method: 'DELETE', headers: headers() })
+
+		expect(res.status).toBe(204)
+
+		expect(mockRemoveTrip).toHaveBeenCalledWith(USER_ID, 'trip-1')
+	})
+})
+
+describe('photo uploads', () => {
+	function start(body: unknown) {
+		return app.request('/api/photos/uploads', {
+			method: 'POST',
+			headers: headers(),
+			body: JSON.stringify(body),
+		})
+	}
+
+	it("answers with a key under the user's prefix and its upload URL", async () => {
+		mockUploadUrl.mockResolvedValue('https://bucket.test/upload')
+
+		const res = await start({ contentType: 'image/webp', size: 1000 })
+
+		expect(res.status).toBe(200)
+
+		const { key, uploadUrl } = (await res.json()) as { key: string; uploadUrl: string }
+
+		expect(key).toMatch(new RegExp(`^users/${USER_ID}/[0-9a-f-]{36}\\.webp$`))
+
+		expect(uploadUrl).toBe('https://bucket.test/upload')
+
+		expect(mockUploadUrl).toHaveBeenCalledWith(key, 'image/webp', 1000)
+	})
+
+	it.each([
+		[{ contentType: 'image/gif', size: 1000 }],
+		[{ contentType: 'image/jpeg', size: 15 * 1024 * 1024 + 1 }],
+		[{ contentType: 'image/jpeg', size: 0 }],
+	])('refuses %j', async (body) => {
+		const res = await start(body)
+
+		expect(res.status).toBe(400)
+
+		expect(mockUploadUrl).not.toHaveBeenCalled()
 	})
 })

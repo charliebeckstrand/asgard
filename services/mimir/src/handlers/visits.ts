@@ -1,6 +1,6 @@
 import type { VisitScope, Visits } from '../lib/schemas.js'
 import { changeDocument, readDocument } from './documents.js'
-import { listPlaces } from './places.js'
+import { storedPlaces } from './places.js'
 
 /**
  * The visited regions of each user, in one document beside their places. A
@@ -48,7 +48,7 @@ function parseVisits(input: unknown): Visits {
  * change, which keeps these along with it.
  */
 async function seed(userId: string): Promise<Visits> {
-	const places = await listPlaces(userId)
+	const places = await storedPlaces(userId)
 
 	return parseVisits({
 		states: places.map((place) => place.state),

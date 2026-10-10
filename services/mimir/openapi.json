@@ -64,6 +64,9 @@
 					"visits": {
 						"$ref": "#/components/schemas/Visits"
 					},
+					"trips": {
+						"$ref": "#/components/schemas/TripList"
+					},
 					"predictions": {
 						"type": "object",
 						"additionalProperties": {
@@ -75,6 +78,7 @@
 				"required": [
 					"places",
 					"visits",
+					"trips",
 					"predictions"
 				]
 			},
@@ -85,25 +89,123 @@
 				}
 			},
 			"Place": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/Location"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"createdAt": {
+								"type": "string",
+								"description": "When it was added, ISO 8601"
+							},
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 2000,
+								"description": "The business or place name"
+							},
+							"category": {
+								"$ref": "#/components/schemas/PlaceCategory"
+							},
+							"url": {
+								"type": "string",
+								"maxLength": 2000,
+								"format": "uri"
+							},
+							"visits": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/Visit"
+								},
+								"description": "Newest visit first"
+							}
+						},
+						"required": [
+							"id",
+							"createdAt",
+							"name",
+							"category",
+							"visits"
+						]
+					}
+				]
+			},
+			"PlaceCategory": {
+				"type": "string",
+				"enum": [
+					"food",
+					"entertainment",
+					"nature",
+					"shopping",
+					"other"
+				]
+			},
+			"Visit": {
 				"type": "object",
 				"properties": {
 					"id": {
-						"type": "string",
-						"minLength": 1
+						"type": "string"
 					},
-					"createdAt": {
+					"visitedAt": {
 						"type": "string",
-						"description": "When the place was added, ISO 8601"
+						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+						"description": "The day of the visit",
+						"example": "2026-09-27"
 					},
-					"name": {
+					"rating": {
+						"type": "number",
+						"minimum": 0,
+						"maximum": 5,
+						"description": "0.5 to 5 in half steps, or 0 for none"
+					},
+					"review": {
+						"type": "string",
+						"maxLength": 2000
+					},
+					"tripId": {
 						"type": "string",
 						"minLength": 1,
-						"maxLength": 2000,
-						"description": "The business or place name"
+						"maxLength": 64,
+						"description": "The user's trip the visit was part of. `visitedAt` must fall in its days."
 					},
-					"category": {
-						"$ref": "#/components/schemas/PlaceCategory"
+					"photos": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Photo"
+						}
+					}
+				},
+				"required": [
+					"id",
+					"visitedAt",
+					"rating",
+					"photos"
+				]
+			},
+			"Photo": {
+				"type": "object",
+				"properties": {
+					"key": {
+						"type": "string"
 					},
+					"url": {
+						"type": "string",
+						"description": "Reads the photo for at least 45 minutes"
+					}
+				},
+				"required": [
+					"key",
+					"url"
+				]
+			},
+			"Location": {
+				"type": "object",
+				"properties": {
 					"address": {
 						"type": "string",
 						"minLength": 1,
@@ -133,101 +235,12 @@
 						"type": "number",
 						"minimum": -180,
 						"maximum": 180
-					},
-					"url": {
-						"type": "string",
-						"maxLength": 2000,
-						"format": "uri"
-					},
-					"visits": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/Visit"
-						},
-						"minItems": 1,
-						"description": "Newest visit first"
 					}
 				},
 				"required": [
-					"id",
-					"createdAt",
-					"name",
-					"category",
 					"address",
 					"latitude",
-					"longitude",
-					"visits"
-				]
-			},
-			"PlaceCategory": {
-				"type": "string",
-				"enum": [
-					"food",
-					"entertainment",
-					"nature",
-					"shopping",
-					"other"
-				]
-			},
-			"Visit": {
-				"allOf": [
-					{
-						"$ref": "#/components/schemas/VisitDraft"
-					},
-					{
-						"type": "object",
-						"properties": {
-							"id": {
-								"type": "string",
-								"minLength": 1
-							}
-						},
-						"required": [
-							"id"
-						]
-					}
-				]
-			},
-			"VisitDraft": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "string",
-						"minLength": 1,
-						"maxLength": 64,
-						"description": "The id of a stored visit, kept on a write. Mimir gives a new visit its id."
-					},
-					"visitedAt": {
-						"type": "string",
-						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-						"description": "The day of the visit",
-						"example": "2026-09-27"
-					},
-					"rating": {
-						"type": "number",
-						"minimum": 0,
-						"maximum": 5,
-						"description": "0.5 to 5 in half steps, or 0 for none"
-					},
-					"review": {
-						"type": "string",
-						"maxLength": 2000
-					},
-					"photos": {
-						"type": "array",
-						"items": {
-							"type": "string",
-							"maxLength": 2000,
-							"format": "uri"
-						},
-						"maxItems": 12,
-						"description": "Pictures of the visit, in the order the user put them"
-					}
-				},
-				"required": [
-					"visitedAt",
-					"rating",
-					"photos"
+					"longitude"
 				]
 			},
 			"Visits": {
@@ -249,6 +262,64 @@
 				"required": [
 					"states",
 					"countries"
+				]
+			},
+			"TripList": {
+				"type": "array",
+				"items": {
+					"$ref": "#/components/schemas/Trip"
+				},
+				"description": "Newest `startsOn` first"
+			},
+			"Trip": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/Location"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"createdAt": {
+								"type": "string",
+								"description": "When it was added, ISO 8601"
+							},
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 2000,
+								"description": "What the user calls the trip"
+							},
+							"startsOn": {
+								"type": "string",
+								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+								"description": "The first day of the trip",
+								"example": "2026-09-25"
+							},
+							"endsOn": {
+								"type": "string",
+								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+								"description": "The last day of the trip, on or after `startsOn`",
+								"example": "2026-09-28"
+							},
+							"photos": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/Photo"
+								}
+							}
+						},
+						"required": [
+							"id",
+							"createdAt",
+							"name",
+							"startsOn",
+							"endsOn",
+							"photos"
+						]
+					}
 				]
 			},
 			"SeasonPicks": {
@@ -305,68 +376,90 @@
 				]
 			},
 			"PlaceDraft": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/Location"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 2000,
+								"description": "The business or place name"
+							},
+							"category": {
+								"$ref": "#/components/schemas/PlaceCategory"
+							},
+							"url": {
+								"type": "string",
+								"maxLength": 2000,
+								"format": "uri"
+							},
+							"visits": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/VisitDraft"
+								},
+								"minItems": 1,
+								"maxItems": 200
+							}
+						},
+						"required": [
+							"name",
+							"category",
+							"visits"
+						]
+					}
+				]
+			},
+			"VisitDraft": {
 				"type": "object",
 				"properties": {
-					"name": {
+					"id": {
 						"type": "string",
 						"minLength": 1,
-						"maxLength": 2000,
-						"description": "The business or place name"
+						"maxLength": 64,
+						"description": "The id of a stored visit, kept on a write. Mimir gives a new visit its id."
 					},
-					"category": {
-						"$ref": "#/components/schemas/PlaceCategory"
-					},
-					"address": {
+					"visitedAt": {
 						"type": "string",
-						"minLength": 1,
-						"maxLength": 2000,
-						"description": "The address on one line"
+						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+						"description": "The day of the visit",
+						"example": "2026-09-27"
 					},
-					"city": {
+					"rating": {
+						"type": "number",
+						"minimum": 0,
+						"maximum": 5,
+						"description": "0.5 to 5 in half steps, or 0 for none"
+					},
+					"review": {
 						"type": "string",
 						"maxLength": 2000
 					},
-					"state": {
+					"tripId": {
 						"type": "string",
-						"maxLength": 2000,
-						"description": "The state the geocoder named, for places the map outline leaves out and for the state filter"
+						"minLength": 1,
+						"maxLength": 64,
+						"description": "The user's trip the visit was part of. `visitedAt` must fall in its days."
 					},
-					"country": {
-						"type": "string",
-						"maxLength": 2000,
-						"description": "The country the geocoder named, for the country filter"
-					},
-					"latitude": {
-						"type": "number",
-						"minimum": -90,
-						"maximum": 90
-					},
-					"longitude": {
-						"type": "number",
-						"minimum": -180,
-						"maximum": 180
-					},
-					"url": {
-						"type": "string",
-						"maxLength": 2000,
-						"format": "uri"
-					},
-					"visits": {
+					"photos": {
 						"type": "array",
 						"items": {
-							"$ref": "#/components/schemas/VisitDraft"
+							"type": "string",
+							"pattern": "^users\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}\\.[a-z]{3,4}$",
+							"description": "The key `POST /api/photos/uploads` gave"
 						},
-						"minItems": 1,
-						"maxItems": 200
+						"maxItems": 12,
+						"description": "Pictures of the visit, in the order the user put them"
 					}
 				},
 				"required": [
-					"name",
-					"category",
-					"address",
-					"latitude",
-					"longitude",
-					"visits"
+					"visitedAt",
+					"rating",
+					"photos"
 				]
 			},
 			"SetVisit": {
@@ -378,6 +471,167 @@
 				},
 				"required": [
 					"visited"
+				]
+			},
+			"CreatedTrip": {
+				"type": "object",
+				"properties": {
+					"trip": {
+						"$ref": "#/components/schemas/Trip"
+					},
+					"places": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/PlaceList"
+							},
+							{
+								"description": "The places the stops added or changed"
+							}
+						]
+					}
+				},
+				"required": [
+					"trip",
+					"places"
+				]
+			},
+			"NewTrip": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/TripDraft"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"stops": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/TripStop"
+								},
+								"maxItems": 100
+							}
+						}
+					}
+				]
+			},
+			"TripStop": {
+				"anyOf": [
+					{
+						"type": "object",
+						"properties": {
+							"placeId": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 64,
+								"description": "A stored place the visit is added to"
+							},
+							"visit": {
+								"$ref": "#/components/schemas/VisitDraft"
+							}
+						},
+						"required": [
+							"placeId",
+							"visit"
+						]
+					},
+					{
+						"type": "object",
+						"properties": {
+							"place": {
+								"$ref": "#/components/schemas/PlaceDraft"
+							}
+						},
+						"required": [
+							"place"
+						]
+					}
+				],
+				"description": "A visit to a stored place, or a new place with its one visit. Mimir sets the visit’s `tripId`. A visit with the `id` of one of the place’s visits replaces it."
+			},
+			"TripDraft": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/Location"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 2000,
+								"description": "What the user calls the trip"
+							},
+							"startsOn": {
+								"type": "string",
+								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+								"description": "The first day of the trip",
+								"example": "2026-09-25"
+							},
+							"endsOn": {
+								"type": "string",
+								"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+								"description": "The last day of the trip, on or after `startsOn`",
+								"example": "2026-09-28"
+							},
+							"photos": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"pattern": "^users\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}\\.[a-z]{3,4}$",
+									"description": "The key `POST /api/photos/uploads` gave"
+								},
+								"maxItems": 50,
+								"description": "Pictures of the trip, in the order the user put them"
+							}
+						},
+						"required": [
+							"name",
+							"startsOn",
+							"endsOn",
+							"photos"
+						]
+					}
+				]
+			},
+			"PhotoUpload": {
+				"type": "object",
+				"properties": {
+					"key": {
+						"type": "string",
+						"description": "What a draft sends for the photo once it is uploaded"
+					},
+					"uploadUrl": {
+						"type": "string",
+						"description": "PUT the photo here within five minutes, with the same `content-type` and exactly `size` bytes"
+					}
+				},
+				"required": [
+					"key",
+					"uploadUrl"
+				]
+			},
+			"PhotoUploadRequest": {
+				"type": "object",
+				"properties": {
+					"contentType": {
+						"type": "string",
+						"enum": [
+							"image/jpeg",
+							"image/png",
+							"image/webp"
+						]
+					},
+					"size": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 15728640,
+						"description": "The size of the photo in bytes, at most 15 MB"
+					}
+				},
+				"required": [
+					"contentType",
+					"size"
 				]
 			},
 			"SavePicks": {
@@ -461,7 +715,7 @@
 					"Account"
 				],
 				"summary": "Delete all of a user's data",
-				"description": "Deletes every app's data of the user, when their account is deleted.",
+				"description": "Deletes every app's data of the user and all their photos, when their account is deleted.",
 				"responses": {
 					"204": {
 						"description": "Data deleted"
@@ -536,7 +790,7 @@
 						}
 					},
 					"400": {
-						"description": "Invalid place",
+						"description": "Invalid place, a visit outside its trip (`visit-outside-trip`), or another user’s photo (`photo-not-yours`)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -620,7 +874,7 @@
 						}
 					},
 					"400": {
-						"description": "Invalid place",
+						"description": "Invalid place, a visit outside its trip (`visit-outside-trip`), or another user’s photo (`photo-not-yours`)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -835,6 +1089,316 @@
 					},
 					"409": {
 						"description": "Already marking 1000 regions in the scope",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/trips": {
+			"get": {
+				"tags": [
+					"Trips"
+				],
+				"summary": "List your trips",
+				"description": "Newest `startsOn` first.",
+				"responses": {
+					"200": {
+						"description": "Trips",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TripList"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Trips"
+				],
+				"summary": "Add a trip",
+				"description": "Adds the trip and records each stop on it, in one change. Every stop must fall in the trip’s days: 400 `visit-outside-trip` otherwise.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/NewTrip"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Trip added",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CreatedTrip"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid trip, a stop outside its days (`visit-outside-trip`), a stop naming no place of yours, or another user’s photo (`photo-not-yours`)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Already keeping 1000 trips, or as many places or visits as allowed",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/trips/{id}": {
+			"put": {
+				"tags": [
+					"Trips"
+				],
+				"summary": "Replace a trip",
+				"description": "Keeps its id, when it was added, and its visits.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"description": "The id of the trip"
+						},
+						"required": true,
+						"description": "The id of the trip",
+						"name": "id",
+						"in": "path"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/TripDraft"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Trip replaced",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Trip"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid trip, or another user’s photo (`photo-not-yours`)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No trip with that id",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "The new days would leave out one of its visits (`trip-days-exclude-visits`)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Trips"
+				],
+				"summary": "Remove a trip",
+				"description": "Its visits stay on their places, without the trip. Its photos are deleted.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"description": "The id of the trip"
+						},
+						"required": true,
+						"description": "The id of the trip",
+						"name": "id",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Trip removed"
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No trip with that id",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/photos/uploads": {
+			"post": {
+				"tags": [
+					"Photos"
+				],
+				"summary": "Start a photo upload",
+				"description": "Answers with a key and a URL to PUT the photo to. Once uploaded, a visit or trip draft sends the key. A photo no visit or trip keeps is deleted with the account.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PhotoUploadRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Upload ready",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PhotoUpload"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Not a JPEG, PNG or WebP, or larger than 15 MB",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
 						"content": {
 							"application/json": {
 								"schema": {

@@ -1,20 +1,15 @@
-const { documents } = vi.hoisted(() => ({ documents: new Map<string, unknown>() }))
+import { stubServiceEnv } from 'vali/env'
 
-// The documents as a map, so these tests cover what the handlers do with a
-// document. documents.integration.test.ts covers the database.
-vi.mock('../../handlers/documents.js', () => ({
-	readDocument: async (userId: string, name: string) => documents.get(`${userId}:${name}`),
-	changeDocument: async (
-		userId: string,
-		name: string,
-		change: (document: unknown) => Promise<{ result: unknown; value?: unknown }>,
-	) => {
-		const { result, value } = await change(documents.get(`${userId}:${name}`))
+stubServiceEnv({ MIMIR_API_KEY: 'test-mimir-api-key-that-is-at-least-32-chars' })
 
-		if (value !== undefined) documents.set(`${userId}:${name}`, value)
+const { mockDeletePhotos } = vi.hoisted(() => ({ mockDeletePhotos: vi.fn() }))
 
-		return result
-	},
+vi.mock('../../handlers/documents.js', () => import('./documents-mock.js'))
+
+vi.mock('../../lib/storage.js', async (original) => ({
+	...(await original<typeof import('../../lib/storage.js')>()),
+	photoUrl: async (key: string) => `https://bucket.test/${key}?signed`,
+	deletePhotos: mockDeletePhotos,
 }))
 
 import {
@@ -24,9 +19,12 @@ import {
 	removePlace,
 	updatePlace,
 } from '../../handlers/places.js'
-import type { PlaceDraft } from '../../lib/schemas.js'
+import type { Place, PlaceDraft } from '../../lib/schemas.js'
+import { documents } from './documents-mock.js'
 
-const USER = 'user-1'
+const USER = '00000000-0000-4000-8000-000000000001'
+
+const photo = (name: string) => `users/${USER}/${name}.jpg`
 
 const draft: PlaceDraft = {
 	name: 'Cafe',
@@ -42,8 +40,21 @@ function visitedOn(visitedAt: string): PlaceDraft {
 	return { ...draft, visits: [{ visitedAt, rating: 4, photos: [] }] }
 }
 
+/** A place as a draft sends it back: each photo by its key. */
+function asDraft(place: Place | null): PlaceDraft {
+	return {
+		...draft,
+		visits: (place?.visits ?? []).map((visit) => ({
+			...visit,
+			photos: visit.photos.map((stored) => stored.key),
+		})),
+	}
+}
+
 beforeEach(() => {
 	documents.clear()
+
+	mockDeletePhotos.mockReset().mockResolvedValue(undefined)
 })
 
 describe('places', () => {
@@ -78,7 +89,7 @@ describe('places', () => {
 
 		const updated = await updatePlace(USER, place?.id ?? '', {
 			...draft,
-			visits: [...(place?.visits ?? []), { visitedAt: '2026-06-01', rating: 5, photos: [] }],
+			visits: [...asDraft(place).visits, { visitedAt: '2026-06-01', rating: 5, photos: [] }],
 		})
 
 		expect(updated?.visits.map((visit) => visit.visitedAt)).toEqual(['2026-06-01', '2026-01-01'])
@@ -113,15 +124,23 @@ describe('places', () => {
 				visitedAt: '2026-09-27',
 				rating: 4,
 				review: 'Good',
-				photos: ['https://example.com/a.jpg'],
+				photos: [{ key: 'https://example.com/a.jpg', url: 'https://example.com/a.jpg' }],
 			},
 		])
 
 		expect(place).not.toHaveProperty('visitedAt')
 
-		const updated = await updatePlace(USER, 'old', { ...draft, visits: place?.visits ?? [] })
+		await updatePlace(USER, 'old', {
+			...draft,
+			visits: [{ id: 'old', visitedAt: '2026-09-27', rating: 4, review: 'Good', photos: [] }],
+		})
 
-		expect(documents.get(`${USER}:places`)).toEqual([updated])
+		expect(documents.get(`${USER}:places`)).toEqual([
+			expect.objectContaining({
+				id: 'old',
+				visits: [{ id: 'old', visitedAt: '2026-09-27', rating: 4, review: 'Good', photos: [] }],
+			}),
+		])
 	})
 
 	it('keeps each user apart', async () => {
@@ -145,7 +164,7 @@ describe('places', () => {
 		const updated = await updatePlace(USER, place?.id ?? '', {
 			...draft,
 			name: 'Diner',
-			visits: place?.visits ?? [],
+			visits: asDraft(place).visits,
 		})
 
 		expect(updated).toEqual({ ...place, name: 'Diner' })
@@ -179,5 +198,134 @@ describe('places', () => {
 		await removePlace(USER, place?.id ?? '')
 
 		expect(documents.get(`${USER}:places`)).toEqual([unreadable])
+	})
+
+	it('answers with a URL for each photo, and stores only its key', async () => {
+		const place = await addPlace(USER, {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
+		})
+
+		expect(place?.visits[0]?.photos).toEqual([
+			{ key: photo('a'), url: `https://bucket.test/${photo('a')}?signed` },
+		])
+
+		expect(documents.get(`${USER}:places`)).toEqual([
+			expect.objectContaining({ visits: [expect.objectContaining({ photos: [photo('a')] })] }),
+		])
+	})
+
+	it("refuses another user's photo", async () => {
+		const other = 'users/00000000-0000-4000-8000-000000000002/a.jpg'
+
+		await expect(
+			addPlace(USER, {
+				...draft,
+				visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [other] }],
+			}),
+		).rejects.toMatchObject({ status: 400, code: 'photo-not-yours' })
+
+		expect(documents.has(`${USER}:places`)).toBe(false)
+	})
+
+	it('deletes the photos a write drops, and keeps those still in use', async () => {
+		const place = await addPlace(USER, {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a'), photo('b')] }],
+		})
+
+		await addPlace(USER, {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('b')] }],
+		})
+
+		await updatePlace(USER, place?.id ?? '', {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [] }],
+		})
+
+		expect(mockDeletePhotos).toHaveBeenCalledExactlyOnceWith([photo('a')])
+	})
+
+	it("deletes a removed place's photos", async () => {
+		const place = await addPlace(USER, {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
+		})
+
+		await removePlace(USER, place?.id ?? '')
+
+		expect(mockDeletePhotos).toHaveBeenCalledWith([photo('a')])
+	})
+
+	it('keeps the write when deleting a photo fails', async () => {
+		mockDeletePhotos.mockRejectedValue(new Error('down'))
+
+		const place = await addPlace(USER, {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
+		})
+
+		expect(await removePlace(USER, place?.id ?? '')).toBe(true)
+
+		expect(await listPlaces(USER)).toEqual([])
+	})
+
+	describe('trips', () => {
+		const trip = {
+			id: 'trip-1',
+			createdAt: '2026-09-01T00:00:00.000Z',
+			name: 'Pittsburgh',
+			address: 'Pittsburgh, PA',
+			latitude: 40,
+			longitude: -80,
+			startsOn: '2026-09-25',
+			endsOn: '2026-09-28',
+			photos: [],
+		}
+
+		const onDay = (visitedAt: string, tripId = 'trip-1'): PlaceDraft => ({
+			...draft,
+			visits: [{ visitedAt, rating: 4, photos: [], tripId }],
+		})
+
+		beforeEach(() => {
+			documents.set(`${USER}:trips`, [trip])
+		})
+
+		it.each(['2026-09-25', '2026-09-28'])('keeps a visit on %s on the trip', async (day) => {
+			const place = await addPlace(USER, onDay(day))
+
+			expect(place?.visits[0]?.tripId).toBe('trip-1')
+		})
+
+		it.each([
+			['before the trip', onDay('2026-09-24')],
+			['after the trip', onDay('2026-09-29')],
+			['on a trip that is not there', onDay('2026-09-26', 'trip-2')],
+		])('refuses a visit %s', async (_, place) => {
+			await expect(addPlace(USER, place)).rejects.toMatchObject({
+				status: 400,
+				code: 'visit-outside-trip',
+			})
+		})
+
+		it('refuses a replaced place with a visit outside its trip', async () => {
+			const place = await addPlace(USER, draft)
+
+			await expect(updatePlace(USER, place?.id ?? '', onDay('2026-10-01'))).rejects.toMatchObject({
+				code: 'visit-outside-trip',
+			})
+		})
+
+		it("refuses another user's trip", async () => {
+			documents.delete(`${USER}:trips`)
+
+			documents.set('00000000-0000-4000-8000-000000000002:trips', [trip])
+
+			await expect(addPlace(USER, onDay('2026-09-26'))).rejects.toMatchObject({
+				code: 'visit-outside-trip',
+			})
+		})
 	})
 })

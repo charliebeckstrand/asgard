@@ -4,6 +4,11 @@
 	"database": { "name": "mimir", "role": "mimir", "password": "mimir" },
 	"vars": {
 		"DATABASE_URL": { "type": "value", "default": "postgres://mimir:mimir@localhost:5432/mimir" },
-		"MIMIR_API_KEY": { "type": "secret" }
+		"MIMIR_API_KEY": { "type": "secret" },
+		"SPACES_KEY": { "type": "value", "default": "" },
+		"SPACES_SECRET": { "type": "value", "default": "" },
+		"SPACES_REGION": { "type": "value", "default": "" },
+		"SPACES_BUCKET": { "type": "value", "default": "" },
+		"SPACES_ENDPOINT": { "type": "value", "default": "" }
 	}
 }
