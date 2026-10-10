@@ -187,8 +187,9 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: ${VIDAR_API_KEY}
-      # Mimir keeps the apps' data. Bifrost forwards /api/places and /api/visits
-      # to it over the app's private network, and the key must match Mimir's.
+      # Mimir keeps the apps' data. Bifrost forwards /api/places, /api/visits,
+      # /api/trips, /api/photos and /api/predictions to it over the app's private
+      # network, and the key must match Mimir's.
       - key: MIMIR_URL
         scope: RUN_TIME
         value: ${mimir.PRIVATE_URL}
@@ -291,6 +292,24 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: ${MIMIR_API_KEY}
+      # The Spaces bucket that keeps photos, and its key.
+      - key: SPACES_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${SPACES_KEY}
+      - key: SPACES_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: ${SPACES_SECRET}
+      - key: SPACES_REGION
+        scope: RUN_TIME
+        value: ${SPACES_REGION}
+      - key: SPACES_BUCKET
+        scope: RUN_TIME
+        value: ${SPACES_BUCKET}
+      - key: SPACES_ENDPOINT
+        scope: RUN_TIME
+        value: ${SPACES_ENDPOINT}
 
 # Apply each service's pending migrations before each deploy. If one fails, the
 # deploy stops and the running version keeps serving.
@@ -354,3 +373,52 @@ jobs:
       - key: DATABASE_CA_CERT
         scope: RUN_TIME
         value: ${mimir-admin-db.CA_CERT}
+
+  # Copies the photos visits kept as web addresses into the Spaces bucket, once
+  # the code that reads keys is live. Later runs find nothing left to copy.
+  # Remove it once its logs show nothing copied or kept.
+  - name: migrate-mimir-photos
+    kind: POST_DEPLOY
+    github:
+      repo: charliebeckstrand/asgard
+      branch: main
+      deploy_on_push: false
+    dockerfile_path: Dockerfile
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    run_command: node services/mimir/dist/cli.js migrate-photos
+    log_destinations:
+      - name: better-stack
+        logtail:
+          token: ${LOGTAIL_TOKEN}
+    envs:
+      - key: SERVICE
+        scope: BUILD_TIME
+        value: mimir
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${mimir-db.DATABASE_URL}
+      - key: DATABASE_CA_CERT
+        scope: RUN_TIME
+        value: ${mimir-db.CA_CERT}
+      - key: MIMIR_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${MIMIR_API_KEY}
+      # The Spaces bucket that keeps photos, and its key.
+      - key: SPACES_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${SPACES_KEY}
+      - key: SPACES_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: ${SPACES_SECRET}
+      - key: SPACES_REGION
+        scope: RUN_TIME
+        value: ${SPACES_REGION}
+      - key: SPACES_BUCKET
+        scope: RUN_TIME
+        value: ${SPACES_BUCKET}
+      - key: SPACES_ENDPOINT
+        scope: RUN_TIME
+        value: ${SPACES_ENDPOINT}
