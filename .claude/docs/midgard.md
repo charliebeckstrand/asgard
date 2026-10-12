@@ -1,6 +1,6 @@
 # Midgard
 
-[charliebeckstrand/midgard](https://github.com/charliebeckstrand/midgard) is the frontend: Next.js apps (admin, places, picks, docs) and the `auth`, `shared` and `ui` packages. It is deployed as one App Platform app, `midgard`, serving admin., places., picks. and docs.ivoryimage.dev. Bifrost serves auth.ivoryimage.dev.
+[charliebeckstrand/midgard](https://github.com/charliebeckstrand/midgard) is the frontend: Next.js apps (admin, places, picks, docs) and the `auth`, `shared` and `ui` packages. It is deployed as one App Platform app, `midgard`, serving admin., places. and docs.ivoryimage.dev. The picks app does not deploy yet: midgard's `.do/app.yaml` has no picks component. Bifrost serves auth.ivoryimage.dev.
 
 This file is the one record of how the two repos fit together. Midgard links here instead of keeping its own copy. Change it in the same pull request as the change to the contract.
 
