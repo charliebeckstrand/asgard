@@ -39,7 +39,7 @@ Bifrost's OpenAPI spec is committed at `services/bifrost/openapi.json`, and Mimi
 
 ## Second step
 
-When bifrost answers `second_step_required`, Midgard shows its one shared Confirm dialog and retries. The whole admin app needs a two-step session, verified once on entry at `/verify`.
+When bifrost answers `second_step_required`, Midgard shows its one shared Confirm dialog and retries. The whole admin app needs a two-step session, verified once on `/login` right after sign-in. The page shows the second step in place of the sign-in form and starts the passkey check at once.
 
 ## Deploy order
 
