@@ -2,9 +2,9 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv({ MIMIR_API_KEY: 'test-mimir-api-key-that-is-at-least-32-chars' })
 
-const { mockDeletePhotos, mockKeepUpload } = vi.hoisted(() => ({
+const { mockDeletePhotos, mockKeepPhoto } = vi.hoisted(() => ({
 	mockDeletePhotos: vi.fn(),
-	mockKeepUpload: vi.fn(),
+	mockKeepPhoto: vi.fn(),
 }))
 
 vi.mock('../../handlers/documents.js', () => import('./documents-mock.js'))
@@ -13,7 +13,7 @@ vi.mock('../../lib/storage.js', async (original) => ({
 	...(await original<typeof import('../../lib/storage.js')>()),
 	photoUrl: async (key: string) => `https://bucket.test/${key}?signed`,
 	deletePhotos: mockDeletePhotos,
-	keepUpload: mockKeepUpload,
+	keepPhoto: mockKeepPhoto,
 }))
 
 import {
@@ -32,7 +32,17 @@ const USER = '00000000-0000-4000-8000-000000000001'
 const photo = (name: string) => `uploads/${USER}/${name}.jpg`
 
 /** The key the save keeps an upload under. */
-const saved = (name: string) => `users/${USER}/${name}.jpg`
+const saved = (name: string) => `users/${USER}/${name}/original.jpg`
+
+/** The key of the view the save writes beside it. */
+const view = (name: string) => `users/${USER}/${name}/view.webp`
+
+/** A saved photo as a read answers with it. */
+const read = (name: string) => ({
+	key: saved(name),
+	url: `https://bucket.test/${view(name)}?signed`,
+	originalUrl: `https://bucket.test/${saved(name)}?signed`,
+})
 
 const draft: PlaceDraft = {
 	name: 'Cafe',
@@ -64,7 +74,7 @@ beforeEach(() => {
 
 	mockDeletePhotos.mockReset().mockResolvedValue(undefined)
 
-	mockKeepUpload.mockReset().mockResolvedValue(true)
+	mockKeepPhoto.mockReset().mockResolvedValue(true)
 })
 
 describe('places', () => {
@@ -134,7 +144,13 @@ describe('places', () => {
 				visitedAt: '2026-09-27',
 				rating: 4,
 				review: 'Good',
-				photos: [{ key: 'https://example.com/a.jpg', url: 'https://example.com/a.jpg' }],
+				photos: [
+					{
+						key: 'https://example.com/a.jpg',
+						url: 'https://example.com/a.jpg',
+						originalUrl: 'https://example.com/a.jpg',
+					},
+				],
 			},
 		])
 
@@ -216,11 +232,9 @@ describe('places', () => {
 			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
 		})
 
-		expect(mockKeepUpload).toHaveBeenCalledExactlyOnceWith(photo('a'))
+		expect(mockKeepPhoto).toHaveBeenCalledExactlyOnceWith(photo('a'))
 
-		expect(place?.visits[0]?.photos).toEqual([
-			{ key: saved('a'), url: `https://bucket.test/${saved('a')}?signed` },
-		])
+		expect(place?.visits[0]?.photos).toEqual([read('a')])
 
 		expect(documents.get(`${USER}:places`)).toEqual([
 			expect.objectContaining({ visits: [expect.objectContaining({ photos: [saved('a')] })] }),
@@ -233,20 +247,68 @@ describe('places', () => {
 			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a'), photo('b')] }],
 		})
 
-		mockKeepUpload.mockClear()
+		mockKeepPhoto.mockClear()
 
 		const updated = await updatePlace(USER, place?.id ?? '', {
 			...draft,
 			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [saved('a'), photo('b')] }],
 		})
 
-		expect(mockKeepUpload).not.toHaveBeenCalled()
+		expect(mockKeepPhoto).not.toHaveBeenCalled()
 
 		expect(updated?.visits[0]?.photos.map((stored) => stored.key)).toEqual([saved('a'), saved('b')])
 	})
 
+	it('reads a photo saved before views from its original, and keeps its flat key', async () => {
+		const flat = `users/${USER}/a.jpg`
+
+		const place = await addPlace(USER, draft)
+
+		documents.set(`${USER}:places`, [
+			{ ...place, visits: [{ ...place?.visits[0], photos: [flat] }] },
+		])
+
+		const [listed] = await listPlaces(USER)
+
+		expect(listed?.visits[0]?.photos).toEqual([
+			{
+				key: flat,
+				url: `https://bucket.test/${flat}?signed`,
+				originalUrl: `https://bucket.test/${flat}?signed`,
+			},
+		])
+
+		await updatePlace(USER, place?.id ?? '', { ...asDraft(listed ?? null), name: 'Diner' })
+
+		expect(mockKeepPhoto).not.toHaveBeenCalled()
+
+		expect(documents.get(`${USER}:places`)).toEqual([
+			expect.objectContaining({ visits: [expect.objectContaining({ photos: [flat] })] }),
+		])
+	})
+
+	it('takes the flat key of a photo the view migration moved as its saved key', async () => {
+		const place = await addPlace(USER, {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
+		})
+
+		mockKeepPhoto.mockClear()
+
+		const updated = await updatePlace(USER, place?.id ?? '', {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [`users/${USER}/a.jpg`] }],
+		})
+
+		expect(mockKeepPhoto).not.toHaveBeenCalled()
+
+		expect(updated?.visits[0]?.photos).toEqual([read('a')])
+
+		expect(mockDeletePhotos).not.toHaveBeenCalled()
+	})
+
 	it('refuses an upload that is gone, and a saved photo the places no longer hold', async () => {
-		mockKeepUpload.mockResolvedValue(false)
+		mockKeepPhoto.mockResolvedValue(false)
 
 		const gone = {
 			...draft,

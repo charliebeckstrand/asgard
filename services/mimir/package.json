@@ -34,6 +34,7 @@
 		"grid": "workspace:*",
 		"hono": "^4.13.9",
 		"saga": "workspace:*",
+		"sharp": "^0.35.5",
 		"skuld": "workspace:*",
 		"zod": "^4.6.5"
 	},

@@ -195,12 +195,17 @@
 					},
 					"url": {
 						"type": "string",
-						"description": "Reads the photo for at least 45 minutes"
+						"description": "Reads the photo at most 2048 px on its long side, for at least 45 minutes"
+					},
+					"originalUrl": {
+						"type": "string",
+						"description": "Reads the photo as it was uploaded, for at least 45 minutes"
 					}
 				},
 				"required": [
 					"key",
-					"url"
+					"url",
+					"originalUrl"
 				]
 			},
 			"Location": {
@@ -449,7 +454,7 @@
 						"type": "array",
 						"items": {
 							"type": "string",
-							"pattern": "^(users|uploads)\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}\\.[a-z]{3,4}$",
+							"pattern": "^(users|uploads)\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}(\\/original)?\\.[a-z]{3,4}$",
 							"description": "The key `POST /api/photos/uploads` gave, or a stored photo’s key"
 						},
 						"maxItems": 12,
@@ -578,7 +583,7 @@
 								"type": "array",
 								"items": {
 									"type": "string",
-									"pattern": "^(users|uploads)\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}\\.[a-z]{3,4}$",
+									"pattern": "^(users|uploads)\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}(\\/original)?\\.[a-z]{3,4}$",
 									"description": "The key `POST /api/photos/uploads` gave, or a stored photo’s key"
 								},
 								"maxItems": 50,

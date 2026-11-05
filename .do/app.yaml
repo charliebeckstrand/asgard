@@ -374,9 +374,10 @@ jobs:
         scope: RUN_TIME
         value: ${mimir-admin-db.CA_CERT}
 
-  # Copies the photos visits kept as web addresses into the Spaces bucket, once
-  # the code that reads keys is live. Later runs find nothing left to copy.
-  # Remove it once its logs show nothing copied or kept.
+  # Copies the photos visits kept as web addresses into the Spaces bucket, then
+  # moves each photo saved before views to a key with its view, once the code
+  # that reads both is live. Later runs find nothing left to copy or move.
+  # Remove each command once its logs show nothing copied, kept or moved.
   - name: migrate-mimir-photos
     kind: POST_DEPLOY
     github:
@@ -385,7 +386,7 @@ jobs:
       deploy_on_push: false
     dockerfile_path: Dockerfile
     instance_size_slug: apps-s-1vcpu-0.5gb
-    run_command: node services/mimir/dist/cli.js migrate-photos
+    run_command: node services/mimir/dist/cli.js migrate-photos && node services/mimir/dist/cli.js migrate-photo-views
     log_destinations:
       - name: better-stack
         logtail:

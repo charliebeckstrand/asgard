@@ -1,6 +1,7 @@
 import { DataError } from '../lib/errors.js'
 import { logger } from '../lib/log.js'
 import {
+	type Photo,
 	type Place,
 	type StoredPlace,
 	StoredPlaceSchema,
@@ -8,7 +9,15 @@ import {
 	StoredTripSchema,
 	type Trip,
 } from '../lib/schemas.js'
-import { deletePhotos, isOwnPhoto, keepUpload, photoUrl, savedKey } from '../lib/storage.js'
+import {
+	deletePhotos,
+	isOwnPhoto,
+	isUpload,
+	keepPhoto,
+	photoUrl,
+	savedKey,
+	viewKey,
+} from '../lib/storage.js'
 import { changeDocuments } from './documents.js'
 
 /**
@@ -68,7 +77,7 @@ function isWebAddress(photo: string): boolean {
 }
 
 /** Every photo key the places and trips use. */
-function photoKeys(places: unknown[], trips: unknown[]): Set<string> {
+export function photoKeys(places: unknown[], trips: unknown[]): Set<string> {
 	const keys = new Set<string>()
 
 	for (const place of places.map(readPlace)) {
@@ -86,7 +95,7 @@ function photoKeys(places: unknown[], trips: unknown[]): Set<string> {
 type TravelChange<T> = { result: T; places?: unknown[]; trips?: unknown[] }
 
 /** The value with each string that `keys` maps replaced, however deep. */
-function replaceKeys<V>(value: V, keys: Map<string, string>): V {
+export function replaceKeys<V>(value: V, keys: Map<string, string>): V {
 	if (typeof value === 'string') return (keys.get(value) ?? value) as V
 
 	if (Array.isArray(value)) return value.map((item) => replaceKeys(item, keys)) as V
@@ -105,10 +114,12 @@ function replaceKeys<V>(value: V, keys: Map<string, string>): V {
  * writes the documents it gives back, in one transaction.
  *
  * A draft holds each photo by a key the documents already hold, or by the key
- * of an upload. The write copies each new upload to its saved key and stores
- * that, so the result answers with saved keys. A key that is neither is a
- * photo gone since the draft was opened, and the write is refused. Once it
- * commits, deletes the photos no place or trip holds anymore.
+ * of an upload. The write keeps each new upload under its saved key, with its
+ * view, and stores that, so the result answers with saved keys. A draft
+ * opened before the view migration can hold a photo's flat key, which stands
+ * for the saved key that the documents hold now. A key that is none of these
+ * is a photo gone since the draft was opened, and the write is refused. Once
+ * it commits, deletes the photos no place or trip holds anymore.
  */
 export async function changeTravel<T>(
 	userId: string,
@@ -130,13 +141,24 @@ export async function changeTravel<T>(
 
 			const drafted = photoKeys(changed.places ?? places, changed.trips ?? trips)
 
-			const saved = new Map([...drafted].map((key) => [key, savedKey(key)]))
+			const saved = new Map(
+				[...drafted].map((key) => {
+					const kept = savedKey(key)
+
+					return [key, isUpload(key) || held.has(kept) ? kept : key]
+				}),
+			)
 
 			const uploads = [...saved].filter(([key, kept]) => key !== kept && !held.has(kept))
 
 			const gone = [...saved].some(([key, kept]) => key === kept && !held.has(key))
 
-			if (gone || (await Promise.all(uploads.map(([key]) => keepUpload(key)))).includes(false)) {
+			let available = !gone
+
+			// One at a time, so the resizes of a save with many photos don't fill the memory.
+			for (const [key] of uploads) if (available) available = await keepPhoto(key)
+
+			if (!available) {
 				throw new DataError(
 					'photo-missing',
 					'A photo is no longer available. Remove it and save again.',
@@ -192,13 +214,22 @@ export function checkVisitsOnTrips(
 	}
 }
 
-/** Each stored photo with a URL that reads it. */
-function presentPhotos(photos: string[]): Promise<{ key: string; url: string }[]> {
+/**
+ * Each stored photo with URLs that read it: `url` its view, and `originalUrl`
+ * the photo as it was uploaded. A photo with no view, saved before views or
+ * kept as a web address, answers its original in both.
+ */
+function presentPhotos(photos: string[]): Promise<Photo[]> {
 	return Promise.all(
-		photos.map(async (photo) => ({
-			key: photo,
-			url: isWebAddress(photo) ? photo : await photoUrl(photo),
-		})),
+		photos.map(async (photo) => {
+			if (isWebAddress(photo)) return { key: photo, url: photo, originalUrl: photo }
+
+			const view = viewKey(photo)
+
+			const originalUrl = await photoUrl(photo)
+
+			return { key: photo, url: view ? await photoUrl(view) : originalUrl, originalUrl }
+		}),
 	)
 }
 
