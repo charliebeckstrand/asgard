@@ -25,7 +25,7 @@ Services in `services/`. Each has `manifest.json`, `migrations/`, `src/index.ts`
 - `pnpm --filter <service> db:migrate` and `db:status` run against the service's `.env`. `pnpm --filter <service> exec saga new <name>` adds a migration.
 - `pnpm --filter bifrost openapi` and `pnpm --filter mimir openapi` rewrite each service's `openapi.json`. A test fails when a spec and its routes differ.
 - `node services/mimir/dist/cli.js migrate-photos` copies the photos visits kept as web addresses into the bucket. The deploy runs it after each release until its job is removed.
-- `node services/mimir/dist/cli.js migrate-photo-views` moves each photo saved before views to a key with its view. The same job runs it after `migrate-photos`.
+- `node services/mimir/dist/cli.js migrate-photo-views` moves each photo saved before views to a key with its view. The same job runs it after `migrate-photos`, as one call: `cli.js migrate-photos migrate-photo-views`. App Platform runs a job's command with no shell, so `&&` reaches the CLI as an argument.
 
 ## Environment
 
