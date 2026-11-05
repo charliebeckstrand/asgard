@@ -7,4 +7,5 @@ allowBuilds:
   cpu-features: false
   esbuild: false
   protobufjs: false
+  sharp: false
   ssh2: false

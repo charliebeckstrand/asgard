@@ -9,7 +9,9 @@ import {
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { HTTPException } from 'grid'
+import sharp from 'sharp'
 import { environment } from './env.js'
+import { logger } from './log.js'
 import type { PhotoType } from './schemas.js'
 
 /**
@@ -19,7 +21,13 @@ import type { PhotoType } from './schemas.js'
  *
  * A browser uploads under `uploads/`, where a lifecycle rule on the bucket
  * deletes whatever is left after a day. The save that keeps a photo copies it
- * to the same name under `users/`, so an upload no save keeps cleans itself up.
+ * to `users/{userId}/{photoId}/original.{ext}`, so an upload no save keeps
+ * cleans itself up. Beside the original, the save writes `view.webp`: the
+ * photo at most {@link VIEW_SIZE} px on its long side, which the apps show. A
+ * browser that paints a large original again on each frame drops frames.
+ *
+ * Photos saved before views kept the flat key `users/{userId}/{photoId}.{ext}`,
+ * with no view. The view migration moves each one to the new form.
  */
 
 /** How long an upload URL lasts. */
@@ -34,6 +42,12 @@ const READ_SECONDS = 60 * 60
  * serve it. Each URL still lasts at least 45 minutes.
  */
 const SIGNING_WINDOW_MS = 15 * 60 * 1000
+
+/** The longest side of a view, in px. */
+const VIEW_SIZE = 2048
+
+/** The quality of a view, from 1 to 100. */
+const VIEW_QUALITY = 80
 
 type Bucket = { client: S3Client; name: string }
 
@@ -84,12 +98,21 @@ const SAVED = 'users/'
 
 const UPLOADS = 'uploads/'
 
+/** An upload's key, or a saved key from before views: `{prefix}/{userId}/{photoId}.{ext}`. */
+const FLAT_KEY = /^(?:uploads|users)\/([^/]+)\/([^/]+)\.([a-z0-9]+)$/
+
+/** A saved photo's key: `users/{userId}/{photoId}/original.{ext}`. */
+const SAVED_KEY = /^(users\/[^/]+\/[^/]+\/)original\.[a-z0-9]+$/
+
 /** Where a user's saved photos live in the bucket. */
 function userPrefix(userId: string): string {
 	return `${SAVED}${userId}/`
 }
 
-/** A new key for a saved photo of the user, such as one Mimir copied from the web. */
+/**
+ * A new key for a photo of the user that Mimir copied from the web. It has
+ * the flat form and no view, so the view migration moves it.
+ */
 export function newPhotoKey(userId: string, extension: string): string {
 	return `${userPrefix(userId)}${randomUUID()}.${extension}`
 }
@@ -99,9 +122,27 @@ export function newUploadKey(userId: string, extension: string): string {
 	return `${UPLOADS}${userId}/${randomUUID()}.${extension}`
 }
 
-/** The key a photo has once saved. An upload's is the same name under `users/`. */
+/** Whether a key is an upload's, which a save has to keep. */
+export function isUpload(key: string): boolean {
+	return key.startsWith(UPLOADS)
+}
+
+/**
+ * The key a photo has once saved, with its view beside it. An upload's, and a
+ * flat saved key from before views, is the folder of the same name under
+ * `users/`. A saved key is its own.
+ */
 export function savedKey(key: string): string {
-	return key.startsWith(UPLOADS) ? `${SAVED}${key.slice(UPLOADS.length)}` : key
+	const flat = FLAT_KEY.exec(key)
+
+	return flat ? `${SAVED}${flat[1]}/${flat[2]}/original.${flat[3]}` : key
+}
+
+/** The key of a saved photo's view, or `undefined` for a key with none. */
+export function viewKey(key: string): string | undefined {
+	const saved = SAVED_KEY.exec(key)
+
+	return saved ? `${saved[1]}view.webp` : undefined
 }
 
 /** Whether a key is one of the user's own, saved or uploaded. */
@@ -146,22 +187,45 @@ export async function putPhoto(key: string, body: Uint8Array, contentType: strin
 }
 
 /**
- * Copies an upload to its saved key. `false` where the upload isn't there: it
- * never finished, or the lifecycle rule deleted it.
+ * The photo at most {@link VIEW_SIZE} px on its long side, as WebP, turned as
+ * its EXIF orientation says and in its own color profile. A photo the
+ * resizer can't read is its own view, so each saved photo has one.
  */
-export async function keepUpload(key: string): Promise<boolean> {
+async function view(body: Uint8Array, contentType: string | undefined, key: string) {
+	try {
+		const data = await sharp(body)
+			.rotate()
+			.resize({ width: VIEW_SIZE, height: VIEW_SIZE, fit: 'inside', withoutEnlargement: true })
+			.keepIccProfile()
+			.webp({ quality: VIEW_QUALITY })
+			.toBuffer()
+
+		return { body: data, contentType: 'image/webp' }
+	} catch (err) {
+		logger().warn({ err, key }, 'photo view failed, the original stands in')
+
+		return { body, contentType }
+	}
+}
+
+/**
+ * Copies a photo with a flat key, an upload or one saved before views, to its
+ * saved key, and writes its view beside it. `false` where the photo isn't
+ * there: an upload that never finished, or that the lifecycle rule deleted.
+ */
+export async function keepPhoto(key: string): Promise<boolean> {
 	const { client, name } = bucket()
 
-	try {
-		await client.send(
-			new CopyObjectCommand({
-				Bucket: name,
-				CopySource: `${name}/${encodeURI(key)}`,
-				Key: savedKey(key),
-			}),
-		)
+	let original: Uint8Array
 
-		return true
+	let contentType: string | undefined
+
+	try {
+		const object = await client.send(new GetObjectCommand({ Bucket: name, Key: key }))
+
+		original = await (object.Body as NonNullable<typeof object.Body>).transformToByteArray()
+
+		contentType = object.ContentType
 	} catch (err) {
 		if ((err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) {
 			return false
@@ -169,10 +233,43 @@ export async function keepUpload(key: string): Promise<boolean> {
 
 		throw err
 	}
+
+	const saved = savedKey(key)
+
+	const resized = await view(original, contentType, key)
+
+	await client.send(
+		new PutObjectCommand({
+			Bucket: name,
+			Key: viewKey(saved),
+			Body: resized.body,
+			ContentType: resized.contentType,
+		}),
+	)
+
+	await client.send(
+		new CopyObjectCommand({ Bucket: name, CopySource: `${name}/${encodeURI(key)}`, Key: saved }),
+	)
+
+	return true
 }
 
-/** Deletes photos. Deleting one that isn't there succeeds, as does deleting with no bucket. */
-export async function deletePhotos(keys: Iterable<string>): Promise<void> {
+/**
+ * Deletes photos, each with its view. Deleting one that isn't there succeeds,
+ * as does deleting with no bucket.
+ */
+export function deletePhotos(keys: Iterable<string>): Promise<void> {
+	return deleteObjects(
+		[...keys].flatMap((key) => {
+			const view = viewKey(key)
+
+			return view ? [key, view] : [key]
+		}),
+	)
+}
+
+/** Deletes objects of the bucket. Deleting one that isn't there succeeds, as does deleting with no bucket. */
+async function deleteObjects(keys: string[]): Promise<void> {
 	const configured = configuredBucket()
 
 	if (!configured) return
@@ -180,7 +277,7 @@ export async function deletePhotos(keys: Iterable<string>): Promise<void> {
 	const { client, name } = configured
 
 	await Promise.all(
-		[...keys].map((key) => client.send(new DeleteObjectCommand({ Bucket: name, Key: key }))),
+		keys.map((key) => client.send(new DeleteObjectCommand({ Bucket: name, Key: key }))),
 	)
 }
 
@@ -204,7 +301,7 @@ export async function deleteUserPhotos(userId: string): Promise<void> {
 			}),
 		)
 
-		await deletePhotos((page.Contents ?? []).flatMap((object) => object.Key ?? []))
+		await deleteObjects((page.Contents ?? []).flatMap((object) => object.Key ?? []))
 
 		token = page.IsTruncated ? page.NextContinuationToken : undefined
 	} while (token)

@@ -87,13 +87,14 @@ const createdAt = z
 /**
  * A photo in a draft: the key `POST /api/photos/uploads` gave for a new photo,
  * `uploads/{userId}/{uuid}.{ext}`, or the stored key of a kept one,
- * `users/{userId}/{uuid}.{ext}`. A document keeps keys, never URLs, so a
- * stored photo can't point anywhere else.
+ * `users/{userId}/{uuid}/original.{ext}`, or `users/{userId}/{uuid}.{ext}` from
+ * before views. A document keeps keys, never URLs, so a stored photo can't
+ * point anywhere else.
  */
 const PhotoKeySchema = z
 	.string('A photo must be the key of an uploaded photo.')
 	.regex(
-		/^(users|uploads)\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z]{3,4}$/,
+		/^(users|uploads)\/[0-9a-f-]{36}\/[0-9a-f-]{36}(\/original)?\.[a-z]{3,4}$/,
 		'A photo must be the key of an uploaded photo.',
 	)
 	.openapi({ description: 'The key `POST /api/photos/uploads` gave, or a stored photo’s key' })
@@ -101,9 +102,16 @@ const PhotoKeySchema = z
 const PhotoSchema = z
 	.object({
 		key: z.string(),
-		url: z.string().openapi({ description: 'Reads the photo for at least 45 minutes' }),
+		url: z.string().openapi({
+			description: 'Reads the photo at most 2048 px on its long side, for at least 45 minutes',
+		}),
+		originalUrl: z.string().openapi({
+			description: 'Reads the photo as it was uploaded, for at least 45 minutes',
+		}),
 	})
 	.openapi('Photo')
+
+export type Photo = z.infer<typeof PhotoSchema>
 
 /**
  * A stored photo: a key, or, until the photo migration has copied it, the web

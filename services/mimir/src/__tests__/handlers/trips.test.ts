@@ -2,9 +2,9 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv({ MIMIR_API_KEY: 'test-mimir-api-key-that-is-at-least-32-chars' })
 
-const { mockDeletePhotos, mockKeepUpload } = vi.hoisted(() => ({
+const { mockDeletePhotos, mockKeepPhoto } = vi.hoisted(() => ({
 	mockDeletePhotos: vi.fn(),
-	mockKeepUpload: vi.fn(),
+	mockKeepPhoto: vi.fn(),
 }))
 
 vi.mock('../../handlers/documents.js', () => import('./documents-mock.js'))
@@ -13,7 +13,7 @@ vi.mock('../../lib/storage.js', async (original) => ({
 	...(await original<typeof import('../../lib/storage.js')>()),
 	photoUrl: async (key: string) => `https://bucket.test/${key}?signed`,
 	deletePhotos: mockDeletePhotos,
-	keepUpload: mockKeepUpload,
+	keepPhoto: mockKeepPhoto,
 }))
 
 import { addPlace, listPlaces } from '../../handlers/places.js'
@@ -27,7 +27,17 @@ const USER = '00000000-0000-4000-8000-000000000001'
 const photo = (name: string) => `uploads/${USER}/${name}.jpg`
 
 /** The key the save keeps an upload under. */
-const saved = (name: string) => `users/${USER}/${name}.jpg`
+const saved = (name: string) => `users/${USER}/${name}/original.jpg`
+
+/** The key of the view the save writes beside it. */
+const view = (name: string) => `users/${USER}/${name}/view.webp`
+
+/** A saved photo as a read answers with it. */
+const read = (name: string) => ({
+	key: saved(name),
+	url: `https://bucket.test/${view(name)}?signed`,
+	originalUrl: `https://bucket.test/${saved(name)}?signed`,
+})
 
 const draft: TripDraft = {
 	name: 'Pittsburgh',
@@ -55,7 +65,7 @@ beforeEach(() => {
 
 	mockDeletePhotos.mockReset().mockResolvedValue(undefined)
 
-	mockKeepUpload.mockReset().mockResolvedValue(true)
+	mockKeepPhoto.mockReset().mockResolvedValue(true)
 })
 
 describe('trips', () => {
@@ -84,9 +94,7 @@ describe('trips', () => {
 	it('answers with a URL for each photo', async () => {
 		const { trip } = await createTrip(USER, { ...draft, photos: [photo('a')] })
 
-		expect(trip.photos).toEqual([
-			{ key: saved('a'), url: `https://bucket.test/${saved('a')}?signed` },
-		])
+		expect(trip.photos).toEqual([read('a')])
 	})
 
 	it("refuses another user's photo", async () => {
