@@ -386,7 +386,7 @@ jobs:
       deploy_on_push: false
     dockerfile_path: Dockerfile
     instance_size_slug: apps-s-1vcpu-0.5gb
-    run_command: node services/mimir/dist/cli.js migrate-photos && node services/mimir/dist/cli.js migrate-photo-views
+    run_command: node services/mimir/dist/cli.js migrate-photos migrate-photo-views
     log_destinations:
       - name: better-stack
         logtail:

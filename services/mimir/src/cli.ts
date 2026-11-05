@@ -2,9 +2,10 @@ import { migratePhotos } from './handlers/photo-migration.js'
 import { migratePhotoViews } from './handlers/photo-views.js'
 import { db } from './lib/db.js'
 
-// Operator commands, run where Mimir's environment is set:
-//   node dist/cli.js migrate-photos
-//   node dist/cli.js migrate-photo-views
+// Operator commands, run where Mimir's environment is set. Each named command
+// runs in order. App Platform runs a job's command with no shell, so a job runs
+// several commands as one call, not with `&&`:
+//   node dist/cli.js migrate-photos migrate-photo-views
 
 const commands: Record<string, () => Promise<string>> = {
 	'migrate-photos': async () => {
@@ -19,16 +20,14 @@ const commands: Record<string, () => Promise<string>> = {
 	},
 }
 
-const [name] = process.argv.slice(2)
+const names = process.argv.slice(2)
 
-const command = name === undefined ? undefined : commands[name]
-
-if (!command) {
-	console.error(`Usage: node dist/cli.js ${Object.keys(commands).join(' | ')}`)
+if (names.length === 0 || names.some((name) => !(name in commands))) {
+	console.error(`Usage: node dist/cli.js <${Object.keys(commands).join(' | ')}>...`)
 
 	process.exit(1)
 }
 
-console.log(await command())
+for (const name of names) console.log(await commands[name]?.())
 
 await db.close()
