@@ -24,7 +24,7 @@ Services in `services/`. Each has `manifest.json`, `migrations/`, `src/index.ts`
 - `pnpm dev` starts Postgres in Docker, creates the local roles and databases, applies migrations, and runs every service through `hlidskjalf`.
 - `pnpm --filter <service> db:migrate` and `db:status` run against the service's `.env`. `pnpm --filter <service> exec saga new <name>` adds a migration.
 - `pnpm --filter bifrost openapi` and `pnpm --filter mimir openapi` rewrite each service's `openapi.json`. A test fails when a spec and its routes differ.
-- `node services/mimir/dist/cli.js migrate-photos` copies the photos visits kept as web addresses into the bucket. The deploy runs it after each release until its job is removed.
+- `node services/mimir/dist/cli.js migrate-photos` copies the photos visits kept as web addresses into the bucket. The deploy runs it after each release until it is dropped from its job's command.
 - `node services/mimir/dist/cli.js migrate-photo-views` moves each photo saved before views to a key with its view. The same job runs it after `migrate-photos`, as one call: `cli.js migrate-photos migrate-photo-views`. App Platform runs a job's command with no shell, so `&&` reaches the CLI as an argument.
 
 ## Environment
@@ -33,7 +33,7 @@ Each service's `.env` is generated from its `manifest.json` and the secrets cach
 
 ## Deploy
 
-A push to `main` runs CI, then applies `.do/app.yaml` to the `asgard` app on DigitalOcean App Platform. The spec's comments explain each part. In short: bifrost, vidar and mimir run from the one Dockerfile (`SERVICE` build arg); a `PRE_DEPLOY` job per service runs `saga migrate` as the admin user; each service connects as its own user, which can read and write rows but not change the schema; logs go to Better Stack. A `POST_DEPLOY` job runs Mimir's photo migration once the new version is live.
+A push to `main` runs CI, then applies `.do/app.yaml` to the `asgard` app on DigitalOcean App Platform. The spec's comments explain each part. In short: bifrost, vidar and mimir run from the one Dockerfile (`SERVICE` build arg); a `PRE_DEPLOY` job per service runs `saga migrate` as the admin user; each service connects as its own user, which can read and write rows but not change the schema; logs go to Better Stack. A `POST_DEPLOY` job runs Mimir's photo migrations once the new version is live.
 
 Renovate's minor and patch updates (`renovate.json`) merge themselves once CI passes, so they deploy like any other push.
 
