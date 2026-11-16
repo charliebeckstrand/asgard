@@ -42,6 +42,8 @@ jobs:
     # App Platform builds this same Dockerfile at deploy, so a broken image
     # fails here instead of after merge. Only on pull requests: on main the
     # deploy builds the image itself right after.
+    # The "Require CI" ruleset on main requires each image's check by name, so
+    # a new service here also goes into the ruleset.
     docker:
         name: Build ${{ matrix.service }} image
         if: github.event_name == 'pull_request'
