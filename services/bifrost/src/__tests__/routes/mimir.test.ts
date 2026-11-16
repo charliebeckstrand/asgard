@@ -171,6 +171,53 @@ describe('Mimir routes', () => {
 		expect(fetchMock).not.toHaveBeenCalled()
 	})
 
+	it('forwards the leaderboard of a daily puzzle with no user and no session', async () => {
+		mockFindSession.mockResolvedValue(null)
+
+		const path = '/api/games/numbers/daily?date=20261116&mode=solo'
+
+		const res = await app.request(path, { headers })
+
+		expect(res.status).toBe(200)
+
+		const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+
+		expect(url).toBe(`${MIMIR_URL}${path}`)
+
+		const sent = init.headers as Record<string, string>
+
+		expect(sent.authorization).toBe(`Bearer ${MIMIR_API_KEY}`)
+
+		expect(sent['x-mimir-user']).toBeUndefined()
+	})
+
+	it('forwards the leaderboard of a daily puzzle with the signed-in user', async () => {
+		await app.request('/api/games/numbers/daily?date=20261116&mode=solo', { headers })
+
+		const init = fetchMock.mock.calls[0][1] as RequestInit
+
+		const sent = init.headers as Record<string, string>
+
+		expect(JSON.parse(sent['x-mimir-user'])).toMatchObject({ id: user.id })
+	})
+
+	it.each([
+		['GET', '/api/games/numbers/stats?today=20261116'],
+		['POST', '/api/games/numbers/results'],
+	])('returns 401 for %s %s without a session and never calls Mimir', async (method, path) => {
+		mockFindSession.mockResolvedValue(null)
+
+		const res = await app.request(path, {
+			method,
+			headers,
+			body: method === 'GET' ? undefined : '{}',
+		})
+
+		expect(res.status).toBe(401)
+
+		expect(fetchMock).not.toHaveBeenCalled()
+	})
+
 	it('returns 503 when Mimir is unreachable', async () => {
 		fetchMock.mockRejectedValue(new TypeError('fetch failed'))
 

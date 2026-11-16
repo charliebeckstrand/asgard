@@ -214,6 +214,16 @@ describe('numbers', () => {
 		expect(mockReadDailyBoard).toHaveBeenCalledWith('numbers', 'vsCpu', date, USER)
 	})
 
+	it('reads the leaderboard for a reader with no session', async () => {
+		const board = { players: 0, entries: [] }
+
+		mockReadDailyBoard.mockResolvedValue(board)
+
+		expect(await readNumbersBoard(null, '20261116', 'solo')).toBe(board)
+
+		expect(mockReadDailyBoard).toHaveBeenCalledWith('numbers', 'solo', '20261116', null)
+	})
+
 	it('refuses the leaderboard of a date more than a day ahead', async () => {
 		expect(() => readNumbersBoard(USER, '20261118', 'solo')).toThrow(
 			expect.objectContaining({ status: 400 }),

@@ -38,14 +38,15 @@ type BoardRow = { rank: number; name: string | null; score: number; you: boolean
 
 /**
  * The leaderboard of one daily puzzle: the first {@link BOARD_SIZE} players by
- * score, then the reader when they are below them. Equal scores share a rank,
- * and list in the order that they finished.
+ * score, then the reader `userId` when they are below them. A reader with no
+ * session (`null`) gets only the first players, and no entry is theirs. Equal
+ * scores share a rank, and list in the order that they finished.
  */
 export async function readDailyBoard(
 	game: Game,
 	mode: string,
 	date: string,
-	userId: string,
+	userId: string | null,
 ): Promise<NumbersBoard> {
 	const rows = await db.many<BoardRow>(sql`
 		WITH ranked AS (
@@ -64,7 +65,7 @@ export async function readDailyBoard(
 				AND results.mode = ${mode}
 				AND results.day = to_date(${date}, 'YYYYMMDD')
 		)
-		SELECT rank, name, score, user_id = ${userId} AS you, players
+		SELECT rank, name, score, user_id IS NOT DISTINCT FROM ${userId} AS you, players
 		FROM ranked
 		WHERE place <= ${BOARD_SIZE} OR user_id = ${userId}
 		ORDER BY place
