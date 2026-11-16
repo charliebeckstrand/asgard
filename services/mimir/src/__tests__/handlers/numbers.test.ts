@@ -108,22 +108,25 @@ describe('numbers', () => {
 		expect((await listNumbers(USER)).solo.daily).toEqual({ [TODAY]: 4 })
 	})
 
-	it('keeps the first run of a daily puzzle for its leaderboard, in the same transaction', async () => {
+	it('sends each run of a daily puzzle on its day to its leaderboard, in the same transaction', async () => {
 		await recordNumbersResult(USER, null, daily(TODAY, 4))
 
 		await recordNumbersResult(USER, null, daily(TODAY, 18))
 
 		await recordNumbersResult(USER, null, run(20))
 
-		expect(mockRecordDailyResult).toHaveBeenCalledTimes(1)
-
-		expect(mockRecordDailyResult).toHaveBeenCalledWith(transaction, {
+		const result = (score: number) => ({
 			game: 'numbers',
 			mode: 'solo',
 			date: TODAY,
 			userId: USER,
-			score: 4,
+			score,
 		})
+
+		expect(mockRecordDailyResult.mock.calls).toEqual([
+			[transaction, result(4)],
+			[transaction, result(18)],
+		])
 	})
 
 	it('keeps the name of the account with each run, in the same transaction', async () => {

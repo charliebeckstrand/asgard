@@ -16,9 +16,10 @@ import { readDailyBoard, recordDailyResult, recordPlayerName } from './games.js'
 /**
  * The results of the numbers app of each user, in one document. For each mode,
  * the count of runs that ended on each score, and the score of the first run of
- * each daily puzzle by its date. Every other stat comes from these on read. The
- * score of the first run of a daily puzzle also goes in `game_results`, in the
- * same transaction, for the leaderboard of that puzzle.
+ * each daily puzzle by its date. Every other stat comes from these on read. Each
+ * run of a daily puzzle on its day also goes to `game_results`, in the same
+ * transaction, which keeps the best score of the user for the leaderboard of
+ * that puzzle.
  */
 
 const DAY = 86_400_000
@@ -139,8 +140,8 @@ export async function listNumbers(userId: string): Promise<StoredNumbers> {
 
 /**
  * Counts one finished run, and answers with the new stats. A run whose seed is
- * the reader's date is the daily puzzle, and only its first run counts toward
- * the daily streak and the leaderboard. `name` is the name of the account, which
+ * the reader's date is the daily puzzle. Only its first run counts toward the
+ * daily streak, and its best run counts on the leaderboard. `name` is the name of the account, which
  * the leaderboards show.
  */
 export async function recordNumbersResult(
@@ -159,9 +160,11 @@ export async function recordNumbersResult(
 
 		const scores = mode.scores.map((count, score) => (score === result.score ? count + 1 : count))
 
-		const first = result.seed === result.today && !(result.seed in mode.daily)
+		const isDaily = result.seed === result.today
 
-		if (first) {
+		const first = isDaily && !(result.seed in mode.daily)
+
+		if (isDaily) {
 			await recordDailyResult(tx, {
 				game: 'numbers',
 				mode: result.mode,

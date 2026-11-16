@@ -31,7 +31,7 @@ const DATE = '20261116'
 /** The id of user `n`. */
 const user = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 
-/** A first run of the daily puzzle of `DATE` in solo. */
+/** A run of the daily puzzle of `DATE` in solo, on its day. */
 const result = (n: number, score: number, date = DATE) => ({
 	game: 'numbers' as const,
 	mode: 'solo',
@@ -47,7 +47,7 @@ function database() {
 	return holder.db
 }
 
-/** Keeps a first run outside any other write. */
+/** Keeps a run outside any other write. */
 const record = (daily: ReturnType<typeof result>) => recordDailyResult(database(), daily)
 
 /** Keeps the account name of user `n` outside any other write. */
@@ -146,14 +146,28 @@ describeWithDocker('games', () => {
 		})
 	})
 
-	it('keeps the first score of a player', async () => {
+	it('keeps the best score of a player, and orders a tie by when each player got it', async () => {
 		await record(result(1, 4))
+
+		await record(result(2, 12))
 
 		await record(result(1, 18))
 
-		expect(await readDailyBoard('numbers', 'solo', DATE, user(1))).toEqual({
-			players: 1,
-			entries: [{ rank: 1, name: null, score: 4, you: true }],
+		await record(result(1, 11))
+
+		await record(result(3, 10))
+
+		await record(result(3, 18))
+
+		await record(result(1, 18))
+
+		expect(await readDailyBoard('numbers', 'solo', DATE, user(3))).toEqual({
+			players: 3,
+			entries: [
+				{ rank: 1, name: null, score: 18, you: false },
+				{ rank: 1, name: null, score: 18, you: true },
+				{ rank: 3, name: null, score: 12, you: false },
+			],
 		})
 	})
 
@@ -210,7 +224,7 @@ describeWithDocker('games', () => {
 		expect(await nameOf(1)).toBeNull()
 	})
 
-	it('keeps the first run of a daily puzzle and the account name with the run that counts it', async () => {
+	it('keeps the best run of a daily puzzle and the account name with the runs that count it', async () => {
 		vi.useFakeTimers({ toFake: ['Date'] })
 
 		vi.setSystemTime(new Date('2026-11-16T12:00:00Z'))
@@ -221,13 +235,15 @@ describeWithDocker('games', () => {
 			await recordNumbersResult(user(7), 'Lin', { ...run, score: 6 })
 
 			await recordNumbersResult(user(7), 'Lin', { ...run, score: 17 })
+
+			await recordNumbersResult(user(7), 'Lin', { ...run, score: 9 })
 		} finally {
 			vi.useRealTimers()
 		}
 
 		expect(await readDailyBoard('numbers', 'solo', DATE, user(7))).toEqual({
 			players: 1,
-			entries: [{ rank: 1, name: 'Lin', score: 6, you: true }],
+			entries: [{ rank: 1, name: 'Lin', score: 17, you: true }],
 		})
 	})
 

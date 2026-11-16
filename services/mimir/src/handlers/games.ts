@@ -4,7 +4,7 @@ import type { NumbersBoard } from '../lib/schemas.js'
 
 /**
  * What every game keeps outside the documents of its users, for the reads
- * across users that a document can't serve: the score of the first run of each
+ * across users that a document can't serve: the best score of each user on each
  * daily puzzle, a row of `game_results`, and the name of the account of each
  * user, which the leaderboards show, a row of `game_players`.
  */
@@ -15,13 +15,14 @@ type Game = 'numbers'
 /** The rows that a leaderboard shows above the row of the reader. */
 const BOARD_SIZE = 10
 
-/** The score of the first run of one daily puzzle. `date` is `YYYYMMDD`. */
+/** The score of one run of a daily puzzle on its day. `date` is `YYYYMMDD`. */
 type DailyResult = { game: Game; mode: string; date: string; userId: string; score: number }
 
 /**
- * Keeps the score of the first run of a daily puzzle, in the transaction `q` of
- * the write that counts the run. A later run of the same puzzle keeps the
- * first score.
+ * Keeps the best score of the user on a daily puzzle, in the transaction `q` of
+ * the write that counts the run. A run with a higher score replaces the score,
+ * and its time orders the ties. A run with an equal or lower score changes
+ * nothing.
  */
 export async function recordDailyResult(q: Queryable, result: DailyResult): Promise<void> {
 	await q.exec(sql`
@@ -30,7 +31,9 @@ export async function recordDailyResult(q: Queryable, result: DailyResult): Prom
 			${result.game}, ${result.mode}, to_date(${result.date}, 'YYYYMMDD'), ${result.userId},
 			${result.score}
 		)
-		ON CONFLICT DO NOTHING
+		ON CONFLICT (game, mode, day, user_id) DO UPDATE
+			SET score = EXCLUDED.score, created_at = now()
+			WHERE EXCLUDED.score > game_results.score
 	`)
 }
 
@@ -38,9 +41,9 @@ type BoardRow = { rank: number; name: string | null; score: number; you: boolean
 
 /**
  * The leaderboard of one daily puzzle: the first {@link BOARD_SIZE} players by
- * score, then the reader `userId` when they are below them. A reader with no
+ * best score, then the reader `userId` when they are below them. A reader with no
  * session (`null`) gets only the first players, and no entry is theirs. Equal
- * scores share a rank, and list in the order that they finished.
+ * scores share a rank, and list in the order that the players got them.
  */
 export async function readDailyBoard(
 	game: Game,

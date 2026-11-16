@@ -527,7 +527,7 @@ const NumbersBoardEntrySchema = z
 		name: z
 			.string()
 			.nullable()
-			.openapi({ description: 'The leaderboard name of the player, or null when they set none' }),
+			.openapi({ description: 'The name of the account of the player, or null when it has none' }),
 		score: ScoreSchema,
 		you: z.boolean().openapi({ description: 'Whether the row is the reader' }),
 	})
@@ -541,7 +541,7 @@ export const NumbersBoardSchema = z
 		}),
 	})
 	.openapi('NumbersBoard', {
-		description: 'The first run of each player of one daily puzzle, by score',
+		description: 'The best run of each player of one daily puzzle on its day, by score',
 	})
 
 export type NumbersBoard = z.infer<typeof NumbersBoardSchema>

@@ -33,7 +33,7 @@ const recordResultRoute = createRoute({
 	tags: ['Numbers'],
 	summary: 'Count a finished run',
 	description:
-		"Every run counts, replays included. A run whose seed is the reader's date is the daily puzzle, and only its first run counts toward the daily streak and the leaderboard. Each run keeps the name of the account, which the leaderboards show.",
+		"Every run counts, replays included. A run whose seed is the reader's date is the daily puzzle. Only its first run counts toward the daily streak, and the leaderboard keeps the best score of each player. Each run keeps the name of the account, which the leaderboards show.",
 	middleware: [requireRole('user')] as const,
 	request: {
 		body: jsonRequest(NumbersResultSchema),
@@ -52,7 +52,7 @@ const getBoardRoute = createRoute({
 	tags: ['Numbers'],
 	summary: 'Get the leaderboard of a daily puzzle',
 	description:
-		"The first run of each player of the daily puzzle of `date` in `mode`: the top 10 by score, then the reader when they are below them. Equal scores share a rank and list in the order that they finished. A date more than one day ahead of the server's date is refused. A reader with no session gets the top 10, with no entry of their own.",
+		"The best score of each player on the daily puzzle of `date` in `mode`, from the runs on that day: the top 10 by score, then the reader when they are below them. Equal scores share a rank and list in the order that the players got them. A date more than one day ahead of the server's date is refused. A reader with no session gets the top 10, with no entry of their own.",
 	request: {
 		query: NumbersBoardQuerySchema,
 	},
