@@ -19,9 +19,8 @@ import { createDb, migrate, sql } from 'saga'
 import {
 	deleteGames,
 	readDailyBoard,
-	readPlayerName,
 	recordDailyResult,
-	setPlayerName,
+	recordPlayerName,
 } from '../../handlers/games.js'
 import { recordNumbersResult } from '../../handlers/numbers.js'
 
@@ -41,12 +40,26 @@ const result = (n: number, score: number, date = DATE) => ({
 	score,
 })
 
-/** Keeps a first run outside any other write. */
-function record(daily: ReturnType<typeof result>) {
+/** The database, once the suite has started it. */
+function database() {
 	if (!holder.db) throw new Error('No database')
 
-	return recordDailyResult(holder.db, daily)
+	return holder.db
 }
+
+/** Keeps a first run outside any other write. */
+const record = (daily: ReturnType<typeof result>) => recordDailyResult(database(), daily)
+
+/** Keeps the account name of user `n` outside any other write. */
+const name = (n: number, value: string | null) => recordPlayerName(database(), user(n), value)
+
+/** The name that the boards show for user `n`, or null. */
+const nameOf = async (n: number) =>
+	(
+		await database().first<{ name: string }>(
+			sql`SELECT name FROM game_players WHERE user_id = ${user(n)}`,
+		)
+	)?.name ?? null
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 
@@ -121,7 +134,7 @@ describeWithDocker('games', () => {
 
 		await record({ ...result(5, 19), mode: 'vsCpu' })
 
-		await setPlayerName(user(2), 'Ada')
+		await name(2, 'Ada')
 
 		expect(await readDailyBoard('numbers', 'solo', DATE, user(3))).toEqual({
 			players: 3,
@@ -171,21 +184,21 @@ describeWithDocker('games', () => {
 		})
 	})
 
-	it('sets, changes and removes a leaderboard name', async () => {
-		expect(await readPlayerName(user(1))).toBeNull()
+	it('keeps, changes and removes the name of an account', async () => {
+		expect(await nameOf(1)).toBeNull()
 
-		await setPlayerName(user(1), 'Ada')
+		await name(1, 'Ada')
 
-		await setPlayerName(user(1), 'Grace')
+		await name(1, 'Grace')
 
-		expect(await readPlayerName(user(1))).toBe('Grace')
+		expect(await nameOf(1)).toBe('Grace')
 
-		await setPlayerName(user(1), null)
+		await name(1, null)
 
-		expect(await readPlayerName(user(1))).toBeNull()
+		expect(await nameOf(1)).toBeNull()
 	})
 
-	it('keeps the first run of a daily puzzle with the run that counts it', async () => {
+	it('keeps the first run of a daily puzzle and the account name with the run that counts it', async () => {
 		vi.useFakeTimers({ toFake: ['Date'] })
 
 		vi.setSystemTime(new Date('2026-11-16T12:00:00Z'))
@@ -193,16 +206,16 @@ describeWithDocker('games', () => {
 		const run = { seed: DATE, mode: 'solo' as const, today: DATE }
 
 		try {
-			await recordNumbersResult(user(7), { ...run, score: 6 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, score: 6 })
 
-			await recordNumbersResult(user(7), { ...run, score: 17 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, score: 17 })
 		} finally {
 			vi.useRealTimers()
 		}
 
 		expect(await readDailyBoard('numbers', 'solo', DATE, user(7))).toEqual({
 			players: 1,
-			entries: [{ rank: 1, name: null, score: 6, you: true }],
+			entries: [{ rank: 1, name: 'Lin', score: 6, you: true }],
 		})
 	})
 
@@ -211,15 +224,15 @@ describeWithDocker('games', () => {
 
 		await record(result(2, 11))
 
-		await setPlayerName(user(1), 'Ada')
+		await name(1, 'Ada')
 
-		await setPlayerName(user(2), 'Grace')
+		await name(2, 'Grace')
 
 		await deleteGames(user(1))
 
-		expect(await readPlayerName(user(1))).toBeNull()
+		expect(await nameOf(1)).toBeNull()
 
-		expect(await readPlayerName(user(2))).toBe('Grace')
+		expect(await nameOf(2)).toBe('Grace')
 
 		expect(await readDailyBoard('numbers', 'solo', DATE, user(1))).toEqual({
 			players: 1,

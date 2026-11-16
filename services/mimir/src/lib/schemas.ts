@@ -543,28 +543,6 @@ export const NumbersBoardSchema = z
 
 export type NumbersBoard = z.infer<typeof NumbersBoardSchema>
 
-/** The longest leaderboard name. */
-const MAX_PLAYER_NAME = 24
-
-const PLAYER_NAME_MESSAGE = `\`name\` must be 1 to ${MAX_PLAYER_NAME} characters, or null.`
-
-export const GamePlayerSchema = z
-	.object({
-		name: z
-			.string(PLAYER_NAME_MESSAGE)
-			.trim()
-			.min(1, PLAYER_NAME_MESSAGE)
-			.max(MAX_PLAYER_NAME, PLAYER_NAME_MESSAGE)
-			// No control or format characters, which could hide or reverse text.
-			.regex(/^\P{C}+$/u, PLAYER_NAME_MESSAGE)
-			.nullable()
-			.openapi({
-				description: 'The name on the leaderboards, or null to show as anonymous',
-				example: 'Ada',
-			}),
-	})
-	.openapi('GamePlayer', { description: 'How the user shows on the leaderboards of every game' })
-
 export const AccountDataSchema = z
 	.object({
 		places: PlaceListSchema,
@@ -574,6 +552,5 @@ export const AccountDataSchema = z
 			description: 'The NFL picks, by season',
 		}),
 		numbers: StoredNumbersSchema,
-		games: GamePlayerSchema,
 	})
 	.openapi('AccountData')

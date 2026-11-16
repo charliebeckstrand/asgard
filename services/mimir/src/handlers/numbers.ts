@@ -11,7 +11,7 @@ import {
 	StoredNumbersModeSchema,
 } from '../lib/schemas.js'
 import { changeDocument, readDocument } from './documents.js'
-import { readDailyBoard, recordDailyResult } from './games.js'
+import { readDailyBoard, recordDailyResult, recordPlayerName } from './games.js'
 
 /**
  * The results of the numbers app of each user, in one document. For each mode,
@@ -139,15 +139,19 @@ export async function listNumbers(userId: string): Promise<StoredNumbers> {
 /**
  * Counts one finished run, and answers with the new stats. A run whose seed is
  * the reader's date is the daily puzzle, and only its first run counts toward
- * the daily streak and the leaderboard.
+ * the daily streak and the leaderboard. `name` is the name of the account, which
+ * the leaderboards show.
  */
 export async function recordNumbersResult(
 	userId: string,
+	name: string | null,
 	result: NumbersResult,
 ): Promise<NumbersStats> {
 	checkToday(result.today)
 
 	return changeDocument(userId, 'numbers', async (document, tx) => {
+		await recordPlayerName(tx, userId, name)
+
 		const numbers = stored(document)
 
 		const mode = numbers[result.mode]

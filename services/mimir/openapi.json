@@ -76,9 +76,6 @@
 					},
 					"numbers": {
 						"$ref": "#/components/schemas/StoredNumbers"
-					},
-					"games": {
-						"$ref": "#/components/schemas/GamePlayer"
 					}
 				},
 				"required": [
@@ -86,8 +83,7 @@
 					"visits",
 					"trips",
 					"predictions",
-					"numbers",
-					"games"
+					"numbers"
 				]
 			},
 			"PlaceList": {
@@ -426,24 +422,6 @@
 					"vsCpu"
 				],
 				"description": "The results of the numbers app, by mode"
-			},
-			"GamePlayer": {
-				"type": "object",
-				"properties": {
-					"name": {
-						"type": "string",
-						"nullable": true,
-						"minLength": 1,
-						"maxLength": 24,
-						"pattern": "^\\P{C}+$/u",
-						"description": "The name on the leaderboards, or null to show as anonymous",
-						"example": "Ada"
-					}
-				},
-				"required": [
-					"name"
-				],
-				"description": "How the user shows on the leaderboards of every game"
 			},
 			"Error": {
 				"type": "object",
@@ -1938,7 +1916,7 @@
 					"Numbers"
 				],
 				"summary": "Count a finished run",
-				"description": "Every run counts, replays included. A run whose seed is the reader's date is the daily puzzle, and only its first run counts toward the daily streak and the leaderboard.",
+				"description": "Every run counts, replays included. A run whose seed is the reader's date is the daily puzzle, and only its first run counts toward the daily streak and the leaderboard. Each run keeps the name of the account, which the leaderboards show.",
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -2051,96 +2029,6 @@
 					},
 					"401": {
 						"description": "Not signed in",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Error"
-								}
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/games/player": {
-			"get": {
-				"tags": [
-					"Games"
-				],
-				"summary": "Get your leaderboard name",
-				"description": "The name on the leaderboards of every game, or null when you set none.",
-				"responses": {
-					"200": {
-						"description": "Your leaderboard name",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/GamePlayer"
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Not signed in",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Error"
-								}
-							}
-						}
-					}
-				}
-			},
-			"put": {
-				"tags": [
-					"Games"
-				],
-				"summary": "Set your leaderboard name",
-				"description": "Sets the name on the leaderboards of every game, 1 to 24 characters with the spaces at each end removed. Null removes it, so you show as anonymous.",
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/GamePlayer"
-							}
-						}
-					}
-				},
-				"responses": {
-					"200": {
-						"description": "Your new leaderboard name",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/GamePlayer"
-								}
-							}
-						}
-					},
-					"400": {
-						"description": "Invalid name",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Error"
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Not signed in",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Error"
-								}
-							}
-						}
-					},
-					"403": {
-						"description": "No user role, or email not verified",
 						"content": {
 							"application/json": {
 								"schema": {
