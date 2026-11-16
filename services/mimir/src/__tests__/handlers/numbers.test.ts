@@ -115,9 +115,9 @@ describe('numbers', () => {
 
 		await recordNumbersResult(USER, null, run(20))
 
-		await recordNumbersResult(USER, null, run(7, 'vsCpu'))
+		await recordNumbersResult(USER, null, { ...run(7, 'vsCpu'), beatCpu: true })
 
-		await recordNumbersResult(USER, null, { ...daily(TODAY, 9), mode: 'vsCpu' })
+		await recordNumbersResult(USER, null, { ...daily(TODAY, 9), mode: 'vsCpu', beatCpu: true })
 
 		await recordNumbersResult(USER, null, { ...daily('20261115', 3), today: TODAY })
 
@@ -137,6 +137,16 @@ describe('numbers', () => {
 			[transaction, result('vsCpu', 9)],
 			[transaction, result('solo', 3)],
 		])
+	})
+
+	it('keeps a vs CPU run that tied or lost off the leaderboard, and counts it in the stats', async () => {
+		await recordNumbersResult(USER, null, { ...run(15, 'vsCpu'), beatCpu: false })
+
+		await recordNumbersResult(USER, null, run(12, 'vsCpu'))
+
+		expect(mockRecordDailyResult).not.toHaveBeenCalled()
+
+		expect((await readNumbersStats(USER, TODAY)).vsCpu).toMatchObject({ played: 2, best: 15 })
 	})
 
 	it('keeps the name of the account with each run, in the same transaction', async () => {

@@ -140,11 +140,12 @@ export async function listNumbers(userId: string): Promise<StoredNumbers> {
 
 /**
  * The leaderboard that a run counts on: `daily` for a solo run of the daily
- * puzzle, `solo` for a solo run of another seed, and `vsCpu` for a run against
- * the CPU, on any seed.
+ * puzzle, `solo` for a solo run of another seed, and `vsCpu` for a run that
+ * beat the CPU, on any seed. A vs CPU run that tied or lost counts on no
+ * leaderboard, and the answer is `null`.
  */
-function boardOf(result: NumbersResult): NumbersBoardMode {
-	if (result.mode === 'vsCpu') return 'vsCpu'
+function boardOf(result: NumbersResult): NumbersBoardMode | null {
+	if (result.mode === 'vsCpu') return result.beatCpu ? 'vsCpu' : null
 
 	return result.seed === result.today ? 'daily' : 'solo'
 }
@@ -152,8 +153,8 @@ function boardOf(result: NumbersResult): NumbersBoardMode {
 /**
  * Counts one finished run, and answers with the new stats. A run whose seed is
  * the reader's date is the daily puzzle, and only its first run counts toward
- * the daily streak. Each run counts on its leaderboard of the reader's date
- * (see {@link boardOf}). `name` is the name of the account, which
+ * the daily streak. A run counts on its leaderboard of the reader's date, if
+ * it has one (see {@link boardOf}). `name` is the name of the account, which
  * the leaderboards show.
  */
 export async function recordNumbersResult(
@@ -174,13 +175,17 @@ export async function recordNumbersResult(
 
 		const first = result.seed === result.today && !(result.seed in mode.daily)
 
-		await recordDailyResult(tx, {
-			game: 'numbers',
-			mode: boardOf(result),
-			date: result.today,
-			userId,
-			score: result.score,
-		})
+		const board = boardOf(result)
+
+		if (board) {
+			await recordDailyResult(tx, {
+				game: 'numbers',
+				mode: board,
+				date: result.today,
+				userId,
+				score: result.score,
+			})
+		}
 
 		const daily = first ? { ...mode.daily, [result.seed]: result.score } : mode.daily
 
