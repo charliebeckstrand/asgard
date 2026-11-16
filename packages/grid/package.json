@@ -42,7 +42,7 @@
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage"
 	},
-	"packageManager": "pnpm@12.6.0",
+	"packageManager": "pnpm@12.20.0",
 	"dependencies": {
 		"@hono/node-server": "^2.1.1",
 		"@hono/swagger-ui": "^0.6.1",

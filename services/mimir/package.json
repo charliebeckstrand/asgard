@@ -25,7 +25,7 @@
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage"
 	},
-	"packageManager": "pnpm@12.6.0",
+	"packageManager": "pnpm@12.20.0",
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1148.0",
 		"@aws-sdk/s3-request-presigner": "^3.1148.0",

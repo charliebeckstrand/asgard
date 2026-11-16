@@ -31,7 +31,7 @@
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage"
 	},
-	"packageManager": "pnpm@12.6.0",
+	"packageManager": "pnpm@12.20.0",
 	"dependencies": {
 		"pg": "^8.23.0",
 		"pino": "^9.5.0",
