@@ -188,7 +188,7 @@ services:
         type: SECRET
         value: ${VIDAR_API_KEY}
       # Mimir keeps the apps' data. Bifrost forwards /api/places, /api/visits,
-      # /api/trips, /api/photos, /api/predictions and /api/numbers to it over the
+      # /api/trips, /api/photos, /api/predictions and /api/games to it over the
       # app's private network, and the key must match Mimir's.
       - key: MIMIR_URL
         scope: RUN_TIME

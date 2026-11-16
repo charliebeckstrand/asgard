@@ -6,7 +6,7 @@ import { requireRole, requireUser, type UserEnv } from '../middleware/user.js'
 
 const getStatsRoute = createRoute({
 	method: 'get',
-	path: '/numbers/stats',
+	path: '/games/numbers/stats',
 	tags: ['Numbers'],
 	summary: 'Get your numbers stats',
 	description:
@@ -23,7 +23,7 @@ const getStatsRoute = createRoute({
 
 const recordResultRoute = createRoute({
 	method: 'post',
-	path: '/numbers/results',
+	path: '/games/numbers/results',
 	tags: ['Numbers'],
 	summary: 'Count a finished run',
 	description:

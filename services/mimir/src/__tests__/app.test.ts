@@ -276,7 +276,7 @@ describe('writes', () => {
 		['POST', '/api/photos/uploads'],
 		['PUT', '/api/predictions/2026/5'],
 		['DELETE', '/api/predictions/2026/5'],
-		['POST', '/api/numbers/results'],
+		['POST', '/api/games/numbers/results'],
 	])('%s %s needs the user role', async (method, path) => {
 		const res = await app.request(path, {
 			method,
@@ -537,7 +537,7 @@ describe('numbers', () => {
 	it('reads your stats as of your date', async () => {
 		mockReadNumbersStats.mockResolvedValue(stats)
 
-		const res = await app.request('/api/numbers/stats?today=20261116', { headers: headers() })
+		const res = await app.request('/api/games/numbers/stats?today=20261116', { headers: headers() })
 
 		expect(res.status).toBe(200)
 
@@ -549,7 +549,7 @@ describe('numbers', () => {
 	it('counts a run and answers the new stats', async () => {
 		mockRecordNumbersResult.mockResolvedValue(stats)
 
-		const res = await app.request('/api/numbers/results', {
+		const res = await app.request('/api/games/numbers/results', {
 			method: 'POST',
 			headers: headers(),
 			body: JSON.stringify(result),
@@ -565,7 +565,7 @@ describe('numbers', () => {
 	it.each(['', '?today=2026-11-16', '?today=20260231'])(
 		'refuses the stats with %j',
 		async (query) => {
-			const res = await app.request(`/api/numbers/stats${query}`, { headers: headers() })
+			const res = await app.request(`/api/games/numbers/stats${query}`, { headers: headers() })
 
 			expect(res.status).toBe(400)
 
@@ -580,7 +580,7 @@ describe('numbers', () => {
 		{ seed: 'K3X9Q2' },
 		{ today: '2026111' },
 	])('refuses a result with %j', async (change) => {
-		const res = await app.request('/api/numbers/results', {
+		const res = await app.request('/api/games/numbers/results', {
 			method: 'POST',
 			headers: headers(),
 			body: JSON.stringify({ ...result, ...change }),

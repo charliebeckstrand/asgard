@@ -1805,7 +1805,7 @@
 				}
 			}
 		},
-		"/api/numbers/stats": {
+		"/api/games/numbers/stats": {
 			"get": {
 				"tags": [
 					"Numbers"
@@ -1860,7 +1860,7 @@
 				}
 			}
 		},
-		"/api/numbers/results": {
+		"/api/games/numbers/results": {
 			"post": {
 				"tags": [
 					"Numbers"

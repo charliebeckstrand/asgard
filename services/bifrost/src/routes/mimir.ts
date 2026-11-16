@@ -98,6 +98,6 @@ mimirRoutes.all('/visits/*', forward)
 mimirRoutes.all('/trips/*', forward)
 mimirRoutes.all('/photos/*', forward)
 mimirRoutes.all('/predictions/*', forward)
-mimirRoutes.all('/numbers/*', forward)
+mimirRoutes.all('/games/*', forward)
 
 export { mimirRoutes }

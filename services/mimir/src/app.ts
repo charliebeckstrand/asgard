@@ -14,7 +14,7 @@ import { tripsRoutes } from './routes/trips.js'
 import { visitsRoutes } from './routes/visits.js'
 
 // The same base path as bifrost, which forwards `/api/places`, `/api/visits`,
-// `/api/trips`, `/api/photos`, `/api/predictions` and `/api/numbers` here
+// `/api/trips`, `/api/photos`, `/api/predictions` and `/api/games` here
 // unchanged, so the paths in this spec are the ones apps call.
 const BASE_PATH = '/api'
 const HEALTH_PATH = `${BASE_PATH}/health`
@@ -47,7 +47,7 @@ export function createMimirApp() {
 		`${BASE_PATH}/trips/*`,
 		`${BASE_PATH}/photos/*`,
 		`${BASE_PATH}/predictions/*`,
-		`${BASE_PATH}/numbers/*`,
+		`${BASE_PATH}/games/*`,
 	]) {
 		app.use(path, forwardedUser(), limit)
 	}

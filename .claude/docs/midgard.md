@@ -7,7 +7,7 @@ This file is the one record of how the two repos fit together. Midgard links her
 ## Requests
 
 - Midgard's servers proxy `/auth/*` and `/api/*` to `BIFROST_URL` (https://auth.ivoryimage.dev in production, http://localhost:4000 elsewhere). Midgard needs `BIFROST_URL` at build time and at run time.
-- Bifrost forwards `/api/places/*`, `/api/visits/*`, `/api/trips/*`, `/api/photos/*`, `/api/predictions/*` and `/api/numbers/*` to Mimir, which keeps the places app's data, the picks app's NFL picks and the numbers app's results. Neither app has a database of its own for them; each turns on `gatewayApi` so those paths reach bifrost. Mimir doesn't read the NFL schedule, so the picks app checks which games can still take a pick before it saves. A pick is the picked team and the point spread of that team when the pick was saved, or `null` when no line was out yet. The picks app sets the line from the scoreboard when it saves. Mimir sends `cache-control: private, no-store` on all of them.
+- Bifrost forwards `/api/places/*`, `/api/visits/*`, `/api/trips/*`, `/api/photos/*`, `/api/predictions/*` and `/api/games/*` to Mimir, which keeps the places app's data, the picks app's NFL picks and the numbers app's results. Neither app has a database of its own for them; each turns on `gatewayApi` so those paths reach bifrost. Mimir doesn't read the NFL schedule, so the picks app checks which games can still take a pick before it saves. A pick is the picked team and the point spread of that team when the pick was saved, or `null` when no line was out yet. The picks app sets the line from the scoreboard when it saves. Mimir sends `cache-control: private, no-store` on all of them.
 - Each app keeps its own `__Host-session` cookie, since `__Host-` cookies have no Domain. Bifrost's `APP_ORIGINS` lists the apps allowed to call it.
 - Midgard reads `GET /auth/oauth/providers` and `GET /auth/register/options` with no cookies and caches each answer for hours, so the sign-in and register pages can prerender. Both routes must answer the same to every caller.
 
@@ -18,9 +18,10 @@ This file is the one record of how the two repos fit together. Midgard links her
 
 ## Numbers
 
-- Sign-in is optional in the numbers app, and only a signed-in reader has stats. The app calls `/api/numbers/*` only with a session, because the query client sends a 401 to `/login`.
-- `GET /api/numbers/stats?today=YYYYMMDD` answers `NumbersStats`: for `solo` and `vsCpu`, the runs played, the wins, the best and the mean score (`null` with no runs), the count of runs that ended on each score from 0 to 20, the daily streak that ends today or yesterday, and the longest daily streak.
-- `POST /api/numbers/results` takes `{ seed, score, mode, today }` for each finished run (a bust, a win, or a reset after the first placement) and answers the new `NumbersStats`. Every run counts, replays included. A run whose `seed` is `today` is the daily puzzle, and only its first run counts toward the streak. It needs the user role and a verified email, so the app sends it only for a verified user.
+- `/api/games/*` holds the routes of each game under its name, today only `/api/games/numbers/*`.
+- Sign-in is optional in the numbers app, and only a signed-in reader has stats. The app calls `/api/games/numbers/*` only with a session, because the query client sends a 401 to `/login`.
+- `GET /api/games/numbers/stats?today=YYYYMMDD` answers `NumbersStats`: for `solo` and `vsCpu`, the runs played, the wins, the best and the mean score (`null` with no runs), the count of runs that ended on each score from 0 to 20, the daily streak that ends today or yesterday, and the longest daily streak.
+- `POST /api/games/numbers/results` takes `{ seed, score, mode, today }` for each finished run (a bust, a win, or a reset after the first placement) and answers the new `NumbersStats`. Every run counts, replays included. A run whose `seed` is `today` is the daily puzzle, and only its first run counts toward the streak. It needs the user role and a verified email, so the app sends it only for a verified user.
 - `today` is the reader's date. Mimir answers 400 when it is more than one day from the server's date, so a reader can't play a daily puzzle ahead of its day. Mimir trusts the score: it can't replay a run.
 
 ## Photos
