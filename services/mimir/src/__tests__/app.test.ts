@@ -540,6 +540,7 @@ describe('numbers', () => {
 		streak: 0,
 		bestStreak: 0,
 		dailyScore: null,
+		winRate: null,
 	}
 
 	const stats = { solo: { ...noStats, played: 1, best: 12, average: 12 }, vsCpu: noStats }

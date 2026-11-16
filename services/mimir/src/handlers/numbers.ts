@@ -17,7 +17,9 @@ import { readDailyBoard, recordDailyResult, recordPlayerName } from './games.js'
 /**
  * The results of the numbers app of each user, in one document. For each mode,
  * the count of runs that ended on each score, and the score of the first run of
- * each daily puzzle by its date. Every other stat comes from these on read. Each
+ * each daily puzzle by its date. Vs CPU also counts the runs that came with an
+ * outcome and the runs of those that beat the CPU. Every other stat comes from
+ * these on read. Each
  * run also goes to `game_results`, in the same transaction, which keeps the best
  * score of the user on each leaderboard of each day.
  */
@@ -119,6 +121,7 @@ function modeStats(mode: StoredNumbersMode, today: string): NumbersModeStats {
 		scores: mode.scores,
 		...streaks(mode.daily, today),
 		dailyScore: mode.daily[today] ?? null,
+		winRate: mode.cpu?.played ? mode.cpu.beat / mode.cpu.played : null,
 	}
 }
 
@@ -189,7 +192,17 @@ export async function recordNumbersResult(
 
 		const daily = first ? { ...mode.daily, [result.seed]: result.score } : mode.daily
 
-		const next = { ...numbers, [result.mode]: { scores, daily } }
+		// A run from an app before `beatCpu` has no outcome, so it does not count
+		// toward the share of wins.
+		const cpu =
+			result.mode === 'vsCpu' && result.beatCpu !== undefined
+				? {
+						played: (mode.cpu?.played ?? 0) + 1,
+						beat: (mode.cpu?.beat ?? 0) + (result.beatCpu ? 1 : 0),
+					}
+				: mode.cpu
+
+		const next = { ...numbers, [result.mode]: { scores, daily, ...(cpu && { cpu }) } }
 
 		return { result: stats(next, result.today), value: next }
 	})

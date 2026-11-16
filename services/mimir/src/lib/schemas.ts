@@ -492,6 +492,13 @@ export const StoredNumbersModeSchema = z.object({
 	daily: z.record(z.string().regex(/^\d{8}$/), ScoreSchema).openapi({
 		description: 'The score of the first run of each daily puzzle, by its date',
 	}),
+	cpu: z
+		.object({ played: z.number().int().min(0), beat: z.number().int().min(0) })
+		.optional()
+		.openapi({
+			description:
+				'Vs CPU only: the runs that came with `beatCpu`, from 2026-11-16, and the runs of those that beat the CPU',
+		}),
 })
 
 export type StoredNumbersMode = z.infer<typeof StoredNumbersModeSchema>
@@ -515,6 +522,10 @@ const NumbersModeStatsSchema = z
 		bestStreak: z.number().int().openapi({ description: 'The longest daily streak' }),
 		dailyScore: z.number().int().nullable().openapi({
 			description: "The score of the first run of today's daily puzzle, or none before it",
+		}),
+		winRate: z.number().nullable().openapi({
+			description:
+				'Vs CPU only: the share, from 0 to 1, of the runs that beat the CPU, of the runs since Mimir counts the outcome (2026-11-16). None for solo, and none before the first such run.',
 		}),
 	})
 	.openapi('NumbersModeStats')

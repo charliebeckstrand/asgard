@@ -69,6 +69,7 @@ describe('numbers', () => {
 			streak: 0,
 			bestStreak: 0,
 			dailyScore: null,
+			winRate: null,
 		})
 	})
 
@@ -147,6 +148,35 @@ describe('numbers', () => {
 		expect(mockRecordDailyResult).not.toHaveBeenCalled()
 
 		expect((await readNumbersStats(USER, TODAY)).vsCpu).toMatchObject({ played: 2, best: 15 })
+	})
+
+	it('answers the share of vs CPU runs that beat the CPU, of the runs with an outcome', async () => {
+		await recordNumbersResult(USER, null, { ...run(12, 'vsCpu'), beatCpu: true })
+
+		await recordNumbersResult(USER, null, { ...run(9, 'vsCpu'), beatCpu: false })
+
+		await recordNumbersResult(USER, null, { ...run(15, 'vsCpu'), beatCpu: true })
+
+		await recordNumbersResult(USER, null, { ...run(8, 'vsCpu'), beatCpu: false })
+
+		// A run from an app before `beatCpu` counts in the stats, but not in the share.
+		await recordNumbersResult(USER, null, run(10, 'vsCpu'))
+
+		const stats = await readNumbersStats(USER, TODAY)
+
+		expect(stats.vsCpu).toMatchObject({ played: 5, winRate: 0.5 })
+
+		expect(stats.solo.winRate).toBeNull()
+
+		expect((await listNumbers(USER)).vsCpu.cpu).toEqual({ played: 4, beat: 2 })
+	})
+
+	it('has no share of wins for vs CPU runs from before the outcome counts', async () => {
+		await recordNumbersResult(USER, null, run(10, 'vsCpu'))
+
+		expect((await readNumbersStats(USER, TODAY)).vsCpu).toMatchObject({ played: 1, winRate: null })
+
+		expect((await listNumbers(USER)).vsCpu).not.toHaveProperty('cpu')
 	})
 
 	it('keeps the name of the account with each run, in the same transaction', async () => {
