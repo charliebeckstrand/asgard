@@ -117,8 +117,8 @@ describeWithDocker('games', () => {
 		`)
 
 		expect(rows).toEqual([
-			{ mode: 'solo', date: '20261114', user_id: user(90), score: 9 },
-			{ mode: 'solo', date: '20261115', user_id: user(90), score: 20 },
+			{ mode: 'daily', date: '20261114', user_id: user(90), score: 9 },
+			{ mode: 'daily', date: '20261115', user_id: user(90), score: 20 },
 			{ mode: 'vsCpu', date: '20261115', user_id: user(90), score: 3 },
 		])
 	})
@@ -224,7 +224,7 @@ describeWithDocker('games', () => {
 		expect(await nameOf(1)).toBeNull()
 	})
 
-	it('keeps the best run of a daily puzzle and the account name with the runs that count it', async () => {
+	it('keeps the best run of each board and the account name with the runs that count it', async () => {
 		vi.useFakeTimers({ toFake: ['Date'] })
 
 		vi.setSystemTime(new Date('2026-11-16T12:00:00Z'))
@@ -237,13 +237,20 @@ describeWithDocker('games', () => {
 			await recordNumbersResult(user(7), 'Lin', { ...run, score: 17 })
 
 			await recordNumbersResult(user(7), 'Lin', { ...run, score: 9 })
+
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q2', score: 5 })
 		} finally {
 			vi.useRealTimers()
 		}
 
-		expect(await readDailyBoard('numbers', 'solo', DATE, user(7))).toEqual({
+		expect(await readDailyBoard('numbers', 'daily', DATE, user(7))).toEqual({
 			players: 1,
 			entries: [{ rank: 1, name: 'Lin', score: 17, you: true }],
+		})
+
+		expect(await readDailyBoard('numbers', 'solo', DATE, user(7))).toEqual({
+			players: 1,
+			entries: [{ rank: 1, name: 'Lin', score: 5, you: true }],
 		})
 	})
 

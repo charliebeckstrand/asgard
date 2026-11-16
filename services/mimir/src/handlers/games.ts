@@ -4,22 +4,22 @@ import type { NumbersBoard } from '../lib/schemas.js'
 
 /**
  * What every game keeps outside the documents of its users, for the reads
- * across users that a document can't serve: the best score of each user on each
- * daily puzzle, a row of `game_results`, and the name of the account of each
+ * across users that a document can't serve: the best score of each user on
+ * each board of each day, a row of `game_results`, and the name of the account of each
  * user, which the leaderboards show, a row of `game_players`.
  */
 
-/** The games with daily puzzles. */
+/** The games with leaderboards. */
 type Game = 'numbers'
 
 /** The rows that a leaderboard shows above the row of the reader. */
 const BOARD_SIZE = 10
 
-/** The score of one run of a daily puzzle on its day. `date` is `YYYYMMDD`. */
+/** The score of one run on the board `mode` of the day `date` (`YYYYMMDD`). */
 type DailyResult = { game: Game; mode: string; date: string; userId: string; score: number }
 
 /**
- * Keeps the best score of the user on a daily puzzle, in the transaction `q` of
+ * Keeps the best score of the user on a board of a day, in the transaction `q` of
  * the write that counts the run. A run with a higher score replaces the score,
  * and its time orders the ties. A run with an equal or lower score changes
  * nothing.
@@ -40,7 +40,7 @@ export async function recordDailyResult(q: Queryable, result: DailyResult): Prom
 type BoardRow = { rank: number; name: string | null; score: number; you: boolean; players: number }
 
 /**
- * The leaderboard of one daily puzzle: the first {@link BOARD_SIZE} players by
+ * The leaderboard `mode` of one day: the first {@link BOARD_SIZE} players by
  * best score, then the reader `userId` when they are below them. A reader with no
  * session (`null`) gets only the first players, and no entry is theirs. Equal
  * scores share a rank, and list in the order that the players got them.

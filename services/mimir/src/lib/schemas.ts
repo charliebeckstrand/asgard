@@ -425,6 +425,16 @@ const NumbersModeSchema = z
 
 export type NumbersMode = z.infer<typeof NumbersModeSchema>
 
+const NumbersBoardModeSchema = z
+	.enum(['daily', 'solo', 'vsCpu'], '`mode` must be `daily`, `solo` or `vsCpu`.')
+	.openapi({
+		description:
+			'The board: `daily` for the solo runs of the daily puzzle, `solo` for the solo runs of other seeds, and `vsCpu` for the runs against the CPU',
+	})
+
+/** The board of a day that a run counts on. */
+export type NumbersBoardMode = z.infer<typeof NumbersBoardModeSchema>
+
 /** A date as `YYYYMMDD`, the form of a daily puzzle's seed, in the field `field`. */
 function numbersDate(field: string) {
 	const message = `\`${field}\` must be a date as YYYYMMDD.`
@@ -515,10 +525,10 @@ export type NumbersStats = z.infer<typeof NumbersStatsSchema>
 
 export const NumbersBoardQuerySchema = z.object({
 	date: numbersDate('date').openapi({
-		description: 'The date of the daily puzzle, as YYYYMMDD',
+		description: 'The day of the board, as YYYYMMDD',
 		example: '20261116',
 	}),
-	mode: NumbersModeSchema,
+	mode: NumbersBoardModeSchema,
 })
 
 const NumbersBoardEntrySchema = z
@@ -541,7 +551,7 @@ export const NumbersBoardSchema = z
 		}),
 	})
 	.openapi('NumbersBoard', {
-		description: 'The best run of each player of one daily puzzle on its day, by score',
+		description: 'The best run of each player on one board of one day, by score',
 	})
 
 export type NumbersBoard = z.infer<typeof NumbersBoardSchema>

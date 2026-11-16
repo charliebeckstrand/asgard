@@ -108,24 +108,34 @@ describe('numbers', () => {
 		expect((await listNumbers(USER)).solo.daily).toEqual({ [TODAY]: 4 })
 	})
 
-	it('sends each run of a daily puzzle on its day to its leaderboard, in the same transaction', async () => {
+	it('sends each run to its leaderboard of the reader date, in the same transaction', async () => {
 		await recordNumbersResult(USER, null, daily(TODAY, 4))
 
 		await recordNumbersResult(USER, null, daily(TODAY, 18))
 
 		await recordNumbersResult(USER, null, run(20))
 
-		const result = (score: number) => ({
+		await recordNumbersResult(USER, null, run(7, 'vsCpu'))
+
+		await recordNumbersResult(USER, null, { ...daily(TODAY, 9), mode: 'vsCpu' })
+
+		await recordNumbersResult(USER, null, { ...daily('20261115', 3), today: TODAY })
+
+		const result = (mode: string, score: number) => ({
 			game: 'numbers',
-			mode: 'solo',
+			mode,
 			date: TODAY,
 			userId: USER,
 			score,
 		})
 
 		expect(mockRecordDailyResult.mock.calls).toEqual([
-			[transaction, result(4)],
-			[transaction, result(18)],
+			[transaction, result('daily', 4)],
+			[transaction, result('daily', 18)],
+			[transaction, result('solo', 20)],
+			[transaction, result('vsCpu', 7)],
+			[transaction, result('vsCpu', 9)],
+			[transaction, result('solo', 3)],
 		])
 	})
 
@@ -141,8 +151,6 @@ describe('numbers', () => {
 		expect(await readNumbersStats(USER, TODAY)).toMatchObject({
 			solo: { played: 1, streak: 0, dailyScore: null },
 		})
-
-		expect(mockRecordDailyResult).not.toHaveBeenCalled()
 	})
 
 	it('keeps a streak that ends yesterday, and ends one with a day missed', async () => {
@@ -222,9 +230,9 @@ describe('numbers', () => {
 
 		mockReadDailyBoard.mockResolvedValue(board)
 
-		expect(await readNumbersBoard(null, '20261116', 'solo')).toBe(board)
+		expect(await readNumbersBoard(null, '20261116', 'daily')).toBe(board)
 
-		expect(mockReadDailyBoard).toHaveBeenCalledWith('numbers', 'solo', '20261116', null)
+		expect(mockReadDailyBoard).toHaveBeenCalledWith('numbers', 'daily', '20261116', null)
 	})
 
 	it('refuses the leaderboard of a date more than a day ahead', async () => {
