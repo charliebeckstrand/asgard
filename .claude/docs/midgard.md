@@ -8,6 +8,7 @@ This file is the one record of how the two repos fit together. Midgard links her
 
 - Midgard's servers proxy `/auth/*` and `/api/*` to `BIFROST_URL` (https://auth.ivoryimage.dev in production, http://localhost:4000 elsewhere). Midgard needs `BIFROST_URL` at build time and at run time.
 - Bifrost forwards `/api/places/*`, `/api/visits/*`, `/api/trips/*`, `/api/photos/*`, `/api/predictions/*` and `/api/games/*` to Mimir, which keeps the places app's data, the picks app's NFL picks and the numbers app's results. Neither app has a database of its own for them; each turns on `gatewayApi` so those paths reach bifrost. Mimir doesn't read the NFL schedule, so the picks app checks which games can still take a pick before it saves. A pick is the picked team and the point spread of that team when the pick was saved, or `null` when no line was out yet. The picks app sets the line from the scoreboard when it saves. Mimir sends `cache-control: private, no-store` on all of them.
+- Bifrost emails each link on the origin of the app that asked for it: `/verify-email?token=…` and `/reset-password?token=…`. Each Midgard app with sign-in serves both paths, takes `token` out of the address before the page hydrates (`shared/link-secrets`), and sends it only in the body of the confirm call. A new secret param of a link goes in that list too.
 - Each app keeps its own `__Host-session` cookie, since `__Host-` cookies have no Domain. Bifrost's `APP_ORIGINS` lists the apps allowed to call it.
 - Midgard reads `GET /auth/oauth/providers` and `GET /auth/register/options` with no cookies and caches each answer for hours, so the sign-in and register pages can prerender. Both routes must answer the same to every caller.
 
@@ -42,7 +43,7 @@ App Platform overwrites `do-connecting-ip` on every hop, so requests from Midgar
 
 ## Types
 
-Bifrost's OpenAPI spec is committed at `services/bifrost/openapi.json`, and Mimir's at `services/mimir/openapi.json`. Midgard generates `packages/auth/src/openapi.d.ts` from bifrost's and `packages/shared/src/mimir/openapi.d.ts` from Mimir's, both from asgard's `main`, and calls each through an openapi-fetch client. The places and picks apps both import Mimir's types from that one file (`shared/mimir`), so they can't drift apart. After an API change:
+Bifrost's OpenAPI spec is committed at `services/bifrost/openapi.json`, and Mimir's at `services/mimir/openapi.json`. Midgard generates `packages/auth/src/openapi.d.ts` from bifrost's and `packages/shared/src/mimir/openapi.d.ts` from Mimir's, both from asgard's `main`, and calls each through an openapi-fetch client. The places, picks and numbers apps import Mimir's types from that one file (`shared/mimir`), so they can't drift apart. After an API change:
 
 1. In asgard, run `pnpm --filter bifrost openapi` or `pnpm --filter mimir openapi` and merge.
 2. In midgard, run `pnpm --filter auth openapi` or `pnpm --filter shared openapi`.
@@ -53,4 +54,4 @@ When bifrost answers `second_step_required`, Midgard shows its one shared Confir
 
 ## Deploy order
 
-A change that spans both repos usually merges in asgard first, so Midgard never calls a route that isn't live yet.
+A change that spans both repos merges in asgard first, and Midgard merges after asgard deploys, so Midgard never calls a route that isn't live yet.
