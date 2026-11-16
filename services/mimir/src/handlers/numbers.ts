@@ -103,6 +103,7 @@ function modeStats(mode: StoredNumbersMode, today: string): NumbersModeStats {
 		average: played === 0 ? null : total / played,
 		scores: mode.scores,
 		...streaks(mode.daily, today),
+		dailyScore: mode.daily[today] ?? null,
 	}
 }
 

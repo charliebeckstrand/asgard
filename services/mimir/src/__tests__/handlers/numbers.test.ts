@@ -49,6 +49,7 @@ describe('numbers', () => {
 			scores: counts(),
 			streak: 0,
 			bestStreak: 0,
+			dailyScore: null,
 		})
 	})
 
@@ -83,7 +84,7 @@ describe('numbers', () => {
 
 		const stats = await readNumbersStats(USER, TODAY)
 
-		expect(stats.solo).toMatchObject({ played: 2, streak: 1, bestStreak: 1 })
+		expect(stats.solo).toMatchObject({ played: 2, streak: 1, bestStreak: 1, dailyScore: 4 })
 
 		expect((await listNumbers(USER)).solo.daily).toEqual({ [TODAY]: 4 })
 	})
@@ -91,7 +92,9 @@ describe('numbers', () => {
 	it('does not count a seed of another date as the daily puzzle', async () => {
 		await recordNumbersResult(USER, { ...daily('20261115'), today: TODAY })
 
-		expect(await readNumbersStats(USER, TODAY)).toMatchObject({ solo: { played: 1, streak: 0 } })
+		expect(await readNumbersStats(USER, TODAY)).toMatchObject({
+			solo: { played: 1, streak: 0, dailyScore: null },
+		})
 	})
 
 	it('keeps a streak that ends yesterday, and ends one with a day missed', async () => {
@@ -107,7 +110,11 @@ describe('numbers', () => {
 
 		vi.setSystemTime(new Date('2026-11-16T12:00:00Z'))
 
-		expect((await readNumbersStats(USER, TODAY)).solo).toMatchObject({ streak: 0, bestStreak: 2 })
+		expect((await readNumbersStats(USER, TODAY)).solo).toMatchObject({
+			streak: 0,
+			bestStreak: 2,
+			dailyScore: null,
+		})
 	})
 
 	it('finds the longest streak among several', async () => {

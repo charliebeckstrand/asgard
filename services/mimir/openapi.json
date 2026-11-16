@@ -768,6 +768,11 @@
 					"bestStreak": {
 						"type": "integer",
 						"description": "The longest daily streak"
+					},
+					"dailyScore": {
+						"type": "integer",
+						"nullable": true,
+						"description": "The score of the first run of today's daily puzzle, or none before it"
 					}
 				},
 				"required": [
@@ -777,7 +782,8 @@
 					"average",
 					"scores",
 					"streak",
-					"bestStreak"
+					"bestStreak",
+					"dailyScore"
 				]
 			},
 			"NumbersResult": {
