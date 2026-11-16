@@ -177,6 +177,18 @@ describeWithDocker('games', () => {
 		])
 	})
 
+	it('shows a reader with no session only the top 10, with no entry of their own', async () => {
+		for (let n = 1; n <= 12; n++) await record(result(n, 21 - n))
+
+		const board = await readDailyBoard('numbers', 'solo', DATE, null)
+
+		expect(board.players).toBe(12)
+
+		expect(board.entries.map((entry) => entry.rank)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+
+		expect(board.entries.some((entry) => entry.you)).toBe(false)
+	})
+
 	it('reads a date with no players as an empty board', async () => {
 		expect(await readDailyBoard('numbers', 'solo', '20260101', user(1))).toEqual({
 			players: 0,

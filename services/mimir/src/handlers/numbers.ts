@@ -180,11 +180,12 @@ export async function recordNumbersResult(
 }
 
 /**
- * The leaderboard of the daily puzzle of `date` in `mode`. A date ahead of the
- * date of every reader is refused, and an earlier date has its board.
+ * The leaderboard of the daily puzzle of `date` in `mode`, as the reader
+ * `userId` sees it, or as a reader with no session with `null`. A date ahead of
+ * the date of every reader is refused, and an earlier date has its board.
  */
 export function readNumbersBoard(
-	userId: string,
+	userId: string | null,
 	date: string,
 	mode: NumbersMode,
 ): Promise<NumbersBoard> {

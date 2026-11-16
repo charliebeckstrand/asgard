@@ -8,7 +8,9 @@ import { requireSession, type SessionEnv } from '../middleware/session.js'
 // Apps' data lives in Mimir, which stays off the internet. Bifrost checks the
 // session and forwards the request unchanged, with its user and Mimir's API
 // key. Mimir declares which routes need which role, and its own spec
-// (services/mimir/openapi.json) describes these paths.
+// (services/mimir/openapi.json) describes these paths. The one route that a
+// reader with no session can read is the leaderboard of a daily puzzle of the
+// numbers app: bifrost forwards it with the user when there is one.
 
 export const unavailable = () => new HTTPException(503, { message: 'App data is unavailable' })
 
@@ -18,12 +20,12 @@ const RESPONSE_HEADERS = ['content-type', 'cache-control']
 type MimirUser = Pick<Session['user'], 'id' | 'name' | 'roles' | 'is_verified'>
 
 /**
- * Sends a request to Mimir as `user`. Answers 503 when Mimir can't be reached,
- * fails, or refuses the key: bifrost always sends a user and the key, so a 401
- * means the key is wrong.
+ * Sends a request to Mimir as `user`, or with no user. Answers 503 when Mimir
+ * can't be reached, fails, or refuses the key. Bifrost sends no user only to a
+ * route that needs none, so a 401 means the key is wrong.
  */
 export async function requestMimir(
-	user: MimirUser,
+	user: MimirUser | null,
 	path: string,
 	init: { method: string; headers?: Record<string, string>; body?: ArrayBuffer } = {
 		method: 'GET',
@@ -41,11 +43,13 @@ export async function requestMimir(
 			headers: {
 				...init.headers,
 				authorization: `Bearer ${MIMIR_API_KEY}`,
-				'x-mimir-user': JSON.stringify({
-					id: user.id,
-					name: user.name,
-					roles: user.roles,
-					is_verified: user.is_verified,
+				...(user && {
+					'x-mimir-user': JSON.stringify({
+						id: user.id,
+						name: user.name,
+						roles: user.roles,
+						is_verified: user.is_verified,
+					}),
 				}),
 			},
 			body: init.body,
@@ -66,9 +70,17 @@ export async function requestMimir(
 	return res
 }
 
-async function forward(c: Context<SessionEnv>): Promise<Response> {
-	const { user } = requireSession(c)
+/** Forwards the request with the user of the session, or a 401 without one. */
+function forward(c: Context<SessionEnv>): Promise<Response> {
+	return forwardAs(c, requireSession(c).user)
+}
 
+/** Forwards the request with the user of the session, or with no user. */
+function forwardOpen(c: Context<SessionEnv>): Promise<Response> {
+	return forwardAs(c, c.get('session')?.user ?? null)
+}
+
+async function forwardAs(c: Context<SessionEnv>, user: MimirUser | null): Promise<Response> {
 	const { pathname, search } = new URL(c.req.url)
 
 	const method = c.req.method
@@ -99,6 +111,8 @@ mimirRoutes.all('/visits/*', forward)
 mimirRoutes.all('/trips/*', forward)
 mimirRoutes.all('/photos/*', forward)
 mimirRoutes.all('/predictions/*', forward)
+// A board lists the same players for each reader, so a reader with no session sees it too.
+mimirRoutes.get('/games/numbers/daily', forwardOpen)
 mimirRoutes.all('/games/*', forward)
 
 export { mimirRoutes }

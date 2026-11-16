@@ -52,14 +52,13 @@ const getBoardRoute = createRoute({
 	tags: ['Numbers'],
 	summary: 'Get the leaderboard of a daily puzzle',
 	description:
-		"The first run of each player of the daily puzzle of `date` in `mode`: the top 10 by score, then the reader when they are below them. Equal scores share a rank and list in the order that they finished. A date more than one day ahead of the server's date is refused.",
+		"The first run of each player of the daily puzzle of `date` in `mode`: the top 10 by score, then the reader when they are below them. Equal scores share a rank and list in the order that they finished. A date more than one day ahead of the server's date is refused. A reader with no session gets the top 10, with no entry of their own.",
 	request: {
 		query: NumbersBoardQuerySchema,
 	},
 	responses: {
 		200: jsonResponse(NumbersBoardSchema, 'The leaderboard'),
 		400: errorResponse('Invalid date or mode'),
-		401: errorResponse('Not signed in'),
 	},
 })
 
@@ -80,7 +79,7 @@ numbersRoutes.openapi(recordResultRoute, async (c) => {
 numbersRoutes.openapi(getBoardRoute, async (c) => {
 	const { date, mode } = c.req.valid('query')
 
-	return c.json(await readNumbersBoard(requireUser(c).id, date, mode), 200)
+	return c.json(await readNumbersBoard(c.get('user')?.id ?? null, date, mode), 200)
 })
 
 export { numbersRoutes }
