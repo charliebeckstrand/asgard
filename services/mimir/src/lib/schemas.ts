@@ -425,15 +425,24 @@ const NumbersModeSchema = z
 
 export type NumbersMode = z.infer<typeof NumbersModeSchema>
 
-/** A reader's date as `YYYYMMDD`, the form of a daily puzzle's seed. */
-const NumbersDateSchema = z
-	.string('`today` must be a date as YYYYMMDD.')
-	.regex(/^\d{8}$/, '`today` must be a date as YYYYMMDD.')
-	.refine(
-		(value) => isDay(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6)}`),
-		'`today` must be a date as YYYYMMDD.',
-	)
-	.openapi({ description: "The reader's date, as YYYYMMDD", example: '20261116' })
+/** A date as `YYYYMMDD`, the form of a daily puzzle's seed, in the field `field`. */
+function numbersDate(field: string) {
+	const message = `\`${field}\` must be a date as YYYYMMDD.`
+
+	return z
+		.string(message)
+		.regex(/^\d{8}$/, message)
+		.refine(
+			(value) => isDay(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6)}`),
+			message,
+		)
+}
+
+/** A reader's date as `YYYYMMDD`. */
+const NumbersDateSchema = numbersDate('today').openapi({
+	description: "The reader's date, as YYYYMMDD",
+	example: '20261116',
+})
 
 const ScoreSchema = z
 	.number('`score` must be a whole number from 0 to 20.')
@@ -503,6 +512,39 @@ export const NumbersStatsSchema = z
 	.openapi('NumbersStats', { description: 'The stats of each mode' })
 
 export type NumbersStats = z.infer<typeof NumbersStatsSchema>
+
+export const NumbersBoardQuerySchema = z.object({
+	date: numbersDate('date').openapi({
+		description: 'The date of the daily puzzle, as YYYYMMDD',
+		example: '20261116',
+	}),
+	mode: NumbersModeSchema,
+})
+
+const NumbersBoardEntrySchema = z
+	.object({
+		rank: z.number().int().openapi({ description: 'The place, shared by equal scores' }),
+		name: z
+			.string()
+			.nullable()
+			.openapi({ description: 'The leaderboard name of the player, or null when they set none' }),
+		score: ScoreSchema,
+		you: z.boolean().openapi({ description: 'Whether the row is the reader' }),
+	})
+	.openapi('NumbersBoardEntry')
+
+export const NumbersBoardSchema = z
+	.object({
+		players: z.number().int().openapi({ description: 'The players of the daily puzzle' }),
+		entries: z.array(NumbersBoardEntrySchema).openapi({
+			description: 'The top 10 by score, then the reader when they are below them',
+		}),
+	})
+	.openapi('NumbersBoard', {
+		description: 'The first run of each player of one daily puzzle, by score',
+	})
+
+export type NumbersBoard = z.infer<typeof NumbersBoardSchema>
 
 export const AccountDataSchema = z
 	.object({

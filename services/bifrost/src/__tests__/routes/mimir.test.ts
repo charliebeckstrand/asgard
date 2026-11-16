@@ -120,6 +120,7 @@ describe('Mimir routes', () => {
 
 		expect(JSON.parse(sent['x-mimir-user'])).toEqual({
 			id: user.id,
+			name: null,
 			roles: ['user'],
 			is_verified: true,
 		})

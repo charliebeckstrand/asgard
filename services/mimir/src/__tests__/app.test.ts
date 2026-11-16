@@ -20,6 +20,8 @@ const {
 	mockListNumbers,
 	mockReadNumbersStats,
 	mockRecordNumbersResult,
+	mockReadNumbersBoard,
+	mockDeleteGames,
 	mockListTrips,
 	mockCreateTrip,
 	mockUpdateTrip,
@@ -42,6 +44,8 @@ const {
 	mockListNumbers: vi.fn(),
 	mockReadNumbersStats: vi.fn(),
 	mockRecordNumbersResult: vi.fn(),
+	mockReadNumbersBoard: vi.fn(),
+	mockDeleteGames: vi.fn(),
 	mockListTrips: vi.fn(),
 	mockCreateTrip: vi.fn(),
 	mockUpdateTrip: vi.fn(),
@@ -79,6 +83,11 @@ vi.mock('../handlers/numbers.js', () => ({
 	listNumbers: (...args: unknown[]) => mockListNumbers(...args),
 	readNumbersStats: (...args: unknown[]) => mockReadNumbersStats(...args),
 	recordNumbersResult: (...args: unknown[]) => mockRecordNumbersResult(...args),
+	readNumbersBoard: (...args: unknown[]) => mockReadNumbersBoard(...args),
+}))
+
+vi.mock('../handlers/games.js', () => ({
+	deleteGames: (...args: unknown[]) => mockDeleteGames(...args),
 }))
 
 vi.mock('../handlers/trips.js', () => ({
@@ -107,7 +116,7 @@ let app = createMimirApp()
 
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
-const member = { id: USER_ID, roles: ['user'], is_verified: true }
+const member = { id: USER_ID, name: 'Ada', roles: ['user'], is_verified: true }
 
 function headers(user: object | null = member) {
 	return {
@@ -251,6 +260,8 @@ describe('account', () => {
 		expect(res.status).toBe(204)
 
 		expect(mockDeleteDocuments).toHaveBeenCalledWith(USER_ID)
+
+		expect(mockDeleteGames).toHaveBeenCalledWith(USER_ID)
 
 		expect(mockDeleteUserPhotos).toHaveBeenCalledWith(USER_ID)
 	})
@@ -560,7 +571,23 @@ describe('numbers', () => {
 
 		expect(await res.json()).toEqual(stats)
 
-		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, result)
+		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, 'Ada', result)
+	})
+
+	it('counts the run of a user that comes with no name, as from a bifrost before names', async () => {
+		mockRecordNumbersResult.mockResolvedValue(stats)
+
+		const { name: _, ...unnamed } = member
+
+		const res = await app.request('/api/games/numbers/results', {
+			method: 'POST',
+			headers: headers(unnamed),
+			body: JSON.stringify(result),
+		})
+
+		expect(res.status).toBe(200)
+
+		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, null, result)
 	})
 
 	it.each(['', '?today=2026-11-16', '?today=20260231'])(
@@ -590,6 +617,43 @@ describe('numbers', () => {
 		expect(res.status).toBe(400)
 
 		expect(mockRecordNumbersResult).not.toHaveBeenCalled()
+	})
+
+	it('reads the leaderboard of a daily puzzle', async () => {
+		const board = { players: 1, entries: [{ rank: 1, name: null, score: 12, you: true }] }
+
+		mockReadNumbersBoard.mockResolvedValue(board)
+
+		const res = await app.request('/api/games/numbers/daily?date=20261116&mode=vsCpu', {
+			headers: headers(),
+		})
+
+		expect(res.status).toBe(200)
+
+		expect(await res.json()).toEqual(board)
+
+		expect(mockReadNumbersBoard).toHaveBeenCalledWith(USER_ID, '20261116', 'vsCpu')
+	})
+
+	it.each([
+		'?mode=solo',
+		'?date=20261116',
+		'?date=20261116&mode=group',
+		'?date=2026-11-16&mode=solo',
+	])('refuses the leaderboard with %j', async (query) => {
+		const res = await app.request(`/api/games/numbers/daily${query}`, { headers: headers() })
+
+		expect(res.status).toBe(400)
+
+		expect(mockReadNumbersBoard).not.toHaveBeenCalled()
+	})
+
+	it('needs a user for the leaderboard', async () => {
+		const res = await app.request('/api/games/numbers/daily?date=20261116&mode=solo', {
+			headers: headers(null),
+		})
+
+		expect(res.status).toBe(401)
 	})
 })
 

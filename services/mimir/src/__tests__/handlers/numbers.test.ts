@@ -1,7 +1,24 @@
+const { mockReadDailyBoard, mockRecordDailyResult, mockRecordPlayerName } = vi.hoisted(() => ({
+	mockReadDailyBoard: vi.fn(),
+	mockRecordDailyResult: vi.fn(),
+	mockRecordPlayerName: vi.fn(),
+}))
+
 vi.mock('../../handlers/documents.js', () => import('./documents-mock.js'))
 
-import { listNumbers, readNumbersStats, recordNumbersResult } from '../../handlers/numbers.js'
-import { documents } from './documents-mock.js'
+vi.mock('../../handlers/games.js', () => ({
+	readDailyBoard: (...args: unknown[]) => mockReadDailyBoard(...args),
+	recordDailyResult: (...args: unknown[]) => mockRecordDailyResult(...args),
+	recordPlayerName: (...args: unknown[]) => mockRecordPlayerName(...args),
+}))
+
+import {
+	listNumbers,
+	readNumbersBoard,
+	readNumbersStats,
+	recordNumbersResult,
+} from '../../handlers/numbers.js'
+import { documents, transaction } from './documents-mock.js'
 
 const USER = 'user-1'
 
@@ -28,6 +45,8 @@ const counts = (...scores: number[]) =>
 	Array.from({ length: 21 }, (_, score) => scores.filter((value) => value === score).length)
 
 beforeEach(() => {
+	vi.resetAllMocks()
+
 	documents.clear()
 
 	vi.useFakeTimers({ toFake: ['Date'] })
@@ -54,11 +73,11 @@ describe('numbers', () => {
 	})
 
 	it('counts every run, replays included, and answers the new stats', async () => {
-		await recordNumbersResult(USER, run(7))
+		await recordNumbersResult(USER, null, run(7))
 
-		await recordNumbersResult(USER, run(20))
+		await recordNumbersResult(USER, null, run(20))
 
-		const stats = await recordNumbersResult(USER, run(12))
+		const stats = await recordNumbersResult(USER, null, run(12))
 
 		expect(stats.solo).toMatchObject({ played: 3, wins: 1, best: 20, average: 13 })
 
@@ -68,7 +87,7 @@ describe('numbers', () => {
 	})
 
 	it('keeps the stats of each mode apart', async () => {
-		await recordNumbersResult(USER, run(7, 'vsCpu'))
+		await recordNumbersResult(USER, null, run(7, 'vsCpu'))
 
 		const stats = await readNumbersStats(USER, TODAY)
 
@@ -78,9 +97,9 @@ describe('numbers', () => {
 	})
 
 	it('counts only the first run of a daily puzzle toward the streak', async () => {
-		await recordNumbersResult(USER, daily(TODAY, 4))
+		await recordNumbersResult(USER, null, daily(TODAY, 4))
 
-		await recordNumbersResult(USER, daily(TODAY, 18))
+		await recordNumbersResult(USER, null, daily(TODAY, 18))
 
 		const stats = await readNumbersStats(USER, TODAY)
 
@@ -89,20 +108,46 @@ describe('numbers', () => {
 		expect((await listNumbers(USER)).solo.daily).toEqual({ [TODAY]: 4 })
 	})
 
+	it('keeps the first run of a daily puzzle for its leaderboard, in the same transaction', async () => {
+		await recordNumbersResult(USER, null, daily(TODAY, 4))
+
+		await recordNumbersResult(USER, null, daily(TODAY, 18))
+
+		await recordNumbersResult(USER, null, run(20))
+
+		expect(mockRecordDailyResult).toHaveBeenCalledTimes(1)
+
+		expect(mockRecordDailyResult).toHaveBeenCalledWith(transaction, {
+			game: 'numbers',
+			mode: 'solo',
+			date: TODAY,
+			userId: USER,
+			score: 4,
+		})
+	})
+
+	it('keeps the name of the account with each run, in the same transaction', async () => {
+		await recordNumbersResult(USER, 'Ada', run(7))
+
+		expect(mockRecordPlayerName).toHaveBeenCalledWith(transaction, USER, 'Ada')
+	})
+
 	it('does not count a seed of another date as the daily puzzle', async () => {
-		await recordNumbersResult(USER, { ...daily('20261115'), today: TODAY })
+		await recordNumbersResult(USER, null, { ...daily('20261115'), today: TODAY })
 
 		expect(await readNumbersStats(USER, TODAY)).toMatchObject({
 			solo: { played: 1, streak: 0, dailyScore: null },
 		})
+
+		expect(mockRecordDailyResult).not.toHaveBeenCalled()
 	})
 
 	it('keeps a streak that ends yesterday, and ends one with a day missed', async () => {
 		vi.setSystemTime(new Date('2026-11-14T12:00:00Z'))
 
-		await recordNumbersResult(USER, daily('20261113'))
+		await recordNumbersResult(USER, null, daily('20261113'))
 
-		await recordNumbersResult(USER, daily('20261114'))
+		await recordNumbersResult(USER, null, daily('20261114'))
 
 		vi.setSystemTime(new Date('2026-11-15T12:00:00Z'))
 
@@ -143,7 +188,7 @@ describe('numbers', () => {
 		async (today) => {
 			await expect(readNumbersStats(USER, today)).rejects.toMatchObject({ status: 400 })
 
-			await expect(recordNumbersResult(USER, { ...run(5), today })).rejects.toMatchObject({
+			await expect(recordNumbersResult(USER, null, { ...run(5), today })).rejects.toMatchObject({
 				status: 400,
 			})
 		},
@@ -157,5 +202,23 @@ describe('numbers', () => {
 		expect(stats.solo.played).toBe(0)
 
 		expect(stats.vsCpu.played).toBe(0)
+	})
+
+	it.each(['20261101', '20261117'])('reads the leaderboard of %s', async (date) => {
+		const board = { players: 0, entries: [] }
+
+		mockReadDailyBoard.mockResolvedValue(board)
+
+		expect(await readNumbersBoard(USER, date, 'vsCpu')).toBe(board)
+
+		expect(mockReadDailyBoard).toHaveBeenCalledWith('numbers', 'vsCpu', date, USER)
+	})
+
+	it('refuses the leaderboard of a date more than a day ahead', async () => {
+		expect(() => readNumbersBoard(USER, '20261118', 'solo')).toThrow(
+			expect.objectContaining({ status: 400 }),
+		)
+
+		expect(mockReadDailyBoard).not.toHaveBeenCalled()
 	})
 })

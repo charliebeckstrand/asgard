@@ -1,6 +1,7 @@
 import { createRoute } from '@hono/zod-openapi'
 import { createRouter, errorResponse, jsonResponse } from 'grid'
 import { deleteDocuments } from '../handlers/documents.js'
+import { deleteGames } from '../handlers/games.js'
 import { listNumbers } from '../handlers/numbers.js'
 import { listPlaces } from '../handlers/places.js'
 import { listAllPicks } from '../handlers/predictions.js'
@@ -58,6 +59,8 @@ accountRoutes.openapi(deleteAccountDataRoute, async (c) => {
 	const { id } = requireUser(c)
 
 	await deleteDocuments(id)
+
+	await deleteGames(id)
 
 	// After the documents, so no write can save a photo this misses. A failure
 	// answers 500, and bifrost keeps the account until a retry finishes.

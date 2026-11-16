@@ -1,6 +1,7 @@
 import { HTTPException } from 'grid'
 import {
 	MAX_SCORE,
+	type NumbersBoard,
 	type NumbersMode,
 	type NumbersModeStats,
 	type NumbersResult,
@@ -10,11 +11,14 @@ import {
 	StoredNumbersModeSchema,
 } from '../lib/schemas.js'
 import { changeDocument, readDocument } from './documents.js'
+import { readDailyBoard, recordDailyResult, recordPlayerName } from './games.js'
 
 /**
  * The results of the numbers app of each user, in one document. For each mode,
  * the count of runs that ended on each score, and the score of the first run of
- * each daily puzzle by its date. Every other stat comes from these on read.
+ * each daily puzzle by its date. Every other stat comes from these on read. The
+ * score of the first run of a daily puzzle also goes in `game_results`, in the
+ * same transaction, for the leaderboard of that puzzle.
  */
 
 const DAY = 86_400_000
@@ -56,6 +60,16 @@ function dayOf(date: string): number {
 function checkToday(today: string): void {
 	if (Math.abs(dayOf(today) - Math.floor(Date.now() / DAY)) > 1) {
 		throw new HTTPException(400, { message: "`today` must be within one day of the server's date" })
+	}
+}
+
+/**
+ * Checks that the date of a leaderboard is not ahead of the latest date that a
+ * reader can have, one day ahead of the server's date.
+ */
+function checkNotAhead(date: string): void {
+	if (dayOf(date) - Math.floor(Date.now() / DAY) > 1) {
+		throw new HTTPException(400, { message: '`date` must not be ahead of the latest date' })
 	}
 }
 
@@ -126,28 +140,55 @@ export async function listNumbers(userId: string): Promise<StoredNumbers> {
 /**
  * Counts one finished run, and answers with the new stats. A run whose seed is
  * the reader's date is the daily puzzle, and only its first run counts toward
- * the daily streak.
+ * the daily streak and the leaderboard. `name` is the name of the account, which
+ * the leaderboards show.
  */
 export async function recordNumbersResult(
 	userId: string,
+	name: string | null,
 	result: NumbersResult,
 ): Promise<NumbersStats> {
 	checkToday(result.today)
 
-	return changeDocument(userId, 'numbers', (document) => {
+	return changeDocument(userId, 'numbers', async (document, tx) => {
+		await recordPlayerName(tx, userId, name)
+
 		const numbers = stored(document)
 
 		const mode = numbers[result.mode]
 
 		const scores = mode.scores.map((count, score) => (score === result.score ? count + 1 : count))
 
-		const daily =
-			result.seed === result.today && !(result.seed in mode.daily)
-				? { ...mode.daily, [result.seed]: result.score }
-				: mode.daily
+		const first = result.seed === result.today && !(result.seed in mode.daily)
+
+		if (first) {
+			await recordDailyResult(tx, {
+				game: 'numbers',
+				mode: result.mode,
+				date: result.seed,
+				userId,
+				score: result.score,
+			})
+		}
+
+		const daily = first ? { ...mode.daily, [result.seed]: result.score } : mode.daily
 
 		const next = { ...numbers, [result.mode]: { scores, daily } }
 
 		return { result: stats(next, result.today), value: next }
 	})
+}
+
+/**
+ * The leaderboard of the daily puzzle of `date` in `mode`. A date ahead of the
+ * date of every reader is refused, and an earlier date has its board.
+ */
+export function readNumbersBoard(
+	userId: string,
+	date: string,
+	mode: NumbersMode,
+): Promise<NumbersBoard> {
+	checkNotAhead(date)
+
+	return readDailyBoard('numbers', mode, date, userId)
 }
