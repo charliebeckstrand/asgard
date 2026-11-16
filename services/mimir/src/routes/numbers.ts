@@ -33,7 +33,7 @@ const recordResultRoute = createRoute({
 	tags: ['Numbers'],
 	summary: 'Count a finished run',
 	description:
-		"Every run counts, replays included. A run whose seed is the reader's date is the daily puzzle, and only its first run counts toward the daily streak and the leaderboard.",
+		"Every run counts, replays included. A run whose seed is the reader's date is the daily puzzle, and only its first run counts toward the daily streak and the leaderboard. Each run keeps the name of the account, which the leaderboards show.",
 	middleware: [requireRole('user')] as const,
 	request: {
 		body: jsonRequest(NumbersResultSchema),
@@ -72,7 +72,9 @@ numbersRoutes.openapi(getStatsRoute, async (c) => {
 })
 
 numbersRoutes.openapi(recordResultRoute, async (c) => {
-	return c.json(await recordNumbersResult(requireUser(c).id, c.req.valid('json')), 200)
+	const { id, name } = requireUser(c)
+
+	return c.json(await recordNumbersResult(id, name, c.req.valid('json')), 200)
 })
 
 numbersRoutes.openapi(getBoardRoute, async (c) => {
