@@ -33,7 +33,7 @@ Each service's `.env` is generated from its `manifest.json` and the secrets cach
 
 ## Deploy
 
-A push to `main` runs CI, then applies `.do/app.yaml` to the `asgard` app on DigitalOcean App Platform. The spec's comments explain each part. In short: bifrost, vidar and mimir run from the one Dockerfile (`SERVICE` build arg); a `PRE_DEPLOY` job per service runs `saga migrate` as the admin user; each service connects as its own user, which can read and write rows but not change the schema; logs go to Better Stack. A `POST_DEPLOY` job runs Mimir's photo migrations once the new version is live.
+A push to `main` runs CI, then applies `.do/app.yaml` to the `asgard` app on DigitalOcean App Platform. The spec's comments explain each part. In short: bifrost, vidar and mimir run from the one Dockerfile (`SERVICE` build arg); a `PRE_DEPLOY` job per service runs `saga migrate` as the admin user; each service connects as its own user, which can read and write rows but not change the schema; logs go to Better Stack. In the `places` database, Mimir's migration 0003 gives `places` the rows of each table that the admin user creates, because Midgard made that database and its first table, and so no default grant was in place. A `POST_DEPLOY` job runs Mimir's photo migrations once the new version is live.
 
 Renovate's minor and patch updates (`renovate.json`) merge themselves once CI passes, so they deploy like any other push.
 
