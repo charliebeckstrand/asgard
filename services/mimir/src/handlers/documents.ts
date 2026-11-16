@@ -43,15 +43,16 @@ export async function documentOwners(name: DocumentName): Promise<string[]> {
 
 /**
  * Reads one document, gives it to `change`, and writes the value `change` gives
- * back, in one transaction.
+ * back, in one transaction. `change` also gets the transaction, for a write to
+ * another table that must commit with the document.
  */
 export function changeDocument<T>(
 	userId: string,
 	name: DocumentName,
-	change: (document: unknown) => Change<T> | Promise<Change<T>>,
+	change: (document: unknown, tx: Queryable) => Change<T> | Promise<Change<T>>,
 ): Promise<T> {
-	return changeDocuments(userId, [name], async ([document]) => {
-		const { result, value } = await change(document)
+	return changeDocuments(userId, [name], async ([document], tx) => {
+		const { result, value } = await change(document, tx)
 
 		return { result, values: [value] }
 	})
@@ -71,6 +72,7 @@ export function changeDocuments<T>(
 	names: DocumentName[],
 	change: (
 		documents: unknown[],
+		tx: Queryable,
 	) => { result: T; values: unknown[] } | Promise<{ result: T; values: unknown[] }>,
 ): Promise<T> {
 	return db.tx(async (tx) => {
@@ -84,7 +86,7 @@ export function changeDocuments<T>(
 
 		for (const name of names) documents.push(await select(tx, userId, name))
 
-		const { result, values } = await change(documents)
+		const { result, values } = await change(documents, tx)
 
 		for (const [index, name] of names.entries()) {
 			const value = values[index]

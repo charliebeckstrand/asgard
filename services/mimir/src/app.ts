@@ -5,6 +5,7 @@ import { logger } from './lib/log.js'
 import { apiKeyAuth } from './middleware/api-key.js'
 import { forwardedUser, type UserEnv, userKey } from './middleware/user.js'
 import { accountRoutes } from './routes/account.js'
+import { gamesRoutes } from './routes/games.js'
 import { health } from './routes/health.js'
 import { numbersRoutes } from './routes/numbers.js'
 import { photosRoutes } from './routes/photos.js'
@@ -61,6 +62,7 @@ export function createMimirApp() {
 		.route(BASE_PATH, photosRoutes)
 		.route(BASE_PATH, predictionsRoutes)
 		.route(BASE_PATH, numbersRoutes)
+		.route(BASE_PATH, gamesRoutes)
 }
 
 export type MimirApp = ReturnType<typeof createMimirApp>

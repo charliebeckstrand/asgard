@@ -6,6 +6,9 @@ type Change<T> = { result: T; values: unknown[] }
 
 export const documents = new Map<string, unknown>()
 
+/** What a change gets as its transaction, for a test of a write that it gives the transaction to. */
+export const transaction = { name: 'transaction' }
+
 export async function readDocument(userId: string, name: string): Promise<unknown> {
 	return documents.get(`${userId}:${name}`)
 }
@@ -13,9 +16,12 @@ export async function readDocument(userId: string, name: string): Promise<unknow
 export async function changeDocuments<T>(
 	userId: string,
 	names: string[],
-	change: (documents: unknown[]) => Change<T> | Promise<Change<T>>,
+	change: (documents: unknown[], tx: typeof transaction) => Change<T> | Promise<Change<T>>,
 ): Promise<T> {
-	const { result, values } = await change(names.map((name) => documents.get(`${userId}:${name}`)))
+	const { result, values } = await change(
+		names.map((name) => documents.get(`${userId}:${name}`)),
+		transaction,
+	)
 
 	for (const [index, name] of names.entries()) {
 		if (values[index] !== undefined) documents.set(`${userId}:${name}`, values[index])
@@ -27,10 +33,10 @@ export async function changeDocuments<T>(
 export function changeDocument<T>(
 	userId: string,
 	name: string,
-	change: (document: unknown) => Promise<{ result: T; value?: unknown }>,
+	change: (document: unknown, tx: typeof transaction) => Promise<{ result: T; value?: unknown }>,
 ): Promise<T> {
-	return changeDocuments(userId, [name], async ([document]) => {
-		const { result, value } = await change(document)
+	return changeDocuments(userId, [name], async ([document], tx) => {
+		const { result, value } = await change(document, tx)
 
 		return { result, values: [value] }
 	})
