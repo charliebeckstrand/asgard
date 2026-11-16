@@ -20,7 +20,7 @@
 			"enabled": false
 		},
 		{
-			"description": "The minor and patch tail as one pull request, merged once CI passes. Renovate merges it itself rather than through GitHub's auto-merge, which would not wait for CI because main has no required checks. Its merge is a push, so the deploy follows.",
+			"description": "The minor and patch tail as one pull request, merged once CI passes. Renovate merges it itself, since the repository has GitHub's auto-merge turned off. Its merge is a push, so the deploy follows.",
 			"groupName": "non-major",
 			"matchUpdateTypes": ["minor", "patch"],
 			"automerge": true,
