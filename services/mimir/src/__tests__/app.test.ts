@@ -619,7 +619,7 @@ describe('numbers', () => {
 		expect(mockRecordNumbersResult).not.toHaveBeenCalled()
 	})
 
-	it('reads the leaderboard of a daily puzzle', async () => {
+	it('reads a leaderboard of a day', async () => {
 		const board = { players: 1, entries: [{ rank: 1, name: null, score: 12, you: true }] }
 
 		mockReadNumbersBoard.mockResolvedValue(board)
@@ -653,7 +653,7 @@ describe('numbers', () => {
 
 		mockReadNumbersBoard.mockResolvedValue(board)
 
-		const res = await app.request('/api/games/numbers/daily?date=20261116&mode=solo', {
+		const res = await app.request('/api/games/numbers/daily?date=20261116&mode=daily', {
 			headers: headers(null),
 		})
 
@@ -661,7 +661,7 @@ describe('numbers', () => {
 
 		expect(await res.json()).toEqual(board)
 
-		expect(mockReadNumbersBoard).toHaveBeenCalledWith(null, '20261116', 'solo')
+		expect(mockReadNumbersBoard).toHaveBeenCalledWith(null, '20261116', 'daily')
 	})
 })
 
