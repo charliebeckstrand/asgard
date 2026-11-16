@@ -20,6 +20,10 @@ const {
 	mockListNumbers,
 	mockReadNumbersStats,
 	mockRecordNumbersResult,
+	mockReadNumbersBoard,
+	mockReadPlayerName,
+	mockSetPlayerName,
+	mockDeleteGames,
 	mockListTrips,
 	mockCreateTrip,
 	mockUpdateTrip,
@@ -42,6 +46,10 @@ const {
 	mockListNumbers: vi.fn(),
 	mockReadNumbersStats: vi.fn(),
 	mockRecordNumbersResult: vi.fn(),
+	mockReadNumbersBoard: vi.fn(),
+	mockReadPlayerName: vi.fn(),
+	mockSetPlayerName: vi.fn(),
+	mockDeleteGames: vi.fn(),
 	mockListTrips: vi.fn(),
 	mockCreateTrip: vi.fn(),
 	mockUpdateTrip: vi.fn(),
@@ -79,6 +87,13 @@ vi.mock('../handlers/numbers.js', () => ({
 	listNumbers: (...args: unknown[]) => mockListNumbers(...args),
 	readNumbersStats: (...args: unknown[]) => mockReadNumbersStats(...args),
 	recordNumbersResult: (...args: unknown[]) => mockRecordNumbersResult(...args),
+	readNumbersBoard: (...args: unknown[]) => mockReadNumbersBoard(...args),
+}))
+
+vi.mock('../handlers/games.js', () => ({
+	readPlayerName: (...args: unknown[]) => mockReadPlayerName(...args),
+	setPlayerName: (...args: unknown[]) => mockSetPlayerName(...args),
+	deleteGames: (...args: unknown[]) => mockDeleteGames(...args),
 }))
 
 vi.mock('../handlers/trips.js', () => ({
@@ -227,6 +242,8 @@ describe('account', () => {
 
 		mockListNumbers.mockResolvedValue(numbers)
 
+		mockReadPlayerName.mockResolvedValue('Ada')
+
 		const res = await app.request('/api/account', { headers: headers() })
 
 		expect(res.status).toBe(200)
@@ -237,6 +254,7 @@ describe('account', () => {
 			trips: [],
 			predictions: { 2026: { 1: { g1: { team: 't1', line: null } } } },
 			numbers,
+			games: { name: 'Ada' },
 		})
 
 		expect(res.headers.get('cache-control')).toBe('private, no-store')
@@ -251,6 +269,8 @@ describe('account', () => {
 		expect(res.status).toBe(204)
 
 		expect(mockDeleteDocuments).toHaveBeenCalledWith(USER_ID)
+
+		expect(mockDeleteGames).toHaveBeenCalledWith(USER_ID)
 
 		expect(mockDeleteUserPhotos).toHaveBeenCalledWith(USER_ID)
 	})
@@ -277,6 +297,7 @@ describe('writes', () => {
 		['PUT', '/api/predictions/2026/5'],
 		['DELETE', '/api/predictions/2026/5'],
 		['POST', '/api/games/numbers/results'],
+		['PUT', '/api/games/player'],
 	])('%s %s needs the user role', async (method, path) => {
 		const res = await app.request(path, {
 			method,
@@ -589,6 +610,98 @@ describe('numbers', () => {
 		expect(res.status).toBe(400)
 
 		expect(mockRecordNumbersResult).not.toHaveBeenCalled()
+	})
+
+	it('reads the leaderboard of a daily puzzle', async () => {
+		const board = { players: 1, entries: [{ rank: 1, name: null, score: 12, you: true }] }
+
+		mockReadNumbersBoard.mockResolvedValue(board)
+
+		const res = await app.request('/api/games/numbers/daily?date=20261116&mode=vsCpu', {
+			headers: headers(),
+		})
+
+		expect(res.status).toBe(200)
+
+		expect(await res.json()).toEqual(board)
+
+		expect(mockReadNumbersBoard).toHaveBeenCalledWith(USER_ID, '20261116', 'vsCpu')
+	})
+
+	it.each([
+		'?mode=solo',
+		'?date=20261116',
+		'?date=20261116&mode=group',
+		'?date=2026-11-16&mode=solo',
+	])('refuses the leaderboard with %j', async (query) => {
+		const res = await app.request(`/api/games/numbers/daily${query}`, { headers: headers() })
+
+		expect(res.status).toBe(400)
+
+		expect(mockReadNumbersBoard).not.toHaveBeenCalled()
+	})
+
+	it('needs a user for the leaderboard', async () => {
+		const res = await app.request('/api/games/numbers/daily?date=20261116&mode=solo', {
+			headers: headers(null),
+		})
+
+		expect(res.status).toBe(401)
+	})
+})
+
+describe('game player', () => {
+	function put(body: unknown) {
+		return app.request('/api/games/player', {
+			method: 'PUT',
+			headers: headers(),
+			body: JSON.stringify(body),
+		})
+	}
+
+	it('reads your leaderboard name', async () => {
+		mockReadPlayerName.mockResolvedValue(null)
+
+		const res = await app.request('/api/games/player', { headers: headers() })
+
+		expect(res.status).toBe(200)
+
+		expect(await res.json()).toEqual({ name: null })
+
+		expect(mockReadPlayerName).toHaveBeenCalledWith(USER_ID)
+	})
+
+	it('sets your leaderboard name without the spaces at each end', async () => {
+		const res = await put({ name: '  Ada  ' })
+
+		expect(res.status).toBe(200)
+
+		expect(await res.json()).toEqual({ name: 'Ada' })
+
+		expect(mockSetPlayerName).toHaveBeenCalledWith(USER_ID, 'Ada')
+	})
+
+	it('removes your leaderboard name with null', async () => {
+		const res = await put({ name: null })
+
+		expect(res.status).toBe(200)
+
+		expect(mockSetPlayerName).toHaveBeenCalledWith(USER_ID, null)
+	})
+
+	it.each([
+		{},
+		{ name: '' },
+		{ name: '   ' },
+		{ name: 'a'.repeat(25) },
+		{ name: 'Ada\u202e' },
+		{ name: 7 },
+	])('refuses %j', async (body) => {
+		const res = await put(body)
+
+		expect(res.status).toBe(400)
+
+		expect(mockSetPlayerName).not.toHaveBeenCalled()
 	})
 })
 
