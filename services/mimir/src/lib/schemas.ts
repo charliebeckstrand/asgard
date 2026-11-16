@@ -499,6 +499,9 @@ const NumbersModeStatsSchema = z
 			description: 'The consecutive daily puzzles that end today or yesterday',
 		}),
 		bestStreak: z.number().int().openapi({ description: 'The longest daily streak' }),
+		dailyScore: z.number().int().nullable().openapi({
+			description: "The score of the first run of today's daily puzzle, or none before it",
+		}),
 	})
 	.openapi('NumbersModeStats')
 
