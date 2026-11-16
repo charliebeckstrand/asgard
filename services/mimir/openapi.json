@@ -73,13 +73,17 @@
 							"$ref": "#/components/schemas/SeasonPicks"
 						},
 						"description": "The NFL picks, by season"
+					},
+					"numbers": {
+						"$ref": "#/components/schemas/StoredNumbers"
 					}
 				},
 				"required": [
 					"places",
 					"visits",
 					"trips",
-					"predictions"
+					"predictions",
+					"numbers"
 				]
 			},
 			"PlaceList": {
@@ -356,6 +360,68 @@
 					]
 				},
 				"description": "The pick of each game id: the picked team and its line when it was saved"
+			},
+			"StoredNumbers": {
+				"type": "object",
+				"properties": {
+					"solo": {
+						"type": "object",
+						"properties": {
+							"scores": {
+								"type": "array",
+								"items": {
+									"type": "integer",
+									"minimum": 0
+								},
+								"description": "How many runs ended on each score, from 0 to 20"
+							},
+							"daily": {
+								"type": "object",
+								"additionalProperties": {
+									"type": "integer",
+									"minimum": 0,
+									"maximum": 20
+								},
+								"description": "The score of the first run of each daily puzzle, by its date"
+							}
+						},
+						"required": [
+							"scores",
+							"daily"
+						]
+					},
+					"vsCpu": {
+						"type": "object",
+						"properties": {
+							"scores": {
+								"type": "array",
+								"items": {
+									"type": "integer",
+									"minimum": 0
+								},
+								"description": "How many runs ended on each score, from 0 to 20"
+							},
+							"daily": {
+								"type": "object",
+								"additionalProperties": {
+									"type": "integer",
+									"minimum": 0,
+									"maximum": 20
+								},
+								"description": "The score of the first run of each daily puzzle, by its date"
+							}
+						},
+						"required": [
+							"scores",
+							"daily"
+						]
+					}
+				},
+				"required": [
+					"solo",
+					"vsCpu"
+				],
+				"description": "The results of the numbers app, by mode"
 			},
 			"Error": {
 				"type": "object",
@@ -649,6 +715,105 @@
 				"required": [
 					"picks"
 				]
+			},
+			"NumbersStats": {
+				"type": "object",
+				"properties": {
+					"solo": {
+						"$ref": "#/components/schemas/NumbersModeStats"
+					},
+					"vsCpu": {
+						"$ref": "#/components/schemas/NumbersModeStats"
+					}
+				},
+				"required": [
+					"solo",
+					"vsCpu"
+				],
+				"description": "The stats of each mode"
+			},
+			"NumbersModeStats": {
+				"type": "object",
+				"properties": {
+					"played": {
+						"type": "integer",
+						"description": "The counted runs"
+					},
+					"wins": {
+						"type": "integer",
+						"description": "The runs that filled all 20 slots"
+					},
+					"best": {
+						"type": "integer",
+						"nullable": true,
+						"description": "The highest score, or none"
+					},
+					"average": {
+						"type": "number",
+						"nullable": true,
+						"description": "The mean score, or none"
+					},
+					"scores": {
+						"type": "array",
+						"items": {
+							"type": "integer",
+							"minimum": 0
+						},
+						"description": "How many runs ended on each score, from 0 to 20"
+					},
+					"streak": {
+						"type": "integer",
+						"description": "The consecutive daily puzzles that end today or yesterday"
+					},
+					"bestStreak": {
+						"type": "integer",
+						"description": "The longest daily streak"
+					}
+				},
+				"required": [
+					"played",
+					"wins",
+					"best",
+					"average",
+					"scores",
+					"streak",
+					"bestStreak"
+				]
+			},
+			"NumbersResult": {
+				"type": "object",
+				"properties": {
+					"seed": {
+						"type": "string",
+						"pattern": "^[a-z0-9]{1,32}$"
+					},
+					"score": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 20
+					},
+					"mode": {
+						"type": "string",
+						"enum": [
+							"solo",
+							"vsCpu"
+						],
+						"description": "The mode of the run"
+					},
+					"today": {
+						"type": "string",
+						"pattern": "^\\d{8}$",
+						"description": "The reader's date, as YYYYMMDD",
+						"example": "20261116"
+					}
+				},
+				"required": [
+					"seed",
+					"score",
+					"mode",
+					"today"
+				],
+				"description": "One finished run: a bust, a win, or a reset after the first placement"
 			}
 		},
 		"parameters": {}
@@ -1609,6 +1774,122 @@
 					},
 					"400": {
 						"description": "Invalid season or week",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "No user role, or email not verified",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/numbers/stats": {
+			"get": {
+				"tags": [
+					"Numbers"
+				],
+				"summary": "Get your numbers stats",
+				"description": "The stats of each mode. The streaks are as of the reader's date, which must be within one day of the server's date.",
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"pattern": "^\\d{8}$",
+							"description": "The reader's date, as YYYYMMDD",
+							"example": "20261116"
+						},
+						"required": true,
+						"description": "The reader's date, as YYYYMMDD",
+						"name": "today",
+						"in": "query"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Stats",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NumbersStats"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid date",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Not signed in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/numbers/results": {
+			"post": {
+				"tags": [
+					"Numbers"
+				],
+				"summary": "Count a finished run",
+				"description": "Every run counts, replays included. A run whose seed is the reader's date is the daily puzzle, and only its first run counts toward the daily streak.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/NumbersResult"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "The new stats",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NumbersStats"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid result or date",
 						"content": {
 							"application/json": {
 								"schema": {

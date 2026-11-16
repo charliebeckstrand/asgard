@@ -17,6 +17,9 @@ const {
 	mockListAllPicks,
 	mockSavePicks,
 	mockDeletePicks,
+	mockListNumbers,
+	mockReadNumbersStats,
+	mockRecordNumbersResult,
 	mockListTrips,
 	mockCreateTrip,
 	mockUpdateTrip,
@@ -36,6 +39,9 @@ const {
 	mockListAllPicks: vi.fn(),
 	mockSavePicks: vi.fn(),
 	mockDeletePicks: vi.fn(),
+	mockListNumbers: vi.fn(),
+	mockReadNumbersStats: vi.fn(),
+	mockRecordNumbersResult: vi.fn(),
 	mockListTrips: vi.fn(),
 	mockCreateTrip: vi.fn(),
 	mockUpdateTrip: vi.fn(),
@@ -69,6 +75,12 @@ vi.mock('../handlers/predictions.js', () => ({
 	deletePicks: (...args: unknown[]) => mockDeletePicks(...args),
 }))
 
+vi.mock('../handlers/numbers.js', () => ({
+	listNumbers: (...args: unknown[]) => mockListNumbers(...args),
+	readNumbersStats: (...args: unknown[]) => mockReadNumbersStats(...args),
+	recordNumbersResult: (...args: unknown[]) => mockRecordNumbersResult(...args),
+}))
+
 vi.mock('../handlers/trips.js', () => ({
 	MAX_TRIPS: 1000,
 	listTrips: (...args: unknown[]) => mockListTrips(...args),
@@ -90,7 +102,8 @@ vi.mock('../handlers/documents.js', () => ({
 import { createMimirApp } from '../app.js'
 import { DataError } from '../lib/errors.js'
 
-const app = createMimirApp()
+// Each test gets a new app, so the rate limit of one user starts full in each.
+let app = createMimirApp()
 
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
@@ -113,6 +126,10 @@ const draft = {
 	visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [] }],
 }
 
+const noRuns = { scores: Array.from({ length: 21 }, () => 0), daily: {} }
+
+const numbers = { solo: { ...noRuns, daily: { 20261116: 12 } }, vsCpu: noRuns }
+
 const place = {
 	...draft,
 	id: 'place-1',
@@ -130,6 +147,8 @@ function post(body: unknown, user: object | null = member) {
 
 beforeEach(() => {
 	vi.resetAllMocks()
+
+	app = createMimirApp()
 })
 
 describe('api key', () => {
@@ -206,6 +225,8 @@ describe('account', () => {
 
 		mockListTrips.mockResolvedValue([])
 
+		mockListNumbers.mockResolvedValue(numbers)
+
 		const res = await app.request('/api/account', { headers: headers() })
 
 		expect(res.status).toBe(200)
@@ -215,6 +236,7 @@ describe('account', () => {
 			visits: { states: ['Ohio'], countries: [] },
 			trips: [],
 			predictions: { 2026: { 1: { g1: { team: 't1', line: null } } } },
+			numbers,
 		})
 
 		expect(res.headers.get('cache-control')).toBe('private, no-store')
@@ -254,6 +276,7 @@ describe('writes', () => {
 		['POST', '/api/photos/uploads'],
 		['PUT', '/api/predictions/2026/5'],
 		['DELETE', '/api/predictions/2026/5'],
+		['POST', '/api/numbers/results'],
 	])('%s %s needs the user role', async (method, path) => {
 		const res = await app.request(path, {
 			method,
@@ -493,6 +516,79 @@ describe('predictions', () => {
 		expect(res.status).toBe(400)
 
 		expect(mockSavePicks).not.toHaveBeenCalled()
+	})
+})
+
+describe('numbers', () => {
+	const noStats = {
+		played: 0,
+		wins: 0,
+		best: null,
+		average: null,
+		scores: noRuns.scores,
+		streak: 0,
+		bestStreak: 0,
+	}
+
+	const stats = { solo: { ...noStats, played: 1, best: 12, average: 12 }, vsCpu: noStats }
+
+	const result = { seed: '20261116', score: 12, mode: 'solo', today: '20261116' }
+
+	it('reads your stats as of your date', async () => {
+		mockReadNumbersStats.mockResolvedValue(stats)
+
+		const res = await app.request('/api/numbers/stats?today=20261116', { headers: headers() })
+
+		expect(res.status).toBe(200)
+
+		expect(await res.json()).toEqual(stats)
+
+		expect(mockReadNumbersStats).toHaveBeenCalledWith(USER_ID, '20261116')
+	})
+
+	it('counts a run and answers the new stats', async () => {
+		mockRecordNumbersResult.mockResolvedValue(stats)
+
+		const res = await app.request('/api/numbers/results', {
+			method: 'POST',
+			headers: headers(),
+			body: JSON.stringify(result),
+		})
+
+		expect(res.status).toBe(200)
+
+		expect(await res.json()).toEqual(stats)
+
+		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, result)
+	})
+
+	it.each(['', '?today=2026-11-16', '?today=20260231'])(
+		'refuses the stats with %j',
+		async (query) => {
+			const res = await app.request(`/api/numbers/stats${query}`, { headers: headers() })
+
+			expect(res.status).toBe(400)
+
+			expect(mockReadNumbersStats).not.toHaveBeenCalled()
+		},
+	)
+
+	it.each([
+		{ score: 21 },
+		{ score: 4.5 },
+		{ mode: 'group' },
+		{ seed: 'K3X9Q2' },
+		{ today: '2026111' },
+	])('refuses a result with %j', async (change) => {
+		const res = await app.request('/api/numbers/results', {
+			method: 'POST',
+			headers: headers(),
+			body: JSON.stringify({ ...result, ...change }),
+		})
+
+		expect(res.status).toBe(400)
+
+		expect(mockRecordNumbersResult).not.toHaveBeenCalled()
 	})
 })
 
