@@ -125,7 +125,7 @@ services:
         value: ${bifrost-db.CA_CERT}
       - key: APP_ORIGINS
         scope: RUN_TIME
-        value: https://admin.ivoryimage.dev,https://places.ivoryimage.dev,https://picks.ivoryimage.dev
+        value: https://admin.ivoryimage.dev,https://places.ivoryimage.dev,https://picks.ivoryimage.dev,https://numbers.ivoryimage.dev
       # Passkeys belong to the parent domain, so one works on every app under it.
       - key: PASSKEY_DOMAIN
         scope: RUN_TIME
@@ -188,8 +188,8 @@ services:
         type: SECRET
         value: ${VIDAR_API_KEY}
       # Mimir keeps the apps' data. Bifrost forwards /api/places, /api/visits,
-      # /api/trips, /api/photos and /api/predictions to it over the app's private
-      # network, and the key must match Mimir's.
+      # /api/trips, /api/photos, /api/predictions and /api/games to it over the
+      # app's private network, and the key must match Mimir's.
       - key: MIMIR_URL
         scope: RUN_TIME
         value: ${mimir.PRIVATE_URL}

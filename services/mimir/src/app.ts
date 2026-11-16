@@ -6,6 +6,7 @@ import { apiKeyAuth } from './middleware/api-key.js'
 import { forwardedUser, type UserEnv, userKey } from './middleware/user.js'
 import { accountRoutes } from './routes/account.js'
 import { health } from './routes/health.js'
+import { numbersRoutes } from './routes/numbers.js'
 import { photosRoutes } from './routes/photos.js'
 import { placesRoutes } from './routes/places.js'
 import { predictionsRoutes } from './routes/predictions.js'
@@ -13,8 +14,8 @@ import { tripsRoutes } from './routes/trips.js'
 import { visitsRoutes } from './routes/visits.js'
 
 // The same base path as bifrost, which forwards `/api/places`, `/api/visits`,
-// `/api/trips`, `/api/photos` and `/api/predictions` here unchanged, so the paths
-// in this spec are the ones apps call.
+// `/api/trips`, `/api/photos`, `/api/predictions` and `/api/games` here
+// unchanged, so the paths in this spec are the ones apps call.
 const BASE_PATH = '/api'
 const HEALTH_PATH = `${BASE_PATH}/health`
 
@@ -46,6 +47,7 @@ export function createMimirApp() {
 		`${BASE_PATH}/trips/*`,
 		`${BASE_PATH}/photos/*`,
 		`${BASE_PATH}/predictions/*`,
+		`${BASE_PATH}/games/*`,
 	]) {
 		app.use(path, forwardedUser(), limit)
 	}
@@ -58,6 +60,7 @@ export function createMimirApp() {
 		.route(BASE_PATH, tripsRoutes)
 		.route(BASE_PATH, photosRoutes)
 		.route(BASE_PATH, predictionsRoutes)
+		.route(BASE_PATH, numbersRoutes)
 }
 
 export type MimirApp = ReturnType<typeof createMimirApp>

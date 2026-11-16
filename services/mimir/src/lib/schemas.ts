@@ -416,6 +416,91 @@ export type SeasonPicks = z.infer<typeof SeasonPicksSchema>
 
 export const SavePicksSchema = z.object({ picks: WeekPicksSchema }).openapi('SavePicks')
 
+/** The highest score of a numbers run: every slot filled. */
+export const MAX_SCORE = 20
+
+const NumbersModeSchema = z
+	.enum(['solo', 'vsCpu'], '`mode` must be `solo` or `vsCpu`.')
+	.openapi({ description: 'The mode of the run' })
+
+export type NumbersMode = z.infer<typeof NumbersModeSchema>
+
+/** A reader's date as `YYYYMMDD`, the form of a daily puzzle's seed. */
+const NumbersDateSchema = z
+	.string('`today` must be a date as YYYYMMDD.')
+	.regex(/^\d{8}$/, '`today` must be a date as YYYYMMDD.')
+	.refine(
+		(value) => isDay(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6)}`),
+		'`today` must be a date as YYYYMMDD.',
+	)
+	.openapi({ description: "The reader's date, as YYYYMMDD", example: '20261116' })
+
+const ScoreSchema = z
+	.number('`score` must be a whole number from 0 to 20.')
+	.int('`score` must be a whole number from 0 to 20.')
+	.min(0, '`score` must be a whole number from 0 to 20.')
+	.max(MAX_SCORE, '`score` must be a whole number from 0 to 20.')
+
+export const NumbersTodaySchema = z.object({ today: NumbersDateSchema })
+
+export const NumbersResultSchema = z
+	.object({
+		seed: z
+			.string('`seed` must be 1 to 32 lower-case letters and digits.')
+			.regex(/^[a-z0-9]{1,32}$/, '`seed` must be 1 to 32 lower-case letters and digits.'),
+		score: ScoreSchema,
+		mode: NumbersModeSchema,
+		today: NumbersDateSchema,
+	})
+	.openapi('NumbersResult', {
+		description: 'One finished run: a bust, a win, or a reset after the first placement',
+	})
+
+export type NumbersResult = z.infer<typeof NumbersResultSchema>
+
+const ScoreCountsSchema = z
+	.array(z.number().int().min(0))
+	.length(MAX_SCORE + 1)
+	.openapi({ description: 'How many runs ended on each score, from 0 to 20' })
+
+/** The results of one mode as Mimir keeps them. */
+export const StoredNumbersModeSchema = z.object({
+	scores: ScoreCountsSchema,
+	daily: z.record(z.string().regex(/^\d{8}$/), ScoreSchema).openapi({
+		description: 'The score of the first run of each daily puzzle, by its date',
+	}),
+})
+
+export type StoredNumbersMode = z.infer<typeof StoredNumbersModeSchema>
+
+const StoredNumbersSchema = z
+	.object({ solo: StoredNumbersModeSchema, vsCpu: StoredNumbersModeSchema })
+	.openapi('StoredNumbers', { description: 'The results of the numbers app, by mode' })
+
+export type StoredNumbers = z.infer<typeof StoredNumbersSchema>
+
+const NumbersModeStatsSchema = z
+	.object({
+		played: z.number().int().openapi({ description: 'The counted runs' }),
+		wins: z.number().int().openapi({ description: 'The runs that filled all 20 slots' }),
+		best: z.number().int().nullable().openapi({ description: 'The highest score, or none' }),
+		average: z.number().nullable().openapi({ description: 'The mean score, or none' }),
+		scores: ScoreCountsSchema,
+		streak: z.number().int().openapi({
+			description: 'The consecutive daily puzzles that end today or yesterday',
+		}),
+		bestStreak: z.number().int().openapi({ description: 'The longest daily streak' }),
+	})
+	.openapi('NumbersModeStats')
+
+export type NumbersModeStats = z.infer<typeof NumbersModeStatsSchema>
+
+export const NumbersStatsSchema = z
+	.object({ solo: NumbersModeStatsSchema, vsCpu: NumbersModeStatsSchema })
+	.openapi('NumbersStats', { description: 'The stats of each mode' })
+
+export type NumbersStats = z.infer<typeof NumbersStatsSchema>
+
 export const AccountDataSchema = z
 	.object({
 		places: PlaceListSchema,
@@ -424,5 +509,6 @@ export const AccountDataSchema = z
 		predictions: z.record(z.string(), SeasonPicksSchema).openapi({
 			description: 'The NFL picks, by season',
 		}),
+		numbers: StoredNumbersSchema,
 	})
 	.openapi('AccountData')
