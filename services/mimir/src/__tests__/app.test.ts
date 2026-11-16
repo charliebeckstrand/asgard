@@ -607,6 +607,7 @@ describe('numbers', () => {
 		{ mode: 'group' },
 		{ seed: 'K3X9Q2' },
 		{ today: '2026111' },
+		{ beatCpu: 'yes' },
 	])('refuses a result with %j', async (change) => {
 		const res = await app.request('/api/games/numbers/results', {
 			method: 'POST',

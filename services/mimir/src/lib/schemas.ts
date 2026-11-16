@@ -470,6 +470,10 @@ export const NumbersResultSchema = z
 		score: ScoreSchema,
 		mode: NumbersModeSchema,
 		today: NumbersDateSchema,
+		beatCpu: z.boolean('`beatCpu` must be true or false.').optional().openapi({
+			description:
+				'Whether a vs CPU run ended with more slots filled than the CPU. Only such a run counts on the vs CPU leaderboard. A solo run ignores it.',
+		}),
 	})
 	.openapi('NumbersResult', {
 		description: 'One finished run: a bust, a win, or a reset after the first placement',

@@ -33,7 +33,7 @@ const recordResultRoute = createRoute({
 	tags: ['Numbers'],
 	summary: 'Count a finished run',
 	description:
-		"Every run counts, replays included. A run whose seed is the reader's date is the daily puzzle, and only its first run counts toward the daily streak. Each run also counts on the leaderboard of the reader's date: a solo run of the daily puzzle on `daily`, another solo run on `solo`, and a run against the CPU on `vsCpu`. A board keeps the best score of each player. Each run keeps the name of the account, which the leaderboards show.",
+		"Every run counts, replays included. A run whose seed is the reader's date is the daily puzzle, and only its first run counts toward the daily streak. Each run also counts on the leaderboard of the reader's date: a solo run of the daily puzzle on `daily`, another solo run on `solo`, and a run that beat the CPU (`beatCpu`) on `vsCpu`. A vs CPU run that tied or lost counts on no board. A board keeps the best score of each player. Each run keeps the name of the account, which the leaderboards show.",
 	middleware: [requireRole('user')] as const,
 	request: {
 		body: jsonRequest(NumbersResultSchema),
