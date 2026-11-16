@@ -21,8 +21,6 @@ const {
 	mockReadNumbersStats,
 	mockRecordNumbersResult,
 	mockReadNumbersBoard,
-	mockReadPlayerName,
-	mockSetPlayerName,
 	mockDeleteGames,
 	mockListTrips,
 	mockCreateTrip,
@@ -47,8 +45,6 @@ const {
 	mockReadNumbersStats: vi.fn(),
 	mockRecordNumbersResult: vi.fn(),
 	mockReadNumbersBoard: vi.fn(),
-	mockReadPlayerName: vi.fn(),
-	mockSetPlayerName: vi.fn(),
 	mockDeleteGames: vi.fn(),
 	mockListTrips: vi.fn(),
 	mockCreateTrip: vi.fn(),
@@ -91,8 +87,6 @@ vi.mock('../handlers/numbers.js', () => ({
 }))
 
 vi.mock('../handlers/games.js', () => ({
-	readPlayerName: (...args: unknown[]) => mockReadPlayerName(...args),
-	setPlayerName: (...args: unknown[]) => mockSetPlayerName(...args),
 	deleteGames: (...args: unknown[]) => mockDeleteGames(...args),
 }))
 
@@ -122,7 +116,7 @@ let app = createMimirApp()
 
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
-const member = { id: USER_ID, roles: ['user'], is_verified: true }
+const member = { id: USER_ID, name: 'Ada', roles: ['user'], is_verified: true }
 
 function headers(user: object | null = member) {
 	return {
@@ -242,8 +236,6 @@ describe('account', () => {
 
 		mockListNumbers.mockResolvedValue(numbers)
 
-		mockReadPlayerName.mockResolvedValue('Ada')
-
 		const res = await app.request('/api/account', { headers: headers() })
 
 		expect(res.status).toBe(200)
@@ -254,7 +246,6 @@ describe('account', () => {
 			trips: [],
 			predictions: { 2026: { 1: { g1: { team: 't1', line: null } } } },
 			numbers,
-			games: { name: 'Ada' },
 		})
 
 		expect(res.headers.get('cache-control')).toBe('private, no-store')
@@ -297,7 +288,6 @@ describe('writes', () => {
 		['PUT', '/api/predictions/2026/5'],
 		['DELETE', '/api/predictions/2026/5'],
 		['POST', '/api/games/numbers/results'],
-		['PUT', '/api/games/player'],
 	])('%s %s needs the user role', async (method, path) => {
 		const res = await app.request(path, {
 			method,
@@ -580,7 +570,23 @@ describe('numbers', () => {
 
 		expect(await res.json()).toEqual(stats)
 
-		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, result)
+		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, 'Ada', result)
+	})
+
+	it('counts the run of a user that comes with no name, as from a bifrost before names', async () => {
+		mockRecordNumbersResult.mockResolvedValue(stats)
+
+		const { name: _, ...unnamed } = member
+
+		const res = await app.request('/api/games/numbers/results', {
+			method: 'POST',
+			headers: headers(unnamed),
+			body: JSON.stringify(result),
+		})
+
+		expect(res.status).toBe(200)
+
+		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, null, result)
 	})
 
 	it.each(['', '?today=2026-11-16', '?today=20260231'])(
@@ -647,61 +653,6 @@ describe('numbers', () => {
 		})
 
 		expect(res.status).toBe(401)
-	})
-})
-
-describe('game player', () => {
-	function put(body: unknown) {
-		return app.request('/api/games/player', {
-			method: 'PUT',
-			headers: headers(),
-			body: JSON.stringify(body),
-		})
-	}
-
-	it('reads your leaderboard name', async () => {
-		mockReadPlayerName.mockResolvedValue(null)
-
-		const res = await app.request('/api/games/player', { headers: headers() })
-
-		expect(res.status).toBe(200)
-
-		expect(await res.json()).toEqual({ name: null })
-
-		expect(mockReadPlayerName).toHaveBeenCalledWith(USER_ID)
-	})
-
-	it('sets your leaderboard name without the spaces at each end', async () => {
-		const res = await put({ name: '  Ada  ' })
-
-		expect(res.status).toBe(200)
-
-		expect(await res.json()).toEqual({ name: 'Ada' })
-
-		expect(mockSetPlayerName).toHaveBeenCalledWith(USER_ID, 'Ada')
-	})
-
-	it('removes your leaderboard name with null', async () => {
-		const res = await put({ name: null })
-
-		expect(res.status).toBe(200)
-
-		expect(mockSetPlayerName).toHaveBeenCalledWith(USER_ID, null)
-	})
-
-	it.each([
-		{},
-		{ name: '' },
-		{ name: '   ' },
-		{ name: 'a'.repeat(25) },
-		{ name: 'Ada\u202e' },
-		{ name: 7 },
-	])('refuses %j', async (body) => {
-		const res = await put(body)
-
-		expect(res.status).toBe(400)
-
-		expect(mockSetPlayerName).not.toHaveBeenCalled()
 	})
 })
 

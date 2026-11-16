@@ -16,8 +16,9 @@ CREATE TABLE IF NOT EXISTS game_results (
 CREATE INDEX IF NOT EXISTS ix_game_results_board
 	ON game_results (game, mode, day, score DESC, created_at);
 
--- The name each user shows on the leaderboards of every game. A user with no
--- row shows as anonymous.
+-- The name of the account of each user, which the leaderboards of every game
+-- show. Bifrost sends it with each request, and each counted run keeps it. A
+-- user with no row shows as anonymous.
 CREATE TABLE IF NOT EXISTS game_players (
 	user_id uuid PRIMARY KEY,
 	name text NOT NULL,

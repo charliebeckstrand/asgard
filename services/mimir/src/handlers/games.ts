@@ -5,8 +5,8 @@ import type { NumbersBoard } from '../lib/schemas.js'
 /**
  * What every game keeps outside the documents of its users, for the reads
  * across users that a document can't serve: the score of the first run of each
- * daily puzzle, a row of `game_results`, and the name that each user shows on
- * the leaderboards, a row of `game_players`.
+ * daily puzzle, a row of `game_results`, and the name of the account of each
+ * user, which the leaderboards show, a row of `game_players`.
  */
 
 /** The games with daily puzzles. */
@@ -76,27 +76,27 @@ export async function readDailyBoard(
 	}
 }
 
-/** The leaderboard name of the user, or null when they set none. */
-export async function readPlayerName(userId: string): Promise<string | null> {
-	const row = await db.first<{ name: string }>(
-		sql`SELECT name FROM game_players WHERE user_id = ${userId}`,
-	)
-
-	return row?.name ?? null
-}
-
-/** Sets the leaderboard name of the user. Null removes it, so the user shows as anonymous. */
-export async function setPlayerName(userId: string, name: string | null): Promise<void> {
+/**
+ * Keeps the name of the account of the user, which the leaderboards show, in
+ * the transaction `q` of the write that counts a run. An account with no name
+ * has no row, and shows as anonymous.
+ */
+export async function recordPlayerName(
+	q: Queryable,
+	userId: string,
+	name: string | null,
+): Promise<void> {
 	if (name === null) {
-		await db.exec(sql`DELETE FROM game_players WHERE user_id = ${userId}`)
+		await q.exec(sql`DELETE FROM game_players WHERE user_id = ${userId}`)
 
 		return
 	}
 
-	await db.exec(sql`
+	await q.exec(sql`
 		INSERT INTO game_players (user_id, name)
 		VALUES (${userId}, ${name})
 		ON CONFLICT (user_id) DO UPDATE SET name = EXCLUDED.name, updated_at = now()
+		WHERE game_players.name IS DISTINCT FROM EXCLUDED.name
 	`)
 }
 

@@ -15,7 +15,7 @@ export const unavailable = () => new HTTPException(503, { message: 'App data is 
 // Only what a JSON API needs. Cookies stay here.
 const RESPONSE_HEADERS = ['content-type', 'cache-control']
 
-type MimirUser = Pick<Session['user'], 'id' | 'roles' | 'is_verified'>
+type MimirUser = Pick<Session['user'], 'id' | 'name' | 'roles' | 'is_verified'>
 
 /**
  * Sends a request to Mimir as `user`. Answers 503 when Mimir can't be reached,
@@ -43,6 +43,7 @@ export async function requestMimir(
 				authorization: `Bearer ${MIMIR_API_KEY}`,
 				'x-mimir-user': JSON.stringify({
 					id: user.id,
+					name: user.name,
 					roles: user.roles,
 					is_verified: user.is_verified,
 				}),

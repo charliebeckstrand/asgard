@@ -1,7 +1,7 @@
 import { createRoute } from '@hono/zod-openapi'
 import { createRouter, errorResponse, jsonResponse } from 'grid'
 import { deleteDocuments } from '../handlers/documents.js'
-import { deleteGames, readPlayerName } from '../handlers/games.js'
+import { deleteGames } from '../handlers/games.js'
 import { listNumbers } from '../handlers/numbers.js'
 import { listPlaces } from '../handlers/places.js'
 import { listAllPicks } from '../handlers/predictions.js'
@@ -44,16 +44,15 @@ const accountRoutes = createRouter<UserEnv>()
 accountRoutes.openapi(getAccountDataRoute, async (c) => {
 	const { id } = requireUser(c)
 
-	const [places, visits, trips, predictions, numbers, name] = await Promise.all([
+	const [places, visits, trips, predictions, numbers] = await Promise.all([
 		listPlaces(id),
 		listVisits(id),
 		listTrips(id),
 		listAllPicks(id),
 		listNumbers(id),
-		readPlayerName(id),
 	])
 
-	return c.json({ places, visits, trips, predictions, numbers, games: { name } }, 200)
+	return c.json({ places, visits, trips, predictions, numbers }, 200)
 })
 
 accountRoutes.openapi(deleteAccountDataRoute, async (c) => {
