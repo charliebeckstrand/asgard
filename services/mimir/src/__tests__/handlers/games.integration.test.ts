@@ -234,14 +234,14 @@ describeWithDocker('games', () => {
 
 		vi.setSystemTime(new Date('2026-11-16T12:00:00Z'))
 
-		const run = { seed: 'k3x9q2', mode: 'solo' as const, today: DATE }
+		const run = { mode: 'solo' as const, today: DATE }
 
 		try {
-			await recordNumbersResult(user(7), 'Lin', { ...run, score: 6 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q1', score: 6 })
 
-			await recordNumbersResult(user(7), 'Lin', { ...run, score: 17 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q2', score: 17 })
 
-			await recordNumbersResult(user(7), 'Lin', { ...run, score: 9 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q3', score: 9 })
 
 			await recordNumbersResult(user(7), 'Lin', { ...run, seed: DATE, score: 5 })
 		} finally {

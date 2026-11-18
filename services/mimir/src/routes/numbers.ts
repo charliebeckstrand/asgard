@@ -27,7 +27,7 @@ const recordResultRoute = createRoute({
 	tags: ['Numbers'],
 	summary: 'Count a finished run',
 	description:
-		"Every run counts, replays included. Each run also counts on the leaderboard of the reader's date: a solo run on `solo`, and a run that beat the CPU (`beatCpu`) on `vsCpu`. A vs CPU run that tied or lost counts on no board. A board keeps the best score of each player. Each run keeps the name of the account, which the leaderboards show.",
+		"Only the first run of each seed counts in each mode. A replay, a later run of a seed, changes no stat and no leaderboard, and the answer is the stats as they were. Each counted run also counts on the leaderboard of the reader's date: a solo run on `solo`, and a run that beat the CPU (`beatCpu`) on `vsCpu`. A vs CPU run that tied or lost counts on no board. A board keeps the best score of each player. Each counted run keeps the name of the account, which the leaderboards show.",
 	middleware: [requireRole('user')] as const,
 	request: {
 		body: jsonRequest(NumbersResultSchema),

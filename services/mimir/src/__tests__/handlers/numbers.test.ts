@@ -24,13 +24,15 @@ const USER = 'user-1'
 
 const TODAY = '20261116'
 
-/** A run of `score`. */
-const run = (score: number, mode: 'solo' | 'vsCpu' = 'solo') => ({
-	seed: 'k3x9q2',
-	score,
-	mode,
-	today: TODAY,
-})
+/** The seed of each run of {@link run}, so each run has a seed of its own. */
+let seeds = 0
+
+/** A run of `score` on a new seed. */
+const run = (score: number, mode: 'solo' | 'vsCpu' = 'solo') => {
+	seeds += 1
+
+	return { seed: `k3x9q${seeds}`, score, mode, today: TODAY }
+}
 
 /** The count of runs on each score, from the scores of `runs`. */
 const counts = (...scores: number[]) =>
@@ -62,7 +64,7 @@ describe('numbers', () => {
 		})
 	})
 
-	it('counts every run, replays included, and answers the new stats', async () => {
+	it('counts every run of a new seed, and answers the new stats', async () => {
 		await recordNumbersResult(USER, null, run(7))
 
 		await recordNumbersResult(USER, null, run(20))
@@ -84,6 +86,39 @@ describe('numbers', () => {
 		expect(stats.solo.played).toBe(0)
 
 		expect(stats.vsCpu).toMatchObject({ played: 1, best: 7 })
+	})
+
+	it('counts only the first run of a seed in a mode, and answers the stats as they were on a replay', async () => {
+		const first = run(4)
+
+		const stats = await recordNumbersResult(USER, 'Ada', first)
+
+		mockRecordDailyResult.mockClear()
+
+		mockRecordPlayerName.mockClear()
+
+		expect(await recordNumbersResult(USER, 'Ada', { ...first, score: 18 })).toEqual(stats)
+
+		expect(await readNumbersStats(USER)).toEqual(stats)
+
+		expect(stats.solo).toMatchObject({ played: 1, best: 4 })
+
+		expect(mockRecordDailyResult).not.toHaveBeenCalled()
+
+		expect(mockRecordPlayerName).not.toHaveBeenCalled()
+
+		expect((await listNumbers(USER)).solo.seeds).toEqual([first.seed])
+
+		// The other mode keeps its own seeds.
+		await recordNumbersResult(USER, null, { ...first, mode: 'vsCpu' })
+
+		expect((await readNumbersStats(USER)).vsCpu.played).toBe(1)
+	})
+
+	it('counts a run of a seed from before Mimir kept the seeds', async () => {
+		documents.set(`${USER}:numbers`, { solo: { scores: counts(4), daily: {} } })
+
+		expect((await recordNumbersResult(USER, null, run(18))).solo.played).toBe(2)
 	})
 
 	it('sends each run to its leaderboard of the reader date, in the same transaction', async () => {

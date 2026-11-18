@@ -392,6 +392,13 @@
 									"beat"
 								],
 								"description": "Vs CPU only: the runs that came with `beatCpu`, from 2026-11-16, and the runs of those that beat the CPU"
+							},
+							"seeds": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "The seed of each counted run, from 2026-11-18. A later run of one of these seeds is a replay, and counts nowhere."
 							}
 						},
 						"required": [
@@ -426,6 +433,13 @@
 									"beat"
 								],
 								"description": "Vs CPU only: the runs that came with `beatCpu`, from 2026-11-16, and the runs of those that beat the CPU"
+							},
+							"seeds": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "The seed of each counted run, from 2026-11-18. A later run of one of these seeds is a replay, and counts nowhere."
 							}
 						},
 						"required": [
@@ -1908,7 +1922,7 @@
 					"Numbers"
 				],
 				"summary": "Count a finished run",
-				"description": "Every run counts, replays included. Each run also counts on the leaderboard of the reader's date: a solo run on `solo`, and a run that beat the CPU (`beatCpu`) on `vsCpu`. A vs CPU run that tied or lost counts on no board. A board keeps the best score of each player. Each run keeps the name of the account, which the leaderboards show.",
+				"description": "Only the first run of each seed counts in each mode. A replay, a later run of a seed, changes no stat and no leaderboard, and the answer is the stats as they were. Each counted run also counts on the leaderboard of the reader's date: a solo run on `solo`, and a run that beat the CPU (`beatCpu`) on `vsCpu`. A vs CPU run that tied or lost counts on no board. A board keeps the best score of each player. Each counted run keeps the name of the account, which the leaderboards show.",
 				"requestBody": {
 					"required": true,
 					"content": {

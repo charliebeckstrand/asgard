@@ -493,6 +493,10 @@ export const StoredNumbersModeSchema = z.object({
 			description:
 				'Vs CPU only: the runs that came with `beatCpu`, from 2026-11-16, and the runs of those that beat the CPU',
 		}),
+	seeds: z.array(z.string()).optional().openapi({
+		description:
+			'The seed of each counted run, from 2026-11-18. A later run of one of these seeds is a replay, and counts nowhere.',
+	}),
 })
 
 export type StoredNumbersMode = z.infer<typeof StoredNumbersModeSchema>

@@ -16,11 +16,11 @@ import { readDailyBoard, recordDailyResult, recordPlayerName } from './games.js'
 
 /**
  * The results of the numbers app of each user, in one document. For each mode,
- * the count of runs that ended on each score. Vs CPU also counts the runs that
- * came with an outcome and the runs of those that beat the CPU. Every other
- * stat comes from these on read. Each run also goes to `game_results`, in the
- * same transaction, which keeps the best score of the user on each leaderboard
- * of each day.
+ * the count of runs that ended on each score, and the seed of each counted
+ * run. Vs CPU also counts the runs that came with an outcome and the runs of
+ * those that beat the CPU. Every other stat comes from these on read. Each
+ * counted run also goes to `game_results`, in the same transaction, which keeps
+ * the best score of the user on each leaderboard of each day.
  */
 
 const DAY = 86_400_000
@@ -118,9 +118,12 @@ function boardOf(result: NumbersResult): NumbersBoardMode | null {
 }
 
 /**
- * Counts one finished run, and answers with the new stats. A run counts on its
- * leaderboard of the reader's date, if it has one (see {@link boardOf}).
- * `name` is the name of the account, which the leaderboards show.
+ * Counts one finished run, and answers with the new stats. Only the first run
+ * of each seed counts in each mode: a replay changes no stat and no
+ * leaderboard, and the answer is the stats as they were. Mimir does not know
+ * the seeds of the runs from before `seeds`. A run counts on its leaderboard
+ * of the reader's date, if it has one (see {@link boardOf}). `name` is the name
+ * of the account, which the leaderboards show.
  */
 export async function recordNumbersResult(
 	userId: string,
@@ -130,11 +133,13 @@ export async function recordNumbersResult(
 	checkToday(result.today)
 
 	return changeDocument(userId, 'numbers', async (document, tx) => {
-		await recordPlayerName(tx, userId, name)
-
 		const numbers = stored(document)
 
 		const mode = numbers[result.mode]
+
+		if (mode.seeds?.includes(result.seed)) return { result: stats(numbers) }
+
+		await recordPlayerName(tx, userId, name)
 
 		const scores = mode.scores.map((count, score) => (score === result.score ? count + 1 : count))
 
@@ -150,6 +155,8 @@ export async function recordNumbersResult(
 			})
 		}
 
+		const seeds = [...(mode.seeds ?? []), result.seed]
+
 		// A run from an app before `beatCpu` has no outcome, so it does not count
 		// toward the share of wins.
 		const cpu =
@@ -160,7 +167,7 @@ export async function recordNumbersResult(
 					}
 				: mode.cpu
 
-		const next = { ...numbers, [result.mode]: { scores, ...(cpu && { cpu }) } }
+		const next = { ...numbers, [result.mode]: { scores, ...(cpu && { cpu }), seeds } }
 
 		return { result: stats(next), value: next }
 	})
