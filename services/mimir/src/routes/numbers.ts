@@ -6,7 +6,6 @@ import {
 	NumbersBoardSchema,
 	NumbersResultSchema,
 	NumbersStatsSchema,
-	NumbersTodaySchema,
 } from '../lib/schemas.js'
 import { requireRole, requireUser, type UserEnv } from '../middleware/user.js'
 
@@ -15,14 +14,9 @@ const getStatsRoute = createRoute({
 	path: '/games/numbers/stats',
 	tags: ['Numbers'],
 	summary: 'Get your numbers stats',
-	description:
-		"The stats of each mode. The streaks are as of the reader's date, which must be within one day of the server's date.",
-	request: {
-		query: NumbersTodaySchema,
-	},
+	description: 'The stats of each mode.',
 	responses: {
 		200: jsonResponse(NumbersStatsSchema, 'Stats'),
-		400: errorResponse('Invalid date'),
 		401: errorResponse('Not signed in'),
 	},
 })
@@ -33,7 +27,7 @@ const recordResultRoute = createRoute({
 	tags: ['Numbers'],
 	summary: 'Count a finished run',
 	description:
-		"Every run counts, replays included. A run whose seed is the reader's date is the daily puzzle, and only its first run counts toward the daily streak. Each run also counts on the leaderboard of the reader's date: a solo run of the daily puzzle on `daily`, another solo run on `solo`, and a run that beat the CPU (`beatCpu`) on `vsCpu`. A vs CPU run that tied or lost counts on no board. A board keeps the best score of each player. Each run keeps the name of the account, which the leaderboards show.",
+		"Every run counts, replays included. Each run also counts on the leaderboard of the reader's date: a solo run on `solo`, and a run that beat the CPU (`beatCpu`) on `vsCpu`. A vs CPU run that tied or lost counts on no board. A board keeps the best score of each player. Each run keeps the name of the account, which the leaderboards show.",
 	middleware: [requireRole('user')] as const,
 	request: {
 		body: jsonRequest(NumbersResultSchema),
@@ -65,9 +59,7 @@ const getBoardRoute = createRoute({
 const numbersRoutes = createRouter<UserEnv>()
 
 numbersRoutes.openapi(getStatsRoute, async (c) => {
-	const { today } = c.req.valid('query')
-
-	return c.json(await readNumbersStats(requireUser(c).id, today), 200)
+	return c.json(await readNumbersStats(requireUser(c).id), 200)
 })
 
 numbersRoutes.openapi(recordResultRoute, async (c) => {

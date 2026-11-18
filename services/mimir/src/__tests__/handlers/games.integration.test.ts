@@ -31,7 +31,7 @@ const DATE = '20261116'
 /** The id of user `n`. */
 const user = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 
-/** A run of the daily puzzle of `DATE` in solo, on its day. */
+/** A solo run of user `n` on the board of `date`. */
 const result = (n: number, score: number, date = DATE) => ({
 	game: 'numbers' as const,
 	mode: 'solo',
@@ -230,7 +230,7 @@ describeWithDocker('games', () => {
 
 		vi.setSystemTime(new Date('2026-11-16T12:00:00Z'))
 
-		const run = { seed: DATE, mode: 'solo' as const, today: DATE }
+		const run = { seed: 'k3x9q2', mode: 'solo' as const, today: DATE }
 
 		try {
 			await recordNumbersResult(user(7), 'Lin', { ...run, score: 6 })
@@ -239,19 +239,14 @@ describeWithDocker('games', () => {
 
 			await recordNumbersResult(user(7), 'Lin', { ...run, score: 9 })
 
-			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q2', score: 5 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: DATE, score: 5 })
 		} finally {
 			vi.useRealTimers()
 		}
 
-		expect(await readDailyBoard('numbers', 'daily', DATE, user(7))).toEqual({
-			players: 1,
-			entries: [{ rank: 1, name: 'Lin', score: 17, you: true }],
-		})
-
 		expect(await readDailyBoard('numbers', 'solo', DATE, user(7))).toEqual({
 			players: 1,
-			entries: [{ rank: 1, name: 'Lin', score: 5, you: true }],
+			entries: [{ rank: 1, name: 'Lin', score: 17, you: true }],
 		})
 	})
 
