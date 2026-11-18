@@ -110,17 +110,21 @@ describeWithDocker('games', () => {
 		await holder.db?.exec(sql`DELETE FROM game_players`)
 	})
 
-	// Migration 0005 clears the vs CPU boards, so the vs CPU score that 0002
-	// copies goes.
-	it('copies the daily scores of the numbers documents, but not the vs CPU ones', async () => {
-		const rows = await holder.db?.many(sql`
-			SELECT mode, to_char(day, 'YYYYMMDD') AS date, user_id, score
-			FROM game_results ORDER BY mode, day
+	// Migration 0002 copies the daily scores to the boards, 0005 clears the vs
+	// CPU board, and 0006 deletes the daily board and the daily scores.
+	it('deletes the daily scores of the boards and of the numbers documents', async () => {
+		const rows = await holder.db?.many(sql`SELECT mode FROM game_results`)
+
+		expect(rows).toEqual([])
+
+		const values = await holder.db?.many(sql`
+			SELECT user_id, value FROM documents ORDER BY user_id
 		`)
 
-		expect(rows).toEqual([
-			{ mode: 'daily', date: '20261114', user_id: user(90), score: 9 },
-			{ mode: 'daily', date: '20261115', user_id: user(90), score: 20 },
+		expect(values).toEqual([
+			{ user_id: user(90), value: { solo: { scores: [] }, vsCpu: { scores: [] } } },
+			{ user_id: user(91), value: { solo: 'broken', vsCpu: {} } },
+			{ user_id: user(92), value: { solo: { daily: { 20261115: 1 } } } },
 		])
 	})
 
