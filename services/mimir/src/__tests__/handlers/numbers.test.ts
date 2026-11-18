@@ -24,13 +24,15 @@ const USER = 'user-1'
 
 const TODAY = '20261116'
 
-/** A run of `score` on a seed that is not a daily puzzle. */
-const run = (score: number, mode: 'solo' | 'vsCpu' = 'solo') => ({
-	seed: 'k3x9q2',
-	score,
-	mode,
-	today: TODAY,
-})
+/** The seed of each run of {@link run}, so each run has a seed of its own. */
+let seeds = 0
+
+/** A run of `score` on a new seed that is not a daily puzzle. */
+const run = (score: number, mode: 'solo' | 'vsCpu' = 'solo') => {
+	seeds += 1
+
+	return { seed: `k3x9q${seeds}`, score, mode, today: TODAY }
+}
 
 /** The first run of the daily puzzle of `date`, played on that date. */
 const daily = (date: string, score = 10) => ({
@@ -73,7 +75,7 @@ describe('numbers', () => {
 		})
 	})
 
-	it('counts every run, replays included, and answers the new stats', async () => {
+	it('counts every run of a new seed, and answers the new stats', async () => {
 		await recordNumbersResult(USER, null, run(7))
 
 		await recordNumbersResult(USER, null, run(20))
@@ -97,22 +99,53 @@ describe('numbers', () => {
 		expect(stats.vsCpu).toMatchObject({ played: 1, best: 7 })
 	})
 
-	it('counts only the first run of a daily puzzle toward the streak', async () => {
+	it('counts only the first run of a seed in a mode, and answers the stats as they were on a replay', async () => {
+		const first = run(4)
+
+		const stats = await recordNumbersResult(USER, 'Ada', first)
+
+		mockRecordDailyResult.mockClear()
+
+		mockRecordPlayerName.mockClear()
+
+		expect(await recordNumbersResult(USER, 'Ada', { ...first, score: 18 })).toEqual(stats)
+
+		expect(await readNumbersStats(USER, TODAY)).toEqual(stats)
+
+		expect(stats.solo).toMatchObject({ played: 1, best: 4 })
+
+		expect(mockRecordDailyResult).not.toHaveBeenCalled()
+
+		expect(mockRecordPlayerName).not.toHaveBeenCalled()
+
+		expect((await listNumbers(USER)).solo.seeds).toEqual([first.seed])
+
+		// The other mode keeps its own seeds.
+		await recordNumbersResult(USER, null, { ...first, mode: 'vsCpu' })
+
+		expect((await readNumbersStats(USER, TODAY)).vsCpu.played).toBe(1)
+	})
+
+	it('counts only the first run of a daily puzzle', async () => {
 		await recordNumbersResult(USER, null, daily(TODAY, 4))
 
 		await recordNumbersResult(USER, null, daily(TODAY, 18))
 
 		const stats = await readNumbersStats(USER, TODAY)
 
-		expect(stats.solo).toMatchObject({ played: 2, streak: 1, bestStreak: 1, dailyScore: 4 })
+		expect(stats.solo).toMatchObject({ played: 1, streak: 1, bestStreak: 1, dailyScore: 4 })
 
 		expect((await listNumbers(USER)).solo.daily).toEqual({ [TODAY]: 4 })
 	})
 
+	it('counts a run of a seed from before Mimir kept the seeds', async () => {
+		documents.set(`${USER}:numbers`, { solo: { scores: counts(4), daily: {} } })
+
+		expect((await recordNumbersResult(USER, null, run(18))).solo.played).toBe(2)
+	})
+
 	it('sends each run to its leaderboard of the reader date, in the same transaction', async () => {
 		await recordNumbersResult(USER, null, daily(TODAY, 4))
-
-		await recordNumbersResult(USER, null, daily(TODAY, 18))
 
 		await recordNumbersResult(USER, null, run(20))
 
@@ -132,7 +165,6 @@ describe('numbers', () => {
 
 		expect(mockRecordDailyResult.mock.calls).toEqual([
 			[transaction, result('daily', 4)],
-			[transaction, result('daily', 18)],
 			[transaction, result('solo', 20)],
 			[transaction, result('vsCpu', 7)],
 			[transaction, result('vsCpu', 9)],
