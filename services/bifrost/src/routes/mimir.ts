@@ -9,8 +9,8 @@ import { requireSession, type SessionEnv } from '../middleware/session.js'
 // session and forwards the request unchanged, with its user and Mimir's API
 // key. Mimir declares which routes need which role, and its own spec
 // (services/mimir/openapi.json) describes these paths. The one route that a
-// reader with no session can read is the leaderboard of a daily puzzle of the
-// numbers app: bifrost forwards it with the user when there is one.
+// reader with no session can read is a leaderboard of a day of the numbers
+// app: bifrost forwards it with the user when there is one.
 
 export const unavailable = () => new HTTPException(503, { message: 'App data is unavailable' })
 

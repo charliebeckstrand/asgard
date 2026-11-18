@@ -135,9 +135,12 @@ const draft = {
 	visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [] }],
 }
 
-const noRuns = { scores: Array.from({ length: 21 }, () => 0), daily: {} }
+const noRuns = { scores: Array.from({ length: 21 }, () => 0) }
 
-const numbers = { solo: { ...noRuns, daily: { 20261116: 12 } }, vsCpu: noRuns }
+const numbers = {
+	solo: { scores: noRuns.scores.map((count, score) => (score === 12 ? 1 : count)) },
+	vsCpu: noRuns,
+}
 
 const place = {
 	...draft,
@@ -537,26 +540,24 @@ describe('numbers', () => {
 		best: null,
 		average: null,
 		scores: noRuns.scores,
-		streak: 0,
-		bestStreak: 0,
-		dailyScore: null,
 		winRate: null,
 	}
 
 	const stats = { solo: { ...noStats, played: 1, best: 12, average: 12 }, vsCpu: noStats }
 
-	const result = { seed: '20261116', score: 12, mode: 'solo', today: '20261116' }
+	const result = { seed: 'k3x9q2', score: 12, mode: 'solo', today: '20261116' }
 
-	it('reads your stats as of your date', async () => {
+	// An app from before the stats dropped the daily streaks sends `today`.
+	it.each(['', '?today=20261116'])('reads your stats with %j', async (query) => {
 		mockReadNumbersStats.mockResolvedValue(stats)
 
-		const res = await app.request('/api/games/numbers/stats?today=20261116', { headers: headers() })
+		const res = await app.request(`/api/games/numbers/stats${query}`, { headers: headers() })
 
 		expect(res.status).toBe(200)
 
 		expect(await res.json()).toEqual(stats)
 
-		expect(mockReadNumbersStats).toHaveBeenCalledWith(USER_ID, '20261116')
+		expect(mockReadNumbersStats).toHaveBeenCalledWith(USER_ID)
 	})
 
 	it('counts a run and answers the new stats', async () => {
@@ -590,17 +591,6 @@ describe('numbers', () => {
 
 		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, null, result)
 	})
-
-	it.each(['', '?today=2026-11-16', '?today=20260231'])(
-		'refuses the stats with %j',
-		async (query) => {
-			const res = await app.request(`/api/games/numbers/stats${query}`, { headers: headers() })
-
-			expect(res.status).toBe(400)
-
-			expect(mockReadNumbersStats).not.toHaveBeenCalled()
-		},
-	)
 
 	it.each([
 		{ score: 21 },
@@ -642,6 +632,7 @@ describe('numbers', () => {
 		'?date=20261116',
 		'?date=20261116&mode=group',
 		'?date=2026-11-16&mode=solo',
+		'?date=20261116&mode=daily',
 	])('refuses the leaderboard with %j', async (query) => {
 		const res = await app.request(`/api/games/numbers/daily${query}`, { headers: headers() })
 
@@ -655,7 +646,7 @@ describe('numbers', () => {
 
 		mockReadNumbersBoard.mockResolvedValue(board)
 
-		const res = await app.request('/api/games/numbers/daily?date=20261116&mode=daily', {
+		const res = await app.request('/api/games/numbers/daily?date=20261116&mode=solo', {
 			headers: headers(null),
 		})
 
@@ -663,7 +654,7 @@ describe('numbers', () => {
 
 		expect(await res.json()).toEqual(board)
 
-		expect(mockReadNumbersBoard).toHaveBeenCalledWith(null, '20261116', 'daily')
+		expect(mockReadNumbersBoard).toHaveBeenCalledWith(null, '20261116', 'solo')
 	})
 })
 

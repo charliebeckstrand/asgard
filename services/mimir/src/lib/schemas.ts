@@ -426,16 +426,15 @@ const NumbersModeSchema = z
 export type NumbersMode = z.infer<typeof NumbersModeSchema>
 
 const NumbersBoardModeSchema = z
-	.enum(['daily', 'solo', 'vsCpu'], '`mode` must be `daily`, `solo` or `vsCpu`.')
+	.enum(['solo', 'vsCpu'], '`mode` must be `solo` or `vsCpu`.')
 	.openapi({
-		description:
-			'The board: `daily` for the solo runs of the daily puzzle, `solo` for the solo runs of other seeds, and `vsCpu` for the runs against the CPU',
+		description: 'The board: `solo` for the solo runs, and `vsCpu` for the runs that beat the CPU',
 	})
 
 /** The board of a day that a run counts on. */
 export type NumbersBoardMode = z.infer<typeof NumbersBoardModeSchema>
 
-/** A date as `YYYYMMDD`, the form of a daily puzzle's seed, in the field `field`. */
+/** A date as `YYYYMMDD`, in the field `field`. */
 function numbersDate(field: string) {
 	const message = `\`${field}\` must be a date as YYYYMMDD.`
 
@@ -459,8 +458,6 @@ const ScoreSchema = z
 	.int('`score` must be a whole number from 0 to 20.')
 	.min(0, '`score` must be a whole number from 0 to 20.')
 	.max(MAX_SCORE, '`score` must be a whole number from 0 to 20.')
-
-export const NumbersTodaySchema = z.object({ today: NumbersDateSchema })
 
 export const NumbersResultSchema = z
 	.object({
@@ -489,9 +486,6 @@ const ScoreCountsSchema = z
 /** The results of one mode as Mimir keeps them. */
 export const StoredNumbersModeSchema = z.object({
 	scores: ScoreCountsSchema,
-	daily: z.record(z.string().regex(/^\d{8}$/), ScoreSchema).openapi({
-		description: 'The score of the first run of each daily puzzle, by its date',
-	}),
 	cpu: z
 		.object({ played: z.number().int().min(0), beat: z.number().int().min(0) })
 		.optional()
@@ -520,13 +514,6 @@ const NumbersModeStatsSchema = z
 		best: z.number().int().nullable().openapi({ description: 'The highest score, or none' }),
 		average: z.number().nullable().openapi({ description: 'The mean score, or none' }),
 		scores: ScoreCountsSchema,
-		streak: z.number().int().openapi({
-			description: 'The consecutive daily puzzles that end today or yesterday',
-		}),
-		bestStreak: z.number().int().openapi({ description: 'The longest daily streak' }),
-		dailyScore: z.number().int().nullable().openapi({
-			description: "The score of the first run of today's daily puzzle, or none before it",
-		}),
 		winRate: z.number().nullable().openapi({
 			description:
 				'Vs CPU only: the share, from 0 to 1, of the runs that beat the CPU, of the runs since Mimir counts the outcome (2026-11-16). None for solo, and none before the first such run.',
@@ -564,7 +551,7 @@ const NumbersBoardEntrySchema = z
 
 export const NumbersBoardSchema = z
 	.object({
-		players: z.number().int().openapi({ description: 'The players of the daily puzzle' }),
+		players: z.number().int().openapi({ description: 'The players on the board' }),
 		entries: z.array(NumbersBoardEntrySchema).openapi({
 			description: 'The top 10 by score, then the reader when they are below them',
 		}),

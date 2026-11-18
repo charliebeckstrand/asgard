@@ -31,7 +31,7 @@ const DATE = '20261116'
 /** The id of user `n`. */
 const user = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 
-/** A run of the daily puzzle of `DATE` in solo, on its day. */
+/** A solo run of user `n` on the board of `date`. */
 const result = (n: number, score: number, date = DATE) => ({
 	game: 'numbers' as const,
 	mode: 'solo',
@@ -110,17 +110,21 @@ describeWithDocker('games', () => {
 		await holder.db?.exec(sql`DELETE FROM game_players`)
 	})
 
-	// Migration 0005 clears the vs CPU boards, so the vs CPU score that 0002
-	// copies goes.
-	it('copies the daily scores of the numbers documents, but not the vs CPU ones', async () => {
-		const rows = await holder.db?.many(sql`
-			SELECT mode, to_char(day, 'YYYYMMDD') AS date, user_id, score
-			FROM game_results ORDER BY mode, day
+	// Migration 0002 copies the daily scores to the boards, 0005 clears the vs
+	// CPU board, and 0006 deletes the daily board and the daily scores.
+	it('deletes the daily scores of the boards and of the numbers documents', async () => {
+		const rows = await holder.db?.many(sql`SELECT mode FROM game_results`)
+
+		expect(rows).toEqual([])
+
+		const values = await holder.db?.many(sql`
+			SELECT user_id, value FROM documents ORDER BY user_id
 		`)
 
-		expect(rows).toEqual([
-			{ mode: 'daily', date: '20261114', user_id: user(90), score: 9 },
-			{ mode: 'daily', date: '20261115', user_id: user(90), score: 20 },
+		expect(values).toEqual([
+			{ user_id: user(90), value: { solo: { scores: [] }, vsCpu: { scores: [] } } },
+			{ user_id: user(91), value: { solo: 'broken', vsCpu: {} } },
+			{ user_id: user(92), value: { solo: { daily: { 20261115: 1 } } } },
 		])
 	})
 
@@ -230,28 +234,23 @@ describeWithDocker('games', () => {
 
 		vi.setSystemTime(new Date('2026-11-16T12:00:00Z'))
 
-		const run = { seed: DATE, mode: 'solo' as const, today: DATE }
+		const run = { mode: 'solo' as const, today: DATE }
 
 		try {
-			await recordNumbersResult(user(7), 'Lin', { ...run, score: 6 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q1', score: 6 })
 
-			await recordNumbersResult(user(7), 'Lin', { ...run, score: 17 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q2', score: 17 })
 
-			await recordNumbersResult(user(7), 'Lin', { ...run, score: 9 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q3', score: 9 })
 
-			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q2', score: 5 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: DATE, score: 5 })
 		} finally {
 			vi.useRealTimers()
 		}
 
-		expect(await readDailyBoard('numbers', 'daily', DATE, user(7))).toEqual({
-			players: 1,
-			entries: [{ rank: 1, name: 'Lin', score: 17, you: true }],
-		})
-
 		expect(await readDailyBoard('numbers', 'solo', DATE, user(7))).toEqual({
 			players: 1,
-			entries: [{ rank: 1, name: 'Lin', score: 5, you: true }],
+			entries: [{ rank: 1, name: 'Lin', score: 17, you: true }],
 		})
 	})
 

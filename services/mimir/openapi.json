@@ -375,15 +375,6 @@
 								},
 								"description": "How many runs ended on each score, from 0 to 20"
 							},
-							"daily": {
-								"type": "object",
-								"additionalProperties": {
-									"type": "integer",
-									"minimum": 0,
-									"maximum": 20
-								},
-								"description": "The score of the first run of each daily puzzle, by its date"
-							},
 							"cpu": {
 								"type": "object",
 								"properties": {
@@ -411,8 +402,7 @@
 							}
 						},
 						"required": [
-							"scores",
-							"daily"
+							"scores"
 						]
 					},
 					"vsCpu": {
@@ -426,15 +416,6 @@
 								},
 								"description": "How many runs ended on each score, from 0 to 20"
 							},
-							"daily": {
-								"type": "object",
-								"additionalProperties": {
-									"type": "integer",
-									"minimum": 0,
-									"maximum": 20
-								},
-								"description": "The score of the first run of each daily puzzle, by its date"
-							},
 							"cpu": {
 								"type": "object",
 								"properties": {
@@ -462,8 +443,7 @@
 							}
 						},
 						"required": [
-							"scores",
-							"daily"
+							"scores"
 						]
 					}
 				},
@@ -811,19 +791,6 @@
 						},
 						"description": "How many runs ended on each score, from 0 to 20"
 					},
-					"streak": {
-						"type": "integer",
-						"description": "The consecutive daily puzzles that end today or yesterday"
-					},
-					"bestStreak": {
-						"type": "integer",
-						"description": "The longest daily streak"
-					},
-					"dailyScore": {
-						"type": "integer",
-						"nullable": true,
-						"description": "The score of the first run of today's daily puzzle, or none before it"
-					},
 					"winRate": {
 						"type": "number",
 						"nullable": true,
@@ -836,9 +803,6 @@
 					"best",
 					"average",
 					"scores",
-					"streak",
-					"bestStreak",
-					"dailyScore",
 					"winRate"
 				]
 			},
@@ -886,7 +850,7 @@
 				"properties": {
 					"players": {
 						"type": "integer",
-						"description": "The players of the daily puzzle"
+						"description": "The players on the board"
 					},
 					"entries": {
 						"type": "array",
@@ -1927,21 +1891,7 @@
 					"Numbers"
 				],
 				"summary": "Get your numbers stats",
-				"description": "The stats of each mode. The streaks are as of the reader's date, which must be within one day of the server's date.",
-				"parameters": [
-					{
-						"schema": {
-							"type": "string",
-							"pattern": "^\\d{8}$",
-							"description": "The reader's date, as YYYYMMDD",
-							"example": "20261116"
-						},
-						"required": true,
-						"description": "The reader's date, as YYYYMMDD",
-						"name": "today",
-						"in": "query"
-					}
-				],
+				"description": "The stats of each mode.",
 				"responses": {
 					"200": {
 						"description": "Stats",
@@ -1949,16 +1899,6 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/NumbersStats"
-								}
-							}
-						}
-					},
-					"400": {
-						"description": "Invalid date",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Error"
 								}
 							}
 						}
@@ -1982,7 +1922,7 @@
 					"Numbers"
 				],
 				"summary": "Count a finished run",
-				"description": "Only the first run of each seed counts in each mode. A replay, a later run of a seed, changes no stat and no leaderboard, and the answer is the stats as they were. A run whose seed is the reader's date is the daily puzzle. Each counted run also counts on the leaderboard of the reader's date: a solo run of the daily puzzle on `daily`, another solo run on `solo`, and a run that beat the CPU (`beatCpu`) on `vsCpu`. A vs CPU run that tied or lost counts on no board. A board keeps the best score of each player. Each counted run keeps the name of the account, which the leaderboards show.",
+				"description": "Only the first run of each seed counts in each mode. A replay, a later run of a seed, changes no stat and no leaderboard, and the answer is the stats as they were. Each counted run also counts on the leaderboard of the reader's date: a solo run on `solo`, and a run that beat the CPU (`beatCpu`) on `vsCpu`. A vs CPU run that tied or lost counts on no board. A board keeps the best score of each player. Each counted run keeps the name of the account, which the leaderboards show.",
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -2061,14 +2001,13 @@
 						"schema": {
 							"type": "string",
 							"enum": [
-								"daily",
 								"solo",
 								"vsCpu"
 							],
-							"description": "The board: `daily` for the solo runs of the daily puzzle, `solo` for the solo runs of other seeds, and `vsCpu` for the runs against the CPU"
+							"description": "The board: `solo` for the solo runs, and `vsCpu` for the runs that beat the CPU"
 						},
 						"required": true,
-						"description": "The board: `daily` for the solo runs of the daily puzzle, `solo` for the solo runs of other seeds, and `vsCpu` for the runs against the CPU",
+						"description": "The board: `solo` for the solo runs, and `vsCpu` for the runs that beat the CPU",
 						"name": "mode",
 						"in": "query"
 					}
