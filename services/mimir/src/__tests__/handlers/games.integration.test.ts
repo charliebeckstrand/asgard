@@ -230,26 +230,29 @@ describeWithDocker('games', () => {
 
 		vi.setSystemTime(new Date('2026-11-16T12:00:00Z'))
 
-		const run = { seed: DATE, mode: 'solo' as const, today: DATE }
+		const run = { mode: 'solo' as const, today: DATE }
 
 		try {
-			await recordNumbersResult(user(7), 'Lin', { ...run, score: 6 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q1', score: 6 })
 
-			await recordNumbersResult(user(7), 'Lin', { ...run, score: 17 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q2', score: 17 })
 
-			await recordNumbersResult(user(7), 'Lin', { ...run, score: 9 })
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q3', score: 9 })
 
-			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q2', score: 5 })
+			// A replay counts on no board.
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: 'k3x9q1', score: 20 })
+
+			await recordNumbersResult(user(7), 'Lin', { ...run, seed: DATE, score: 5 })
 		} finally {
 			vi.useRealTimers()
 		}
 
-		expect(await readDailyBoard('numbers', 'daily', DATE, user(7))).toEqual({
+		expect(await readDailyBoard('numbers', 'solo', DATE, user(7))).toEqual({
 			players: 1,
 			entries: [{ rank: 1, name: 'Lin', score: 17, you: true }],
 		})
 
-		expect(await readDailyBoard('numbers', 'solo', DATE, user(7))).toEqual({
+		expect(await readDailyBoard('numbers', 'daily', DATE, user(7))).toEqual({
 			players: 1,
 			entries: [{ rank: 1, name: 'Lin', score: 5, you: true }],
 		})
