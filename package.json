@@ -10,7 +10,7 @@
 		"@vitest/coverage-v8": "^5.0.1",
 		"knip": "^6.38.0",
 		"lefthook": "^2.1.14",
-		"tsup": "^8.5.1",
+		"tsup": "^9.0.0",
 		"turbo": "^2.11.4",
 		"typescript": "^7.0.2"
 	},
