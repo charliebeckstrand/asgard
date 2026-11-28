@@ -12,7 +12,7 @@ import {
 	StoredNumbersModeSchema,
 } from '../lib/schemas.js'
 import { changeDocument, readDocument } from './documents.js'
-import { readDailyBoard, recordDailyResult, recordPlayerName } from './games.js'
+import { readBoard, recordBestScore, recordPlayerName } from './games.js'
 
 /**
  * The results of the numbers app of each user, in one document. For each mode,
@@ -146,7 +146,7 @@ export async function recordNumbersResult(
 		const board = boardOf(result)
 
 		if (board) {
-			await recordDailyResult(tx, {
+			await recordBestScore(tx, {
 				game: 'numbers',
 				mode: board,
 				date: result.today,
@@ -185,5 +185,5 @@ export function readNumbersBoard(
 ): Promise<NumbersBoard> {
 	checkNotAhead(date)
 
-	return readDailyBoard('numbers', mode, date, userId)
+	return readBoard('numbers', mode, date, userId)
 }

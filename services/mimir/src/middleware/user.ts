@@ -10,10 +10,12 @@ import { type Role, UserSchema } from 'skuld'
  */
 const USER_HEADER = 'x-mimir-user'
 
-// The name is the name of the account, which the leaderboards show. A bifrost
-// from before the name was sent, still live during a deploy, sends none.
-const ForwardedUserSchema = UserSchema.pick({ id: true, roles: true, is_verified: true }).extend({
-	name: UserSchema.shape.name.default(null),
+// The name is the name of the account, which the leaderboards show.
+const ForwardedUserSchema = UserSchema.pick({
+	id: true,
+	name: true,
+	roles: true,
+	is_verified: true,
 })
 
 type ForwardedUser = z.infer<typeof ForwardedUserSchema>

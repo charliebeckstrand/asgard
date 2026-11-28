@@ -4,6 +4,7 @@ import {
 	DeleteObjectCommand,
 	GetObjectCommand,
 	ListObjectsV2Command,
+	NoSuchKey,
 	PutObjectCommand,
 	S3Client,
 } from '@aws-sdk/client-s3'
@@ -49,6 +50,9 @@ const VIEW_SIZE = 2048
 /** The quality of a view, from 1 to 100. */
 const VIEW_QUALITY = 80
 
+/** The deletes in flight at once, so removing a place with many photos isn't thousands of requests together. */
+const DELETES_AT_ONCE = 10
+
 type Bucket = { client: S3Client; name: string }
 
 let cached: Bucket | null = null
@@ -67,7 +71,11 @@ function configuredBucket(): Bucket | null {
 	// front. The client adds the name itself, so it takes the region's endpoint.
 	const endpoint = new URL(SPACES_ENDPOINT)
 
-	endpoint.hostname = endpoint.hostname.replace(new RegExp(`^${SPACES_BUCKET}\\.`), '')
+	const bucketHost = `${SPACES_BUCKET}.`
+
+	if (endpoint.hostname.startsWith(bucketHost)) {
+		endpoint.hostname = endpoint.hostname.slice(bucketHost.length)
+	}
 
 	cached = {
 		client: new S3Client({
@@ -227,9 +235,7 @@ export async function keepPhoto(key: string): Promise<boolean> {
 
 		contentType = object.ContentType
 	} catch (err) {
-		if ((err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) {
-			return false
-		}
+		if (err instanceof NoSuchKey) return false
 
 		throw err
 	}
@@ -276,12 +282,21 @@ async function deleteObjects(keys: string[]): Promise<void> {
 
 	const { client, name } = configured
 
-	await Promise.all(
-		keys.map((key) => client.send(new DeleteObjectCommand({ Bucket: name, Key: key }))),
-	)
+	const queue = [...keys]
+
+	const worker = async () => {
+		for (let key = queue.shift(); key !== undefined; key = queue.shift()) {
+			await client.send(new DeleteObjectCommand({ Bucket: name, Key: key }))
+		}
+	}
+
+	await Promise.all(Array.from({ length: Math.min(DELETES_AT_ONCE, queue.length) }, worker))
 }
 
-/** Deletes every photo under the user's prefix, saved or not, for when their account is deleted. */
+/**
+ * Deletes every photo of the user, saved or uploaded, for when their account
+ * is deleted. Uploads go too, rather than waiting on the lifecycle rule.
+ */
 export async function deleteUserPhotos(userId: string): Promise<void> {
 	const configured = configuredBucket()
 
@@ -290,19 +305,17 @@ export async function deleteUserPhotos(userId: string): Promise<void> {
 
 	const { client, name } = configured
 
-	let token: string | undefined
+	for (const prefix of [userPrefix(userId), `${UPLOADS}${userId}/`]) {
+		let token: string | undefined
 
-	do {
-		const page = await client.send(
-			new ListObjectsV2Command({
-				Bucket: name,
-				Prefix: userPrefix(userId),
-				ContinuationToken: token,
-			}),
-		)
+		do {
+			const page = await client.send(
+				new ListObjectsV2Command({ Bucket: name, Prefix: prefix, ContinuationToken: token }),
+			)
 
-		await deleteObjects((page.Contents ?? []).flatMap((object) => object.Key ?? []))
+			await deleteObjects((page.Contents ?? []).flatMap((object) => object.Key ?? []))
 
-		token = page.IsTruncated ? page.NextContinuationToken : undefined
-	} while (token)
+			token = page.IsTruncated ? page.NextContinuationToken : undefined
+		} while (token)
+	}
 }

@@ -17,7 +17,7 @@ const MAX_LINE = 50
 const MAX_PHOTOS = 12
 
 /** Visits to one place, so a place can't fill the document. */
-export const MAX_VISITS = 200
+export const MAX_PLACE_VISITS = 200
 
 /** Longer than any country or state name, so a region can't carry a payload. */
 const MAX_REGION = 100
@@ -44,13 +44,6 @@ const coordinate = (field: string, limit: number) =>
 		.min(-limit, `\`${field}\` must be a number between -${limit} and ${limit}.`)
 		.max(limit, `\`${field}\` must be a number between -${limit} and ${limit}.`)
 
-/** Whether a `YYYY-MM-DD` string names a real day: `2026-02-31` doesn't. */
-function isDay(value: string): boolean {
-	const date = new Date(`${value}T00:00:00Z`)
-
-	return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value)
-}
-
 /** Photos on one trip. */
 const MAX_TRIP_PHOTOS = 50
 
@@ -69,11 +62,7 @@ export const PHOTO_TYPES = {
 
 export type PhotoType = keyof typeof PHOTO_TYPES
 
-const day = (field: string) =>
-	z
-		.string(`\`${field}\` must be a YYYY-MM-DD day.`)
-		.regex(/^\d{4}-\d{2}-\d{2}$/, `\`${field}\` must be a YYYY-MM-DD day.`)
-		.refine(isDay, `\`${field}\` must be a YYYY-MM-DD day.`)
+const day = (field: string) => z.iso.date(`\`${field}\` must be a YYYY-MM-DD day.`)
 
 /** An id Mimir gave, of a place, visit or trip. */
 const id = (field: string) =>
@@ -192,7 +181,7 @@ export const PlaceDraftSchema = LocationSchema.extend({
 	visits: z
 		.array(VisitDraftSchema)
 		.min(1, 'A place needs at least one visit.')
-		.max(MAX_VISITS, `A place holds at most ${MAX_VISITS} visits.`)
+		.max(MAX_PLACE_VISITS, `A place holds at most ${MAX_PLACE_VISITS} visits.`)
 		.refine((visits) => {
 			const ids = visits.flatMap((visit) => (visit.id === undefined ? [] : [visit.id]))
 
@@ -442,7 +431,9 @@ function numbersDate(field: string) {
 		.string(message)
 		.regex(/^\d{8}$/, message)
 		.refine(
-			(value) => isDay(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6)}`),
+			(value) =>
+				z.iso.date().safeParse(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6)}`)
+					.success,
 			message,
 		)
 }
@@ -453,11 +444,13 @@ const NumbersDateSchema = numbersDate('today').openapi({
 	example: '20261116',
 })
 
+const SCORE_MESSAGE = `\`score\` must be a whole number from 0 to ${MAX_SCORE}.`
+
 const ScoreSchema = z
-	.number('`score` must be a whole number from 0 to 20.')
-	.int('`score` must be a whole number from 0 to 20.')
-	.min(0, '`score` must be a whole number from 0 to 20.')
-	.max(MAX_SCORE, '`score` must be a whole number from 0 to 20.')
+	.number(SCORE_MESSAGE)
+	.int(SCORE_MESSAGE)
+	.min(0, SCORE_MESSAGE)
+	.max(MAX_SCORE, SCORE_MESSAGE)
 
 export const NumbersResultSchema = z
 	.object({
