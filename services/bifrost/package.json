@@ -27,7 +27,7 @@
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage"
 	},
-	"packageManager": "pnpm@12.21.0",
+	"packageManager": "pnpm@12.23.0",
 	"dependencies": {
 		"@hono/node-server": "^2.1.1",
 		"@hono/zod-openapi": "^1.6.3",
