@@ -133,6 +133,18 @@ describe('Email routes', () => {
 			expect(auth.sendAccountExistsEmail).not.toHaveBeenCalled()
 		})
 
+		it('refuses a sign-up from an unknown app before making the account', async () => {
+			const res = await post(
+				'/auth/register',
+				{ email: 'new@example.com', password: 'password123' },
+				{ 'x-forwarded-host': 'evil.example.com' },
+			)
+
+			expect(res.status).toBe(400)
+
+			expect(auth.registerUser).not.toHaveBeenCalled()
+		})
+
 		it('passes the trimmed name to the new account', async () => {
 			vi.mocked(auth.registerUser).mockResolvedValueOnce(null)
 

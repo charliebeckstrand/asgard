@@ -1247,7 +1247,7 @@
 						}
 					},
 					"400": {
-						"description": "Validation error, a failed Turnstile check, or a password known from a data breach",
+						"description": "Validation error, an unknown app origin, a failed Turnstile check, or a password known from a data breach",
 						"content": {
 							"application/json": {
 								"schema": {
