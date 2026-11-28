@@ -250,12 +250,11 @@ describe('completeOAuth', () => {
 			email: 'alice@example.com',
 		})
 
-		expect(reportEvent).toHaveBeenCalledWith(
-			'registration',
-			'203.0.113.1',
-			{ email: 'Alice@Example.com', provider: 'google' },
-			'bifrost',
-		)
+		expect(reportEvent).toHaveBeenCalledWith({
+			type: 'registration',
+			ip: '203.0.113.1',
+			details: { email: 'Alice@Example.com', provider: 'google' },
+		})
 	})
 
 	it('refuses a new Google account whose email is not verified', async () => {

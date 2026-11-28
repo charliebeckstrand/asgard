@@ -169,12 +169,11 @@ describe('authenticateUser', () => {
 
 		await authenticateUser('alice@example.com', 'wrong', '1.2.3.4').catch(() => {})
 
-		expect(reportEvent).toHaveBeenCalledWith(
-			'login_failed',
-			'1.2.3.4',
-			{ email: 'alice@example.com' },
-			'bifrost',
-		)
+		expect(reportEvent).toHaveBeenCalledWith({
+			type: 'login_failed',
+			ip: '1.2.3.4',
+			details: { email: 'alice@example.com' },
+		})
 	})
 })
 
@@ -366,11 +365,10 @@ describe('registerUser', () => {
 	it('reports the sign-up to Vidar', async () => {
 		await registerUser('new@example.com', 'password123', '1.2.3.4')
 
-		expect(reportEvent).toHaveBeenCalledWith(
-			'registration',
-			'1.2.3.4',
-			{ email: 'new@example.com' },
-			'bifrost',
-		)
+		expect(reportEvent).toHaveBeenCalledWith({
+			type: 'registration',
+			ip: '1.2.3.4',
+			details: { email: 'new@example.com' },
+		})
 	})
 })

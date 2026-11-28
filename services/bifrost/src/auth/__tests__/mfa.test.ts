@@ -194,12 +194,11 @@ describe('verifySession', () => {
 
 		expect(sessionRepository.failSecondStep).toHaveBeenCalledWith('session-1', MAX_FAILED_STEPS)
 
-		expect(reportEvent).toHaveBeenCalledWith(
-			'login_failed',
-			'203.0.113.7',
-			{ user_id: USER_ID, method: 'totp' },
-			'bifrost',
-		)
+		expect(reportEvent).toHaveBeenCalledWith({
+			type: 'login_failed',
+			ip: '203.0.113.7',
+			details: { user_id: USER_ID, method: 'totp' },
+		})
 	})
 
 	it('asks to sign in again when a wrong try ends the session', async () => {

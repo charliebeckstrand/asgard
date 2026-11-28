@@ -153,7 +153,7 @@ export async function authenticatePasskey(
 	const userId = await verifyPasskey(response)
 
 	if (!userId) {
-		reportEvent('login_failed', ip, { passkey: response.id }, 'bifrost')
+		reportEvent({ type: 'login_failed', ip, details: { passkey: response.id } })
 
 		throw new AuthError('invalid_credentials', 'Passkey not recognized')
 	}

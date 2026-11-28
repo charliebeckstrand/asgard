@@ -25,6 +25,7 @@ const log = logger()
 configureVidar({
 	vidarUrl: env.VIDAR_URL,
 	vidarApiKey: env.VIDAR_API_KEY,
+	service: 'bifrost',
 	logger: log,
 })
 

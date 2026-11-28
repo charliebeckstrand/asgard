@@ -1,4 +1,5 @@
 import { createApp } from 'grid'
+import { except } from 'hono/combine'
 
 import { logger } from './lib/log.js'
 import { apiKeyAuth } from './middleware/api-key.js'
@@ -19,13 +20,7 @@ export function createVidarApp() {
 		logger: logger(),
 	})
 
-	const auth = apiKeyAuth()
-
-	app.use(`${BASE_PATH}/*`, async (c, next) => {
-		if (c.req.path === HEALTH_PATH) return next()
-
-		return auth(c, next)
-	})
+	app.use(`${BASE_PATH}/*`, except(HEALTH_PATH, apiKeyAuth()))
 
 	return app
 		.route(BASE_PATH, health)

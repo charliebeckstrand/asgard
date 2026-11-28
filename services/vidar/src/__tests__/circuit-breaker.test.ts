@@ -1,200 +1,125 @@
+import type { Logger } from 'saga/log'
 import { createCircuitBreaker } from '@/circuit-breaker'
 
-describe('circuit breaker', () => {
-	it('starts in closed state', () => {
-		const breaker = createCircuitBreaker('test')
+function makeLogger() {
+	return { warn: vi.fn(), info: vi.fn() }
+}
 
-		const status = breaker.getStatus()
+function make(options: { failureThreshold?: number; resetTimeout?: number } = {}) {
+	const logger = makeLogger()
 
-		expect(status.state).toBe('closed')
-
-		expect(status.failures).toBe(0)
+	const breaker = createCircuitBreaker('test', {
+		logger: logger as unknown as Logger,
+		failureThreshold: 2,
+		resetTimeout: 1000,
+		...options,
 	})
 
-	it('stays closed on successful calls', async () => {
-		const breaker = createCircuitBreaker('test')
+	return { breaker, logger }
+}
 
-		await breaker.execute(async () => 'ok')
+const fail = () => Promise.reject(new Error('down'))
 
-		expect(breaker.getStatus().state).toBe('closed')
+async function openBreaker(breaker: ReturnType<typeof make>['breaker'], times = 2) {
+	for (let i = 0; i < times; i++) {
+		await breaker.execute(fail).catch(() => {})
+	}
+}
+
+beforeEach(() => {
+	vi.useFakeTimers({ toFake: ['Date'] })
+})
+
+afterEach(() => {
+	vi.useRealTimers()
+})
+
+describe('createCircuitBreaker', () => {
+	it('passes results and errors through while closed', async () => {
+		const { breaker } = make()
+
+		expect(await breaker.execute(() => Promise.resolve('ok'))).toBe('ok')
+
+		await expect(breaker.execute(fail)).rejects.toThrow('down')
 	})
 
-	it('opens after reaching failure threshold', async () => {
-		const breaker = createCircuitBreaker('test', { failureThreshold: 3 })
+	it('opens after the threshold of failures in a row, and logs it', async () => {
+		const { breaker, logger } = make()
 
-		for (let i = 0; i < 3; i++) {
-			await breaker
-				.execute(async () => {
-					throw new Error('fail')
-				})
-				.catch(() => {})
-		}
+		await openBreaker(breaker)
 
-		expect(breaker.getStatus().state).toBe('open')
+		const fn = vi.fn().mockResolvedValue('ok')
 
-		expect(breaker.getStatus().failures).toBe(3)
+		await expect(breaker.execute(fn)).rejects.toThrow('is open')
+
+		expect(fn).not.toHaveBeenCalled()
+
+		expect(logger.warn).toHaveBeenCalledOnce()
 	})
 
-	it('rejects calls when open', async () => {
-		const breaker = createCircuitBreaker('test', { failureThreshold: 1, resetTimeout: 60_000 })
+	it('counts only failures in a row', async () => {
+		const { breaker } = make()
 
-		await breaker
-			.execute(async () => {
-				throw new Error('fail')
-			})
-			.catch(() => {})
+		await breaker.execute(fail).catch(() => {})
 
-		expect(breaker.getStatus().state).toBe('open')
+		await breaker.execute(() => Promise.resolve('ok'))
 
-		await expect(breaker.execute(async () => 'ok')).rejects.toThrow(
-			'Circuit breaker "test" is open',
-		)
+		await breaker.execute(fail).catch(() => {})
+
+		expect(await breaker.execute(() => Promise.resolve('still closed'))).toBe('still closed')
 	})
 
-	it('transitions to half-open after reset timeout', async () => {
-		const breaker = createCircuitBreaker('test', { failureThreshold: 1, resetTimeout: 0 })
+	it('lets one probe through after the timeout and rejects the rest meanwhile', async () => {
+		const { breaker } = make()
 
-		await breaker
-			.execute(async () => {
-				throw new Error('fail')
-			})
-			.catch(() => {})
+		await openBreaker(breaker)
 
-		expect(breaker.getStatus().state).toBe('open')
+		vi.advanceTimersByTime(1000)
 
-		const result = await breaker.execute(async () => 'recovered')
+		const { promise, resolve } = Promise.withResolvers<string>()
 
-		expect(result).toBe('recovered')
+		const probe = breaker.execute(() => promise)
 
-		expect(breaker.getStatus().state).toBe('closed')
+		const other = vi.fn().mockResolvedValue('ok')
+
+		await expect(breaker.execute(other)).rejects.toThrow('is open')
+
+		expect(other).not.toHaveBeenCalled()
+
+		resolve('back')
+
+		expect(await probe).toBe('back')
 	})
 
-	it('reopens from half-open after too many failures', async () => {
-		const breaker = createCircuitBreaker('test', {
-			failureThreshold: 1,
-			resetTimeout: 0,
-			halfOpenMaxAttempts: 2,
-		})
+	it('closes when the probe succeeds, and logs it', async () => {
+		const { breaker, logger } = make()
 
-		await breaker
-			.execute(async () => {
-				throw new Error('fail')
-			})
-			.catch(() => {})
+		await openBreaker(breaker)
 
-		expect(breaker.getStatus().state).toBe('open')
+		vi.advanceTimersByTime(1000)
 
-		// First half-open attempt fails
-		await breaker
-			.execute(async () => {
-				throw new Error('still failing')
-			})
-			.catch(() => {})
+		await breaker.execute(() => Promise.resolve('ok'))
 
-		expect(breaker.getStatus().state).toBe('half-open')
+		expect(logger.info).toHaveBeenCalledWith({ breaker: 'test' }, 'circuit breaker closed')
 
-		// Second half-open attempt fails — should reopen
-		await breaker
-			.execute(async () => {
-				throw new Error('still failing')
-			})
-			.catch(() => {})
-
-		expect(breaker.getStatus().state).toBe('open')
+		expect(await breaker.execute(() => Promise.resolve('closed'))).toBe('closed')
 	})
 
-	it('resets state', async () => {
-		const breaker = createCircuitBreaker('test', { failureThreshold: 1 })
+	it('opens again when the probe fails', async () => {
+		const { breaker, logger } = make()
 
-		await breaker
-			.execute(async () => {
-				throw new Error('fail')
-			})
-			.catch(() => {})
+		await openBreaker(breaker)
 
-		expect(breaker.getStatus().state).toBe('open')
+		vi.advanceTimersByTime(1000)
 
-		breaker.reset()
+		await breaker.execute(fail).catch(() => {})
 
-		expect(breaker.getStatus().state).toBe('closed')
+		const fn = vi.fn().mockResolvedValue('ok')
 
-		expect(breaker.getStatus().failures).toBe(0)
-	})
+		await expect(breaker.execute(fn)).rejects.toThrow('is open')
 
-	it('reports open and half-open transitions through the provided logger', async () => {
-		const logger = {
-			warn: vi.fn(),
-			info: vi.fn(),
-			error: vi.fn(),
-			debug: vi.fn(),
-			fatal: vi.fn(),
-			trace: vi.fn(),
-			child: vi.fn(),
-		}
+		expect(fn).not.toHaveBeenCalled()
 
-		const breaker = createCircuitBreaker('vidar', {
-			failureThreshold: 1,
-			resetTimeout: 0,
-			// biome-ignore lint/suspicious/noExplicitAny: minimal logger stub
-			logger: logger as any,
-		})
-
-		await breaker
-			.execute(async () => {
-				throw new Error('fail')
-			})
-			.catch(() => {})
-
-		expect(logger.warn).toHaveBeenCalledWith(
-			{ breaker: 'vidar', failures: 1 },
-			'circuit breaker opened',
-		)
-
-		await breaker.execute(async () => 'recovered')
-
-		expect(logger.info).toHaveBeenCalledWith(
-			{ breaker: 'vidar' },
-			'circuit breaker entering half-open',
-		)
-	})
-
-	it('falls back to console when no logger is provided', async () => {
-		const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-		const breaker = createCircuitBreaker('test', { failureThreshold: 1, resetTimeout: 60_000 })
-
-		await breaker
-			.execute(async () => {
-				throw new Error('fail')
-			})
-			.catch(() => {})
-
-		expect(consoleWarn).toHaveBeenCalledWith(
-			'[vidar] Circuit breaker "test" opened after 1 failures',
-		)
-
-		consoleWarn.mockRestore()
-	})
-
-	it('resets failure count on success', async () => {
-		const breaker = createCircuitBreaker('test', { failureThreshold: 5 })
-
-		await breaker
-			.execute(async () => {
-				throw new Error('fail')
-			})
-			.catch(() => {})
-
-		await breaker
-			.execute(async () => {
-				throw new Error('fail')
-			})
-			.catch(() => {})
-
-		expect(breaker.getStatus().failures).toBe(2)
-
-		await breaker.execute(async () => 'ok')
-
-		expect(breaker.getStatus().failures).toBe(0)
+		expect(logger.warn).toHaveBeenCalledTimes(2)
 	})
 })

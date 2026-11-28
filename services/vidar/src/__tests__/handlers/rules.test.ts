@@ -1,17 +1,15 @@
-const { mockDbOne, mockCreateBan, mockIsIpBanned, mockCreateThreat } = vi.hoisted(() => ({
-	mockDbOne: vi.fn(),
-	mockCreateBan: vi.fn(),
-	mockIsIpBanned: vi.fn(),
+const { mockTx, mockBanForAtLeast, mockCreateThreat } = vi.hoisted(() => ({
+	mockTx: { one: vi.fn(), exec: vi.fn() },
+	mockBanForAtLeast: vi.fn(),
 	mockCreateThreat: vi.fn(),
 }))
 
 vi.mock('../../lib/db.js', () => ({
-	db: { one: mockDbOne },
+	db: { tx: (fn: (tx: unknown) => Promise<unknown>) => fn(mockTx) },
 }))
 
 vi.mock('../../handlers/bans.js', () => ({
-	createBan: (...args: unknown[]) => mockCreateBan(...args),
-	isIpBanned: (...args: unknown[]) => mockIsIpBanned(...args),
+	banForAtLeast: (...args: unknown[]) => mockBanForAtLeast(...args),
 }))
 
 vi.mock('../../handlers/threats.js', () => ({
@@ -19,19 +17,17 @@ vi.mock('../../handlers/threats.js', () => ({
 }))
 
 vi.mock('../../lib/log.js', () => ({
-	logger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+	logger: () => ({ warn: vi.fn() }),
 }))
 
-import { evaluateRules, RULES } from '../../handlers/rules.js'
+import { evaluateRules, RULES } from '@/handlers/rules'
 
 const IP = '203.0.113.42'
 
 beforeEach(() => {
 	vi.clearAllMocks()
 
-	mockCreateBan.mockResolvedValue({})
-	mockIsIpBanned.mockResolvedValue({ banned: false })
-	mockCreateThreat.mockResolvedValue({})
+	mockBanForAtLeast.mockResolvedValue(true)
 })
 
 function rule(id: string) {
@@ -42,161 +38,87 @@ function rule(id: string) {
 	return found
 }
 
+function threatTypes() {
+	return mockCreateThreat.mock.calls.map(([, threat]) => threat.threat_type)
+}
+
 describe('evaluateRules', () => {
-	describe('brute_force', () => {
+	it('locks the address before it counts', async () => {
+		mockTx.one.mockResolvedValue({ event_count: 0, account_count: 0 })
+
+		await evaluateRules(IP, 'login_failed')
+
+		expect(mockTx.exec.mock.invocationCallOrder[0]).toBeLessThan(
+			mockTx.one.mock.invocationCallOrder[0] ?? 0,
+		)
+	})
+
+	it('bans and records a threat when the count meets the threshold', async () => {
 		const r = rule('brute_force')
 
-		it('triggers a ban + threat when event_count meets threshold', async () => {
-			// 'login_failed' fans out to both brute_force and credential_stuffing.
-			// Set account_count = 1 to keep credential_stuffing below its
-			// distinct_accounts floor and isolate brute_force.
-			mockDbOne.mockResolvedValue({ event_count: r.threshold, account_count: 1 })
+		mockTx.one.mockResolvedValue({ event_count: r.threshold, account_count: 1 })
 
-			await evaluateRules(IP, 'login_failed')
+		await evaluateRules(IP, 'login_failed')
 
-			expect(mockCreateBan).toHaveBeenCalledWith(
-				IP,
-				r.name,
-				expect.objectContaining({
-					rule_id: r.id,
-					created_by: 'vidar',
-					duration_minutes: r.ban_duration_minutes,
-				}),
-			)
-
-			expect(mockCreateThreat).toHaveBeenCalledWith(
-				expect.objectContaining({
-					threat_type: r.id,
-					severity: r.severity,
-					ip: IP,
-					action_taken: expect.stringMatching(/Banned for /),
-				}),
-			)
+		expect(mockBanForAtLeast).toHaveBeenCalledWith(mockTx, IP, 60, {
+			reason: r.name,
+			rule_id: r.id,
 		})
 
-		it('does NOT trigger when event_count is below threshold', async () => {
-			mockDbOne.mockResolvedValue({ event_count: r.threshold - 1, account_count: 1 })
-
-			await evaluateRules(IP, 'login_failed')
-
-			expect(mockCreateBan).not.toHaveBeenCalledWith(IP, r.name, expect.anything())
-		})
+		expect(mockCreateThreat).toHaveBeenCalledWith(
+			mockTx,
+			expect.objectContaining({ threat_type: r.id, ip: IP, action_taken: 'Banned for 1h' }),
+		)
 	})
 
-	describe('credential_stuffing distinct_accounts gating', () => {
+	it('does nothing below the threshold', async () => {
+		mockTx.one.mockResolvedValue({
+			event_count: rule('brute_force').threshold - 1,
+			account_count: 1,
+		})
+
+		await evaluateRules(IP, 'login_failed')
+
+		expect(mockCreateThreat).not.toHaveBeenCalled()
+	})
+
+	it('needs enough distinct accounts for credential stuffing', async () => {
 		const r = rule('credential_stuffing')
 
-		it('does NOT trigger when distinct accounts is below the floor', async () => {
-			// brute_force runs against the same event, but with account_count 1
-			// it stays below brute_force.threshold most of the time. Set
-			// event_count just under brute_force.threshold to isolate
-			// credential_stuffing's behaviour.
-			mockDbOne.mockResolvedValue({
-				event_count: r.threshold,
-				account_count: (r.distinct_accounts ?? 10) - 1,
-			})
-
-			await evaluateRules(IP, 'login_failed')
-
-			const credBanCall = mockCreateBan.mock.calls.find(([, name]) => name === r.name)
-
-			expect(credBanCall).toBeUndefined()
+		mockTx.one.mockResolvedValue({
+			event_count: r.threshold,
+			account_count: (r.distinct_accounts ?? 0) - 1,
 		})
 
-		it('triggers when both event_count and distinct_accounts thresholds are met', async () => {
-			mockDbOne.mockResolvedValue({
-				event_count: r.threshold,
-				account_count: r.distinct_accounts ?? 10,
-			})
+		await evaluateRules(IP, 'login_failed')
 
-			await evaluateRules(IP, 'login_failed')
-
-			const credBanCall = mockCreateBan.mock.calls.find(([, name]) => name === r.name)
-
-			expect(credBanCall).toBeDefined()
-		})
+		expect(threatTypes()).toEqual(['brute_force'])
 	})
 
-	describe('event_type filtering', () => {
-		it('runs only rules whose event_type matches', async () => {
-			mockDbOne.mockResolvedValue({ event_count: 9999, account_count: 9999 })
+	it('runs only the rules that watch the event type', async () => {
+		mockTx.one.mockResolvedValue({ event_count: 9999, account_count: 9999 })
 
-			await evaluateRules(IP, 'rate_limited')
+		await evaluateRules(IP, 'rate_limited')
 
-			// Only rate_limit_abuse listens for 'rate_limited'.
-			expect(mockCreateBan).toHaveBeenCalledTimes(1)
-
-			expect(mockCreateBan.mock.calls[0][1]).toBe('Rate Limit Abuse Detection')
-		})
-
-		it('skips evaluation entirely when no rule matches the event_type', async () => {
-			await evaluateRules(IP, 'unknown_event_type')
-
-			expect(mockDbOne).not.toHaveBeenCalled()
-
-			expect(mockCreateBan).not.toHaveBeenCalled()
-		})
+		expect(threatTypes()).toEqual(['rate_limit_abuse'])
 	})
 
-	describe('threat action_taken format', () => {
-		it('renders durations >= 60min as hours', async () => {
-			const r = rule('brute_force') // 60min ban → "1h"
+	it('opens no transaction when no rule watches the event type', async () => {
+		await evaluateRules(IP, 'unknown_event_type')
 
-			mockDbOne.mockResolvedValue({ event_count: r.threshold, account_count: 1 })
-
-			await evaluateRules(IP, 'login_failed')
-
-			const threatArg = mockCreateThreat.mock.calls.find(
-				([t]) => (t as { threat_type: string }).threat_type === r.id,
-			)?.[0] as { action_taken: string }
-
-			expect(threatArg.action_taken).toMatch(/^Banned for \d+h$/)
-		})
+		expect(mockTx.exec).not.toHaveBeenCalled()
 	})
 
-	describe('existing bans', () => {
-		const r = rule('rate_limit_abuse')
+	it('records a threat without a ban when a longer one is in force', async () => {
+		mockBanForAtLeast.mockResolvedValue(false)
 
-		it('does not replace a permanent ban', async () => {
-			mockDbOne.mockResolvedValue({ event_count: r.threshold, account_count: 0 })
+		mockTx.one.mockResolvedValue({ event_count: 9999, account_count: 0 })
 
-			mockIsIpBanned.mockResolvedValue({ banned: true, reason: 'Manual ban' })
+		await evaluateRules(IP, 'rate_limited')
 
-			await evaluateRules(IP, 'rate_limited')
-
-			expect(mockCreateBan).not.toHaveBeenCalled()
-
-			expect(mockCreateThreat).toHaveBeenCalledWith(
-				expect.objectContaining({ threat_type: r.id, action_taken: 'Already banned for longer' }),
-			)
-		})
-
-		it('does not shorten a longer ban', async () => {
-			mockDbOne.mockResolvedValue({ event_count: r.threshold, account_count: 0 })
-
-			const longer = new Date(Date.now() + (r.ban_duration_minutes + 60) * 60_000)
-
-			mockIsIpBanned.mockResolvedValue({ banned: true, expires_at: longer.toISOString() })
-
-			await evaluateRules(IP, 'rate_limited')
-
-			expect(mockCreateBan).not.toHaveBeenCalled()
-		})
-
-		it('extends a shorter ban', async () => {
-			mockDbOne.mockResolvedValue({ event_count: r.threshold, account_count: 0 })
-
-			const shorter = new Date(Date.now() + 5 * 60_000)
-
-			mockIsIpBanned.mockResolvedValue({ banned: true, expires_at: shorter.toISOString() })
-
-			await evaluateRules(IP, 'rate_limited')
-
-			expect(mockCreateBan).toHaveBeenCalledWith(
-				IP,
-				r.name,
-				expect.objectContaining({ duration_minutes: r.ban_duration_minutes }),
-			)
-		})
+		expect(mockCreateThreat).toHaveBeenCalledWith(
+			mockTx,
+			expect.objectContaining({ action_taken: 'Already banned for longer' }),
+		)
 	})
 })

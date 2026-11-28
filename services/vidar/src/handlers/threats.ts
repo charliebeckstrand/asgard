@@ -1,4 +1,4 @@
-import { type SqlFragment, sql } from 'saga'
+import { type Queryable, type SqlFragment, sql } from 'saga'
 import type { RuleSeverity } from 'skuld'
 import { toList } from 'skuld'
 import { db } from '../lib/db.js'
@@ -14,14 +14,17 @@ export interface ThreatRow {
 	created_at: string
 }
 
-export async function createThreat(threat: {
-	threat_type: string
-	severity: RuleSeverity
-	ip: string
-	details: Record<string, unknown>
-	action_taken?: string
-}): Promise<ThreatRow> {
-	return db.one<ThreatRow>(
+export async function createThreat(
+	q: Queryable,
+	threat: {
+		threat_type: string
+		severity: RuleSeverity
+		ip: string
+		details: Record<string, unknown>
+		action_taken?: string
+	},
+): Promise<ThreatRow> {
+	return q.one<ThreatRow>(
 		sql`
 			INSERT INTO vdr_threats (threat_type, severity, ip, details, action_taken)
 			VALUES (${threat.threat_type}, ${threat.severity}, ${threat.ip}, ${sql.json(threat.details)}, ${threat.action_taken ?? null})

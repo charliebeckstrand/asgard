@@ -4,8 +4,10 @@ const API_KEY = 'test-vidar-api-key-that-is-at-least-32-chars'
 
 stubServiceEnv({ VIDAR_API_KEY: API_KEY })
 
-const { mockSetThreatResolved, mockPing } = vi.hoisted(() => ({
+const { mockListThreats, mockSetThreatResolved, mockRemoveBan, mockPing } = vi.hoisted(() => ({
+	mockListThreats: vi.fn(),
 	mockSetThreatResolved: vi.fn(),
+	mockRemoveBan: vi.fn(),
 	mockPing: vi.fn(),
 }))
 
@@ -17,8 +19,14 @@ vi.mock('../handlers/events.js', () => ({
 	ingestEvent: vi.fn(),
 }))
 
+vi.mock('../handlers/bans.js', () => ({
+	isIpBanned: vi.fn(),
+	listActiveBans: vi.fn(),
+	removeBan: (...args: unknown[]) => mockRemoveBan(...args),
+}))
+
 vi.mock('../handlers/threats.js', () => ({
-	listThreats: vi.fn(),
+	listThreats: (...args: unknown[]) => mockListThreats(...args),
 	setThreatResolved: (...args: unknown[]) => mockSetThreatResolved(...args),
 }))
 
@@ -110,5 +118,45 @@ describe('PATCH /vidar/threats/:id', () => {
 		expect(res.status).toBe(400)
 
 		expect(mockSetThreatResolved).not.toHaveBeenCalled()
+	})
+})
+
+describe('GET /vidar/threats', () => {
+	it('reads the resolved filter as a boolean', async () => {
+		mockListThreats.mockResolvedValue({ data: [], total: 0 })
+
+		const res = await app.request('/vidar/threats?resolved=false', { headers: auth })
+
+		expect(res.status).toBe(200)
+
+		expect(mockListThreats).toHaveBeenCalledWith({ resolved: false })
+	})
+})
+
+describe('address validation', () => {
+	it.each([
+		['GET', '/vidar/check-ip?ip=not-an-ip', undefined],
+		['POST', '/vidar/events', { ip: 'not-an-ip', event_type: 'login_failed', service: 'bifrost' }],
+		['DELETE', '/vidar/bans/not-an-ip', undefined],
+	])('rejects a bad address on %s %s', async (method, path, body) => {
+		const res = await app.request(path, {
+			method,
+			headers: { ...auth, 'Content-Type': 'application/json' },
+			body: body && JSON.stringify(body),
+		})
+
+		expect(res.status).toBe(400)
+	})
+})
+
+describe('DELETE /vidar/bans/:ip', () => {
+	it('answers 404 when no ban is in force', async () => {
+		mockRemoveBan.mockResolvedValue(false)
+
+		const res = await app.request('/vidar/bans/203.0.113.42', { method: 'DELETE', headers: auth })
+
+		expect(res.status).toBe(404)
+
+		expect(mockRemoveBan).toHaveBeenCalledWith('203.0.113.42')
 	})
 })

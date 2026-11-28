@@ -213,7 +213,7 @@ export async function completeOAuth(
 
 		userId = created.userId
 
-		reportEvent('registration', ip, { email: identity.email, provider }, 'bifrost')
+		reportEvent({ type: 'registration', ip, details: { email: identity.email, provider } })
 	}
 
 	const user = await userRepository.getUserById(userId)

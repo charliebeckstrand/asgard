@@ -57,7 +57,7 @@ export async function authenticateUser(
 	// An account made with GitHub or Google has no password, and the dummy hash
 	// must never let one in.
 	if (!creds?.hashed_password || !passwordOk) {
-		reportEvent('login_failed', ip, { email: normalizedEmail }, 'bifrost')
+		reportEvent({ type: 'login_failed', ip, details: { email: normalizedEmail } })
 
 		throw new AuthError('invalid_credentials', 'Incorrect email or password')
 	}
@@ -133,7 +133,7 @@ export async function registerUser(
 
 	const user = await userRepository.insertUser(normalizedEmail, hashedPassword, name)
 
-	if (user) reportEvent('registration', ip, { email: normalizedEmail }, 'bifrost')
+	if (user) reportEvent({ type: 'registration', ip, details: { email: normalizedEmail } })
 
 	return user
 }

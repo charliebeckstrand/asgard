@@ -1,8 +1,13 @@
 import { clientIp } from 'grid/middleware'
 import { Hono } from 'hono'
+import type { Logger } from 'saga/log'
 import { banCheck, configure, listThreats, removeBan, reportEvent, resolveThreat } from '@/client'
 
 const VIDAR_URL = 'http://vidar.test'
+
+const logger = { warn: vi.fn(), info: vi.fn() } as unknown as Logger
+
+const base = { service: 'bifrost', logger }
 
 function makeApp() {
 	const app = new Hono()
@@ -38,7 +43,7 @@ afterEach(() => {
 describe('banCheck middleware', () => {
 	describe('when unconfigured (no vidarUrl)', () => {
 		beforeEach(() => {
-			configure({})
+			configure(base)
 		})
 
 		it('passes the request through without calling fetch', async () => {
@@ -54,7 +59,7 @@ describe('banCheck middleware', () => {
 
 	describe('when configured', () => {
 		beforeEach(() => {
-			configure({ vidarUrl: VIDAR_URL })
+			configure({ ...base, vidarUrl: VIDAR_URL })
 		})
 
 		it('blocks the request with 403 when Vidar reports banned', async () => {
@@ -135,19 +140,19 @@ describe('banCheck middleware', () => {
 
 describe('reportEvent', () => {
 	beforeEach(() => {
-		configure({ vidarUrl: VIDAR_URL })
+		configure({ ...base, vidarUrl: VIDAR_URL })
 	})
 
 	it('does not throw on failure', () => {
 		fetchMock.mockRejectedValueOnce(new TypeError('network down'))
 
-		expect(() => reportEvent('login_failed', '1.2.3.4')).not.toThrow()
+		expect(() => reportEvent({ type: 'login_failed', ip: '1.2.3.4' })).not.toThrow()
 	})
 
 	it('does not throw when Vidar is unconfigured', () => {
-		configure({})
+		configure(base)
 
-		expect(() => reportEvent('login_failed', '1.2.3.4')).not.toThrow()
+		expect(() => reportEvent({ type: 'login_failed', ip: '1.2.3.4' })).not.toThrow()
 
 		expect(fetchMock).not.toHaveBeenCalled()
 	})
@@ -155,7 +160,7 @@ describe('reportEvent', () => {
 	it('posts the event payload to /vidar/events', async () => {
 		fetchMock.mockResolvedValueOnce(new Response(null, { status: 200 }))
 
-		reportEvent('login_failed', '1.2.3.4', { user_id: 'u1' }, 'bifrost')
+		reportEvent({ type: 'login_failed', ip: '1.2.3.4', details: { user_id: 'u1' } })
 
 		const call = await vi.waitFor(() => {
 			const found = fetchMock.mock.calls.find(([url]) => String(url).includes('/vidar/events'))
@@ -193,7 +198,7 @@ describe('admin calls', () => {
 	}
 
 	beforeEach(() => {
-		configure({ vidarUrl: VIDAR_URL })
+		configure({ ...base, vidarUrl: VIDAR_URL })
 	})
 
 	it('lists threats with the resolved filter', async () => {
@@ -219,7 +224,7 @@ describe('admin calls', () => {
 	})
 
 	it('fails with 503 when Vidar is unconfigured', async () => {
-		configure({})
+		configure(base)
 
 		await expect(listThreats()).rejects.toMatchObject({ status: 503 })
 

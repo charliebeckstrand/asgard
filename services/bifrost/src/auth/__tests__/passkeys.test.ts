@@ -263,12 +263,11 @@ describe('authenticatePasskey', () => {
 
 		expect(webauthn.verifyAuthenticationResponse).not.toHaveBeenCalled()
 
-		expect(reportEvent).toHaveBeenCalledWith(
-			'login_failed',
-			'203.0.113.7',
-			{ passkey: 'credential-1' },
-			'bifrost',
-		)
+		expect(reportEvent).toHaveBeenCalledWith({
+			type: 'login_failed',
+			ip: '203.0.113.7',
+			details: { passkey: 'credential-1' },
+		})
 	})
 
 	it('rejects a passkey that fails verification', async () => {

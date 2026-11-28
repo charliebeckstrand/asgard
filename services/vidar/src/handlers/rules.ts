@@ -1,8 +1,8 @@
-import { sql } from 'saga'
+import { type Queryable, sql } from 'saga'
 import type { RuleSeverity } from 'skuld'
 import { db } from '../lib/db.js'
 import { logger } from '../lib/log.js'
-import { createBan, isIpBanned } from './bans.js'
+import { banForAtLeast } from './bans.js'
 import { createThreat } from './threats.js'
 
 export interface Rule {
@@ -67,60 +67,49 @@ function formatDuration(minutes: number): string {
 	return `${minutes}m`
 }
 
+/**
+ * Runs the rules that watch `eventType` for `ip`. One address's rules run one
+ * at a time, behind a lock held to the end of the transaction, so two events
+ * can't both pass a count, or overwrite each other's bans, before either
+ * records its threat.
+ */
 export async function evaluateRules(ip: string, eventType: string): Promise<void> {
 	const matchingRules = RULES.filter((r) => r.event_type === eventType)
 
-	for (const rule of matchingRules) {
-		const triggered = await checkRule(ip, rule)
+	if (matchingRules.length === 0) return
 
-		if (!triggered) continue
+	await db.tx(async (tx) => {
+		await tx.exec(sql`SELECT pg_advisory_xact_lock(hashtext(${ip}))`)
 
-		const banned = await banUnlessAlreadyLonger(ip, rule)
+		for (const rule of matchingRules) {
+			if (!(await ruleTriggered(tx, ip, rule))) continue
 
-		await createThreat({
-			threat_type: rule.id,
-			severity: rule.severity,
-			ip,
-			details: { rule_id: rule.id, rule_name: rule.name },
-			action_taken: banned
-				? `Banned for ${formatDuration(rule.ban_duration_minutes)}`
-				: 'Already banned for longer',
-		})
+			const banned = await banForAtLeast(tx, ip, rule.ban_duration_minutes, {
+				reason: rule.name,
+				rule_id: rule.id,
+			})
 
-		logger().warn(
-			{
-				ruleId: rule.id,
-				ruleName: rule.name,
+			await createThreat(tx, {
+				threat_type: rule.id,
+				severity: rule.severity,
 				ip,
-				banDurationMinutes: banned ? rule.ban_duration_minutes : undefined,
-			},
-			'rule triggered',
-		)
-	}
-}
+				details: { rule_id: rule.id, rule_name: rule.name },
+				action_taken: banned
+					? `Banned for ${formatDuration(rule.ban_duration_minutes)}`
+					: 'Already banned for longer',
+			})
 
-/**
- * Ban the IP for the rule's duration, unless an active ban already outlasts
- * it — a rule must never shorten a longer or permanent ban.
- */
-async function banUnlessAlreadyLonger(ip: string, rule: Rule): Promise<boolean> {
-	const current = await isIpBanned(ip)
-
-	if (current.banned) {
-		if (!current.expires_at) return false
-
-		const ruleExpiry = Date.now() + rule.ban_duration_minutes * 60_000
-
-		if (new Date(current.expires_at).getTime() >= ruleExpiry) return false
-	}
-
-	await createBan(ip, rule.name, {
-		rule_id: rule.id,
-		created_by: 'vidar',
-		duration_minutes: rule.ban_duration_minutes,
+			logger().warn(
+				{
+					ruleId: rule.id,
+					ruleName: rule.name,
+					ip,
+					banDurationMinutes: banned ? rule.ban_duration_minutes : undefined,
+				},
+				'rule triggered',
+			)
+		}
 	})
-
-	return true
 }
 
 /**
@@ -128,8 +117,8 @@ async function banUnlessAlreadyLonger(ip: string, rule: Rule): Promise<boolean> 
  * counted towards an earlier trigger of the same rule (its latest threat),
  * so one burst can't trigger the rule again once a ban expires.
  */
-async function checkRule(ip: string, rule: Rule): Promise<boolean> {
-	const row = await db.one<{ event_count: number; account_count: number }>(
+async function ruleTriggered(q: Queryable, ip: string, rule: Rule): Promise<boolean> {
+	const row = await q.one<{ event_count: number; account_count: number }>(
 		sql`SELECT
 			COUNT(*)::int AS event_count,
 			COUNT(DISTINCT account)::int AS account_count

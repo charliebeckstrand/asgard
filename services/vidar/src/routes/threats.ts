@@ -18,10 +18,7 @@ const listThreatsRoute = createRoute({
 	security: [{ Bearer: [] }],
 	request: {
 		query: z.object({
-			resolved: z
-				.enum(['true', 'false'])
-				.optional()
-				.openapi({ description: 'Filter by resolved status' }),
+			resolved: z.stringbool().optional().openapi({ description: 'Filter by resolved status' }),
 			ip: IpAddressSchema.optional().openapi({ description: 'Filter by IP address' }),
 		}),
 	},
@@ -53,12 +50,7 @@ const app = createRouter()
 
 export const threats = app
 	.openapi(listThreatsRoute, async (c) => {
-		const { resolved, ip } = c.req.valid('query')
-
-		const result = await listThreats({
-			resolved: resolved !== undefined ? resolved === 'true' : undefined,
-			ip,
-		})
+		const result = await listThreats(c.req.valid('query'))
 
 		return c.json(result, 200)
 	})

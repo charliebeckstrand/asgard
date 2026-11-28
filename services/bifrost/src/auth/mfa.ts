@@ -76,7 +76,11 @@ export async function verifySession(
 		return
 	}
 
-	reportEvent('login_failed', ip, { user_id: userId, method: Object.keys(proof)[0] }, 'bifrost')
+	reportEvent({
+		type: 'login_failed',
+		ip,
+		details: { user_id: userId, method: Object.keys(proof)[0] },
+	})
 
 	if (await sessionRepository.failSecondStep(session.id, MAX_FAILED_STEPS)) {
 		throw new AuthError('sign_in_expired', 'Too many tries. Sign in again')
