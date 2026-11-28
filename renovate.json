@@ -15,6 +15,12 @@
 	},
 	"packageRules": [
 		{
+			"description": "Node's version in .nvmrc and the Dockerfile's base image as one pull request, so CI and production move together.",
+			"groupName": "Node.js",
+			"matchDepNames": ["node"],
+			"matchDatasources": ["node-version", "docker"]
+		},
+		{
 			"description": "Dependabot owns GitHub Actions; see .github/dependabot.yml. Two bots on one ecosystem open a duplicate pull request for every bump.",
 			"matchManagers": ["github-actions"],
 			"enabled": false
