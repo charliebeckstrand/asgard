@@ -123,6 +123,12 @@ describeWithDocker('migrations (integration)', () => {
 			expect((await recorded()).map((m) => m.name)).toEqual(['0001_create_widgets.sql'])
 		})
 
+		it('names the failing file when the connection is lost and the rollback fails too', async () => {
+			await tmp.writeFile('0001_disconnect.sql', 'SELECT pg_terminate_backend(pg_backend_pid())')
+
+			await expect(migrate(connection, tmp.path)).rejects.toThrow('0001_disconnect.sql failed')
+		})
+
 		it('refuses to apply anything while an applied file has been edited', async () => {
 			await tmp.writeFile('0001_create_widgets.sql', 'CREATE TABLE widgets (id INT)')
 

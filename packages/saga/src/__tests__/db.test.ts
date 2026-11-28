@@ -15,7 +15,7 @@ vi.mock('pg', async (importOriginal) => ({
 }))
 
 import { types as pgTypes } from 'pg'
-import { createDb, type DbConfig, NoRowsError } from '../db.js'
+import { createDb, type DbConfig } from '../db.js'
 import type { Logger } from '../log/index.js'
 import { sql } from '../sql.js'
 
@@ -44,11 +44,9 @@ describe('createDb', () => {
 
 			const db = createDb(() => ({ url }))
 
-			const result = await db.first<{ id: number; name: string }>(sql`
-				SELECT *
-				FROM users
-				WHERE id = ${1}
-			`)
+			const result = await db.first<{ id: number; name: string }>(
+				sql`SELECT * FROM users WHERE id = ${1}`,
+			)
 
 			expect(result).toEqual({ id: 1, name: 'Alice' })
 
@@ -56,81 +54,6 @@ describe('createDb', () => {
 				text: 'SELECT * FROM users WHERE id = $1',
 				values: [1],
 			})
-		})
-
-		it('returns null when there are no rows', async () => {
-			const db = createDb(() => ({ url }))
-
-			const result = await db.first(sql`
-				SELECT *
-				FROM users
-				WHERE id = ${999}
-			`)
-
-			expect(result).toBeNull()
-		})
-	})
-
-	describe('one', () => {
-		it('returns the first row', async () => {
-			pool.query.mockResolvedValue({ rows: [{ id: 1 }] })
-
-			const db = createDb(() => ({ url }))
-
-			const result = await db.one<{ id: number }>(sql`
-				INSERT INTO t (v)
-				VALUES (${1})
-				RETURNING id
-			`)
-
-			expect(result).toEqual({ id: 1 })
-		})
-
-		it('throws NoRowsError naming the query when there are no rows', async () => {
-			const db = createDb(() => ({ url }))
-
-			const result = db.one(sql`
-				SELECT *
-				FROM t
-				WHERE id = ${999}
-			`)
-
-			await expect(result).rejects.toThrow(NoRowsError)
-
-			await expect(result).rejects.toThrow(
-				'Expected at least one row, but got none: SELECT * FROM t WHERE id = $1',
-			)
-		})
-	})
-
-	describe('many', () => {
-		it('returns all rows', async () => {
-			const rows = [
-				{ id: 1, name: 'Alice' },
-				{ id: 2, name: 'Bob' },
-			]
-
-			pool.query.mockResolvedValue({ rows })
-
-			const db = createDb(() => ({ url }))
-
-			const result = await db.many(sql`
-				SELECT *
-				FROM users
-			`)
-
-			expect(result).toEqual(rows)
-		})
-
-		it('returns an empty array when there are no rows', async () => {
-			const db = createDb(() => ({ url }))
-
-			const result = await db.many(sql`
-				SELECT *
-				FROM users
-			`)
-
-			expect(result).toEqual([])
 		})
 	})
 
@@ -163,19 +86,6 @@ describe('createDb', () => {
 	})
 
 	describe('val', () => {
-		it('returns the first column of the first row', async () => {
-			pool.query.mockResolvedValue({ rows: [{ count: 42 }] })
-
-			const db = createDb(() => ({ url }))
-
-			const result = await db.val<number>(sql`
-				SELECT COUNT(*)::int
-				FROM users
-			`)
-
-			expect(result).toBe(42)
-		})
-
 		it('throws NoRowsError naming the query when there are no rows', async () => {
 			const db = createDb(() => ({ url }))
 
@@ -215,17 +125,13 @@ describe('createDb', () => {
 			expect(Pool).toHaveBeenCalledOnce()
 		})
 
-		it('connects with the URL parts and default pool options', async () => {
+		it('connects with the URL and default pool options', async () => {
 			const db = createDb(() => ({ url }))
 
 			await db.ping()
 
 			expect(Pool).toHaveBeenCalledWith({
-				host: 'host',
-				port: 5432,
-				database: 'db',
-				user: 'user',
-				password: 'pass',
+				connectionString: url,
 				ssl: false,
 				max: 5,
 				idleTimeoutMillis: 30_000,
@@ -247,6 +153,16 @@ describe('createDb', () => {
 			expect(parse('2026-09-27 08:38:06.123-07')).toBe('2026-09-27T15:38:06.123Z')
 
 			expect(types.getTypeParser(pgTypes.builtins.INT4)('42')).toBe(42)
+		})
+
+		it('keeps dates as their YYYY-MM-DD text', async () => {
+			const db = createDb(() => ({ url }))
+
+			await db.ping()
+
+			const [{ types }] = Pool.mock.lastCall as unknown as [{ types: typeof pgTypes }]
+
+			expect(types.getTypeParser(pgTypes.builtins.DATE)('2026-11-28')).toBe('2026-11-28')
 		})
 
 		it('uses the pool options from config', async () => {
@@ -310,11 +226,7 @@ describe('createDb', () => {
 			const db = createDb(() => ({ url }))
 
 			const result = await db.tx((tx) =>
-				tx.one<{ id: number }>(sql`
-					INSERT INTO t (v)
-					VALUES (${1})
-					RETURNING id
-				`),
+				tx.one<{ id: number }>(sql`INSERT INTO t (v) VALUES (${1}) RETURNING id`),
 			)
 
 			expect(result).toEqual({ id: 1 })

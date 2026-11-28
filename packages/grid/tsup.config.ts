@@ -9,7 +9,7 @@ export default defineConfig({
 		'server-lifecycle': 'src/entry/server-lifecycle.ts',
 	},
 	format: ['esm'],
-	target: 'node24',
+	target: 'node26',
 	outDir: 'dist',
 	clean: true,
 	sourcemap: true,
