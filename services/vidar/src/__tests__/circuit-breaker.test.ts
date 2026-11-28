@@ -1,5 +1,5 @@
 import type { Logger } from 'grid/log'
-import { createCircuitBreaker } from '@/circuit-breaker'
+import { createCircuitBreaker } from '../circuit-breaker.js'
 
 function makeLogger() {
 	return { warn: vi.fn(), info: vi.fn() }

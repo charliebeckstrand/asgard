@@ -30,7 +30,7 @@ vi.mock('../handlers/threats.js', () => ({
 	setThreatResolved: (...args: unknown[]) => mockSetThreatResolved(...args),
 }))
 
-import { createVidarApp } from '@/app'
+import { createVidarApp } from '../app.js'
 
 const app = createVidarApp()
 

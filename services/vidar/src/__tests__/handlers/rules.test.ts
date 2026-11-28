@@ -20,7 +20,7 @@ vi.mock('../../lib/log.js', () => ({
 	logger: () => ({ warn: vi.fn() }),
 }))
 
-import { evaluateRules, RULES } from '@/handlers/rules'
+import { evaluateRules, RULES } from '../../handlers/rules.js'
 
 const IP = '203.0.113.42'
 
