@@ -1,7 +1,6 @@
-import { timingSafeEqual } from 'node:crypto'
 import { createRoute, z } from '@hono/zod-openapi'
 import { createRouter, errorResponse, jsonResponse } from 'grid'
-import { getIpAddress } from 'grid/middleware'
+import { getIpAddress, safeEqual } from 'grid/middleware'
 import type { Context } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import {
@@ -110,16 +109,6 @@ function setStateCookie(c: Context, state: string) {
 	})
 }
 
-function sameState(cookie: string | undefined, query: string | undefined): boolean {
-	if (!cookie || !query) return false
-
-	const a = Buffer.from(cookie)
-
-	const b = Buffer.from(query)
-
-	return a.length === b.length && timingSafeEqual(a, b)
-}
-
 export const oauthRoutes = createRouter<SessionEnv>()
 	.openapi(providersRoute, (c) => c.json({ providers: enabledProviders() }, 200))
 	.openapi(listIdentitiesRoute, async (c) => {
@@ -207,7 +196,7 @@ oauthRoutes.get('/:provider/callback', async (c) => {
 	deleteCookie(c, STATE_COOKIE_NAME, { prefix: 'host', secure: true, path: '/' })
 
 	// The user canceled at the provider, or the callback is not from this browser's sign-in.
-	if (!code || !state || !sameState(cookie, state)) {
+	if (!code || !state || !cookie || !safeEqual(cookie, state)) {
 		return c.redirect(withError('/login', 'oauth_failed'), 302)
 	}
 
