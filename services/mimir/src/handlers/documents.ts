@@ -7,8 +7,7 @@ import { db } from '../lib/db.js'
  * Each write reads the document, changes it, and writes it back through
  * {@link changeDocument}, which holds a lock on the document for that time, so
  * two requests that land together can't each read the same document and write
- * back over one another. The lock holds across instances, and across Midgard's
- * old places routes, which took the same lock while both were live.
+ * back over one another. The lock holds across instances.
  */
 
 export type DocumentName = 'places' | 'trips' | 'visits' | 'predictions' | 'numbers'

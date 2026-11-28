@@ -50,5 +50,3 @@ export function createMimirApp() {
 		.route(BASE_PATH, predictionsRoutes)
 		.route(BASE_PATH, numbersRoutes)
 }
-
-export type MimirApp = ReturnType<typeof createMimirApp>
