@@ -1,4 +1,6 @@
 import type { Logger } from 'saga/log'
+import { environment } from './env.js'
+import { logger } from './log.js'
 
 /**
  * Asks Cloudflare whether a Turnstile token from the sign-up page is real and
@@ -29,4 +31,32 @@ export function createTurnstileCheck(
 			return false
 		}
 	}
+}
+
+interface Turnstile {
+	/** The key the sign-up page shows the widget with. */
+	siteKey: string
+	verify: (token: string, ip?: string) => Promise<boolean>
+}
+
+let configured: Turnstile | null | undefined
+
+/**
+ * Cloudflare Turnstile on sign-up, or null without both of its keys, which lets
+ * every sign-up through.
+ */
+export function turnstile(): Turnstile | null {
+	if (configured === undefined) {
+		const { TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY } = environment()
+
+		configured =
+			TURNSTILE_SITE_KEY && TURNSTILE_SECRET_KEY
+				? {
+						siteKey: TURNSTILE_SITE_KEY,
+						verify: createTurnstileCheck(TURNSTILE_SECRET_KEY, logger()),
+					}
+				: null
+	}
+
+	return configured
 }

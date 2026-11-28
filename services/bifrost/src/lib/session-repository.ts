@@ -1,6 +1,5 @@
 import { type Db, sql } from 'saga'
 import type { Role, Session } from 'skuld'
-import type { SessionRepository } from '../auth/types.js'
 
 interface SessionRow {
 	id: string
@@ -44,9 +43,18 @@ function toSession(row: SessionRow): Session {
 	}
 }
 
-export function createSessionRepository(db: Db): SessionRepository {
+export function createSessionRepository(db: Db) {
 	return {
-		async createSession(id, userId, expiresAt, { replacing, limit, twoStep }) {
+		/**
+		 * Inserts the session, deletes `replacing` (the browser's previous session) and
+		 * keeps at most `limit` live sessions for the user, evicting the oldest.
+		 */
+		async createSession(
+			id: string,
+			userId: string,
+			expiresAt: Date,
+			{ replacing, limit, twoStep }: { replacing?: string; limit: number; twoStep: boolean },
+		): Promise<Session> {
 			return db.tx(async (tx) => {
 				// Serializes concurrent sign-ins of one user, so the cap holds.
 				await tx.exec(sql`SELECT 1 FROM users WHERE id = ${userId} FOR UPDATE`)
@@ -82,7 +90,8 @@ export function createSessionRepository(db: Db): SessionRepository {
 			})
 		},
 
-		async findSession(id) {
+		/** A live session: not expired, and its user is active. */
+		async findSession(id: string): Promise<Session | null> {
 			const row = await db.first<SessionRow>(
 				sql`${selectSession} WHERE s.id = ${id} AND s.expires_at > now() AND u.is_active`,
 			)
@@ -90,11 +99,13 @@ export function createSessionRepository(db: Db): SessionRepository {
 			return row ? toSession(row) : null
 		},
 
-		async passSecondStep(id) {
+		/** Marks the session as past its second step, and clears its failed tries. */
+		async passSecondStep(id: string) {
 			await db.exec(sql`UPDATE sessions SET two_step = true, failed_steps = 0 WHERE id = ${id}`)
 		},
 
-		async failSecondStep(id, limit) {
+		/** Counts a wrong second step. The `limit`th ends the session; returns whether it did. */
+		async failSecondStep(id: string, limit: number) {
 			return db.tx(async (tx) => {
 				const row = await tx.first<{ failed_steps: number }>(
 					sql`
@@ -112,11 +123,11 @@ export function createSessionRepository(db: Db): SessionRepository {
 			})
 		},
 
-		async deleteSession(id) {
+		async deleteSession(id: string) {
 			await db.exec(sql`DELETE FROM sessions WHERE id = ${id}`)
 		},
 
-		async deleteUserSessions(userId, options) {
+		async deleteUserSessions(userId: string, options?: { except?: string }) {
 			const except = options?.except ? sql`AND id <> ${options.except}` : sql``
 
 			await db.exec(sql`DELETE FROM sessions WHERE user_id = ${userId} ${except}`)
@@ -127,3 +138,5 @@ export function createSessionRepository(db: Db): SessionRepository {
 		},
 	}
 }
+
+export type SessionRepository = ReturnType<typeof createSessionRepository>

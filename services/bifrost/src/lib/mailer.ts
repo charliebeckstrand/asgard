@@ -1,5 +1,13 @@
 import type { Logger } from 'saga/log'
-import type { Email } from '../auth/index.js'
+import { environment } from './env.js'
+import { logger } from './log.js'
+
+/** A plain-text email. */
+export interface Email {
+	to: string
+	subject: string
+	text: string
+}
 
 /**
  * Sends email through Resend's HTTP API. Without an API key, it logs each email
@@ -35,4 +43,22 @@ export function createMailer(options: {
 			throw new Error(`Resend answered ${res.status}: ${await res.text()}`)
 		}
 	}
+}
+
+let mailer: ((email: Email) => Promise<void>) | undefined
+
+/** Sends an email, such as a link to verify the address or reset the password. */
+export function sendEmail(email: Email): Promise<void> {
+	if (!mailer) {
+		const env = environment()
+
+		mailer = createMailer({
+			apiKey: env.RESEND_API_KEY,
+			from: env.EMAIL_FROM,
+			production: env.NODE_ENV === 'production',
+			log: logger(),
+		})
+	}
+
+	return mailer(email)
 }

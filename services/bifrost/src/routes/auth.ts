@@ -1,8 +1,7 @@
 import { createRoute, z } from '@hono/zod-openapi'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
-import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
+import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import type { Context } from 'hono'
 import {
 	ActivityListSchema,
 	EmailSchema,
@@ -18,12 +17,8 @@ import {
 	authenticateUser,
 	checkTurnstile,
 	createSecondFactorOptions,
-	createSession,
 	createSignInOptions,
-	deleteSession,
-	deleteUserSessions,
 	getActivity,
-	type OAuthProvider,
 	registerUser,
 	requestPasswordReset,
 	resetPassword,
@@ -34,16 +29,16 @@ import {
 	verifyEmail,
 	verifySession,
 } from '../auth/index.js'
-import { appOrigin } from '../lib/app-origin.js'
+import { record } from '../lib/activity.js'
+import { requireAppOrigin } from '../lib/app-origin.js'
 import { logger } from '../lib/log.js'
+import { sessionRepository } from '../lib/repositories.js'
 import {
 	clearSessionCookie,
-	getSessionToken,
 	requireSession,
 	type SessionEnv,
-	setSessionCookie,
+	signIn,
 } from '../middleware/session.js'
-import { record } from './activity.js'
 import { PasskeyCredentialSchema, PasskeyOptionsSchema } from './passkeys.js'
 
 const LoginRequestSchema = z
@@ -312,39 +307,6 @@ const resetPasswordRoute = createRoute({
 	},
 })
 
-/**
- * Starts a session for `userId`, replacing the one the browser still holds, and
- * sets its cookie. Every way to sign in ends here. A passkey sign-in passes the
- * second step.
- */
-export async function signIn(
-	c: Context,
-	userId: string,
-	method: 'password' | 'passkey' | OAuthProvider,
-) {
-	const { token, session } = await createSession(userId, {
-		replacing: getSessionToken(c),
-		twoStep: method === 'passkey',
-	})
-
-	setSessionCookie(c, token)
-
-	await record(c, { userId, actorId: userId, action: 'signed_in', detail: method })
-
-	return session
-}
-
-/** The app the request came through, which emailed links open, or a 400. */
-function requireAppOrigin(c: Context): string {
-	const origin = appOrigin(c)
-
-	if (!origin) {
-		throw new HTTPException(400, { message: 'Unknown app origin' })
-	}
-
-	return origin
-}
-
 export const authRoutes = createRouter<SessionEnv>()
 	.openapi(loginRoute, async (c) => {
 		const { email, password } = c.req.valid('json')
@@ -367,7 +329,7 @@ export const authRoutes = createRouter<SessionEnv>()
 		const current = c.get('session')
 
 		if (current) {
-			await deleteSession(current.id)
+			await sessionRepository.deleteSession(current.id)
 		}
 
 		clearSessionCookie(c)
@@ -375,31 +337,19 @@ export const authRoutes = createRouter<SessionEnv>()
 		return c.json({ message: 'Logged out' }, 200)
 	})
 	.openapi(sessionRoute, async (c) => {
-		const current = c.get('session')
-
-		if (!current) {
-			throw new HTTPException(401, { message: 'Not authenticated' })
-		}
-
-		c.header('Cache-Control', 'private, no-store')
+		const current = requireSession(c)
 
 		return c.json(current, 200)
 	})
 	.openapi(activityRoute, async (c) => {
 		const current = requireSession(c)
 
-		c.header('Cache-Control', 'private, no-store')
-
 		return c.json(toList(await getActivity(current.user.id)), 200)
 	})
 	.openapi(deleteOtherSessionsRoute, async (c) => {
-		const current = c.get('session')
+		const current = requireSession(c)
 
-		if (!current) {
-			throw new HTTPException(401, { message: 'Not authenticated' })
-		}
-
-		await deleteUserSessions(current.user.id, current.id)
+		await sessionRepository.deleteUserSessions(current.user.id, { except: current.id })
 
 		await record(c, {
 			userId: current.user.id,

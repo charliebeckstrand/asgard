@@ -4,8 +4,7 @@ const API_KEY = 'test-vidar-api-key-that-is-at-least-32-chars'
 
 stubServiceEnv({ VIDAR_API_KEY: API_KEY })
 
-const { mockListEvents, mockSetThreatResolved, mockPing } = vi.hoisted(() => ({
-	mockListEvents: vi.fn(),
+const { mockSetThreatResolved, mockPing } = vi.hoisted(() => ({
 	mockSetThreatResolved: vi.fn(),
 	mockPing: vi.fn(),
 }))
@@ -16,7 +15,6 @@ vi.mock('../lib/db.js', () => ({
 
 vi.mock('../handlers/events.js', () => ({
 	ingestEvent: vi.fn(),
-	listEvents: (...args: unknown[]) => mockListEvents(...args),
 }))
 
 vi.mock('../handlers/threats.js', () => ({
@@ -38,13 +36,13 @@ beforeEach(() => {
 
 describe('api key auth', () => {
 	it('rejects requests without the key', async () => {
-		const res = await app.request('/vidar/events')
+		const res = await app.request('/vidar/threats')
 
 		expect(res.status).toBe(401)
 	})
 
 	it('rejects requests with the wrong key', async () => {
-		const res = await app.request('/vidar/events', {
+		const res = await app.request('/vidar/threats', {
 			headers: { Authorization: 'Bearer wrong-key' },
 		})
 
@@ -67,34 +65,6 @@ describe('GET /vidar/health', () => {
 		const res = await app.request('/vidar/health')
 
 		expect(res.status).toBe(503)
-	})
-})
-
-describe('GET /vidar/events', () => {
-	it('passes filters through and defaults the limit', async () => {
-		mockListEvents.mockResolvedValue({ data: [], total: 0 })
-
-		const res = await app.request('/vidar/events?ip=203.0.113.42&event_type=login_failed', {
-			headers: auth,
-		})
-
-		expect(res.status).toBe(200)
-
-		expect(mockListEvents).toHaveBeenCalledWith({
-			ip: '203.0.113.42',
-			event_type: 'login_failed',
-			limit: 100,
-		})
-	})
-
-	it('rejects a limit above the maximum', async () => {
-		const res = await app.request('/vidar/events?limit=501', { headers: auth })
-
-		expect(res.status).toBe(400)
-
-		expect(await res.json()).toMatchObject({ error: 'Validation Error', statusCode: 400 })
-
-		expect(mockListEvents).not.toHaveBeenCalled()
 	})
 })
 

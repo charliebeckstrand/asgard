@@ -1,4 +1,5 @@
 import type { Context } from 'hono'
+import { AuthError } from '../auth/errors.js'
 import { environment } from './env.js'
 
 /**
@@ -10,4 +11,15 @@ export function appOrigin(c: Context): string | undefined {
 	const host = c.req.header('x-forwarded-host') ?? c.req.header('host')
 
 	return environment().APP_ORIGINS.find((origin) => new URL(origin).host === host)
+}
+
+/** The app the request came through, which emailed links and redirects open, or a 400. */
+export function requireAppOrigin(c: Context): string {
+	const origin = appOrigin(c)
+
+	if (!origin) {
+		throw new AuthError('unknown_origin', 'Unknown app origin')
+	}
+
+	return origin
 }

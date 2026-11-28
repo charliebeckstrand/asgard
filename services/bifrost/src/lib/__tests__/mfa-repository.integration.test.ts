@@ -1,15 +1,15 @@
-import { randomUUID } from 'node:crypto'
-import type { Pool } from 'pg'
+import { sql } from 'saga'
 import { isDockerAvailable } from 'vali/containers'
-import type { MfaRepository, PasskeyRepository, UserRepository } from '../../auth/types.js'
 import { promote, resetSecondFactors } from '../admins.js'
+import type { MfaRepository } from '../mfa-repository.js'
 import { createMfaRepository } from '../mfa-repository.js'
+import type { PasskeyRepository } from '../passkey-repository.js'
 import { createPasskeyRepository } from '../passkey-repository.js'
+import type { UserRepository } from '../user-repository.js'
 import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 
 let testDb: TestDb
-let pool: Pool
 let users: UserRepository
 let passkeys: PasskeyRepository
 let mfa: MfaRepository
@@ -18,8 +18,6 @@ beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
 	testDb = await startTestDb()
-
-	pool = testDb.pool
 
 	users = createUserRepository(testDb.db)
 
@@ -40,9 +38,7 @@ beforeEach(async () => {
 
 const secret = new Uint8Array([1, 2, 3])
 
-async function insertUser(email = `${randomUUID()}@x.dev`) {
-	return (await users.insertUser(email, 'h')).id
-}
+const insertUser = (email?: string) => testDb.insertUser({ email })
 
 async function addTotp(userId: string) {
 	await mfa.setPendingTotp(userId, secret)
@@ -51,7 +47,7 @@ async function addTotp(userId: string) {
 }
 
 async function makeAdmin(userId: string) {
-	await pool.query(`UPDATE users SET roles = '{user,admin}' WHERE id = $1`, [userId])
+	await testDb.db.exec(sql`UPDATE users SET roles = '{user,admin}' WHERE id = ${userId}`)
 }
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
@@ -231,9 +227,9 @@ describeWithDocker('createMfaRepository (integration)', () => {
 
 			expect(await mfa.countFailedStep(userId, 3, 60)).toBe(false)
 
-			const { rows } = await pool.query('SELECT count FROM failed_steps WHERE user_id = $1', [
-				userId,
-			])
+			const rows = await testDb.db.many(
+				sql`SELECT count FROM failed_steps WHERE user_id = ${userId}`,
+			)
 
 			expect(rows[0].count).toBe(3)
 		})
@@ -243,9 +239,8 @@ describeWithDocker('createMfaRepository (integration)', () => {
 
 			await mfa.countFailedStep(userId, 1, 60)
 
-			await pool.query(
-				`UPDATE failed_steps SET last_failed_at = now() - interval '61 seconds' WHERE user_id = $1`,
-				[userId],
+			await testDb.db.exec(
+				sql`UPDATE failed_steps SET last_failed_at = now() - interval '61 seconds' WHERE user_id = ${userId}`,
 			)
 
 			expect(await mfa.countFailedStep(userId, 1, 60)).toBe(true)
@@ -284,14 +279,13 @@ describeWithDocker('createMfaRepository (integration)', () => {
 
 			await mfa.countFailedStep(recent, 5, 60)
 
-			await pool.query(
-				`UPDATE failed_steps SET last_failed_at = now() - interval '2 days' WHERE user_id = $1`,
-				[old],
+			await testDb.db.exec(
+				sql`UPDATE failed_steps SET last_failed_at = now() - interval '2 days' WHERE user_id = ${old}`,
 			)
 
 			expect(await mfa.deleteStaleFailedSteps(24 * 60 * 60)).toBe(1)
 
-			const { rows } = await pool.query('SELECT user_id FROM failed_steps')
+			const rows = await testDb.db.many(sql`SELECT user_id FROM failed_steps`)
 
 			expect(rows).toEqual([{ user_id: recent }])
 		})
@@ -302,7 +296,7 @@ describeWithDocker('admins (integration)', () => {
 	it('promotes a user whose only second factor is an authenticator app', async () => {
 		const userId = await insertUser('carol@x.dev')
 
-		await pool.query('UPDATE users SET is_verified = true WHERE id = $1', [userId])
+		await testDb.db.exec(sql`UPDATE users SET is_verified = true WHERE id = ${userId}`)
 
 		await addTotp(userId)
 
@@ -325,9 +319,8 @@ describeWithDocker('admins (integration)', () => {
 
 		await makeAdmin(adminId)
 
-		await pool.query(
-			"INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', $1, now() + interval '1 day')",
-			[adminId],
+		await testDb.db.exec(
+			sql`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', ${adminId}, now() + interval '1 day')`,
 		)
 
 		const bystanderId = await insertUser()
@@ -338,9 +331,7 @@ describeWithDocker('admins (integration)', () => {
 
 		expect(await mfa.getFactors(adminId)).toEqual({ passkeys: 0, totp: false, recovery_codes: 0 })
 
-		expect(
-			(await pool.query('SELECT 1 FROM sessions WHERE user_id = $1', [adminId])).rowCount,
-		).toBe(0)
+		expect(await testDb.db.exec(sql`SELECT 1 FROM sessions WHERE user_id = ${adminId}`)).toBe(0)
 
 		expect((await users.getUserById(adminId))?.roles).toEqual(['user', 'admin'])
 

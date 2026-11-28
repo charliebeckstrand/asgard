@@ -4,6 +4,8 @@ stubServiceEnv()
 
 vi.mock('../../auth/index.js', { spy: true })
 
+vi.mock('../../lib/repositories.js')
+
 // Records each request that a rate limit sees, then lets it through.
 const { limited } = vi.hoisted(() => ({ limited: [] as string[] }))
 
@@ -36,6 +38,7 @@ import type { Session } from 'skuld'
 import { createBifrostApp } from '../../app.js'
 import { AuthError } from '../../auth/errors.js'
 import * as auth from '../../auth/index.js'
+import { mfaRepository } from '../../lib/repositories.js'
 
 const ORIGIN = 'http://localhost:3000'
 
@@ -172,7 +175,7 @@ describe('Sign-in routes', () => {
 		})
 
 		it('starts a one-step session when the user has a second factor', async () => {
-			vi.mocked(auth.getFactors).mockResolvedValueOnce({
+			vi.mocked(mfaRepository.getFactors).mockResolvedValueOnce({
 				passkeys: 1,
 				totp: true,
 				recovery_codes: 10,
