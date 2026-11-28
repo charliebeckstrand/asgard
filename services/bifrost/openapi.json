@@ -836,7 +836,9 @@
 					"expires_at": {
 						"type": "string",
 						"nullable": true,
-						"format": "date-time"
+						"format": "date-time",
+						"description": "ISO 8601 datetime",
+						"example": "2026-01-01T00:00:00.000Z"
 					},
 					"created_at": {
 						"type": "string",

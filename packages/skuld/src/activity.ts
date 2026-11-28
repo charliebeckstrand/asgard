@@ -2,7 +2,7 @@ import { z } from '@hono/zod-openapi'
 import { createListSchema } from './composites.js'
 import { IdSchema, TimestampSchema } from './primitives.js'
 
-export const ActivityActionSchema = z
+const ActivityActionSchema = z
 	.enum([
 		'signed_in',
 		'signed_out_elsewhere',
