@@ -7,7 +7,7 @@ Asgard is the backend for Ivory Image: Hono services in one pnpm and Turborepo w
 Shared packages in `packages/` never import from `services/`.
 
 - `skuld`: shared Zod schemas.
-- `grid`: the service kit. `createApp` (OpenAPI docs at `<basePath>/docs`), error handling, request logging, SSE, the health route, `createEnvironment`, the manifest-driven env sync, `setupLifecycle`, and the `clientIp` and `rateLimit` middleware (per address, or per any key).
+- `grid`: the service kit. `createApp` (OpenAPI docs at `<basePath>/docs`), error handling, request logging, the health route, `createEnvironment`, the manifest-driven env sync, `setupLifecycle`, and the `clientIp` and `rateLimit` middleware (per address, or per any key).
 - `saga`: Postgres. `createDb`, the `sql` template, file migrations and the `saga` CLI (`migrate`, `status`, `new <name>`), pino logging, and `saga-bootstrap` for local roles and databases.
 - `vali`: test helpers. See the `test-quality` skill.
 
