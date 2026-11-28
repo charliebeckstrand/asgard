@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
+import { HTTPException } from 'grid'
+import type { Queryable } from 'saga'
 import type { Place, PlaceDraft, StoredPlace, StoredVisit } from '../lib/schemas.js'
 import { readDocument } from './documents.js'
 import {
 	changeTravel,
-	checkOwnPhotos,
 	checkVisitsOnTrips,
 	hasId,
 	presentPlace,
@@ -13,6 +14,17 @@ import {
 
 /** The most places one user keeps, so no account can fill the database. */
 export const MAX_PLACES = 1000
+
+/** The refusal of a write that would keep more than {@link MAX_PLACES}. */
+export function tooManyPlaces(): HTTPException {
+	return new HTTPException(409, {
+		message: `You can keep up to ${MAX_PLACES.toLocaleString('en-US')} places`,
+	})
+}
+
+function noPlace(): HTTPException {
+	return new HTTPException(404, { message: 'No place with that id' })
+}
 
 /** The day of the newest visit to a place. Its visits are stored newest first. */
 function lastVisit(place: StoredPlace): string {
@@ -32,14 +44,9 @@ function storedVisits(draft: PlaceDraft): StoredVisit[] {
 	return newestFirst(draft.visits.map((visit) => ({ ...visit, id: visit.id ?? randomUUID() })))
 }
 
-/** Refuses a draft with another user's photos, or a visit outside its trip. */
-function checkDraft(userId: string, draft: PlaceDraft, trips: unknown[]): void {
-	checkOwnPhotos(
-		userId,
-		draft.visits.flatMap((visit) => visit.photos),
-	)
-
-	checkVisitsOnTrips(draft.visits, trips)
+/** The photos of a draft's visits. */
+function draftPhotos(draft: PlaceDraft): string[] {
+	return draft.visits.flatMap((visit) => visit.photos)
 }
 
 /**
@@ -50,10 +57,10 @@ function checkDraft(userId: string, draft: PlaceDraft, trips: unknown[]): void {
  * and keep the others as they are, so a record a stricter schema can't read
  * stays in the document instead of disappearing on the next write.
  */
-export async function storedPlaces(userId: string): Promise<StoredPlace[]> {
+export async function storedPlaces(userId: string, q?: Queryable): Promise<StoredPlace[]> {
 	const places: StoredPlace[] = []
 
-	for (const record of records(await readDocument(userId, 'places'))) {
+	for (const record of records(await readDocument(userId, 'places', q))) {
 		const place = readPlace(record)
 
 		if (place !== undefined) places.push(place)
@@ -67,12 +74,12 @@ export async function listPlaces(userId: string): Promise<Place[]> {
 	return Promise.all((await storedPlaces(userId)).map(presentPlace))
 }
 
-/** Adds one place. `null` where the user already keeps {@link MAX_PLACES}. */
-export async function addPlace(userId: string, draft: PlaceDraft): Promise<Place | null> {
-	const place = await changeTravel(userId, (places, trips) => {
-		checkDraft(userId, draft, trips)
+/** Adds one place. Refused where the user already keeps {@link MAX_PLACES}. */
+export async function addPlace(userId: string, draft: PlaceDraft): Promise<Place> {
+	const place = await changeTravel(userId, draftPhotos(draft), (places, trips) => {
+		checkVisitsOnTrips(draft.visits, trips)
 
-		if (places.length >= MAX_PLACES) return { result: null }
+		if (places.length >= MAX_PLACES) throw tooManyPlaces()
 
 		const added: StoredPlace = {
 			...draft,
@@ -84,24 +91,20 @@ export async function addPlace(userId: string, draft: PlaceDraft): Promise<Place
 		return { result: added, places: [added, ...places] }
 	})
 
-	return place && presentPlace(place)
+	return presentPlace(place)
 }
 
 /**
- * Replaces one place, keeping its id and when it was added. `null` where no
+ * Replaces one place, keeping its id and when it was added. A 404 where no
  * place carries that id, rather than writing one under an id the caller made up.
  */
-export async function updatePlace(
-	userId: string,
-	id: string,
-	draft: PlaceDraft,
-): Promise<Place | null> {
-	const place = await changeTravel(userId, (places, trips) => {
-		checkDraft(userId, draft, trips)
+export async function updatePlace(userId: string, id: string, draft: PlaceDraft): Promise<Place> {
+	const place = await changeTravel(userId, draftPhotos(draft), (places, trips) => {
+		checkVisitsOnTrips(draft.visits, trips)
 
 		const held = places.map(readPlace).find((stored) => stored?.id === id)
 
-		if (held === undefined) return { result: null }
+		if (held === undefined) throw noPlace()
 
 		const updated: StoredPlace = {
 			...draft,
@@ -116,16 +119,16 @@ export async function updatePlace(
 		}
 	})
 
-	return place && presentPlace(place)
+	return presentPlace(place)
 }
 
-/** Removes one place and its photos. `false` where none carried that id. */
-export function removePlace(userId: string, id: string): Promise<boolean> {
-	return changeTravel(userId, (places) => {
+/** Removes one place and its photos. A 404 where none carried that id. */
+export function removePlace(userId: string, id: string): Promise<void> {
+	return changeTravel(userId, [], (places) => {
 		const kept = places.filter((record) => !hasId(record, id))
 
-		if (kept.length === places.length) return { result: false }
+		if (kept.length === places.length) throw noPlace()
 
-		return { result: true, places: kept }
+		return { result: undefined, places: kept }
 	})
 }

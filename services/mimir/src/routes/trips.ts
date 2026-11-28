@@ -1,5 +1,5 @@
 import { createRoute, z } from '@hono/zod-openapi'
-import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
+import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
 import { createTrip, listTrips, MAX_TRIPS, removeTrip, updateTrip } from '../handlers/trips.js'
 import {
 	CreatedTripSchema,
@@ -102,19 +102,13 @@ tripsRoutes.openapi(createTripRoute, async (c) => {
 tripsRoutes.openapi(updateTripRoute, async (c) => {
 	const { id } = c.req.valid('param')
 
-	const trip = await updateTrip(requireUser(c).id, id, c.req.valid('json'))
-
-	if (!trip) throw new HTTPException(404, { message: 'No trip with that id' })
-
-	return c.json(trip, 200)
+	return c.json(await updateTrip(requireUser(c).id, id, c.req.valid('json')), 200)
 })
 
 tripsRoutes.openapi(removeTripRoute, async (c) => {
 	const { id } = c.req.valid('param')
 
-	if (!(await removeTrip(requireUser(c).id, id))) {
-		throw new HTTPException(404, { message: 'No trip with that id' })
-	}
+	await removeTrip(requireUser(c).id, id)
 
 	return c.body(null, 204)
 })

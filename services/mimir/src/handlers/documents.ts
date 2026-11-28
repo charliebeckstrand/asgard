@@ -7,8 +7,7 @@ import { db } from '../lib/db.js'
  * Each write reads the document, changes it, and writes it back through
  * {@link changeDocument}, which holds a lock on the document for that time, so
  * two requests that land together can't each read the same document and write
- * back over one another. The lock holds across instances, and across Midgard's
- * old places routes, which took the same lock while both were live.
+ * back over one another. The lock holds across instances.
  */
 
 export type DocumentName = 'places' | 'trips' | 'visits' | 'predictions' | 'numbers'
@@ -27,9 +26,16 @@ function select(q: Queryable, userId: string, name: DocumentName): Promise<unkno
 		.then((row) => row?.value)
 }
 
-/** Reads one document, or `undefined` where it doesn't exist yet. */
-export function readDocument(userId: string, name: DocumentName): Promise<unknown> {
-	return select(db, userId, name)
+/**
+ * Reads one document, or `undefined` where it doesn't exist yet. A read inside
+ * a change passes its transaction `q`, so it needs no second connection.
+ */
+export function readDocument(
+	userId: string,
+	name: DocumentName,
+	q: Queryable = db,
+): Promise<unknown> {
+	return select(q, userId, name)
 }
 
 /** The users who have a document of this name. */

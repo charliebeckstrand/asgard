@@ -1,14 +1,14 @@
-const { mockReadDailyBoard, mockRecordDailyResult, mockRecordPlayerName } = vi.hoisted(() => ({
-	mockReadDailyBoard: vi.fn(),
-	mockRecordDailyResult: vi.fn(),
+const { mockReadBoard, mockRecordBestScore, mockRecordPlayerName } = vi.hoisted(() => ({
+	mockReadBoard: vi.fn(),
+	mockRecordBestScore: vi.fn(),
 	mockRecordPlayerName: vi.fn(),
 }))
 
 vi.mock('../../handlers/documents.js', () => import('./documents-mock.js'))
 
 vi.mock('../../handlers/games.js', () => ({
-	readDailyBoard: (...args: unknown[]) => mockReadDailyBoard(...args),
-	recordDailyResult: (...args: unknown[]) => mockRecordDailyResult(...args),
+	readBoard: (...args: unknown[]) => mockReadBoard(...args),
+	recordBestScore: (...args: unknown[]) => mockRecordBestScore(...args),
 	recordPlayerName: (...args: unknown[]) => mockRecordPlayerName(...args),
 }))
 
@@ -93,7 +93,7 @@ describe('numbers', () => {
 
 		const stats = await recordNumbersResult(USER, 'Ada', first)
 
-		mockRecordDailyResult.mockClear()
+		mockRecordBestScore.mockClear()
 
 		mockRecordPlayerName.mockClear()
 
@@ -103,7 +103,7 @@ describe('numbers', () => {
 
 		expect(stats.solo).toMatchObject({ played: 1, best: 4 })
 
-		expect(mockRecordDailyResult).not.toHaveBeenCalled()
+		expect(mockRecordBestScore).not.toHaveBeenCalled()
 
 		expect(mockRecordPlayerName).not.toHaveBeenCalled()
 
@@ -136,7 +136,7 @@ describe('numbers', () => {
 			score,
 		})
 
-		expect(mockRecordDailyResult.mock.calls).toEqual([
+		expect(mockRecordBestScore.mock.calls).toEqual([
 			[transaction, result('solo', 20)],
 			[transaction, result('solo', 4)],
 			[transaction, result('vsCpu', 7)],
@@ -148,7 +148,7 @@ describe('numbers', () => {
 
 		await recordNumbersResult(USER, null, run(12, 'vsCpu'))
 
-		expect(mockRecordDailyResult).not.toHaveBeenCalled()
+		expect(mockRecordBestScore).not.toHaveBeenCalled()
 
 		expect((await readNumbersStats(USER)).vsCpu).toMatchObject({ played: 2, best: 15 })
 	})
@@ -218,21 +218,21 @@ describe('numbers', () => {
 	it.each(['20261101', '20261117'])('reads the leaderboard of %s', async (date) => {
 		const board = { players: 0, entries: [] }
 
-		mockReadDailyBoard.mockResolvedValue(board)
+		mockReadBoard.mockResolvedValue(board)
 
 		expect(await readNumbersBoard(USER, date, 'vsCpu')).toBe(board)
 
-		expect(mockReadDailyBoard).toHaveBeenCalledWith('numbers', 'vsCpu', date, USER)
+		expect(mockReadBoard).toHaveBeenCalledWith('numbers', 'vsCpu', date, USER)
 	})
 
 	it('reads the leaderboard for a reader with no session', async () => {
 		const board = { players: 0, entries: [] }
 
-		mockReadDailyBoard.mockResolvedValue(board)
+		mockReadBoard.mockResolvedValue(board)
 
 		expect(await readNumbersBoard(null, '20261116', 'solo')).toBe(board)
 
-		expect(mockReadDailyBoard).toHaveBeenCalledWith('numbers', 'solo', '20261116', null)
+		expect(mockReadBoard).toHaveBeenCalledWith('numbers', 'solo', '20261116', null)
 	})
 
 	it('refuses the leaderboard of a date more than a day ahead', async () => {
@@ -240,6 +240,6 @@ describe('numbers', () => {
 			expect.objectContaining({ status: 400 }),
 		)
 
-		expect(mockReadDailyBoard).not.toHaveBeenCalled()
+		expect(mockReadBoard).not.toHaveBeenCalled()
 	})
 })

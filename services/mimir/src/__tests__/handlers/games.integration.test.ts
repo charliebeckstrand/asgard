@@ -16,13 +16,9 @@ vi.mock('../../lib/db.js', () => ({
 }))
 
 import { createDb, migrate, sql } from 'saga'
-import {
-	deleteGames,
-	readDailyBoard,
-	recordDailyResult,
-	recordPlayerName,
-} from '../../handlers/games.js'
+import { deleteGames, readBoard, recordBestScore, recordPlayerName } from '../../handlers/games.js'
 import { recordNumbersResult } from '../../handlers/numbers.js'
+import type { NumbersBoardMode } from '../../lib/schemas.js'
 
 const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../migrations')
 
@@ -34,7 +30,7 @@ const user = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0
 /** A solo run of user `n` on the board of `date`. */
 const result = (n: number, score: number, date = DATE) => ({
 	game: 'numbers' as const,
-	mode: 'solo',
+	mode: 'solo' as NumbersBoardMode,
 	date,
 	userId: user(n),
 	score,
@@ -48,7 +44,7 @@ function database() {
 }
 
 /** Keeps a run outside any other write. */
-const record = (daily: ReturnType<typeof result>) => recordDailyResult(database(), daily)
+const record = (score: ReturnType<typeof result>) => recordBestScore(database(), score)
 
 /** Keeps the account name of user `n` outside any other write. */
 const name = (n: number, value: string | null) => recordPlayerName(database(), user(n), value)
@@ -141,7 +137,7 @@ describeWithDocker('games', () => {
 
 		await name(2, 'Ada')
 
-		expect(await readDailyBoard('numbers', 'solo', DATE, user(3))).toEqual({
+		expect(await readBoard('numbers', 'solo', DATE, user(3))).toEqual({
 			players: 3,
 			entries: [
 				{ rank: 1, name: 'Ada', score: 15, you: false },
@@ -166,7 +162,7 @@ describeWithDocker('games', () => {
 
 		await record(result(1, 18))
 
-		expect(await readDailyBoard('numbers', 'solo', DATE, user(3))).toEqual({
+		expect(await readBoard('numbers', 'solo', DATE, user(3))).toEqual({
 			players: 3,
 			entries: [
 				{ rank: 1, name: null, score: 18, you: false },
@@ -179,7 +175,7 @@ describeWithDocker('games', () => {
 	it('shows the top 10, then the reader when they are below them', async () => {
 		for (let n = 1; n <= 12; n++) await record(result(n, 21 - n))
 
-		const below = await readDailyBoard('numbers', 'solo', DATE, user(12))
+		const below = await readBoard('numbers', 'solo', DATE, user(12))
 
 		expect(below.players).toBe(12)
 
@@ -187,7 +183,7 @@ describeWithDocker('games', () => {
 
 		expect(below.entries.at(-1)).toEqual({ rank: 12, name: null, score: 9, you: true })
 
-		const inside = await readDailyBoard('numbers', 'solo', DATE, user(3))
+		const inside = await readBoard('numbers', 'solo', DATE, user(3))
 
 		expect(inside.entries).toHaveLength(10)
 
@@ -199,7 +195,7 @@ describeWithDocker('games', () => {
 	it('shows a reader with no session only the top 10, with no entry of their own', async () => {
 		for (let n = 1; n <= 12; n++) await record(result(n, 21 - n))
 
-		const board = await readDailyBoard('numbers', 'solo', DATE, null)
+		const board = await readBoard('numbers', 'solo', DATE, null)
 
 		expect(board.players).toBe(12)
 
@@ -209,7 +205,7 @@ describeWithDocker('games', () => {
 	})
 
 	it('reads a date with no players as an empty board', async () => {
-		expect(await readDailyBoard('numbers', 'solo', '20260101', user(1))).toEqual({
+		expect(await readBoard('numbers', 'solo', '20260101', user(1))).toEqual({
 			players: 0,
 			entries: [],
 		})
@@ -248,7 +244,7 @@ describeWithDocker('games', () => {
 			vi.useRealTimers()
 		}
 
-		expect(await readDailyBoard('numbers', 'solo', DATE, user(7))).toEqual({
+		expect(await readBoard('numbers', 'solo', DATE, user(7))).toEqual({
 			players: 1,
 			entries: [{ rank: 1, name: 'Lin', score: 17, you: true }],
 		})
@@ -269,7 +265,7 @@ describeWithDocker('games', () => {
 
 		expect(await nameOf(2)).toBe('Grace')
 
-		expect(await readDailyBoard('numbers', 'solo', DATE, user(1))).toEqual({
+		expect(await readBoard('numbers', 'solo', DATE, user(1))).toEqual({
 			players: 1,
 			entries: [{ rank: 1, name: 'Grace', score: 11, you: false }],
 		})

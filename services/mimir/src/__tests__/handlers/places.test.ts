@@ -24,7 +24,7 @@ import {
 	updatePlace,
 } from '../../handlers/places.js'
 import type { Place, PlaceDraft } from '../../lib/schemas.js'
-import { documents } from './documents-mock.js'
+import { documents, isChanging } from './documents-mock.js'
 
 const USER = '00000000-0000-4000-8000-000000000001'
 
@@ -181,7 +181,7 @@ describe('places', () => {
 			Array.from({ length: MAX_PLACES }, () => ({})),
 		)
 
-		expect(await addPlace(USER, draft)).toBeNull()
+		await expect(addPlace(USER, draft)).rejects.toMatchObject({ status: 409 })
 	})
 
 	it('replaces a place, keeping its id and when it was added', async () => {
@@ -196,18 +196,20 @@ describe('places', () => {
 		expect(updated).toEqual({ ...place, name: 'Diner' })
 	})
 
-	it('does not replace a place that is not there', async () => {
-		expect(await updatePlace(USER, 'nope', draft)).toBeNull()
+	it('refuses to replace a place that is not there', async () => {
+		await expect(updatePlace(USER, 'nope', draft)).rejects.toMatchObject({ status: 404 })
 
 		expect(documents.has(`${USER}:places`)).toBe(false)
 	})
 
-	it('removes a place, and says when there was none', async () => {
+	it('removes a place, and refuses one that is not there', async () => {
 		const place = await addPlace(USER, draft)
 
-		expect(await removePlace(USER, place?.id ?? '')).toBe(true)
+		await removePlace(USER, place.id)
 
-		expect(await removePlace(USER, place?.id ?? '')).toBe(false)
+		expect(await listPlaces(USER)).toEqual([])
+
+		await expect(removePlace(USER, place.id)).rejects.toMatchObject({ status: 404 })
 	})
 
 	it('leaves out records it cannot read, but keeps them through writes', async () => {
@@ -239,6 +241,23 @@ describe('places', () => {
 		expect(documents.get(`${USER}:places`)).toEqual([
 			expect.objectContaining({ visits: [expect.objectContaining({ photos: [saved('a')] })] }),
 		])
+	})
+
+	it('keeps each upload before the write takes its lock', async () => {
+		const changing: boolean[] = []
+
+		mockKeepPhoto.mockImplementation(async () => {
+			changing.push(isChanging())
+
+			return true
+		})
+
+		await addPlace(USER, {
+			...draft,
+			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a'), photo('b')] }],
+		})
+
+		expect(changing).toEqual([false, false])
 	})
 
 	it('copies nothing for photos the places already hold, by either key', async () => {
@@ -381,7 +400,7 @@ describe('places', () => {
 			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
 		})
 
-		expect(await removePlace(USER, place?.id ?? '')).toBe(true)
+		await removePlace(USER, place.id)
 
 		expect(await listPlaces(USER)).toEqual([])
 	})
@@ -423,6 +442,19 @@ describe('places', () => {
 				status: 400,
 				code: 'visit-outside-trip',
 			})
+		})
+
+		it('deletes the uploads it kept for a write it refuses', async () => {
+			const outside = {
+				...onDay('2026-09-24'),
+				visits: [{ visitedAt: '2026-09-24', rating: 4, photos: [photo('a')], tripId: 'trip-1' }],
+			}
+
+			await expect(addPlace(USER, outside)).rejects.toMatchObject({ code: 'visit-outside-trip' })
+
+			expect(mockDeletePhotos).toHaveBeenCalledExactlyOnceWith([saved('a')])
+
+			expect(documents.has(`${USER}:places`)).toBe(false)
 		})
 
 		it('refuses a replaced place with a visit outside its trip', async () => {

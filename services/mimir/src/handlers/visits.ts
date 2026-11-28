@@ -1,3 +1,5 @@
+import { HTTPException } from 'grid'
+import type { Queryable } from 'saga'
 import type { VisitScope, Visits } from '../lib/schemas.js'
 import { changeDocument, readDocument } from './documents.js'
 import { storedPlaces } from './places.js'
@@ -9,7 +11,7 @@ import { storedPlaces } from './places.js'
  */
 
 /** The most regions one user marks in each scope, so no account can fill the database. */
-export const MAX_VISITS = 1000
+export const MAX_REGIONS = 1000
 
 /** The region names in an unknown list: trimmed, unique, alphabetical. */
 function names(input: unknown): string[] {
@@ -47,8 +49,8 @@ function parseVisits(input: unknown): Visits {
  * a place in is a region they went to. Nothing is written until their first
  * change, which keeps these along with it.
  */
-async function seed(userId: string): Promise<Visits> {
-	const places = await storedPlaces(userId)
+async function seed(userId: string, q?: Queryable): Promise<Visits> {
+	const places = await storedPlaces(userId, q)
 
 	return parseVisits({
 		states: places.map((place) => place.state),
@@ -56,8 +58,8 @@ async function seed(userId: string): Promise<Visits> {
 	})
 }
 
-async function readVisits(userId: string, document: unknown): Promise<Visits> {
-	return document === undefined ? seed(userId) : parseVisits(document)
+async function readVisits(userId: string, document: unknown, q?: Queryable): Promise<Visits> {
+	return document === undefined ? seed(userId, q) : parseVisits(document)
 }
 
 /** Every visited region, each scope alphabetical. */
@@ -66,21 +68,25 @@ export async function listVisits(userId: string): Promise<Visits> {
 }
 
 /**
- * Marks one region visited or not, and answers with both scopes. `null` where
- * marking it would pass {@link MAX_VISITS} in its scope.
+ * Marks one region visited or not, and answers with both scopes. Refused where
+ * marking it would pass {@link MAX_REGIONS} in its scope.
  */
 export function setVisit(
 	userId: string,
 	scope: VisitScope,
 	region: string,
 	visited: boolean,
-): Promise<Visits | null> {
-	return changeDocument(userId, 'visits', async (document) => {
-		const held = await readVisits(userId, document)
+): Promise<Visits> {
+	return changeDocument(userId, 'visits', async (document, tx) => {
+		const held = await readVisits(userId, document, tx)
 
 		const regions = new Set(held[scope])
 
-		if (visited && !regions.has(region) && regions.size >= MAX_VISITS) return { result: null }
+		if (visited && !regions.has(region) && regions.size >= MAX_REGIONS) {
+			throw new HTTPException(409, {
+				message: `You can mark up to ${MAX_REGIONS.toLocaleString('en-US')} regions`,
+			})
+		}
 
 		if (visited) regions.add(region)
 		else regions.delete(region)

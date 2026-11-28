@@ -57,7 +57,9 @@ export function savePicks(
 	return changeDocument(userId, 'predictions', (document) => {
 		const stored = predictions(document)
 
-		const next = { ...stored, [season]: { ...stored[season], [week]: picks } }
+		const weeks = isRecord(stored[season]) ? stored[season] : {}
+
+		const next = { ...stored, [season]: { ...weeks, [week]: picks } }
 
 		return { result: picks, value: next }
 	})

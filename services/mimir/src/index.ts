@@ -1,5 +1,3 @@
-export type { MimirApp } from './app.js'
-
 import { serve } from '@hono/node-server'
 import { setupLifecycle } from 'grid/server-lifecycle'
 import { createMimirApp } from './app.js'

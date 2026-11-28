@@ -67,7 +67,7 @@ vi.mock('../handlers/places.js', () => ({
 }))
 
 vi.mock('../handlers/visits.js', () => ({
-	MAX_VISITS: 1000,
+	MAX_REGIONS: 1000,
 	listVisits: (...args: unknown[]) => mockListVisits(...args),
 	setVisit: (...args: unknown[]) => mockSetVisit(...args),
 }))
@@ -371,29 +371,7 @@ describe('writes', () => {
 		})
 	})
 
-	it('returns 409 at the cap', async () => {
-		mockAddPlace.mockResolvedValue(null)
-
-		const res = await post(draft)
-
-		expect(res.status).toBe(409)
-	})
-
-	it('returns 404 when replacing a place that is not there', async () => {
-		mockUpdatePlace.mockResolvedValue(null)
-
-		const res = await app.request('/api/places/nope', {
-			method: 'PUT',
-			headers: headers(),
-			body: JSON.stringify(draft),
-		})
-
-		expect(res.status).toBe(404)
-	})
-
 	it('removes a place', async () => {
-		mockRemovePlace.mockResolvedValue(true)
-
 		const res = await app.request('/api/places/place-1', {
 			method: 'DELETE',
 			headers: headers(),
@@ -457,6 +435,22 @@ describe('rate limit', () => {
 		expect(statuses[60]).toBe(429)
 
 		expect((await app.request('/api/places', { headers: headers() })).status).toBe(200)
+	})
+
+	it('does not limit readers with no user as one', async () => {
+		mockReadNumbersBoard.mockResolvedValue({ players: 0, entries: [] })
+
+		const statuses: number[] = []
+
+		for (let i = 0; i < 61; i++) {
+			const res = await app.request('/api/games/numbers/daily?date=20261116&mode=solo', {
+				headers: headers(null),
+			})
+
+			statuses.push(res.status)
+		}
+
+		expect(statuses.every((status) => status === 200)).toBe(true)
 	})
 })
 
@@ -574,22 +568,6 @@ describe('numbers', () => {
 		expect(await res.json()).toEqual(stats)
 
 		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, 'Ada', result)
-	})
-
-	it('counts the run of a user that comes with no name, as from a bifrost before names', async () => {
-		mockRecordNumbersResult.mockResolvedValue(stats)
-
-		const { name: _, ...unnamed } = member
-
-		const res = await app.request('/api/games/numbers/results', {
-			method: 'POST',
-			headers: headers(unnamed),
-			body: JSON.stringify(result),
-		})
-
-		expect(res.status).toBe(200)
-
-		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, null, result)
 	})
 
 	it.each([
@@ -757,21 +735,7 @@ describe('trips', () => {
 		expect(await res.json()).toMatchObject({ code: 'trip-days-exclude-visits' })
 	})
 
-	it('returns 404 when replacing or removing a trip that is not there', async () => {
-		mockUpdateTrip.mockResolvedValue(null)
-
-		mockRemoveTrip.mockResolvedValue(false)
-
-		expect((await send('PUT', '/api/trips/nope', trip)).status).toBe(404)
-
-		expect(
-			(await app.request('/api/trips/nope', { method: 'DELETE', headers: headers() })).status,
-		).toBe(404)
-	})
-
 	it('removes a trip', async () => {
-		mockRemoveTrip.mockResolvedValue(true)
-
 		const res = await app.request('/api/trips/trip-1', { method: 'DELETE', headers: headers() })
 
 		expect(res.status).toBe(204)

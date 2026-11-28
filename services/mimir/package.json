@@ -1,14 +1,8 @@
 {
 	"name": "mimir",
 	"version": "0.1.0",
-	"description": "App data service: each user's places, visited regions and NFL picks",
+	"description": "App data service: each user's places, trips, visited regions, NFL picks and numbers results",
 	"type": "module",
-	"exports": {
-		".": {
-			"types": "./src/index.ts",
-			"default": "./dist/index.js"
-		}
-	},
 	"scripts": {
 		"env:init": "grid-sync-env --services=mimir",
 		"dev": "tsx watch --env-file=.env src/index.ts",

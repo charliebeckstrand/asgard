@@ -1,6 +1,6 @@
 import { createRoute, z } from '@hono/zod-openapi'
-import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
-import { listVisits, MAX_VISITS, setVisit } from '../handlers/visits.js'
+import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
+import { listVisits, MAX_REGIONS, setVisit } from '../handlers/visits.js'
 import { RegionSchema, SetVisitSchema, VisitScopeSchema, VisitsSchema } from '../lib/schemas.js'
 import { requireRole, requireUser, type UserEnv } from '../middleware/user.js'
 
@@ -36,7 +36,7 @@ const setVisitRoute = createRoute({
 		400: errorResponse('Invalid scope, region or body'),
 		401: errorResponse('Not signed in'),
 		403: errorResponse('No user role, or email not verified'),
-		409: errorResponse(`Already marking ${MAX_VISITS} regions in the scope`),
+		409: errorResponse(`Already marking ${MAX_REGIONS} regions in the scope`),
 	},
 })
 
@@ -51,15 +51,7 @@ visitsRoutes.openapi(setVisitRoute, async (c) => {
 
 	const { visited } = c.req.valid('json')
 
-	const visits = await setVisit(requireUser(c).id, scope, region, visited)
-
-	if (!visits) {
-		throw new HTTPException(409, {
-			message: `You can mark up to ${MAX_VISITS.toLocaleString('en-US')} regions`,
-		})
-	}
-
-	return c.json(visits, 200)
+	return c.json(await setVisit(requireUser(c).id, scope, region, visited), 200)
 })
 
 export { visitsRoutes }

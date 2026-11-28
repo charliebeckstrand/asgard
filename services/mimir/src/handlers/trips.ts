@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { HTTPException } from 'grid'
 import { DataError } from '../lib/errors.js'
 import {
-	MAX_VISITS,
+	MAX_PLACE_VISITS,
 	type NewTrip,
 	type Place,
 	type StoredPlace,
@@ -12,10 +12,9 @@ import {
 	type TripStop,
 } from '../lib/schemas.js'
 import { readDocument } from './documents.js'
-import { MAX_PLACES, newestFirst } from './places.js'
+import { MAX_PLACES, newestFirst, tooManyPlaces } from './places.js'
 import {
 	changeTravel,
-	checkOwnPhotos,
 	hasId,
 	onTrip,
 	presentPlace,
@@ -33,6 +32,10 @@ import {
 
 /** The most trips one user keeps, so no account can fill the database. */
 export const MAX_TRIPS = 1000
+
+function noTrip(): HTTPException {
+	return new HTTPException(404, { message: 'No trip with that id' })
+}
 
 /** The visit a stop records. */
 function stopVisit(stop: TripStop) {
@@ -66,12 +69,9 @@ export async function createTrip(
 	userId: string,
 	{ stops = [], ...draft }: NewTrip,
 ): Promise<{ trip: Trip; places: Place[] }> {
-	checkOwnPhotos(userId, [
-		...draft.photos,
-		...stops.flatMap((stop) => stopVisit(stop)?.photos ?? []),
-	])
+	const photos = [...draft.photos, ...stops.flatMap((stop) => stopVisit(stop)?.photos ?? [])]
 
-	const created = await changeTravel(userId, (places, trips) => {
+	const created = await changeTravel(userId, photos, (places, trips) => {
 		if (trips.length >= MAX_TRIPS) {
 			throw new HTTPException(409, {
 				message: `You can keep up to ${MAX_TRIPS.toLocaleString('en-US')} trips`,
@@ -113,18 +113,16 @@ export async function createTrip(
 
 			const visits = newestFirst([...held.visits.filter((kept) => kept.id !== stored.id), stored])
 
-			if (visits.length > MAX_VISITS) {
-				throw new HTTPException(409, { message: `A place holds at most ${MAX_VISITS} visits` })
+			if (visits.length > MAX_PLACE_VISITS) {
+				throw new HTTPException(409, {
+					message: `A place holds at most ${MAX_PLACE_VISITS} visits`,
+				})
 			}
 
 			changed.set(held.id, { ...held, visits })
 		}
 
-		if (places.length + added.length > MAX_PLACES) {
-			throw new HTTPException(409, {
-				message: `You can keep up to ${MAX_PLACES.toLocaleString('en-US')} places`,
-			})
-		}
+		if (places.length + added.length > MAX_PLACES) throw tooManyPlaces()
 
 		return {
 			result: { trip, places: [...added, ...changed.values()] },
@@ -151,19 +149,13 @@ export async function createTrip(
 
 /**
  * Replaces a trip, keeping its id and when it was added. Refuses days that
- * would leave one of its visits outside. `null` where no trip carries that id.
+ * would leave one of its visits outside. A 404 where no trip carries that id.
  */
-export async function updateTrip(
-	userId: string,
-	id: string,
-	draft: TripDraft,
-): Promise<Trip | null> {
-	checkOwnPhotos(userId, draft.photos)
-
-	const trip = await changeTravel(userId, (places, trips) => {
+export async function updateTrip(userId: string, id: string, draft: TripDraft): Promise<Trip> {
+	const trip = await changeTravel(userId, draft.photos, (places, trips) => {
 		const held = trips.map(readTrip).find((stored) => stored?.id === id)
 
-		if (held === undefined) return { result: null }
+		if (held === undefined) throw noTrip()
 
 		const visits = places.flatMap((record) => readPlace(record)?.visits ?? [])
 
@@ -182,21 +174,21 @@ export async function updateTrip(
 		}
 	})
 
-	return trip && presentTrip(trip)
+	return presentTrip(trip)
 }
 
 /**
  * Removes a trip and its photos. Its visits stay on their places, without the
- * trip. `false` where no trip carried that id.
+ * trip. A 404 where no trip carried that id.
  */
-export function removeTrip(userId: string, id: string): Promise<boolean> {
-	return changeTravel(userId, (places, trips) => {
+export function removeTrip(userId: string, id: string): Promise<void> {
+	return changeTravel(userId, [], (places, trips) => {
 		const kept = trips.filter((record) => !hasId(record, id))
 
-		if (kept.length === trips.length) return { result: false }
+		if (kept.length === trips.length) throw noTrip()
 
 		return {
-			result: true,
+			result: undefined,
 			places: places.map((record) => {
 				const place = readPlace(record)
 
