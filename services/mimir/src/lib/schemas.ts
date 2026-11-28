@@ -44,13 +44,6 @@ const coordinate = (field: string, limit: number) =>
 		.min(-limit, `\`${field}\` must be a number between -${limit} and ${limit}.`)
 		.max(limit, `\`${field}\` must be a number between -${limit} and ${limit}.`)
 
-/** Whether a `YYYY-MM-DD` string names a real day: `2026-02-31` doesn't. */
-function isDay(value: string): boolean {
-	const date = new Date(`${value}T00:00:00Z`)
-
-	return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value)
-}
-
 /** Photos on one trip. */
 const MAX_TRIP_PHOTOS = 50
 
@@ -69,11 +62,7 @@ export const PHOTO_TYPES = {
 
 export type PhotoType = keyof typeof PHOTO_TYPES
 
-const day = (field: string) =>
-	z
-		.string(`\`${field}\` must be a YYYY-MM-DD day.`)
-		.regex(/^\d{4}-\d{2}-\d{2}$/, `\`${field}\` must be a YYYY-MM-DD day.`)
-		.refine(isDay, `\`${field}\` must be a YYYY-MM-DD day.`)
+const day = (field: string) => z.iso.date(`\`${field}\` must be a YYYY-MM-DD day.`)
 
 /** An id Mimir gave, of a place, visit or trip. */
 const id = (field: string) =>
@@ -442,7 +431,9 @@ function numbersDate(field: string) {
 		.string(message)
 		.regex(/^\d{8}$/, message)
 		.refine(
-			(value) => isDay(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6)}`),
+			(value) =>
+				z.iso.date().safeParse(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6)}`)
+					.success,
 			message,
 		)
 }
