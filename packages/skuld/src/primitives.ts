@@ -11,24 +11,6 @@ export const IpAddressSchema = z
 
 export const EmailSchema = z.email('Invalid email address').openapi({ example: 'user@example.com' })
 
-/** The form every email is stored and looked up in. */
-export function normalizeEmail(email: string): string {
-	return email.trim().toLowerCase()
-}
-
-export const PasswordSchema = z
-	.string()
-	.min(8, 'Password must be at least 8 characters')
-	.max(128, 'Password must be at most 128 characters')
-	.openapi({ description: 'Password (8 to 128 characters)' })
-
-// Capped like PasswordSchema so a huge body can't make argon2 burn CPU.
-export const LoginPasswordSchema = z
-	.string()
-	.min(1)
-	.max(128)
-	.openapi({ description: 'Login password' })
-
 export const TimestampSchema = z.iso.datetime().openapi({
 	description: 'ISO 8601 datetime',
 	example: '2026-01-01T00:00:00.000Z',

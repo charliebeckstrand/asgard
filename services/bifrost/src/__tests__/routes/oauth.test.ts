@@ -34,13 +34,13 @@ vi.mock('../../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
 }))
 
-import type { Session } from 'skuld'
 import { createBifrostApp } from '../../app.js'
 import { AuthError } from '../../auth/errors.js'
 import * as auth from '../../auth/index.js'
 import { OAuthFailure } from '../../auth/oauth.js'
 import type { LinkedIdentity } from '../../lib/oauth-repository.js'
 import { mfaRepository, oauthRepository } from '../../lib/repositories.js'
+import type { Session } from '../../lib/schemas.js'
 
 const mockFindSession = vi.mocked(auth.findSession)
 

@@ -1,7 +1,7 @@
 import { createRoute, z } from '@hono/zod-openapi'
 import type { RegistrationResponseJSON } from '@simplewebauthn/server'
 import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
-import { createListSchema, PasskeySchema, toList } from 'skuld'
+import { createListSchema, toList } from 'skuld'
 import {
 	createRegistrationOptions,
 	deletePasskey,
@@ -10,6 +10,7 @@ import {
 } from '../auth/index.js'
 import { recordChange } from '../lib/activity.js'
 import { sessionRepository } from '../lib/repositories.js'
+import { PasskeySchema } from '../lib/schemas.js'
 import {
 	authorizeSignInChange,
 	requireSession,

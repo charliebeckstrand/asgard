@@ -1,8 +1,8 @@
 import { HTTPException } from 'grid'
 import { type Context, Hono } from 'hono'
-import type { Session } from 'skuld'
 import { environment } from '../lib/env.js'
 import { logger } from '../lib/log.js'
+import type { Session } from '../lib/schemas.js'
 import { requireSession, type SessionEnv } from '../middleware/session.js'
 
 // Apps' data lives in Mimir, which stays off the internet. Bifrost checks the

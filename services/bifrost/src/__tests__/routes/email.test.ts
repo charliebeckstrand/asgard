@@ -32,10 +32,10 @@ vi.mock('../../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
 }))
 
-import type { Session } from 'skuld'
 import { createBifrostApp } from '../../app.js'
 import { AuthError } from '../../auth/errors.js'
 import * as auth from '../../auth/index.js'
+import type { Session } from '../../lib/schemas.js'
 
 const ORIGIN = 'http://localhost:3000'
 

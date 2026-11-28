@@ -1,6 +1,6 @@
-import type { Activity } from 'skuld'
 import type { ActivityEntry } from '../lib/activity-repository.js'
 import { activityRepository } from '../lib/repositories.js'
+import type { Activity } from '../lib/schemas.js'
 
 const ACTIVITY_LIMIT = 50
 

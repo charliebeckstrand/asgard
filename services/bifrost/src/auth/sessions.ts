@@ -1,6 +1,6 @@
 import { hash, randomBytes } from 'node:crypto'
-import type { Session } from 'skuld'
 import { sessionRepository } from '../lib/repositories.js'
+import type { Session } from '../lib/schemas.js'
 
 export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
 

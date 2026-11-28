@@ -1,11 +1,3 @@
-// Activity — what happened to an account
-export {
-	type Activity,
-	type ActivityAction,
-	ActivityListSchema,
-	ActivitySchema,
-} from './activity.js'
-
 // Composites — structured schemas and schema factories
 export {
 	createListSchema,
@@ -21,17 +13,11 @@ export {
 	type Role,
 } from './enums.js'
 
-// Passkey — a user's WebAuthn credential
-export { type Passkey, PasskeySchema } from './passkey.js'
-
 // Primitives — reusable atomic schema building blocks
 export {
 	EmailSchema,
 	IdSchema,
 	IpAddressSchema,
-	LoginPasswordSchema,
-	normalizeEmail,
-	PasswordSchema,
 	TimestampSchema,
 } from './primitives.js'
 
@@ -53,9 +39,6 @@ export {
 	ThreatListSchema,
 	ThreatSchema,
 } from './security.js'
-
-// Session — a signed-in session and its user
-export { type Session, SessionSchema } from './session.js'
 
 // User — canonical user account schema
 export { type User, UserSchema } from './user.js'

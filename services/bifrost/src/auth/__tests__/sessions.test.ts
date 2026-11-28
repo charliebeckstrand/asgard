@@ -1,8 +1,8 @@
 vi.mock('../../lib/repositories.js')
 
 import { createHash } from 'node:crypto'
-import type { Session } from 'skuld'
 import { sessionRepository } from '../../lib/repositories.js'
+import type { Session } from '../../lib/schemas.js'
 import {
 	createSession,
 	findSession,

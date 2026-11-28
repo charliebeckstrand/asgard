@@ -2,15 +2,7 @@ import { createRoute, z } from '@hono/zod-openapi'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
 import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
 import { getIpAddress } from 'grid/middleware'
-import {
-	ActivityListSchema,
-	EmailSchema,
-	LoginPasswordSchema,
-	MessageSchema,
-	PasswordSchema,
-	SessionSchema,
-	toList,
-} from 'skuld'
+import { EmailSchema, MessageSchema, toList } from 'skuld'
 import {
 	AuthError,
 	authenticatePasskey,
@@ -33,6 +25,12 @@ import { record } from '../lib/activity.js'
 import { requireAppOrigin } from '../lib/app-origin.js'
 import { logger } from '../lib/log.js'
 import { sessionRepository } from '../lib/repositories.js'
+import {
+	ActivityListSchema,
+	LoginPasswordSchema,
+	PasswordSchema,
+	SessionSchema,
+} from '../lib/schemas.js'
 import {
 	clearSessionCookie,
 	requireSession,

@@ -1,6 +1,6 @@
 import { createRoute, z } from '@hono/zod-openapi'
 import { createRouter, errorResponse, HTTPException, jsonResponse } from 'grid'
-import { ActivitySchema, PasskeySchema, type Session, TimestampSchema, UserSchema } from 'skuld'
+import { TimestampSchema, UserSchema } from 'skuld'
 import { getActivity, getPasskeys, sendAccountDeletedEmail } from '../auth/index.js'
 import { logger } from '../lib/log.js'
 import {
@@ -9,6 +9,7 @@ import {
 	sessionRepository,
 	userRepository,
 } from '../lib/repositories.js'
+import { ActivitySchema, PasskeySchema, type Session } from '../lib/schemas.js'
 import {
 	authorizeAccountDeletion,
 	clearSessionCookie,
