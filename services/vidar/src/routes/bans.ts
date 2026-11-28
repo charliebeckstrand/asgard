@@ -1,6 +1,6 @@
 import { createRoute, z } from '@hono/zod-openapi'
 import { createRouter, errorResponse, HTTPException, jsonResponse } from 'grid'
-import { BanListSchema, MessageSchema } from 'skuld'
+import { BanListSchema, IpAddressSchema, MessageSchema } from 'skuld'
 import { listActiveBans, removeBan } from '../handlers/bans.js'
 
 const listBansRoute = createRoute({
@@ -25,7 +25,7 @@ const removeBanRoute = createRoute({
 	security: [{ Bearer: [] }],
 	request: {
 		params: z.object({
-			ip: z.string().min(1).openapi({ description: 'IP address to unban' }),
+			ip: IpAddressSchema.openapi({ description: 'IP address to unban' }),
 		}),
 	},
 	responses: {
