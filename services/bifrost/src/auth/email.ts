@@ -21,44 +21,74 @@ export const EMAIL_INTERVAL_SECONDS = 60
  */
 export const EMAIL_LIMITS: EmailLimits = { total: 100, unverified: 50, recipient: 10 }
 
+function tooManyEmails(): AuthError {
+	return new AuthError(
+		'too_many_emails',
+		'We have sent all the email we can today. Try again tomorrow',
+	)
+}
+
 /** Sends `email` when the last day's limits leave room for it. */
 async function send(email: Email, verified: boolean): Promise<void> {
 	const config = getConfig()
 
 	if (!(await config.emailTokenRepository.countSentEmail(email.to, verified, EMAIL_LIMITS))) {
-		throw new AuthError(
-			'too_many_emails',
-			'We have sent all the email we can today. Try again tomorrow',
-		)
+		throw tooManyEmails()
 	}
 
 	await config.sendEmail(email)
 }
 
+interface LinkEmail {
+	purpose: EmailPurpose
+	path: string
+	ttlSeconds: number
+	subject: string
+	/** The email's paragraphs, with the link among them. */
+	text: (link: string) => string[]
+}
+
 /**
- * Stores a new link of `purpose` for the user and returns its URL on `origin`,
- * the app it opens. Like a session, the link holds 32 random bytes and the
- * database only their SHA-256. Returns null when the user was sent one less
- * than a minute ago.
+ * Stores a new link for the user and emails it to `to`, with the link on
+ * `origin`, the app it opens. Like a session, the link holds 32 random bytes
+ * and the database only their SHA-256. Returns false, and sends nothing, when
+ * the user was sent one less than a minute ago. When the day's limits leave no
+ * room, nothing is stored, so the link already in the inbox keeps working.
  */
-async function createLink(
-	userId: string,
-	purpose: EmailPurpose,
+async function sendLink(
+	user: { id: string; to: string; verified: boolean },
 	origin: string,
-	path: string,
-	ttlSeconds: number,
-): Promise<string | null> {
+	email: LinkEmail,
+): Promise<boolean> {
+	const config = getConfig()
+
 	const token = randomBytes(32).toString('base64url')
 
-	const created = await getConfig().emailTokenRepository.createToken(
+	const created = await config.emailTokenRepository.createToken(
 		hashToken(token),
-		userId,
-		purpose,
-		new Date(Date.now() + ttlSeconds * 1000),
-		EMAIL_INTERVAL_SECONDS,
+		user.id,
+		email.purpose,
+		new Date(Date.now() + email.ttlSeconds * 1000),
+		{
+			interval: EMAIL_INTERVAL_SECONDS,
+			email: { to: user.to, verified: user.verified },
+			limits: EMAIL_LIMITS,
+		},
 	)
 
-	return created ? `${origin}${path}?token=${token}` : null
+	if (created === 'recently_sent') return false
+
+	if (created === 'over_budget') throw tooManyEmails()
+
+	const link = `${origin}${email.path}?token=${token}`
+
+	await config.sendEmail({
+		to: user.to,
+		subject: email.subject,
+		text: email.text(link).join('\n\n'),
+	})
+
+	return true
 }
 
 /** Emails the user a link that verifies their address. */
@@ -66,30 +96,21 @@ export async function sendVerificationEmail(
 	user: { id: string; email: string },
 	origin: string,
 ): Promise<void> {
-	const link = await createLink(
-		user.id,
-		'verify_email',
-		origin,
-		'/verify-email',
-		VERIFY_EMAIL_TTL_SECONDS,
-	)
+	const sent = await sendLink({ id: user.id, to: user.email, verified: false }, origin, {
+		purpose: 'verify_email',
+		path: '/verify-email',
+		ttlSeconds: VERIFY_EMAIL_TTL_SECONDS,
+		subject: 'Verify your email',
+		text: (link) => [
+			'Open this link to verify your email:',
+			link,
+			'The link works for 24 hours. If you did not create an account, you can ignore this email.',
+		],
+	})
 
-	if (!link) {
+	if (!sent) {
 		throw new AuthError('email_recently_sent', 'We just sent you an email. Try again in a minute.')
 	}
-
-	await send(
-		{
-			to: user.email,
-			subject: 'Verify your email',
-			text: [
-				'Open this link to verify your email:',
-				link,
-				'The link works for 24 hours. If you did not create an account, you can ignore this email.',
-			].join('\n\n'),
-		},
-		false,
-	)
 }
 
 /** Marks the email of the link's user as verified. Returns the user's id. */
@@ -104,27 +125,25 @@ export async function verifyEmail(token: string): Promise<string> {
 }
 
 /**
- * A link that sets a new password for the active user with `email`, and whether
- * their email is verified, or null when there is none or they were sent one
- * less than a minute ago.
+ * Emails a link that sets a new password to the active user with `email`, with
+ * `subject` and `text`. Sends nothing when there is none, or when they were sent
+ * one less than a minute ago.
  */
-async function createResetLink(
+async function sendResetLink(
 	email: string,
 	origin: string,
-): Promise<{ link: string; verified: boolean } | null> {
+	content: Pick<LinkEmail, 'subject' | 'text'>,
+): Promise<void> {
 	const creds = await getConfig().userRepository.getCredentialsByEmail(email)
 
-	if (!creds?.is_active) return null
+	if (!creds?.is_active) return
 
-	const link = await createLink(
-		creds.id,
-		'reset_password',
-		origin,
-		'/reset-password',
-		RESET_PASSWORD_TTL_SECONDS,
-	)
-
-	return link ? { link, verified: creds.is_verified } : null
+	await sendLink({ id: creds.id, to: email, verified: creds.is_verified }, origin, {
+		purpose: 'reset_password',
+		path: '/reset-password',
+		ttlSeconds: RESET_PASSWORD_TTL_SECONDS,
+		...content,
+	})
 }
 
 /**
@@ -132,24 +151,14 @@ async function createResetLink(
  * Says nothing either way, so no one can learn who has an account.
  */
 export async function requestPasswordReset(email: string, origin: string): Promise<void> {
-	const normalizedEmail = normalizeEmail(email)
-
-	const reset = await createResetLink(normalizedEmail, origin)
-
-	if (!reset) return
-
-	await send(
-		{
-			to: normalizedEmail,
-			subject: 'Reset your password',
-			text: [
-				'Someone asked to reset the password of your account. Open this link to choose a new one:',
-				reset.link,
-				'The link works for one hour. If it was not you, ignore this email and your password stays the same.',
-			].join('\n\n'),
-		},
-		reset.verified,
-	)
+	await sendResetLink(normalizeEmail(email), origin, {
+		subject: 'Reset your password',
+		text: (link) => [
+			'Someone asked to reset the password of your account. Open this link to choose a new one:',
+			link,
+			'The link works for one hour. If it was not you, ignore this email and your password stays the same.',
+		],
+	})
 }
 
 /**
@@ -159,25 +168,15 @@ export async function requestPasswordReset(email: string, origin: string): Promi
  * within a minute of the last link.
  */
 export async function sendAccountExistsEmail(email: string, origin: string): Promise<void> {
-	const normalizedEmail = normalizeEmail(email)
-
-	const reset = await createResetLink(normalizedEmail, origin)
-
-	if (!reset) return
-
-	await send(
-		{
-			to: normalizedEmail,
-			subject: 'You already have an account',
-			text: [
-				`Someone tried to sign up with this email, but it already has an account. Sign in at ${origin}/login.`,
-				'If you forgot your password, open this link to choose a new one:',
-				reset.link,
-				'The link works for one hour. If it was not you, ignore this email and nothing changes.',
-			].join('\n\n'),
-		},
-		reset.verified,
-	)
+	await sendResetLink(normalizeEmail(email), origin, {
+		subject: 'You already have an account',
+		text: (link) => [
+			`Someone tried to sign up with this email, but it already has an account. Sign in at ${origin}/login.`,
+			'If you forgot your password, open this link to choose a new one:',
+			link,
+			'The link works for one hour. If it was not you, ignore this email and nothing changes.',
+		],
+	})
 }
 
 /**
