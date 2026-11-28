@@ -14,12 +14,15 @@ import {
 	CopyObjectCommand,
 	DeleteObjectCommand,
 	GetObjectCommand,
+	ListObjectsV2Command,
+	NoSuchKey,
 	PutObjectCommand,
 	S3Client,
 } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
 import {
 	deletePhotos,
+	deleteUserPhotos,
 	isOwnPhoto,
 	keepPhoto,
 	photoUrl,
@@ -38,12 +41,21 @@ afterEach(() => {
 	vi.restoreAllMocks()
 })
 
-/** Stubs the bucket: GET answers `object`, or 404 without one, and every other command succeeds. */
-function stubBucket(object?: { body: Uint8Array; contentType: string }) {
+/**
+ * Stubs the bucket: GET answers `object`, or NoSuchKey without one, a list
+ * answers `listed` under its prefix, and every other command succeeds.
+ */
+function stubBucket(object?: { body: Uint8Array; contentType: string }, listed: string[] = []) {
 	return vi.spyOn(S3Client.prototype, 'send').mockImplementation(async (command: unknown) => {
+		if (command instanceof ListObjectsV2Command) {
+			const prefix = command.input.Prefix ?? ''
+
+			return { Contents: listed.filter((key) => key.startsWith(prefix)).map((Key) => ({ Key })) }
+		}
+
 		if (!(command instanceof GetObjectCommand)) return {}
 
-		if (!object) throw Object.assign(new Error('NoSuchKey'), { $metadata: { httpStatusCode: 404 } })
+		if (!object) throw new NoSuchKey({ message: 'NoSuchKey', $metadata: { httpStatusCode: 404 } })
 
 		return {
 			Body: { transformToByteArray: async () => object.body },
@@ -175,6 +187,45 @@ describe('storage', () => {
 			'users/u1/a/original.jpg',
 			'users/u1/a/view.webp',
 			'users/u1/b.jpg',
+		])
+	})
+
+	it('deletes at most ten objects at once', async () => {
+		let inFlight = 0
+
+		let most = 0
+
+		vi.spyOn(S3Client.prototype, 'send').mockImplementation(async () => {
+			inFlight++
+
+			most = Math.max(most, inFlight)
+
+			await Promise.resolve()
+
+			inFlight--
+
+			return {}
+		})
+
+		await deletePhotos(Array.from({ length: 30 }, (_, index) => `users/u1/${index}/original.jpg`))
+
+		expect(most).toBe(10)
+	})
+
+	it("deletes a user's saved photos and uploads, and no one else's", async () => {
+		const send = stubBucket(undefined, [
+			'users/u1/a/original.jpg',
+			'users/u1/a/view.webp',
+			'uploads/u1/b.jpg',
+			'uploads/u2/c.jpg',
+		])
+
+		await deleteUserPhotos('u1')
+
+		expect(sent(send, DeleteObjectCommand).map((input) => (input as { Key: string }).Key)).toEqual([
+			'users/u1/a/original.jpg',
+			'users/u1/a/view.webp',
+			'uploads/u1/b.jpg',
 		])
 	})
 
