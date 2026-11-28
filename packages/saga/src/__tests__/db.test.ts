@@ -213,17 +213,13 @@ describe('createDb', () => {
 			expect(Pool).toHaveBeenCalledOnce()
 		})
 
-		it('connects with the URL parts and default pool options', async () => {
+		it('connects with the URL and default pool options', async () => {
 			const db = createDb(() => ({ url }))
 
 			await db.ping()
 
 			expect(Pool).toHaveBeenCalledWith({
-				host: 'host',
-				port: 5432,
-				database: 'db',
-				user: 'user',
-				password: 'pass',
+				connectionString: url,
 				ssl: false,
 				max: 5,
 				idleTimeoutMillis: 30_000,
