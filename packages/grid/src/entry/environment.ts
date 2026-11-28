@@ -1,1 +1,1 @@
-export { createEnvironment } from '../env/environment.js'
+export { createEnvironment, requiredInProduction } from '../env/environment.js'

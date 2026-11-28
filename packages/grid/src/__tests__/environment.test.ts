@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { createEnvironment } from '../env/environment.js'
+import { createEnvironment, requiredInProduction } from '../env/environment.js'
 import { getManifestPort } from '../env/manifest.js'
 
 describe('getManifestPort', () => {
@@ -102,5 +102,23 @@ describe('createEnvironment', () => {
 		expect(mockExit).toHaveBeenCalledWith(1)
 
 		mockExit.mockRestore()
+	})
+})
+
+describe('requiredInProduction', () => {
+	afterEach(() => {
+		vi.unstubAllEnvs()
+	})
+
+	it('requires the value in production', () => {
+		vi.stubEnv('NODE_ENV', 'production')
+
+		expect(requiredInProduction(z.string()).safeParse(undefined).success).toBe(false)
+	})
+
+	it('leaves the value optional elsewhere', () => {
+		vi.stubEnv('NODE_ENV', 'development')
+
+		expect(requiredInProduction(z.string()).safeParse(undefined).success).toBe(true)
 	})
 })

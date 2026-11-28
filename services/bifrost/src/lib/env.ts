@@ -1,4 +1,4 @@
-import { createEnvironment } from 'grid/environment'
+import { createEnvironment, requiredInProduction } from 'grid/environment'
 import { z } from 'zod'
 
 // grid's createEnvironment drops empty values, so an empty variable is unset here.
@@ -17,20 +17,18 @@ export const environment = createEnvironment({
 	// PEM of the database server's CA. Unset encrypts without verifying the server,
 	// so production requires it: a lost binding fails the deploy instead of letting
 	// anyone on the path pose as the database.
-	DATABASE_CA_CERT:
-		process.env.NODE_ENV === 'production' ? databaseCaCert : databaseCaCert.optional(),
+	DATABASE_CA_CERT: requiredInProduction(databaseCaCert),
 	// Unset disables Vidar; login and register keep their local rate limits.
 	VIDAR_URL: z.string().optional(),
 	VIDAR_API_KEY: z.string().optional(),
 	// Mimir keeps the apps' data. Unset answers 503 on those routes, so production
 	// requires it: a lost setting fails the deploy instead of every app's data.
-	MIMIR_URL: process.env.NODE_ENV === 'production' ? mimirUrl : mimirUrl.optional(),
-	MIMIR_API_KEY: process.env.NODE_ENV === 'production' ? mimirApiKey : mimirApiKey.optional(),
+	MIMIR_URL: requiredInProduction(mimirUrl),
+	MIMIR_API_KEY: requiredInProduction(mimirApiKey),
 	// Shared with Midgard, whose proxy sends the browser address in `x-client-ip`.
 	// Required in production, so a lost secret fails the deploy instead of putting
 	// every browser in one rate-limit bucket.
-	CLIENT_IP_SECRET:
-		process.env.NODE_ENV === 'production' ? clientIpSecret : clientIpSecret.optional(),
+	CLIENT_IP_SECRET: requiredInProduction(clientIpSecret),
 	// The domain passkeys belong to. Every app origin must be on it or a subdomain of it.
 	PASSKEY_DOMAIN: z.string().default('localhost'),
 	// Encrypts authenticator-app secrets. Unset turns authenticator apps off. Bifrost
