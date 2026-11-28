@@ -1,7 +1,7 @@
+import { hash, timingSafeEqual } from 'node:crypto'
 import { isIP } from 'node:net'
 import { getConnInfo } from '@hono/node-server/conninfo'
 import type { Context, MiddlewareHandler } from 'hono'
-import { timingSafeCompare } from '../auth/bearer.js'
 
 export interface ClientIpEnv {
 	Variables: {
@@ -27,6 +27,12 @@ const CLIENT_IP_HEADER = 'x-client-ip'
 
 const CLIENT_IP_SECRET_HEADER = 'x-client-ip-secret'
 
+// Comparing digests keeps the lengths equal, so the time taken says nothing
+// about the secret, its length included.
+function sameSecret(a: string, b: string): boolean {
+	return timingSafeEqual(hash('sha256', a, 'buffer'), hash('sha256', b, 'buffer'))
+}
+
 function socketAddress(c: Context): string | undefined {
 	try {
 		return getConnInfo(c).remote.address
@@ -50,7 +56,7 @@ function validIp(value: string | undefined): string | undefined {
 export function clientIp({ header, secret }: ClientIpOptions): MiddlewareHandler<ClientIpEnv> {
 	return async (c, next) => {
 		const proxied =
-			secret && timingSafeCompare(c.req.header(CLIENT_IP_SECRET_HEADER) ?? '', secret)
+			secret && sameSecret(c.req.header(CLIENT_IP_SECRET_HEADER) ?? '', secret)
 				? validIp(c.req.header(CLIENT_IP_HEADER))
 				: undefined
 

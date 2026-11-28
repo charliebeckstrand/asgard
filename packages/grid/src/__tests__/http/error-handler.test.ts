@@ -24,6 +24,14 @@ app.get('/error-with-code', () => {
 	throw new CodedError(403, { message: 'Confirm it is you' })
 })
 
+app.get('/http-exception-with-response', () => {
+	throw new HTTPException(401, {
+		res: new Response('Unauthorized', {
+			headers: { 'WWW-Authenticate': 'Bearer realm=""' },
+		}),
+	})
+})
+
 app.get('/unexpected-error', () => {
 	throw new Error('Something broke')
 })
@@ -74,6 +82,51 @@ describe('errorHandler', () => {
 			statusCode: 403,
 			code: 'second_step_required',
 		})
+	})
+
+	it("keeps the headers of an exception's response and names an empty message", async () => {
+		const res = await app.request('/http-exception-with-response')
+
+		expect(res.status).toBe(401)
+
+		expect(res.headers.get('WWW-Authenticate')).toBe('Bearer realm=""')
+
+		expect(res.headers.get('Content-Type')).toBe('application/json')
+
+		expect(await res.json()).toEqual({
+			error: 'Unauthorized',
+			message: 'Unauthorized',
+			statusCode: 401,
+		})
+	})
+
+	it('logs an HTTPException of 500 or more with its cause', async () => {
+		const logger = { error: vi.fn() }
+
+		const logged = new Hono()
+
+		logged.use(async (c, next) => {
+			c.set('logger' as never, logger as never)
+
+			await next()
+		})
+
+		const cause = new Error('connection refused')
+
+		logged.get('/', () => {
+			throw new HTTPException(503, { message: 'Down', cause })
+		})
+
+		logged.onError(errorHandler)
+
+		const res = await logged.request('/')
+
+		expect(res.status).toBe(503)
+
+		expect(logger.error).toHaveBeenCalledWith(
+			{ err: expect.objectContaining({ message: 'Down', cause }) },
+			'request failed',
+		)
 	})
 
 	it('logs an unexpected error through the request logger when there is one', async () => {

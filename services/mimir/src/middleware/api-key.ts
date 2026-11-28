@@ -1,4 +1,4 @@
-import { createBearerAuth } from 'grid/middleware'
+import { bearerAuth } from 'hono/bearer-auth'
 import { environment } from '../lib/env.js'
 
-export const apiKeyAuth = () => createBearerAuth(() => environment().MIMIR_API_KEY)
+export const apiKeyAuth = () => bearerAuth({ token: environment().MIMIR_API_KEY })

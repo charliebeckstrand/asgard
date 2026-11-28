@@ -85,13 +85,19 @@ export function rateLimit({
 }: RateLimitOptions): MiddlewareHandler {
 	const bucket = createTokenBucket({ rate, burst })
 
+	// An empty bucket holds a token again within this many seconds.
+	const retryAfter = String(Math.ceil(1 / rate))
+
 	return async (c, next) => {
 		const id = key(c)
 
 		if (!bucket.consume(id)) {
 			onLimited?.(id)
 
-			throw new HTTPException(429, { message: 'Too many requests' })
+			throw new HTTPException(429, {
+				message: 'Too many requests',
+				res: rate > 0 ? new Response(null, { headers: { 'Retry-After': retryAfter } }) : undefined,
+			})
 		}
 
 		await next()
