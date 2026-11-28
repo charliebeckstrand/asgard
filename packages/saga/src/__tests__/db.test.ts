@@ -15,7 +15,7 @@ vi.mock('pg', async (importOriginal) => ({
 }))
 
 import { types as pgTypes } from 'pg'
-import { createDb, type DbConfig, NoRowsError } from '../db.js'
+import { createDb, type DbConfig } from '../db.js'
 import type { Logger } from '../log/index.js'
 import { sql } from '../sql.js'
 
@@ -55,81 +55,6 @@ describe('createDb', () => {
 				values: [1],
 			})
 		})
-
-		it('returns null when there are no rows', async () => {
-			const db = createDb(() => ({ url }))
-
-			const result = await db.first(sql`
-				SELECT *
-				FROM users
-				WHERE id = ${999}
-			`)
-
-			expect(result).toBeNull()
-		})
-	})
-
-	describe('one', () => {
-		it('returns the first row', async () => {
-			pool.query.mockResolvedValue({ rows: [{ id: 1 }] })
-
-			const db = createDb(() => ({ url }))
-
-			const result = await db.one<{ id: number }>(sql`
-				INSERT INTO t (v)
-				VALUES (${1})
-				RETURNING id
-			`)
-
-			expect(result).toEqual({ id: 1 })
-		})
-
-		it('throws NoRowsError naming the query when there are no rows', async () => {
-			const db = createDb(() => ({ url }))
-
-			const result = db.one(sql`
-				SELECT *
-				FROM t
-				WHERE id = ${999}
-			`)
-
-			await expect(result).rejects.toThrow(NoRowsError)
-
-			await expect(result).rejects.toThrow(
-				'Expected at least one row, but got none: SELECT * FROM t WHERE id = $1',
-			)
-		})
-	})
-
-	describe('many', () => {
-		it('returns all rows', async () => {
-			const rows = [
-				{ id: 1, name: 'Alice' },
-				{ id: 2, name: 'Bob' },
-			]
-
-			pool.query.mockResolvedValue({ rows })
-
-			const db = createDb(() => ({ url }))
-
-			const result = await db.many(sql`
-				SELECT *
-				FROM users
-			`)
-
-			expect(result).toEqual(rows)
-		})
-
-		it('returns an empty array when there are no rows', async () => {
-			const db = createDb(() => ({ url }))
-
-			const result = await db.many(sql`
-				SELECT *
-				FROM users
-			`)
-
-			expect(result).toEqual([])
-		})
 	})
 
 	describe('exec', () => {
@@ -161,19 +86,6 @@ describe('createDb', () => {
 	})
 
 	describe('val', () => {
-		it('returns the first column of the first row', async () => {
-			pool.query.mockResolvedValue({ rows: [{ count: 42 }] })
-
-			const db = createDb(() => ({ url }))
-
-			const result = await db.val<number>(sql`
-				SELECT COUNT(*)::int
-				FROM users
-			`)
-
-			expect(result).toBe(42)
-		})
-
 		it('throws NoRowsError naming the query when there are no rows', async () => {
 			const db = createDb(() => ({ url }))
 

@@ -16,8 +16,7 @@
 		}
 	},
 	"bin": {
-		"saga": "./bin/saga.js",
-		"saga-bootstrap": "./src/bin/bootstrap.ts"
+		"saga": "./bin/saga.js"
 	},
 	"scripts": {
 		"build": "tsup",
