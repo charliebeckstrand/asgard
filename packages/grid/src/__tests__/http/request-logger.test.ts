@@ -1,5 +1,6 @@
 import { Writable } from 'node:stream'
 import { Hono } from 'hono'
+import { requestId } from 'hono/request-id'
 import { pino } from 'pino'
 import { type RequestLoggerEnv, requestLogger } from '../../http/request-logger.js'
 
@@ -31,7 +32,8 @@ function createTestApp() {
 
 	const app = new Hono<RequestLoggerEnv>()
 
-	app.use('*', requestLogger(baseLogger))
+	app.use('*', requestId())
+	app.use('*', requestLogger(baseLogger, { skipPath: '/health' }))
 
 	return { app, dest }
 }
@@ -65,43 +67,16 @@ describe('requestLogger', () => {
 		expect(lines[0].durationMs).toBeTypeOf('number')
 	})
 
-	it('echoes back the X-Request-Id header on the response', async () => {
-		const { app } = createTestApp()
-
-		app.get('/', (c) => c.text('ok'))
-
-		const res = await app.request('/')
-
-		expect(res.headers.get('x-request-id')).toMatch(
-			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-		)
-	})
-
-	it('reuses the incoming X-Request-Id when present', async () => {
+	it('writes no access line for the skipped path', async () => {
 		const { app, dest } = createTestApp()
 
-		app.get('/', (c) => c.text('ok'))
+		app.get('/health', (c) => c.text('ok'))
 
-		const res = await app.request('/', { headers: { 'X-Request-Id': 'incoming-42' } })
-
-		expect(res.headers.get('x-request-id')).toBe('incoming-42')
+		await app.request('/health')
 
 		await flush()
 
-		expect(dest.lines()[0]).toMatchObject({ requestId: 'incoming-42' })
-	})
-
-	it.each([
-		['one with other characters', 'id with spaces'],
-		['one that is too long', 'a'.repeat(129)],
-	])('replaces an incoming X-Request-Id with its own for %s', async (_, incoming) => {
-		const { app } = createTestApp()
-
-		app.get('/', (c) => c.text('ok'))
-
-		const res = await app.request('/', { headers: { 'X-Request-Id': incoming } })
-
-		expect(res.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/)
+		expect(dest.lines()).toHaveLength(0)
 	})
 
 	it("exposes a request-scoped child logger via c.get('logger')", async () => {

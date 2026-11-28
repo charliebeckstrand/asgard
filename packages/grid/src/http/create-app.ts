@@ -4,28 +4,26 @@ import type { Env } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { compress } from 'hono/compress'
 import { cors } from 'hono/cors'
-import { etag } from 'hono/etag'
-import { logger as honoRequestLogger } from 'hono/logger'
+import { requestId } from 'hono/request-id'
 import { secureHeaders } from 'hono/secure-headers'
-import { timing } from 'hono/timing'
-import { trimTrailingSlash } from 'hono/trailing-slash'
+import type { BlankEnv } from 'hono/types'
 import type { Logger } from 'pino'
 import { errorBody, errorHandler, notFoundHandler } from './error-handler.js'
-import { requestLogger } from './request-logger.js'
+import { type RequestLoggerEnv, requestLogger } from './request-logger.js'
 import { validationHook } from './validation-hook.js'
 
 interface CreateAppOptions {
 	basePath: string
 	title: string
-	description: string
+	description?: string
+	/** Only for a service that browsers call. A private one sends no CORS headers. */
 	cors?: Parameters<typeof cors>[0]
 	/**
-	 * Service-scoped Pino logger. When set, Hono's built-in request logger
-	 * is replaced with structured access logs (JSON, with `service`,
-	 * `requestId`, method, path, status, and durationMs). Routes can read
-	 * a request-scoped child logger via `c.get('logger')`.
+	 * Service-scoped Pino logger, for structured access logs (JSON, with
+	 * `service`, `requestId`, method, path, status, and durationMs). Routes can
+	 * read a request-scoped child logger via `c.get('logger')`.
 	 */
-	logger?: Logger
+	logger: Logger
 }
 
 const MAX_BODY_BYTES = 64 * 1024
@@ -33,21 +31,24 @@ const MAX_BODY_BYTES = 64 * 1024
 /**
  * A router whose invalid requests get the shared error body. Hono applies the
  * validation hook of the router a route is added to, not the app it is mounted
- * on, so every router needs its own.
+ * on, so every router needs its own. `/x/` matches `/x`.
  */
 export function createRouter<E extends Env = Env>(): OpenAPIHono<E> {
-	return new OpenAPIHono<E>({ defaultHook: validationHook })
+	return new OpenAPIHono<E>({ defaultHook: validationHook, strict: false })
 }
 
-export function createApp<E extends Env = Env>(options: CreateAppOptions): OpenAPIHono<E> {
-	const app = createRouter<E>()
+export function createApp<E extends Env = BlankEnv>(
+	options: CreateAppOptions,
+): OpenAPIHono<E & RequestLoggerEnv> {
+	const app = createRouter<E & RequestLoggerEnv>()
 
-	app.use(trimTrailingSlash())
+	// First, so every later middleware's errors are logged with the request ID.
+	app.use('*', requestId())
+	app.use('*', requestLogger(options.logger, { skipPath: `${options.basePath}/health` }))
 
-	app.use('*', cors(options.cors))
+	if (options.cors) app.use('*', cors(options.cors))
+
 	app.use('*', secureHeaders())
-	app.use('*', options.logger ? requestLogger(options.logger) : honoRequestLogger())
-	app.use('*', timing())
 
 	// Bodies are read into memory before validation, so an unbounded one could
 	// exhaust the process. Every service takes small JSON bodies.
@@ -59,21 +60,7 @@ export function createApp<E extends Env = Env>(options: CreateAppOptions): OpenA
 		}),
 	)
 
-	const compressMw = compress()
-
-	const etagMw = etag()
-
-	// compress() and etag() buffer the response body, which breaks SSE streams.
-	// Skip both when the handler is producing text/event-stream.
-	app.use('*', async (c, next) => {
-		await next()
-
-		if (c.res.headers.get('Content-Type')?.includes('text/event-stream')) return
-
-		await compressMw(c, async () => {})
-
-		await etagMw(c, async () => {})
-	})
+	app.use('*', compress())
 
 	app.get(options.basePath, (c) =>
 		c.json({
@@ -87,7 +74,7 @@ export function createApp<E extends Env = Env>(options: CreateAppOptions): OpenA
 
 	app.doc(`${options.basePath}/openapi.json`, {
 		openapi: '3.0.0',
-		info: { title: options.title, description: options.description, version: '0.1.0' },
+		info: { title: options.title, description: options.description ?? '', version: '0.1.0' },
 	})
 
 	app.onError(errorHandler)

@@ -1,8 +1,17 @@
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { errorHandler, notFoundHandler } from '../../http/error-handler.js'
+import type { RequestLoggerEnv } from '../../http/request-logger.js'
 
-const app = new Hono()
+const logger = { error: vi.fn() }
+
+const app = new Hono<RequestLoggerEnv>()
+
+app.use(async (c, next) => {
+	c.set('logger', logger as never)
+
+	await next()
+})
 
 app.get('/error-with-status', () => {
 	const err = new Error('Upstream said no') as Error & { status: number }
@@ -32,6 +41,12 @@ app.get('/http-exception-with-response', () => {
 	})
 })
 
+const cause = new Error('connection refused')
+
+app.get('/unavailable', () => {
+	throw new HTTPException(503, { message: 'Down', cause })
+})
+
 app.get('/unexpected-error', () => {
 	throw new Error('Something broke')
 })
@@ -47,6 +62,10 @@ type ErrorResponse = {
 }
 
 describe('errorHandler', () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
 	it('hides the message of an error that only carries a status', async () => {
 		const res = await app.request('/error-with-status')
 
@@ -101,25 +120,7 @@ describe('errorHandler', () => {
 	})
 
 	it('logs an HTTPException of 500 or more with its cause', async () => {
-		const logger = { error: vi.fn() }
-
-		const logged = new Hono()
-
-		logged.use(async (c, next) => {
-			c.set('logger' as never, logger as never)
-
-			await next()
-		})
-
-		const cause = new Error('connection refused')
-
-		logged.get('/', () => {
-			throw new HTTPException(503, { message: 'Down', cause })
-		})
-
-		logged.onError(errorHandler)
-
-		const res = await logged.request('/')
+		const res = await app.request('/unavailable')
 
 		expect(res.status).toBe(503)
 
@@ -129,24 +130,8 @@ describe('errorHandler', () => {
 		)
 	})
 
-	it('logs an unexpected error through the request logger when there is one', async () => {
-		const logger = { error: vi.fn() }
-
-		const logged = new Hono()
-
-		logged.use(async (c, next) => {
-			c.set('logger' as never, logger as never)
-
-			await next()
-		})
-
-		logged.get('/', () => {
-			throw new Error('Something broke')
-		})
-
-		logged.onError(errorHandler)
-
-		const res = await logged.request('/')
+	it('logs an unexpected error through the request logger', async () => {
+		const res = await app.request('/unexpected-error')
 
 		expect(res.status).toBe(500)
 

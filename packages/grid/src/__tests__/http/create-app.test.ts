@@ -1,4 +1,7 @@
+import { pino } from 'pino'
 import { createApp } from '../../http/create-app.js'
+
+const logger = pino({ level: 'silent' })
 
 describe('createApp', () => {
 	it('returns a configured app', () => {
@@ -6,6 +9,7 @@ describe('createApp', () => {
 			basePath: '/test',
 			title: 'Test Service',
 			description: 'A test service',
+			logger,
 		})
 
 		expect(app).toBeDefined()
@@ -16,6 +20,7 @@ describe('createApp', () => {
 			basePath: '/test',
 			title: 'Test Service',
 			description: 'A test service',
+			logger,
 		})
 
 		const res = await app.request('/test')
@@ -40,6 +45,7 @@ describe('createApp', () => {
 			basePath: '/api',
 			title: 'API',
 			description: 'Main API',
+			logger,
 		})
 
 		const res = await app.request('/api/openapi.json')
@@ -58,6 +64,7 @@ describe('createApp', () => {
 			basePath: '/api',
 			title: 'API',
 			description: 'Main API',
+			logger,
 		})
 
 		app.post('/api/echo', async (c) => c.text(await c.req.text()))
@@ -75,7 +82,7 @@ describe('createApp', () => {
 		const app = createApp({
 			basePath: '/test',
 			title: 'Test',
-			description: '',
+			logger,
 		})
 
 		app.get('/test/boom', () => {
@@ -95,7 +102,7 @@ describe('createApp', () => {
 		const app = createApp({
 			basePath: '/test',
 			title: 'Test',
-			description: '',
+			logger,
 		})
 
 		const res = await app.request('/test/nonexistent')
@@ -105,5 +112,31 @@ describe('createApp', () => {
 		const body = (await res.json()) as { error: string }
 
 		expect(body.error).toBe('Not Found')
+	})
+
+	it('matches a route with a trailing slash without a redirect', async () => {
+		const app = createApp({ basePath: '/test', title: 'Test', logger })
+
+		app.get('/test/thing', (c) => c.text('ok'))
+
+		const res = await app.request('/test/thing/')
+
+		expect(res.status).toBe(200)
+	})
+
+	it('sends no CORS headers unless asked to', async () => {
+		const app = createApp({ basePath: '/test', title: 'Test', logger })
+
+		const res = await app.request('/test', { headers: { Origin: 'https://example.com' } })
+
+		expect(res.headers.has('Access-Control-Allow-Origin')).toBe(false)
+	})
+
+	it('echoes a request ID', async () => {
+		const app = createApp({ basePath: '/test', title: 'Test', logger })
+
+		const res = await app.request('/test', { headers: { 'X-Request-Id': 'incoming-42' } })
+
+		expect(res.headers.get('X-Request-Id')).toBe('incoming-42')
 	})
 })

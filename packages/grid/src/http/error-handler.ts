@@ -13,21 +13,13 @@ export function errorBody(status: number, message: string, error?: string, code?
 	}
 }
 
-function logError<E extends Env>(c: Context<E>, err: Error, message: string) {
-	// The request logger, when the app has one, ties the error to its request ID.
-	const logger = (c.var as Partial<RequestLoggerEnv['Variables']>).logger
-
-	if (logger) logger.error({ err }, message)
-	else console.error(`${message}: ${err.message}`, err.stack)
-}
-
-export function errorHandler<E extends Env>(err: Error, c: Context<E>) {
+export function errorHandler<E extends RequestLoggerEnv>(err: Error, c: Context<E>) {
 	// Only an HTTPException is meant for the client. Another error that happens
 	// to carry a `status`, such as one from an SDK, stays internal.
 	if (err instanceof HTTPException) {
 		const status = err.status as ContentfulStatusCode
 
-		if (status >= 500) logError(c, err, 'request failed')
+		if (status >= 500) c.var.logger.error({ err }, 'request failed')
 
 		// An error with a string `code`, such as an auth error, names itself so a
 		// client can act on it without matching the message.
@@ -47,7 +39,7 @@ export function errorHandler<E extends Env>(err: Error, c: Context<E>) {
 		return res
 	}
 
-	logError(c, err, 'unhandled error')
+	c.var.logger.error({ err }, 'unhandled error')
 
 	return c.json(errorBody(500, 'An unexpected error occurred'), 500)
 }

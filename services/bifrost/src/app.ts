@@ -40,7 +40,6 @@ export function createBifrostApp() {
 	const app = createApp({
 		basePath: '/api',
 		title: 'Bifrost',
-		description: '',
 		cors: { origin: env.APP_ORIGINS, credentials: true },
 		logger: logger(),
 	})
