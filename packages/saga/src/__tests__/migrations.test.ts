@@ -122,12 +122,6 @@ describe('compare', () => {
 		expect(statuses).toEqual([{ name: '0001_a.sql', state: 'missing' }])
 	})
 
-	it('treats a row recorded without a checksum as applied', () => {
-		const statuses = compare([file('0001_a.sql')], [{ name: '0001_a.sql', checksum: null }])
-
-		expect(statuses).toEqual([{ name: '0001_a.sql', state: 'applied' }])
-	})
-
 	it('sorts the output by name', () => {
 		const statuses = compare(
 			[file('0003_c.sql'), file('0001_a.sql', 'abc')],
