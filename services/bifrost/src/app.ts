@@ -29,7 +29,7 @@ function limit(route: string, { rate, burst }: { rate: number; burst: number }):
 		rateLimit({
 			rate,
 			burst,
-			onLimited: (ip) => reportEvent('rate_limited', ip, { route }, 'bifrost'),
+			onLimited: (ip) => reportEvent({ type: 'rate_limited', ip, details: { route } }),
 		}),
 	)
 }

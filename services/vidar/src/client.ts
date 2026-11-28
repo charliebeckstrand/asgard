@@ -20,27 +20,42 @@ import { type CircuitBreaker, createCircuitBreaker } from './circuit-breaker.js'
 export interface VidarClientConfig {
 	vidarUrl?: string
 	vidarApiKey?: string
-	/**
-	 * When set, the circuit breaker reports state transitions through this
-	 * logger instead of console.{warn,info}. Pass the consuming service's
-	 * logger so breaker events share its `service` binding.
-	 */
-	logger?: Logger
+	/** Names the calling service on each event it reports. */
+	service: string
+	/** The breaker logs its transitions here, under the caller's own binding. */
+	logger: Logger
 }
 
 type VidarClient = ReturnType<typeof hc<VidarApp>>
 
-let _client: VidarClient | null = null
-let _breaker: CircuitBreaker | null = null
+interface Vidar {
+	client: VidarClient
+	breaker: CircuitBreaker
+	service: string
+}
+
+let vidar: Vidar | null = null
 
 export function configure(config: VidarClientConfig): void {
-	_client = config.vidarUrl
-		? hc<VidarApp>(config.vidarUrl, {
-				headers: config.vidarApiKey ? { Authorization: `Bearer ${config.vidarApiKey}` } : undefined,
-			})
+	vidar = config.vidarUrl
+		? {
+				client: hc<VidarApp>(config.vidarUrl, {
+					headers: config.vidarApiKey
+						? { Authorization: `Bearer ${config.vidarApiKey}` }
+						: undefined,
+				}),
+				breaker: createCircuitBreaker('vidar', { logger: config.logger }),
+				service: config.service,
+			}
 		: null
+}
 
-	_breaker = config.vidarUrl ? createCircuitBreaker('vidar', { logger: config.logger }) : null
+/** A ban check holds up the request it guards, so it gives up sooner. */
+const BAN_CHECK_TIMEOUT_MS = 3000
+const TIMEOUT_MS = 5000
+
+function timeout(ms = TIMEOUT_MS) {
+	return { init: { signal: AbortSignal.timeout(ms) } }
 }
 
 /**
@@ -52,28 +67,35 @@ function isVidarFault(status: number): boolean {
 }
 
 /**
- * Run an HTTP call against Vidar through the circuit breaker.
- * Returns null when Vidar isn't configured, the breaker is open, or the
- * call throws — callers fail open so a Vidar outage can't lock them out.
+ * Runs a call against Vidar through the circuit breaker. Rejects when Vidar
+ * isn't configured, the breaker is open, or the call throws.
  */
-async function callVidar<T>(fn: (client: VidarClient) => Promise<T>): Promise<T | null> {
-	const client = _client
-	const breaker = _breaker
+async function callVidar<T>(fn: (vidar: Vidar) => Promise<T>): Promise<T> {
+	const current = vidar
 
-	if (!client || !breaker) return null
+	if (!current) throw new Error('Vidar is not configured')
 
+	return current.breaker.execute(() => fn(current))
+}
+
+/**
+ * For the admin pages, which fail closed: an admin must see that Vidar is
+ * unconfigured, down or answering nonsense, so each of those is a 503.
+ */
+async function askVidar<T>(fn: (vidar: Vidar) => Promise<T>): Promise<T> {
 	try {
-		return await breaker.execute(() => fn(client))
+		return await callVidar(fn)
 	} catch {
-		return null
+		throw new HTTPException(503, { message: 'Security monitoring is unavailable' })
 	}
 }
 
+/** Null when Vidar can't answer, so the caller fails open. */
 async function checkIpBan(ip: string): Promise<CheckIpResponse | null> {
-	return callVidar(async (client) => {
+	return callVidar(async ({ client }) => {
 		const res = await client.vidar['check-ip'].$get(
 			{ query: { ip } },
-			{ init: { signal: AbortSignal.timeout(3000) } },
+			timeout(BAN_CHECK_TIMEOUT_MS),
 		)
 
 		if (isVidarFault(res.status)) throw new Error(`Vidar returned ${res.status}`)
@@ -82,63 +104,35 @@ async function checkIpBan(ip: string): Promise<CheckIpResponse | null> {
 		const parsed = CheckIpResponseSchema.safeParse(await res.json())
 
 		return parsed.success ? parsed.data : null
-	})
+	}).catch(() => null)
 }
 
 /**
- * Report a security event to Vidar.
- * Fire-and-forget — does not throw on failure.
- * Uses circuit breaker to avoid hammering an unresponsive Vidar.
+ * Reports a security event to Vidar. Fire-and-forget: it never throws, and a
+ * Vidar outage only loses the event.
  */
-export function reportEvent(
-	eventType: string,
-	ip: string,
-	details: Record<string, unknown> = {},
-	service = 'unknown',
-): void {
-	void callVidar(async (client) => {
+export function reportEvent(event: {
+	type: string
+	ip: string
+	details?: Record<string, unknown>
+}): void {
+	callVidar(async ({ client, service }) => {
 		const res = await client.vidar.events.$post(
-			{ json: { ip, event_type: eventType, details, service } },
-			{ init: { signal: AbortSignal.timeout(5000) } },
+			{
+				json: { ip: event.ip, event_type: event.type, details: event.details ?? {}, service },
+			},
+			timeout(),
 		)
 
 		if (isVidarFault(res.status)) throw new Error(`Vidar returned ${res.status}`)
-	})
-}
-
-const ADMIN_TIMEOUT_MS = 5000
-
-/**
- * Run a call for an admin page through the circuit breaker. Unlike
- * callVidar, it fails closed: an admin must see that Vidar is unconfigured,
- * down or answering nonsense, so each of those is a 503.
- */
-async function askVidar<T>(fn: (client: VidarClient) => Promise<T>): Promise<T> {
-	const client = _client
-	const breaker = _breaker
-
-	if (!client || !breaker) throw unavailable()
-
-	try {
-		return await breaker.execute(() => fn(client))
-	} catch {
-		throw unavailable()
-	}
-}
-
-function unavailable(): HTTPException {
-	return new HTTPException(503, { message: 'Security monitoring is unavailable' })
-}
-
-function init() {
-	return { init: { signal: AbortSignal.timeout(ADMIN_TIMEOUT_MS) } }
+	}).catch(() => {})
 }
 
 /** The newest threats, optionally only resolved or only open ones. */
 export function listThreats(resolved?: boolean): Promise<ThreatList> {
-	return askVidar(async (client) => {
-		const query = resolved === undefined ? {} : ({ resolved: resolved ? 'true' : 'false' } as const)
-		const res = await client.vidar.threats.$get({ query }, init())
+	return askVidar(async ({ client }) => {
+		const query = resolved === undefined ? {} : { resolved: String(resolved) }
+		const res = await client.vidar.threats.$get({ query }, timeout())
 
 		if (!res.ok) throw new Error(`Vidar returned ${res.status}`)
 
@@ -148,10 +142,10 @@ export function listThreats(resolved?: boolean): Promise<ThreatList> {
 
 /** Marks a threat handled, or reopens it. Null when there is no such threat. */
 export function resolveThreat(id: string, resolved: boolean): Promise<Threat | null> {
-	return askVidar(async (client) => {
+	return askVidar(async ({ client }) => {
 		const res = await client.vidar.threats[':id'].$patch(
 			{ param: { id }, json: { resolved } },
-			init(),
+			timeout(),
 		)
 
 		if (res.status === 404) return null
@@ -163,8 +157,8 @@ export function resolveThreat(id: string, resolved: boolean): Promise<Threat | n
 
 /** The bans in force. */
 export function listBans(): Promise<BanList> {
-	return askVidar(async (client) => {
-		const res = await client.vidar.bans.$get({}, init())
+	return askVidar(async ({ client }) => {
+		const res = await client.vidar.bans.$get({}, timeout())
 
 		if (!res.ok) throw new Error(`Vidar returned ${res.status}`)
 
@@ -174,8 +168,8 @@ export function listBans(): Promise<BanList> {
 
 /** Lifts the ban on `ip`. False when it wasn't banned. */
 export function removeBan(ip: string): Promise<boolean> {
-	return askVidar(async (client) => {
-		const res = await client.vidar.bans[':ip'].$delete({ param: { ip } }, init())
+	return askVidar(async ({ client }) => {
+		const res = await client.vidar.bans[':ip'].$delete({ param: { ip } }, timeout())
 
 		if (res.status === 404) return false
 		if (!res.ok) throw new Error(`Vidar returned ${res.status}`)

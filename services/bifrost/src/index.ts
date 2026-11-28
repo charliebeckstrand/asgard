@@ -40,6 +40,7 @@ const log = logger()
 configureVidar({
 	vidarUrl: env.VIDAR_URL,
 	vidarApiKey: env.VIDAR_API_KEY,
+	service: 'bifrost',
 	logger: log,
 })
 
@@ -71,7 +72,7 @@ configure({
 		github: oauthClient(env.OAUTH_GITHUB_CLIENT_ID, env.OAUTH_GITHUB_CLIENT_SECRET),
 		google: oauthClient(env.OAUTH_GOOGLE_CLIENT_ID, env.OAUTH_GOOGLE_CLIENT_SECRET),
 	},
-	onSecurityEvent: (event) => reportEvent(event.type, event.ip, event.details ?? {}, 'bifrost'),
+	onSecurityEvent: reportEvent,
 })
 
 // A key that can't read the stored secrets would break every authenticator app,
