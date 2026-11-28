@@ -16,7 +16,12 @@ export function isChanging(): boolean {
 	return changing > 0
 }
 
-export async function readDocument(userId: string, name: string): Promise<unknown> {
+export async function readDocument(userId: string, name: string, q?: unknown): Promise<unknown> {
+	// A read outside the transaction would take a second connection from the pool.
+	if (isChanging() && q !== transaction) {
+		throw new Error(`The read of ${name} inside a change must use its transaction`)
+	}
+
 	return documents.get(`${userId}:${name}`)
 }
 

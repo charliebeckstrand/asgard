@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import type { Queryable } from 'saga'
 import type { Place, PlaceDraft, StoredPlace, StoredVisit } from '../lib/schemas.js'
 import { readDocument } from './documents.js'
 import {
@@ -44,10 +45,10 @@ function draftPhotos(draft: PlaceDraft): string[] {
  * and keep the others as they are, so a record a stricter schema can't read
  * stays in the document instead of disappearing on the next write.
  */
-export async function storedPlaces(userId: string): Promise<StoredPlace[]> {
+export async function storedPlaces(userId: string, q?: Queryable): Promise<StoredPlace[]> {
 	const places: StoredPlace[] = []
 
-	for (const record of records(await readDocument(userId, 'places'))) {
+	for (const record of records(await readDocument(userId, 'places', q))) {
 		const place = readPlace(record)
 
 		if (place !== undefined) places.push(place)

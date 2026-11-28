@@ -1,3 +1,4 @@
+import type { Queryable } from 'saga'
 import type { VisitScope, Visits } from '../lib/schemas.js'
 import { changeDocument, readDocument } from './documents.js'
 import { storedPlaces } from './places.js'
@@ -47,8 +48,8 @@ function parseVisits(input: unknown): Visits {
  * a place in is a region they went to. Nothing is written until their first
  * change, which keeps these along with it.
  */
-async function seed(userId: string): Promise<Visits> {
-	const places = await storedPlaces(userId)
+async function seed(userId: string, q?: Queryable): Promise<Visits> {
+	const places = await storedPlaces(userId, q)
 
 	return parseVisits({
 		states: places.map((place) => place.state),
@@ -56,8 +57,8 @@ async function seed(userId: string): Promise<Visits> {
 	})
 }
 
-async function readVisits(userId: string, document: unknown): Promise<Visits> {
-	return document === undefined ? seed(userId) : parseVisits(document)
+async function readVisits(userId: string, document: unknown, q?: Queryable): Promise<Visits> {
+	return document === undefined ? seed(userId, q) : parseVisits(document)
 }
 
 /** Every visited region, each scope alphabetical. */
@@ -75,8 +76,8 @@ export function setVisit(
 	region: string,
 	visited: boolean,
 ): Promise<Visits | null> {
-	return changeDocument(userId, 'visits', async (document) => {
-		const held = await readVisits(userId, document)
+	return changeDocument(userId, 'visits', async (document, tx) => {
+		const held = await readVisits(userId, document, tx)
 
 		const regions = new Set(held[scope])
 

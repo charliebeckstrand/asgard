@@ -52,6 +52,14 @@ describe('predictions', () => {
 		expect(await listPicks(USER, 2026)).toEqual({ 1: { g1: pick('t1') } })
 	})
 
+	it('saves over a stored season that does not read as weeks', async () => {
+		documents.set(`${USER}:predictions`, { 2026: 'broken' })
+
+		await savePicks(USER, 2026, 1, { g1: pick('t1') })
+
+		expect(documents.get(`${USER}:predictions`)).toEqual({ 2026: { 1: { g1: pick('t1') } } })
+	})
+
 	it('lists every season for the export', async () => {
 		await savePicks(USER, 2025, 18, { g1: pick('t1') })
 
