@@ -1,4 +1,4 @@
-import { createHash, randomInt } from 'node:crypto'
+import { hash, randomInt } from 'node:crypto'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
 import type { Session, User } from 'skuld'
 import { getConfig } from './config.js'
@@ -201,9 +201,7 @@ export function deleteStaleFailedSteps(): Promise<number> {
 const RECOVERY_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
 
 function hashRecoveryCode(code: string): string {
-	return createHash('sha256')
-		.update(code.toLowerCase().replace(/[^a-z0-9]/g, ''))
-		.digest('hex')
+	return hash('sha256', code.toLowerCase().replace(/[^a-z0-9]/g, ''))
 }
 
 /**

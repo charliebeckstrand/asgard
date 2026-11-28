@@ -1,9 +1,8 @@
-import { randomBytes } from 'node:crypto'
 import { normalizeEmail, type User } from 'skuld'
 import { getConfig } from './config.js'
 import { hashNewPassword } from './credentials.js'
 import { AuthError } from './errors.js'
-import { hashToken } from './sessions.js'
+import { expiresIn, hashToken, randomToken } from './sessions.js'
 import type { Email, EmailLimits, EmailPurpose } from './types.js'
 
 export const VERIFY_EMAIL_TTL_SECONDS = 24 * 60 * 60
@@ -62,13 +61,13 @@ async function sendLink(
 ): Promise<boolean> {
 	const config = getConfig()
 
-	const token = randomBytes(32).toString('base64url')
+	const token = randomToken()
 
 	const created = await config.emailTokenRepository.createToken(
 		hashToken(token),
 		user.id,
 		email.purpose,
-		new Date(Date.now() + email.ttlSeconds * 1000),
+		expiresIn(email.ttlSeconds),
 		{
 			interval: EMAIL_INTERVAL_SECONDS,
 			email: { to: user.to, verified: user.verified },

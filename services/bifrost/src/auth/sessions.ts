@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto'
+import { hash, randomBytes } from 'node:crypto'
 import type { Session } from 'skuld'
 import { getConfig } from './config.js'
 
@@ -11,7 +11,17 @@ export const MAX_SESSIONS_PER_USER = 10
  * only their SHA-256, so a leaked table can't be replayed.
  */
 export function hashToken(token: string): string {
-	return createHash('sha256').update(token).digest('hex')
+	return hash('sha256', token)
+}
+
+/** 32 random bytes, as a token for a cookie or a link. */
+export function randomToken(): string {
+	return randomBytes(32).toString('base64url')
+}
+
+/** The time `seconds` from now. */
+export function expiresIn(seconds: number): Date {
+	return new Date(Date.now() + seconds * 1000)
 }
 
 /**
@@ -24,14 +34,12 @@ export async function createSession(
 	userId: string,
 	{ replacing, twoStep = false }: { replacing?: string; twoStep?: boolean } = {},
 ): Promise<{ token: string; session: Session }> {
-	const token = randomBytes(32).toString('base64url')
-
-	const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000)
+	const token = randomToken()
 
 	const session = await getConfig().sessionRepository.createSession(
 		hashToken(token),
 		userId,
-		expiresAt,
+		expiresIn(SESSION_TTL_SECONDS),
 		{
 			replacing: replacing ? hashToken(replacing) : undefined,
 			limit: MAX_SESSIONS_PER_USER,

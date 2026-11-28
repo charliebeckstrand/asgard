@@ -1,8 +1,8 @@
-import { createHash, randomBytes } from 'node:crypto'
+import { hash } from 'node:crypto'
 import { normalizeEmail } from 'skuld'
 import { getConfig, type OAuthClient } from './config.js'
 import { AuthError } from './errors.js'
-import { hashToken } from './sessions.js'
+import { expiresIn, hashToken, randomToken } from './sessions.js'
 import type { LinkedIdentity, OAuthIdentity, OAuthProvider, StoredOAuthState } from './types.js'
 
 export const OAUTH_STATE_TTL_SECONDS = 5 * 60
@@ -100,9 +100,9 @@ export async function startOAuth(
 ): Promise<{ state: string; url: string }> {
 	const { clientId } = client(provider)
 
-	const state = randomBytes(32).toString('base64url')
+	const state = randomToken()
 
-	const verifier = randomBytes(32).toString('base64url')
+	const verifier = randomToken()
 
 	await getConfig().oauthRepository.createState(
 		hashToken(state),
@@ -113,7 +113,7 @@ export async function startOAuth(
 			return_to: options.returnTo,
 			user_id: options.linkUserId ?? null,
 		},
-		new Date(Date.now() + OAUTH_STATE_TTL_SECONDS * 1000),
+		expiresIn(OAUTH_STATE_TTL_SECONDS),
 	)
 
 	const url = new URL(endpoints[provider].authorize)
@@ -124,7 +124,7 @@ export async function startOAuth(
 		response_type: 'code',
 		scope: endpoints[provider].scope,
 		state,
-		code_challenge: createHash('sha256').update(verifier).digest('base64url'),
+		code_challenge: hash('sha256', verifier, 'base64url'),
 		code_challenge_method: 'S256',
 	}).toString()
 

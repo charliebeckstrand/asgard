@@ -11,12 +11,9 @@ import {
 import type { Passkey, User } from 'skuld'
 import { getConfig } from './config.js'
 import { AuthError } from './errors.js'
+import { expiresIn } from './sessions.js'
 
 export const CHALLENGE_TTL_SECONDS = 5 * 60
-
-function challengeExpiry(): Date {
-	return new Date(Date.now() + CHALLENGE_TTL_SECONDS * 1000)
-}
 
 /**
  * Starts adding a passkey to `user`. Every passkey is discoverable and verifies
@@ -39,7 +36,11 @@ export async function createRegistrationOptions(
 		authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
 	})
 
-	await passkeyRepository.createChallenge(options.challenge, user.id, challengeExpiry())
+	await passkeyRepository.createChallenge(
+		options.challenge,
+		user.id,
+		expiresIn(CHALLENGE_TTL_SECONDS),
+	)
 
 	return options
 }
@@ -82,7 +83,7 @@ export async function createSignInOptions(): Promise<PublicKeyCredentialRequestO
 		userVerification: 'required',
 	})
 
-	await passkeyRepository.createChallenge(options.challenge, null, challengeExpiry())
+	await passkeyRepository.createChallenge(options.challenge, null, expiresIn(CHALLENGE_TTL_SECONDS))
 
 	return options
 }
@@ -105,7 +106,7 @@ export async function createSecondFactorOptions(
 		allowCredentials: existing.map(({ id, transports }) => ({ id, transports })),
 	})
 
-	await passkeyRepository.createChallenge(options.challenge, null, challengeExpiry())
+	await passkeyRepository.createChallenge(options.challenge, null, expiresIn(CHALLENGE_TTL_SECONDS))
 
 	return options
 }
