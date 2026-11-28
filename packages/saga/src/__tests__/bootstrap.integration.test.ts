@@ -8,7 +8,7 @@ beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
 	testDb = await startPostgres()
-}, 30_000)
+}, 60_000)
 
 afterAll(async () => {
 	await testDb?.stop()
