@@ -2,53 +2,11 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
 
-const {
-	mockFindSession,
-	mockGetFactors,
-	mockStartTotpSetup,
-	mockConfirmTotp,
-	mockDeleteTotp,
-	mockGenerateRecoveryCodes,
-	mockPassSecondStep,
-	mockSendSecurityNotice,
-	mockRecordActivity,
-} = vi.hoisted(() => ({
-	mockFindSession: vi.fn(),
-	mockGetFactors: vi.fn(),
-	mockStartTotpSetup: vi.fn(),
-	mockConfirmTotp: vi.fn(),
-	mockDeleteTotp: vi.fn(),
-	mockGenerateRecoveryCodes: vi.fn(),
-	mockPassSecondStep: vi.fn(),
-	mockSendSecurityNotice: vi.fn(),
-	mockRecordActivity: vi.fn(),
-}))
-
 import { AuthError } from '../../auth/errors.js'
 
-vi.mock('../../auth/index.js', async () => {
-	const errors =
-		await vi.importActual<typeof import('../../auth/errors.js')>('../../auth/errors.js')
+vi.mock('../../auth/index.js', { spy: true })
 
-	const mfa = await vi.importActual<typeof import('../../auth/mfa.js')>('../../auth/mfa.js')
-
-	return {
-		configure: vi.fn(),
-		getConfig: vi.fn(),
-		AuthError: errors.AuthError,
-		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
-		findSession: (...args: unknown[]) => mockFindSession(...args),
-		secondFactorMethods: mfa.secondFactorMethods,
-		getFactors: (...args: unknown[]) => mockGetFactors(...args),
-		startTotpSetup: (...args: unknown[]) => mockStartTotpSetup(...args),
-		confirmTotp: (...args: unknown[]) => mockConfirmTotp(...args),
-		deleteTotp: (...args: unknown[]) => mockDeleteTotp(...args),
-		generateRecoveryCodes: (...args: unknown[]) => mockGenerateRecoveryCodes(...args),
-		passSecondStep: (...args: unknown[]) => mockPassSecondStep(...args),
-		sendSecurityNotice: async (...args: unknown[]) => mockSendSecurityNotice(...args),
-		recordActivity: (...args: unknown[]) => mockRecordActivity(...args),
-	}
-})
+vi.mock('../../lib/repositories.js')
 
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
@@ -63,13 +21,34 @@ vi.mock('../../lib/db.js', () => ({
 	closePool: vi.fn(),
 }))
 
+import type { Session } from 'skuld'
 import { createBifrostApp } from '../../app.js'
+import * as auth from '../../auth/index.js'
+import { mfaRepository, sessionRepository } from '../../lib/repositories.js'
+
+const mockFindSession = vi.mocked(auth.findSession)
+
+const mockGetFactors = vi.mocked(mfaRepository.getFactors)
+
+const mockStartTotpSetup = vi.mocked(auth.startTotpSetup)
+
+const mockConfirmTotp = vi.mocked(auth.confirmTotp)
+
+const mockDeleteTotp = vi.mocked(auth.deleteTotp)
+
+const mockGenerateRecoveryCodes = vi.mocked(auth.generateRecoveryCodes)
+
+const mockPassSecondStep = vi.mocked(sessionRepository.passSecondStep)
+
+const mockSendSecurityNotice = vi.mocked(auth.sendSecurityNotice)
+
+const mockRecordActivity = vi.mocked(auth.recordActivity)
 
 const ORIGIN = 'http://localhost:3000'
 
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
-const session = {
+const session: Session = {
 	id: 'session-hash',
 	created_at: new Date().toISOString(),
 	expires_at: '2026-10-26T00:00:00.000Z',
@@ -99,6 +78,8 @@ describe('MFA routes', () => {
 		vi.resetAllMocks()
 
 		mockFindSession.mockResolvedValue(session)
+
+		mockConfirmTotp.mockResolvedValue()
 	})
 
 	it.each([

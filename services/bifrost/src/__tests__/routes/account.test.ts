@@ -6,47 +6,9 @@ const MIMIR_API_KEY = 'test-mimir-api-key-that-is-at-least-32-chars'
 
 stubServiceEnv({ MIMIR_URL, MIMIR_API_KEY })
 
-const {
-	mockFindSession,
-	mockGetFactors,
-	mockGetPasskeys,
-	mockGetIdentities,
-	mockGetActivity,
-	mockDeleteUserSessions,
-	mockDeleteUser,
-	mockSendAccountDeletedEmail,
-} = vi.hoisted(() => ({
-	mockFindSession: vi.fn(),
-	mockGetFactors: vi.fn(),
-	mockGetPasskeys: vi.fn(),
-	mockGetIdentities: vi.fn(),
-	mockGetActivity: vi.fn(),
-	mockDeleteUserSessions: vi.fn(),
-	mockDeleteUser: vi.fn(),
-	mockSendAccountDeletedEmail: vi.fn(),
-}))
+vi.mock('../../auth/index.js', { spy: true })
 
-vi.mock('../../auth/index.js', async () => {
-	const errors =
-		await vi.importActual<typeof import('../../auth/errors.js')>('../../auth/errors.js')
-
-	const mfa = await vi.importActual<typeof import('../../auth/mfa.js')>('../../auth/mfa.js')
-
-	return {
-		configure: vi.fn(),
-		getConfig: () => ({ userRepository: { deleteUser: mockDeleteUser } }),
-		AuthError: errors.AuthError,
-		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
-		findSession: (...args: unknown[]) => mockFindSession(...args),
-		secondFactorMethods: mfa.secondFactorMethods,
-		getFactors: (...args: unknown[]) => mockGetFactors(...args),
-		getPasskeys: (...args: unknown[]) => mockGetPasskeys(...args),
-		getIdentities: (...args: unknown[]) => mockGetIdentities(...args),
-		getActivity: (...args: unknown[]) => mockGetActivity(...args),
-		deleteUserSessions: (...args: unknown[]) => mockDeleteUserSessions(...args),
-		sendAccountDeletedEmail: async (...args: unknown[]) => mockSendAccountDeletedEmail(...args),
-	}
-})
+vi.mock('../../lib/repositories.js')
 
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
@@ -60,13 +22,37 @@ vi.mock('../../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
 }))
 
+import type { Session, User } from 'skuld'
 import { createBifrostApp } from '../../app.js'
+import * as auth from '../../auth/index.js'
+import {
+	mfaRepository,
+	oauthRepository,
+	sessionRepository,
+	userRepository,
+} from '../../lib/repositories.js'
+
+const mockFindSession = vi.mocked(auth.findSession)
+
+const mockGetFactors = vi.mocked(mfaRepository.getFactors)
+
+const mockGetPasskeys = vi.mocked(auth.getPasskeys)
+
+const mockGetIdentities = vi.mocked(oauthRepository.getIdentities)
+
+const mockGetActivity = vi.mocked(auth.getActivity)
+
+const mockDeleteUserSessions = vi.mocked(sessionRepository.deleteUserSessions)
+
+const mockDeleteUser = vi.mocked(userRepository.deleteUser)
+
+const mockSendAccountDeletedEmail = vi.mocked(auth.sendAccountDeletedEmail)
 
 const ORIGIN = 'http://localhost:3000'
 
 const app = createBifrostApp()
 
-const user = {
+const user: User = {
 	id: '00000000-0000-4000-8000-000000000001',
 	email: 'user@example.com',
 	name: null,
@@ -77,7 +63,7 @@ const user = {
 	updated_at: '2026-01-01T00:00:00.000Z',
 }
 
-const session = {
+const session: Session = {
 	id: 'session-hash',
 	created_at: new Date().toISOString(),
 	expires_at: '2026-10-26T00:00:00.000Z',
@@ -105,6 +91,12 @@ beforeEach(() => {
 	mockFindSession.mockResolvedValue(session)
 
 	mockGetFactors.mockResolvedValue(noFactors)
+
+	mockGetPasskeys.mockResolvedValue([])
+
+	mockGetIdentities.mockResolvedValue([])
+
+	mockGetActivity.mockResolvedValue([])
 
 	mockDeleteUser.mockResolvedValue(user)
 
@@ -174,7 +166,7 @@ describe('DELETE /auth/account', () => {
 
 		expect(res.status).toBe(204)
 
-		expect(mockDeleteUserSessions).toHaveBeenCalledWith(user.id, session.id)
+		expect(mockDeleteUserSessions).toHaveBeenCalledWith(user.id, { except: session.id })
 
 		const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
 

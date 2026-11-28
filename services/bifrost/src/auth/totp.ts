@@ -1,8 +1,8 @@
 import {
 	createCipheriv,
 	createDecipheriv,
-	createHash,
 	createHmac,
+	hash,
 	randomBytes,
 	timingSafeEqual,
 } from 'node:crypto'
@@ -94,7 +94,7 @@ export function totpUri(secret: Uint8Array, issuer: string, account: string): st
 // stored as IV (12 bytes) + tag (16 bytes) + ciphertext.
 
 function aesKey(key: string): Buffer {
-	return createHash('sha256').update(key).digest()
+	return hash('sha256', key, 'buffer')
 }
 
 export function encryptSecret(secret: Uint8Array, key: string): Buffer {

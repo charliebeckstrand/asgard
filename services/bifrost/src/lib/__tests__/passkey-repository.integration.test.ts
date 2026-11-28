@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto'
-import type { Pool } from 'pg'
+import { sql } from 'saga'
 import { isDockerAvailable } from 'vali/containers'
-import type { PasskeyRepository, UserRepository } from '../../auth/types.js'
 import { demote, promote } from '../admins.js'
+import type { PasskeyRepository } from '../passkey-repository.js'
 import { createPasskeyRepository } from '../passkey-repository.js'
+import type { UserRepository } from '../user-repository.js'
 import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 
 let testDb: TestDb
-let pool: Pool
 let users: UserRepository
 let passkeys: PasskeyRepository
 
@@ -16,8 +16,6 @@ beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
 	testDb = await startTestDb()
-
-	pool = testDb.pool
 
 	users = createUserRepository(testDb.db)
 
@@ -36,9 +34,7 @@ beforeEach(async () => {
 
 const inAMinute = () => new Date(Date.now() + 60_000)
 
-async function insertUser(email = `${randomUUID()}@x.dev`) {
-	return (await users.insertUser(email, 'h')).id
-}
+const insertUser = (email?: string) => testDb.insertUser({ email })
 
 async function addPasskey(userId: string, id = randomUUID()) {
 	await passkeys.insertPasskey(userId, {
@@ -52,11 +48,11 @@ async function addPasskey(userId: string, id = randomUUID()) {
 }
 
 async function verify(userId: string) {
-	await pool.query('UPDATE users SET is_verified = true WHERE id = $1', [userId])
+	await testDb.db.exec(sql`UPDATE users SET is_verified = true WHERE id = ${userId}`)
 }
 
 async function makeAdmin(userId: string) {
-	await pool.query("UPDATE users SET roles = '{user,admin}' WHERE id = $1", [userId])
+	await testDb.db.exec(sql`UPDATE users SET roles = '{user,admin}' WHERE id = ${userId}`)
 }
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
@@ -167,7 +163,7 @@ describeWithDocker('createPasskeyRepository (integration)', () => {
 
 			const id = await addPasskey(userId)
 
-			await pool.query('DELETE FROM users WHERE id = $1', [userId])
+			await testDb.db.exec(sql`DELETE FROM users WHERE id = ${userId}`)
 
 			expect(await passkeys.findPasskey(id)).toBeNull()
 		})
@@ -228,16 +224,15 @@ describeWithDocker('admins (integration)', () => {
 
 		await addPasskey(userId)
 
-		await pool.query(
-			"INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', $1, now() + interval '1 day')",
-			[userId],
+		await testDb.db.exec(
+			sql`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', ${userId}, now() + interval '1 day')`,
 		)
 
 		expect(await promote(testDb.db, ' Alice@X.dev ')).toBe('promoted')
 
 		expect(await roles(userId)).toEqual(['user', 'admin'])
 
-		const { rows } = await pool.query('SELECT 1 FROM sessions WHERE user_id = $1', [userId])
+		const rows = await testDb.db.many(sql`SELECT 1 FROM sessions WHERE user_id = ${userId}`)
 
 		expect(rows).toHaveLength(0)
 	})

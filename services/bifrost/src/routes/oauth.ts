@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 import { createRoute, z } from '@hono/zod-openapi'
-import { createRouter, errorResponse, HTTPException, jsonResponse } from 'grid'
+import { createRouter, errorResponse, jsonResponse } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import type { Context } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
@@ -8,7 +8,6 @@ import {
 	AuthError,
 	completeOAuth,
 	enabledProviders,
-	getIdentities,
 	OAuthFailure,
 	type OAuthProvider,
 	safeReturnTo,
@@ -18,11 +17,16 @@ import {
 // Read when the module loads, so they come from the module itself and not the
 // barrel that route tests mock.
 import { OAUTH_PROVIDERS, OAUTH_STATE_TTL_SECONDS } from '../auth/oauth.js'
-import { appOrigin } from '../lib/app-origin.js'
+import { recordChange } from '../lib/activity.js'
+import { requireAppOrigin } from '../lib/app-origin.js'
 import { logger } from '../lib/log.js'
-import { authorizeSignInChange, requireSession, type SessionEnv } from '../middleware/session.js'
-import { recordChange } from './activity.js'
-import { signIn } from './auth.js'
+import { oauthRepository } from '../lib/repositories.js'
+import {
+	authorizeSignInChange,
+	requireSession,
+	type SessionEnv,
+	signIn,
+} from '../middleware/session.js'
 
 // GitHub and Google sign-in. The browser goes to `/start`, then to the provider,
 // then back to `/callback`. Both answer with redirects, not JSON, since the
@@ -121,9 +125,7 @@ export const oauthRoutes = createRouter<SessionEnv>()
 	.openapi(listIdentitiesRoute, async (c) => {
 		const { user } = requireSession(c)
 
-		c.header('Cache-Control', 'private, no-store')
-
-		return c.json({ identities: await getIdentities(user.id) }, 200)
+		return c.json({ identities: await oauthRepository.getIdentities(user.id) }, 200)
 	})
 	.openapi(unlinkIdentityRoute, async (c) => {
 		const session = await authorizeSignInChange(c)
@@ -160,11 +162,7 @@ oauthRoutes.get('/:provider/start', async (c) => {
 
 	if (!provider.success) return c.notFound()
 
-	const origin = appOrigin(c)
-
-	if (!origin) {
-		throw new HTTPException(400, { message: 'Unknown app origin' })
-	}
+	const origin = requireAppOrigin(c)
 
 	try {
 		let linkUserId: string | undefined
@@ -185,12 +183,12 @@ oauthRoutes.get('/:provider/start', async (c) => {
 
 		return c.redirect(url, 302)
 	} catch (err) {
-		if (err instanceof AuthError) return c.redirect(withError(failed, err.code), 302)
+		if (!(err instanceof AuthError)) throw err
 
 		// No session to connect the account to.
-		if (err instanceof HTTPException) return c.redirect('/login', 302)
+		if (err.code === 'not_authenticated') return c.redirect('/login', 302)
 
-		throw err
+		return c.redirect(withError(failed, err.code), 302)
 	}
 })
 

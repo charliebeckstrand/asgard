@@ -1,7 +1,17 @@
+const { env } = vi.hoisted(() => ({ env: {} as Record<string, string | undefined> }))
+
+vi.mock('../../lib/env.js', () => ({ environment: () => env }))
+
+vi.mock('../../lib/repositories.js')
+
+vi.mock('vidar/client')
+
 import { createHash } from 'node:crypto'
 import type { User } from 'skuld'
+import { reportEvent } from 'vidar/client'
 import type { Mock } from 'vitest'
-import { type AuthSecurityEvent, configure } from '../config.js'
+import type { StoredOAuthState } from '../../lib/oauth-repository.js'
+import * as repositories from '../../lib/repositories.js'
 import {
 	completeOAuth,
 	enabledProviders,
@@ -11,16 +21,6 @@ import {
 	unlinkIdentity,
 } from '../oauth.js'
 import { hashToken } from '../sessions.js'
-import type {
-	ActivityRepository,
-	EmailTokenRepository,
-	MfaRepository,
-	OAuthRepository,
-	PasskeyRepository,
-	SessionRepository,
-	StoredOAuthState,
-	UserRepository,
-} from '../types.js'
 
 const IP = '203.0.113.1'
 
@@ -47,11 +47,9 @@ const signInState: StoredOAuthState = {
 	user_id: null,
 }
 
-let oauthRepository: { [K in keyof OAuthRepository]: Mock<OAuthRepository[K]> }
+const oauthRepository = vi.mocked(repositories.oauthRepository)
 
-let getUserById: Mock<UserRepository['getUserById']>
-
-let onSecurityEvent: Mock<(event: AuthSecurityEvent) => void>
+const getUserById = vi.mocked(repositories.userRepository.getUserById)
 
 let fetchMock: Mock<typeof fetch>
 
@@ -91,42 +89,28 @@ function githubAnswers(emails: unknown[]) {
 beforeEach(() => {
 	vi.resetAllMocks()
 
-	oauthRepository = {
-		createState: vi.fn(),
-		useState: vi.fn().mockResolvedValue(signInState),
-		deleteExpiredStates: vi.fn(),
-		findIdentityUser: vi.fn().mockResolvedValue(null),
-		createUserWithIdentity: vi.fn().mockResolvedValue({ userId: USER_ID }),
-		linkIdentity: vi.fn().mockResolvedValue('linked'),
-		getIdentities: vi.fn(),
-		unlinkIdentity: vi.fn().mockResolvedValue('deleted'),
-	}
+	Object.assign(env, {
+		OAUTH_GOOGLE_CLIENT_ID: 'google-id',
+		OAUTH_GOOGLE_CLIENT_SECRET: 'google-secret',
+		OAUTH_GITHUB_CLIENT_ID: 'github-id',
+		OAUTH_GITHUB_CLIENT_SECRET: 'github-secret',
+	})
 
-	getUserById = vi.fn().mockResolvedValue(user)
+	oauthRepository.useState.mockResolvedValue(signInState)
 
-	onSecurityEvent = vi.fn()
+	oauthRepository.findIdentityUser.mockResolvedValue(null)
+
+	oauthRepository.createUserWithIdentity.mockResolvedValue({ userId: USER_ID })
+
+	oauthRepository.linkIdentity.mockResolvedValue('linked')
+
+	oauthRepository.unlinkIdentity.mockResolvedValue('deleted')
+
+	getUserById.mockResolvedValue(user)
 
 	fetchMock = vi.fn()
 
 	vi.stubGlobal('fetch', fetchMock)
-
-	configure({
-		userRepository: { getUserById } as unknown as UserRepository,
-		sessionRepository: {} as SessionRepository,
-		passkeyRepository: {} as PasskeyRepository,
-		mfaRepository: {} as MfaRepository,
-		passkeys: { domain: 'ivoryimage.dev', origins: [ORIGIN] },
-		mfa: { issuer: 'ivoryimage.dev' },
-		oauthRepository,
-		emailTokenRepository: {} as EmailTokenRepository,
-		activityRepository: {} as ActivityRepository,
-		sendEmail: vi.fn(),
-		oauth: {
-			google: { clientId: 'google-id', clientSecret: 'google-secret' },
-			github: { clientId: 'github-id', clientSecret: 'github-secret' },
-		},
-		onSecurityEvent,
-	})
 })
 
 afterEach(() => {
@@ -135,19 +119,7 @@ afterEach(() => {
 
 describe('enabledProviders', () => {
 	it('lists only the providers with a client', () => {
-		configure({
-			userRepository: {} as UserRepository,
-			sessionRepository: {} as SessionRepository,
-			passkeyRepository: {} as PasskeyRepository,
-			mfaRepository: {} as MfaRepository,
-			passkeys: { domain: 'ivoryimage.dev', origins: [ORIGIN] },
-			mfa: { issuer: 'ivoryimage.dev' },
-			oauthRepository,
-			emailTokenRepository: {} as EmailTokenRepository,
-			activityRepository: {} as ActivityRepository,
-			sendEmail: vi.fn(),
-			oauth: { google: { clientId: 'id', clientSecret: 'secret' } },
-		})
+		env.OAUTH_GITHUB_CLIENT_ID = undefined
 
 		expect(enabledProviders()).toEqual(['google'])
 	})
@@ -217,19 +189,7 @@ describe('startOAuth', () => {
 	})
 
 	it('refuses a provider without a client', async () => {
-		configure({
-			userRepository: {} as UserRepository,
-			sessionRepository: {} as SessionRepository,
-			passkeyRepository: {} as PasskeyRepository,
-			mfaRepository: {} as MfaRepository,
-			passkeys: { domain: 'ivoryimage.dev', origins: [ORIGIN] },
-			mfa: { issuer: 'ivoryimage.dev' },
-			oauthRepository,
-			emailTokenRepository: {} as EmailTokenRepository,
-			activityRepository: {} as ActivityRepository,
-			sendEmail: vi.fn(),
-			oauth: {},
-		})
+		env.OAUTH_GOOGLE_CLIENT_SECRET = undefined
 
 		await expect(startOAuth('google', { origin: ORIGIN, returnTo: '/' })).rejects.toMatchObject({
 			code: 'oauth_unavailable',
@@ -290,11 +250,12 @@ describe('completeOAuth', () => {
 			email: 'alice@example.com',
 		})
 
-		expect(onSecurityEvent).toHaveBeenCalledWith({
-			type: 'registration',
-			ip: '203.0.113.1',
-			details: { email: 'Alice@Example.com', provider: 'google' },
-		})
+		expect(reportEvent).toHaveBeenCalledWith(
+			'registration',
+			'203.0.113.1',
+			{ email: 'Alice@Example.com', provider: 'google' },
+			'bifrost',
+		)
 	})
 
 	it('refuses a new Google account whose email is not verified', async () => {

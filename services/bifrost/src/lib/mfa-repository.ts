@@ -1,5 +1,17 @@
 import { type Db, type Queryable, type SqlFragment, sql } from 'saga'
-import type { Factors, MfaRepository, StoredTotp } from '../auth/types.js'
+
+/** The second factors of a user. Recovery codes only count while another factor is on. */
+export interface Factors {
+	passkeys: number
+	totp: boolean
+	recovery_codes: number
+}
+
+export interface StoredTotp {
+	secret: Uint8Array
+	last_step: number
+	confirmed: boolean
+}
 
 /** Passkeys plus a confirmed authenticator app. */
 export function countSecondFactors(q: Queryable, userId: string): Promise<number> {
@@ -43,9 +55,9 @@ export async function removeSecondFactor(
 	return 'deleted'
 }
 
-export function createMfaRepository(db: Db): MfaRepository {
+export function createMfaRepository(db: Db) {
 	return {
-		async getFactors(userId) {
+		async getFactors(userId: string) {
 			return db.one<Factors>(
 				sql`
 					SELECT
@@ -58,7 +70,7 @@ export function createMfaRepository(db: Db): MfaRepository {
 			)
 		},
 
-		async getTotp(userId) {
+		async getTotp(userId: string): Promise<StoredTotp | null> {
 			const row = await db.first<{ secret: Buffer; last_step: string; confirmed: boolean }>(
 				sql`
 					SELECT secret, last_step, confirmed_at IS NOT NULL AS confirmed
@@ -77,6 +89,7 @@ export function createMfaRepository(db: Db): MfaRepository {
 			} satisfies StoredTotp
 		},
 
+		/** The most recently added secret of any user, or null when no one has one. */
 		async getLatestSecret() {
 			const row = await db.first<{ secret: Buffer }>(
 				sql`SELECT secret FROM totp_secrets ORDER BY created_at DESC LIMIT 1`,
@@ -85,7 +98,8 @@ export function createMfaRepository(db: Db): MfaRepository {
 			return row ? new Uint8Array(row.secret) : null
 		},
 
-		async setPendingTotp(userId, secret) {
+		/** Stores an unconfirmed secret, replacing an earlier unconfirmed one. Refuses when one is confirmed. */
+		async setPendingTotp(userId: string, secret: Uint8Array) {
 			const written = await db.exec(
 				sql`
 					INSERT INTO totp_secrets (user_id, secret)
@@ -96,10 +110,11 @@ export function createMfaRepository(db: Db): MfaRepository {
 				`,
 			)
 
-			return written > 0 ? 'created' : 'exists'
+			return written > 0 ? ('created' as const) : ('exists' as const)
 		},
 
-		async confirmTotp(userId, step) {
+		/** Confirms the pending secret and records `step` as used. */
+		async confirmTotp(userId: string, step: number) {
 			const updated = await db.exec(
 				sql`
 					UPDATE totp_secrets
@@ -111,7 +126,8 @@ export function createMfaRepository(db: Db): MfaRepository {
 			return updated > 0
 		},
 
-		async useTotpStep(userId, step) {
+		/** Records `step` as used, unless it or a later one already was. */
+		async useTotpStep(userId: string, step: number) {
 			const updated = await db.exec(
 				sql`
 					UPDATE totp_secrets
@@ -123,7 +139,8 @@ export function createMfaRepository(db: Db): MfaRepository {
 			return updated > 0
 		},
 
-		async deleteTotp(userId) {
+		/** Refuses to delete the last second factor of an admin. */
+		async deleteTotp(userId: string) {
 			const where = sql`WHERE user_id = ${userId} AND confirmed_at IS NOT NULL`
 
 			return db.tx((tx) =>
@@ -136,7 +153,7 @@ export function createMfaRepository(db: Db): MfaRepository {
 			)
 		},
 
-		async replaceRecoveryCodes(userId, hashes) {
+		async replaceRecoveryCodes(userId: string, hashes: string[]) {
 			await db.tx(async (tx) => {
 				await tx.exec(sql`DELETE FROM recovery_codes WHERE user_id = ${userId}`)
 
@@ -149,7 +166,7 @@ export function createMfaRepository(db: Db): MfaRepository {
 			})
 		},
 
-		async useRecoveryCode(userId, hash) {
+		async useRecoveryCode(userId: string, hash: string) {
 			const deleted = await db.exec(
 				sql`DELETE FROM recovery_codes WHERE user_id = ${userId} AND code_hash = ${hash}`,
 			)
@@ -157,7 +174,12 @@ export function createMfaRepository(db: Db): MfaRepository {
 			return deleted > 0
 		},
 
-		async countFailedStep(userId, limit, waitSeconds) {
+		/**
+		 * Counts a second step of `userId` as failed until it passes, across all their
+		 * sessions. Past `limit`, one try is let through each `waitSeconds`; returns
+		 * false when this one must wait.
+		 */
+		async countFailedStep(userId: string, limit: number, waitSeconds: number) {
 			// The row lock orders concurrent tries, so each sees the count of the last.
 			const counted = await db.exec(
 				sql`
@@ -172,14 +194,17 @@ export function createMfaRepository(db: Db): MfaRepository {
 			return counted > 0
 		},
 
-		async clearFailedSteps(userId) {
+		async clearFailedSteps(userId: string) {
 			await db.exec(sql`DELETE FROM failed_steps WHERE user_id = ${userId}`)
 		},
 
-		async deleteStaleFailedSteps(seconds) {
+		/** Deletes the counts of users with no failed second step in the last `seconds`. */
+		async deleteStaleFailedSteps(seconds: number) {
 			return db.exec(
 				sql`DELETE FROM failed_steps WHERE last_failed_at <= now() - make_interval(secs => ${seconds})`,
 			)
 		},
 	}
 }
+
+export type MfaRepository = ReturnType<typeof createMfaRepository>

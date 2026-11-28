@@ -2,53 +2,11 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
 
-const {
-	mockFindSession,
-	mockGetPasskeys,
-	mockCreateRegistrationOptions,
-	mockRegisterPasskey,
-	mockDeletePasskey,
-	mockGetFactors,
-	mockPassSecondStep,
-	mockSendSecurityNotice,
-	mockRecordActivity,
-} = vi.hoisted(() => ({
-	mockFindSession: vi.fn(),
-	mockGetPasskeys: vi.fn(),
-	mockCreateRegistrationOptions: vi.fn(),
-	mockRegisterPasskey: vi.fn(),
-	mockDeletePasskey: vi.fn(),
-	mockGetFactors: vi.fn(),
-	mockPassSecondStep: vi.fn(),
-	mockSendSecurityNotice: vi.fn(),
-	mockRecordActivity: vi.fn(),
-}))
-
 import { AuthError } from '../../auth/errors.js'
 
-vi.mock('../../auth/index.js', async () => {
-	const errors =
-		await vi.importActual<typeof import('../../auth/errors.js')>('../../auth/errors.js')
+vi.mock('../../auth/index.js', { spy: true })
 
-	const mfa = await vi.importActual<typeof import('../../auth/mfa.js')>('../../auth/mfa.js')
-
-	return {
-		configure: vi.fn(),
-		getConfig: vi.fn(),
-		AuthError: errors.AuthError,
-		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
-		findSession: (...args: unknown[]) => mockFindSession(...args),
-		getPasskeys: (...args: unknown[]) => mockGetPasskeys(...args),
-		createRegistrationOptions: (...args: unknown[]) => mockCreateRegistrationOptions(...args),
-		registerPasskey: (...args: unknown[]) => mockRegisterPasskey(...args),
-		deletePasskey: (...args: unknown[]) => mockDeletePasskey(...args),
-		secondFactorMethods: mfa.secondFactorMethods,
-		getFactors: (...args: unknown[]) => mockGetFactors(...args),
-		passSecondStep: (...args: unknown[]) => mockPassSecondStep(...args),
-		sendSecurityNotice: async (...args: unknown[]) => mockSendSecurityNotice(...args),
-		recordActivity: (...args: unknown[]) => mockRecordActivity(...args),
-	}
-})
+vi.mock('../../lib/repositories.js')
 
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
@@ -62,13 +20,35 @@ vi.mock('../../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
 }))
 
+import type { PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/server'
+import type { Session } from 'skuld'
 import { createBifrostApp } from '../../app.js'
+import * as auth from '../../auth/index.js'
+import { mfaRepository, sessionRepository } from '../../lib/repositories.js'
+
+const mockFindSession = vi.mocked(auth.findSession)
+
+const mockGetPasskeys = vi.mocked(auth.getPasskeys)
+
+const mockCreateRegistrationOptions = vi.mocked(auth.createRegistrationOptions)
+
+const mockRegisterPasskey = vi.mocked(auth.registerPasskey)
+
+const mockDeletePasskey = vi.mocked(auth.deletePasskey)
+
+const mockGetFactors = vi.mocked(mfaRepository.getFactors)
+
+const mockPassSecondStep = vi.mocked(sessionRepository.passSecondStep)
+
+const mockSendSecurityNotice = vi.mocked(auth.sendSecurityNotice)
+
+const mockRecordActivity = vi.mocked(auth.recordActivity)
 
 const ORIGIN = 'http://localhost:3000'
 
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
-const session = {
+const session: Session = {
 	id: 'session-hash',
 	created_at: new Date().toISOString(),
 	expires_at: '2026-10-26T00:00:00.000Z',
@@ -237,7 +217,9 @@ describe('Passkeys routes', () => {
 	})
 
 	it('returns registration options for your account', async () => {
-		mockCreateRegistrationOptions.mockResolvedValueOnce({ challenge: 'abc' })
+		mockCreateRegistrationOptions.mockResolvedValueOnce({
+			challenge: 'abc',
+		} as PublicKeyCredentialCreationOptionsJSON)
 
 		const res = await app.request('/auth/passkeys/options', { method: 'POST', headers })
 
