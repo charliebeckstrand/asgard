@@ -170,8 +170,8 @@ describe('trips', () => {
 			expect(updated).toEqual({ ...trip, name: 'Steel City' })
 		})
 
-		it('does not replace a trip that is not there', async () => {
-			expect(await updateTrip(USER, 'nope', draft)).toBeNull()
+		it('refuses to replace a trip that is not there', async () => {
+			await expect(updateTrip(USER, 'nope', draft)).rejects.toMatchObject({ status: 404 })
 		})
 
 		it('refuses days that leave out one of its visits', async () => {
@@ -184,7 +184,9 @@ describe('trips', () => {
 				updateTrip(USER, trip.id, { ...draft, startsOn: '2026-09-26' }),
 			).rejects.toMatchObject({ status: 409, code: 'trip-days-exclude-visits' })
 
-			expect(await updateTrip(USER, trip.id, { ...draft, endsOn: '2026-09-25' })).not.toBeNull()
+			expect(await updateTrip(USER, trip.id, { ...draft, endsOn: '2026-09-25' })).toMatchObject({
+				endsOn: '2026-09-25',
+			})
 		})
 
 		it('deletes the photos it drops', async () => {
@@ -204,7 +206,7 @@ describe('trips', () => {
 				stops: [{ place: { ...place, visits: [visitOn('2026-09-26')] } }],
 			})
 
-			expect(await removeTrip(USER, trip.id)).toBe(true)
+			await removeTrip(USER, trip.id)
 
 			expect(await listTrips(USER)).toEqual([])
 
@@ -217,8 +219,8 @@ describe('trips', () => {
 			expect(mockDeletePhotos).toHaveBeenCalledExactlyOnceWith([saved('a')])
 		})
 
-		it('says when there was none', async () => {
-			expect(await removeTrip(USER, 'nope')).toBe(false)
+		it('refuses a trip that is not there', async () => {
+			await expect(removeTrip(USER, 'nope')).rejects.toMatchObject({ status: 404 })
 		})
 	})
 })

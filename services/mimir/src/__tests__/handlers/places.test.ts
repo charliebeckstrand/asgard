@@ -181,7 +181,7 @@ describe('places', () => {
 			Array.from({ length: MAX_PLACES }, () => ({})),
 		)
 
-		expect(await addPlace(USER, draft)).toBeNull()
+		await expect(addPlace(USER, draft)).rejects.toMatchObject({ status: 409 })
 	})
 
 	it('replaces a place, keeping its id and when it was added', async () => {
@@ -196,18 +196,20 @@ describe('places', () => {
 		expect(updated).toEqual({ ...place, name: 'Diner' })
 	})
 
-	it('does not replace a place that is not there', async () => {
-		expect(await updatePlace(USER, 'nope', draft)).toBeNull()
+	it('refuses to replace a place that is not there', async () => {
+		await expect(updatePlace(USER, 'nope', draft)).rejects.toMatchObject({ status: 404 })
 
 		expect(documents.has(`${USER}:places`)).toBe(false)
 	})
 
-	it('removes a place, and says when there was none', async () => {
+	it('removes a place, and refuses one that is not there', async () => {
 		const place = await addPlace(USER, draft)
 
-		expect(await removePlace(USER, place?.id ?? '')).toBe(true)
+		await removePlace(USER, place.id)
 
-		expect(await removePlace(USER, place?.id ?? '')).toBe(false)
+		expect(await listPlaces(USER)).toEqual([])
+
+		await expect(removePlace(USER, place.id)).rejects.toMatchObject({ status: 404 })
 	})
 
 	it('leaves out records it cannot read, but keeps them through writes', async () => {
@@ -398,7 +400,7 @@ describe('places', () => {
 			visits: [{ visitedAt: '2026-09-27', rating: 4, photos: [photo('a')] }],
 		})
 
-		expect(await removePlace(USER, place?.id ?? '')).toBe(true)
+		await removePlace(USER, place.id)
 
 		expect(await listPlaces(USER)).toEqual([])
 	})

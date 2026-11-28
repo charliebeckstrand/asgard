@@ -371,29 +371,7 @@ describe('writes', () => {
 		})
 	})
 
-	it('returns 409 at the cap', async () => {
-		mockAddPlace.mockResolvedValue(null)
-
-		const res = await post(draft)
-
-		expect(res.status).toBe(409)
-	})
-
-	it('returns 404 when replacing a place that is not there', async () => {
-		mockUpdatePlace.mockResolvedValue(null)
-
-		const res = await app.request('/api/places/nope', {
-			method: 'PUT',
-			headers: headers(),
-			body: JSON.stringify(draft),
-		})
-
-		expect(res.status).toBe(404)
-	})
-
 	it('removes a place', async () => {
-		mockRemovePlace.mockResolvedValue(true)
-
 		const res = await app.request('/api/places/place-1', {
 			method: 'DELETE',
 			headers: headers(),
@@ -757,21 +735,7 @@ describe('trips', () => {
 		expect(await res.json()).toMatchObject({ code: 'trip-days-exclude-visits' })
 	})
 
-	it('returns 404 when replacing or removing a trip that is not there', async () => {
-		mockUpdateTrip.mockResolvedValue(null)
-
-		mockRemoveTrip.mockResolvedValue(false)
-
-		expect((await send('PUT', '/api/trips/nope', trip)).status).toBe(404)
-
-		expect(
-			(await app.request('/api/trips/nope', { method: 'DELETE', headers: headers() })).status,
-		).toBe(404)
-	})
-
 	it('removes a trip', async () => {
-		mockRemoveTrip.mockResolvedValue(true)
-
 		const res = await app.request('/api/trips/trip-1', { method: 'DELETE', headers: headers() })
 
 		expect(res.status).toBe(204)

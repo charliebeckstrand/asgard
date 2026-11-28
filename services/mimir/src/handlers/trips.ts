@@ -12,7 +12,7 @@ import {
 	type TripStop,
 } from '../lib/schemas.js'
 import { readDocument } from './documents.js'
-import { MAX_PLACES, newestFirst } from './places.js'
+import { MAX_PLACES, newestFirst, tooManyPlaces } from './places.js'
 import {
 	changeTravel,
 	hasId,
@@ -32,6 +32,10 @@ import {
 
 /** The most trips one user keeps, so no account can fill the database. */
 export const MAX_TRIPS = 1000
+
+function noTrip(): HTTPException {
+	return new HTTPException(404, { message: 'No trip with that id' })
+}
 
 /** The visit a stop records. */
 function stopVisit(stop: TripStop) {
@@ -118,11 +122,7 @@ export async function createTrip(
 			changed.set(held.id, { ...held, visits })
 		}
 
-		if (places.length + added.length > MAX_PLACES) {
-			throw new HTTPException(409, {
-				message: `You can keep up to ${MAX_PLACES.toLocaleString('en-US')} places`,
-			})
-		}
+		if (places.length + added.length > MAX_PLACES) throw tooManyPlaces()
 
 		return {
 			result: { trip, places: [...added, ...changed.values()] },
@@ -149,17 +149,13 @@ export async function createTrip(
 
 /**
  * Replaces a trip, keeping its id and when it was added. Refuses days that
- * would leave one of its visits outside. `null` where no trip carries that id.
+ * would leave one of its visits outside. A 404 where no trip carries that id.
  */
-export async function updateTrip(
-	userId: string,
-	id: string,
-	draft: TripDraft,
-): Promise<Trip | null> {
+export async function updateTrip(userId: string, id: string, draft: TripDraft): Promise<Trip> {
 	const trip = await changeTravel(userId, draft.photos, (places, trips) => {
 		const held = trips.map(readTrip).find((stored) => stored?.id === id)
 
-		if (held === undefined) return { result: null }
+		if (held === undefined) throw noTrip()
 
 		const visits = places.flatMap((record) => readPlace(record)?.visits ?? [])
 
@@ -178,21 +174,21 @@ export async function updateTrip(
 		}
 	})
 
-	return trip && presentTrip(trip)
+	return presentTrip(trip)
 }
 
 /**
  * Removes a trip and its photos. Its visits stay on their places, without the
- * trip. `false` where no trip carried that id.
+ * trip. A 404 where no trip carried that id.
  */
-export function removeTrip(userId: string, id: string): Promise<boolean> {
+export function removeTrip(userId: string, id: string): Promise<void> {
 	return changeTravel(userId, [], (places, trips) => {
 		const kept = trips.filter((record) => !hasId(record, id))
 
-		if (kept.length === trips.length) return { result: false }
+		if (kept.length === trips.length) throw noTrip()
 
 		return {
-			result: true,
+			result: undefined,
 			places: places.map((record) => {
 				const place = readPlace(record)
 

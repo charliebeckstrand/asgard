@@ -1,5 +1,5 @@
 import { createRoute, z } from '@hono/zod-openapi'
-import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
+import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
 import { addPlace, listPlaces, MAX_PLACES, removePlace, updatePlace } from '../handlers/places.js'
 import { PlaceDraftSchema, PlaceListSchema, PlaceSchema } from '../lib/schemas.js'
 import { requireRole, requireUser, type UserEnv } from '../middleware/user.js'
@@ -89,33 +89,19 @@ placesRoutes.openapi(listPlacesRoute, async (c) => {
 })
 
 placesRoutes.openapi(addPlaceRoute, async (c) => {
-	const place = await addPlace(requireUser(c).id, c.req.valid('json'))
-
-	if (!place) {
-		throw new HTTPException(409, {
-			message: `You can keep up to ${MAX_PLACES.toLocaleString('en-US')} places`,
-		})
-	}
-
-	return c.json(place, 201)
+	return c.json(await addPlace(requireUser(c).id, c.req.valid('json')), 201)
 })
 
 placesRoutes.openapi(updatePlaceRoute, async (c) => {
 	const { id } = c.req.valid('param')
 
-	const place = await updatePlace(requireUser(c).id, id, c.req.valid('json'))
-
-	if (!place) throw new HTTPException(404, { message: 'No place with that id' })
-
-	return c.json(place, 200)
+	return c.json(await updatePlace(requireUser(c).id, id, c.req.valid('json')), 200)
 })
 
 placesRoutes.openapi(removePlaceRoute, async (c) => {
 	const { id } = c.req.valid('param')
 
-	if (!(await removePlace(requireUser(c).id, id))) {
-		throw new HTTPException(404, { message: 'No place with that id' })
-	}
+	await removePlace(requireUser(c).id, id)
 
 	return c.body(null, 204)
 })

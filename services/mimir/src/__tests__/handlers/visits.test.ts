@@ -60,8 +60,10 @@ describe('visits', () => {
 
 		documents.set(`${USER}:visits`, { states, countries: [] })
 
-		expect(await setVisit(USER, 'states', 'One more', true)).toBeNull()
+		await expect(setVisit(USER, 'states', 'One more', true)).rejects.toMatchObject({ status: 409 })
 
-		expect(await setVisit(USER, 'countries', 'France', true)).not.toBeNull()
+		expect(await setVisit(USER, 'countries', 'France', true)).toMatchObject({
+			countries: ['France'],
+		})
 	})
 })

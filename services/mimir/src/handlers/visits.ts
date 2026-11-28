@@ -1,3 +1,4 @@
+import { HTTPException } from 'grid'
 import type { Queryable } from 'saga'
 import type { VisitScope, Visits } from '../lib/schemas.js'
 import { changeDocument, readDocument } from './documents.js'
@@ -67,7 +68,7 @@ export async function listVisits(userId: string): Promise<Visits> {
 }
 
 /**
- * Marks one region visited or not, and answers with both scopes. `null` where
+ * Marks one region visited or not, and answers with both scopes. Refused where
  * marking it would pass {@link MAX_REGIONS} in its scope.
  */
 export function setVisit(
@@ -75,13 +76,17 @@ export function setVisit(
 	scope: VisitScope,
 	region: string,
 	visited: boolean,
-): Promise<Visits | null> {
+): Promise<Visits> {
 	return changeDocument(userId, 'visits', async (document, tx) => {
 		const held = await readVisits(userId, document, tx)
 
 		const regions = new Set(held[scope])
 
-		if (visited && !regions.has(region) && regions.size >= MAX_REGIONS) return { result: null }
+		if (visited && !regions.has(region) && regions.size >= MAX_REGIONS) {
+			throw new HTTPException(409, {
+				message: `You can mark up to ${MAX_REGIONS.toLocaleString('en-US')} regions`,
+			})
+		}
 
 		if (visited) regions.add(region)
 		else regions.delete(region)

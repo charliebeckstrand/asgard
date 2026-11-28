@@ -1,5 +1,5 @@
 import { createRoute, z } from '@hono/zod-openapi'
-import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
+import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
 import { listVisits, MAX_REGIONS, setVisit } from '../handlers/visits.js'
 import { RegionSchema, SetVisitSchema, VisitScopeSchema, VisitsSchema } from '../lib/schemas.js'
 import { requireRole, requireUser, type UserEnv } from '../middleware/user.js'
@@ -51,15 +51,7 @@ visitsRoutes.openapi(setVisitRoute, async (c) => {
 
 	const { visited } = c.req.valid('json')
 
-	const visits = await setVisit(requireUser(c).id, scope, region, visited)
-
-	if (!visits) {
-		throw new HTTPException(409, {
-			message: `You can mark up to ${MAX_REGIONS.toLocaleString('en-US')} regions`,
-		})
-	}
-
-	return c.json(visits, 200)
+	return c.json(await setVisit(requireUser(c).id, scope, region, visited), 200)
 })
 
 export { visitsRoutes }
