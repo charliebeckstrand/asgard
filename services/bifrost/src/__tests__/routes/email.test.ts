@@ -99,6 +99,8 @@ describe('Email routes', () => {
 			expect(res.status).toBe(200)
 
 			expect(await res.json()).toEqual({ turnstile_site_key: 'site-key' })
+
+			expect(res.headers.get('cache-control')).toBeNull()
 		})
 	})
 

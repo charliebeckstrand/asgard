@@ -128,15 +128,11 @@ mfaRoutes.openapi(getFactorsRoute, async (c) => {
 
 	const factors = await mfaRepository.getFactors(user.id)
 
-	c.header('Cache-Control', 'private, no-store')
-
 	return c.json({ enabled: secondFactorMethods(factors).length > 0, ...factors }, 200)
 })
 
 mfaRoutes.openapi(totpSetupRoute, async (c) => {
 	const session = await authorizeSignInChange(c)
-
-	c.header('Cache-Control', 'private, no-store')
 
 	return c.json(await startTotpSetup(session.user), 200)
 })
@@ -185,8 +181,6 @@ mfaRoutes.openapi(recoveryCodesRoute, async (c) => {
 		'recovery_codes_created',
 		'New recovery codes were made for your account',
 	)
-
-	c.header('Cache-Control', 'private, no-store')
 
 	return c.json({ codes }, 200)
 })

@@ -177,6 +177,13 @@ describe('Users routes', () => {
 		})
 	})
 
+	it('keeps the list out of every cache', async () => {
+		mockUserRepository.getUsers.mockResolvedValueOnce([sampleUser])
+
+		const res = await app.request('/api/users', { headers })
+
+		expect(res.headers.get('cache-control')).toBe('private, no-store')
+	})
 	describe('GET /api/users/:id', () => {
 		it('returns the user when found', async () => {
 			mockUserRepository.getUserById.mockResolvedValueOnce(sampleUser)

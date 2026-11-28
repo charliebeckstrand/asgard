@@ -95,8 +95,6 @@ export const accountRoutes = createRouter<SessionEnv>()
 			accountData(user, 'GET').then((res) => res.json() as Promise<object>),
 		])
 
-		c.header('Cache-Control', 'private, no-store')
-
 		return c.json(
 			{
 				exported_at: new Date().toISOString(),

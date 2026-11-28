@@ -125,8 +125,6 @@ export const oauthRoutes = createRouter<SessionEnv>()
 	.openapi(listIdentitiesRoute, async (c) => {
 		const { user } = requireSession(c)
 
-		c.header('Cache-Control', 'private, no-store')
-
 		return c.json({ identities: await oauthRepository.getIdentities(user.id) }, 200)
 	})
 	.openapi(unlinkIdentityRoute, async (c) => {

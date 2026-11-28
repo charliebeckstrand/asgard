@@ -343,14 +343,10 @@ export const authRoutes = createRouter<SessionEnv>()
 			throw new HTTPException(401, { message: 'Not authenticated' })
 		}
 
-		c.header('Cache-Control', 'private, no-store')
-
 		return c.json(current, 200)
 	})
 	.openapi(activityRoute, async (c) => {
 		const current = requireSession(c)
-
-		c.header('Cache-Control', 'private, no-store')
 
 		return c.json(toList(await getActivity(current.user.id)), 200)
 	})

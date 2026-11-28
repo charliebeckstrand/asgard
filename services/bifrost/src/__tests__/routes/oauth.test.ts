@@ -130,6 +130,14 @@ describe('OAuth routes', () => {
 
 			expect(await res.json()).toEqual({ providers: ['github'] })
 		})
+
+		it('leaves the answer cacheable, since Midgard caches it', async () => {
+			mockEnabledProviders.mockReturnValue(['github'])
+
+			const res = await app.request('/auth/oauth/providers')
+
+			expect(res.headers.get('cache-control')).toBeNull()
+		})
 	})
 
 	describe('GET /auth/oauth/:provider/start', () => {
