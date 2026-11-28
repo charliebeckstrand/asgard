@@ -1,7 +1,10 @@
-ARG NODE_VERSION=24
+# Keep the major in step with .nvmrc. Renovate updates both in one pull request.
+FROM node:26-alpine AS base
 
-FROM node:${NODE_VERSION}-alpine AS base
-RUN npm install -g pnpm@12.6.0
+# The pnpm in package.json's packageManager. Node 25 and later ship without
+# Corepack, so npm installs it.
+COPY package.json /tmp/package.json
+RUN npm install -g "pnpm@$(node -p 'require("/tmp/package.json").packageManager.split("@")[1]')"
 
 # The install steps below skip lifecycle scripts, since the image has no git for
 # lefthook's `prepare`. Without this, `pnpm run` checks the install first and,
