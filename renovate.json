@@ -3,7 +3,7 @@
 	"extends": ["config:recommended"],
 	"schedule": ["before 6am on monday"],
 	"semanticCommits": "enabled",
-	"rangeStrategy": "update-lockfile",
+	"rangeStrategy": "bump",
 	"minimumReleaseAge": "3 days",
 	"prConcurrentLimit": 5,
 	"lockFileMaintenance": {
