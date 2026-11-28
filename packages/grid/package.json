@@ -1,7 +1,7 @@
 {
 	"name": "grid",
 	"version": "0.1.0",
-	"description": "Shared Hono service utilities — middleware, schemas, error handling, and OpenAPI config",
+	"description": "The service kit: the Hono app with OpenAPI docs, errors, logging, health, environment and lifecycle",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./src/index.ts",

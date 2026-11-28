@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createTempDir } from 'vali/fixtures'
-import { syncEnv } from '../env/sync.js'
+import { syncEnv } from '../../env/sync.js'
 
 async function writeManifest(
 	root: string,

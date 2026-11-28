@@ -10,7 +10,7 @@ const ServiceStatusSchema = z.object({
 
 type ServiceStatus = z.infer<typeof ServiceStatusSchema>
 
-export const HealthResponseSchema = z
+const HealthResponseSchema = z
 	.object({
 		status: HealthStatusSchema,
 		version: z.string(),
@@ -18,8 +18,6 @@ export const HealthResponseSchema = z
 		services: z.record(z.string(), ServiceStatusSchema),
 	})
 	.openapi('HealthResponse')
-
-export type HealthResponse = z.infer<typeof HealthResponseSchema>
 
 // The commit the running build came from. App Platform sets COMMIT_HASH; anywhere
 // else the build is local.

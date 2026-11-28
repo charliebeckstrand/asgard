@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createTempDir } from 'vali/fixtures'
-import { discoverManifests, findWorkspaceRoot } from '../env/manifest.js'
+import { discoverManifests, findWorkspaceRoot } from '../../env/manifest.js'
 
 describe('findWorkspaceRoot', () => {
 	it('walks up to a directory containing pnpm-workspace.yaml', async () => {

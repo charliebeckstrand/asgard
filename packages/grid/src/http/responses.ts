@@ -6,7 +6,7 @@ import { ErrorSchema } from 'skuld'
  *
  *     request: { body: jsonRequest(CreateUserSchema) }
  */
-export const jsonRequest = <S extends z.ZodTypeAny>(schema: S) =>
+export const jsonRequest = <S extends z.ZodType>(schema: S) =>
 	({
 		content: { 'application/json': { schema } },
 		required: true,
@@ -17,7 +17,7 @@ export const jsonRequest = <S extends z.ZodTypeAny>(schema: S) =>
  *
  *     responses: { 200: jsonResponse(UserSchema, 'User found') }
  */
-export const jsonResponse = <S extends z.ZodTypeAny>(schema: S, description: string) =>
+export const jsonResponse = <S extends z.ZodType>(schema: S, description: string) =>
 	({
 		content: { 'application/json': { schema } },
 		description,
