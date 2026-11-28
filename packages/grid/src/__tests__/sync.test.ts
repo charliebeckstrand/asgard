@@ -185,6 +185,24 @@ describe('syncEnv', () => {
 		await tmp.cleanup()
 	})
 
+	it('refuses a secrets cache it cannot parse instead of replacing it', async () => {
+		const tmp = await createTempDir('grid-sync-')
+
+		await writeManifest(tmp.path, 'services', 'alpha', {
+			name: 'alpha',
+			port: 4000,
+			vars: { TOKEN: { type: 'secret' } },
+		})
+
+		await writeFile(join(tmp.path, '.secrets.json'), '{ not json')
+
+		expect(() => syncEnv({ workspaceRoot: tmp.path })).toThrow(/is not valid JSON/)
+
+		expect(await readFile(join(tmp.path, '.secrets.json'), 'utf-8')).toBe('{ not json')
+
+		await tmp.cleanup()
+	})
+
 	it('throws when no manifests are discovered', async () => {
 		const tmp = await createTempDir('grid-sync-')
 

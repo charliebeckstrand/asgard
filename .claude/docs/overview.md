@@ -29,7 +29,7 @@ Services in `services/`. Each has `manifest.json`, `migrations/`, `src/index.ts`
 
 ## Environment
 
-Each service's `.env` is generated from its `manifest.json` and the secrets cache (`.secrets.json`, git-ignored). Change the manifest, never the `.env`. `pnpm env:init` writes the files and `pnpm env:rotate` makes new secrets. A new variable goes in both `manifest.json` and `src/lib/env.ts`.
+Each service's `.env` is generated from its `manifest.json` and the secrets cache (`.secrets.json`, git-ignored). Change the manifest, never the `.env`. `pnpm env:init` writes the files, `pnpm env:rotate` makes every secret again, and `pnpm env:rotate MFA_ENCRYPTION_KEY` only the ones named. A new variable goes in both `manifest.json` and `src/lib/env.ts`.
 
 ## Deploy
 
