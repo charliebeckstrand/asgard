@@ -458,6 +458,22 @@ describe('rate limit', () => {
 
 		expect((await app.request('/api/places', { headers: headers() })).status).toBe(200)
 	})
+
+	it('does not limit readers with no user as one', async () => {
+		mockReadNumbersBoard.mockResolvedValue({ players: 0, entries: [] })
+
+		const statuses: number[] = []
+
+		for (let i = 0; i < 61; i++) {
+			const res = await app.request('/api/games/numbers/daily?date=20261116&mode=solo', {
+				headers: headers(null),
+			})
+
+			statuses.push(res.status)
+		}
+
+		expect(statuses.every((status) => status === 200)).toBe(true)
+	})
 })
 
 describe('OpenAPI', () => {

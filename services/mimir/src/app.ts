@@ -1,5 +1,7 @@
 import { createApp } from 'grid'
 import { rateLimit } from 'grid/middleware'
+import type { MiddlewareHandler } from 'hono'
+import { except } from 'hono/combine'
 
 import { logger } from './lib/log.js'
 import { apiKeyAuth } from './middleware/api-key.js'
@@ -27,30 +29,16 @@ export function createMimirApp() {
 		logger: logger(),
 	})
 
-	const auth = apiKeyAuth()
-
-	app.use(`${BASE_PATH}/*`, async (c, next) => {
-		if (c.req.path === HEALTH_PATH) return next()
-
-		return auth(c, next)
-	})
-
 	// Per user, not per address: Midgard's server reads for its pages, so many
 	// users share its address. A page load reads a few lists, and each change is
-	// one request. Sixty, then two a second.
+	// one request. Sixty, then two a second. A read of a public board can come with
+	// no user, and has none to count by, so it isn't limited here.
 	const limit = rateLimit({ rate: 2, burst: 60, key: userKey })
 
-	for (const path of [
-		`${BASE_PATH}/account`,
-		`${BASE_PATH}/places/*`,
-		`${BASE_PATH}/visits/*`,
-		`${BASE_PATH}/trips/*`,
-		`${BASE_PATH}/photos/*`,
-		`${BASE_PATH}/predictions/*`,
-		`${BASE_PATH}/games/*`,
-	]) {
-		app.use(path, forwardedUser(), limit)
-	}
+	const limitUser: MiddlewareHandler<UserEnv> = (c, next) =>
+		c.get('user') ? limit(c, next) : next()
+
+	app.use(`${BASE_PATH}/*`, except(HEALTH_PATH, apiKeyAuth(), forwardedUser(), limitUser))
 
 	return app
 		.route(BASE_PATH, health)
