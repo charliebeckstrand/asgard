@@ -1,5 +1,5 @@
 export type { ConnectionOptions } from './connection.js'
-export { createDb, type Db, type DbConfig, NoRowsError, type Queryable } from './db.js'
+export { createDb, type Db, type DbConfig, type Queryable } from './db.js'
 export {
 	createMigration,
 	MigrationError,

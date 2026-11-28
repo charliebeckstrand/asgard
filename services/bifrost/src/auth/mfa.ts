@@ -1,7 +1,10 @@
-import { createHash, randomInt } from 'node:crypto'
+import { hash, randomInt } from 'node:crypto'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
 import type { Session, User } from 'skuld'
-import { getConfig } from './config.js'
+import { reportEvent } from 'vidar/client'
+import { environment } from '../lib/env.js'
+import type { Factors } from '../lib/mfa-repository.js'
+import { mfaRepository, sessionRepository } from '../lib/repositories.js'
 import { AuthError } from './errors.js'
 import { verifyPasskey } from './passkeys.js'
 import {
@@ -12,7 +15,6 @@ import {
 	matchTotp,
 	totpUri,
 } from './totp.js'
-import type { Factors } from './types.js'
 
 export const MAX_FAILED_STEPS = 5
 
@@ -30,10 +32,6 @@ export type SecondFactorProof =
 	| { passkey: AuthenticationResponseJSON }
 	| { totp: string }
 	| { recovery_code: string }
-
-export function getFactors(userId: string): Promise<Factors> {
-	return getConfig().mfaRepository.getFactors(userId)
-}
 
 /** The methods that can finish a sign-in, or none when two-step sign-in is off. */
 export function secondFactorMethods(factors: Factors): SecondFactorMethod[] {
@@ -60,11 +58,9 @@ export async function verifySession(
 	proof: SecondFactorProof,
 	ip: string,
 ): Promise<void> {
-	const { sessionRepository, mfaRepository, onSecurityEvent } = getConfig()
-
 	const userId = session.user.id
 
-	if (secondFactorMethods(await getFactors(userId)).length === 0) {
+	if (secondFactorMethods(await mfaRepository.getFactors(userId)).length === 0) {
 		throw new AuthError('no_second_factor', 'Add a passkey or an authenticator app first')
 	}
 
@@ -80,7 +76,7 @@ export async function verifySession(
 		return
 	}
 
-	onSecurityEvent?.({
+	reportEvent({
 		type: 'login_failed',
 		ip,
 		details: { user_id: userId, method: Object.keys(proof)[0] },
@@ -94,8 +90,6 @@ export async function verifySession(
 }
 
 async function checkProof(userId: string, proof: SecondFactorProof): Promise<boolean> {
-	const { mfaRepository } = getConfig()
-
 	if ('passkey' in proof) {
 		return (await verifyPasskey(proof.passkey)) === userId
 	}
@@ -120,16 +114,16 @@ async function checkProof(userId: string, proof: SecondFactorProof): Promise<boo
  * the old version keeps serving, instead of breaking every authenticator app.
  */
 export async function checkMfaKey(): Promise<string | null> {
-	const { mfaRepository, mfa } = getConfig()
-
 	const secret = await mfaRepository.getLatestSecret()
 
 	if (!secret) return null
 
-	if (!mfa.key) return 'MFA_ENCRYPTION_KEY is unset, but authenticator-app secrets exist'
+	const key = environment().MFA_ENCRYPTION_KEY
+
+	if (!key) return 'MFA_ENCRYPTION_KEY is unset, but authenticator-app secrets exist'
 
 	try {
-		decryptSecret(secret, mfa.key)
+		decryptSecret(secret, key)
 
 		return null
 	} catch {
@@ -138,7 +132,7 @@ export async function checkMfaKey(): Promise<string | null> {
 }
 
 function mfaKey(): string {
-	const { key } = getConfig().mfa
+	const key = environment().MFA_ENCRYPTION_KEY
 
 	if (!key) {
 		throw new AuthError('mfa_unavailable', 'Authenticator apps are not set up on this server')
@@ -152,8 +146,6 @@ function mfaKey(): string {
  * {@link confirmTotp}, and a new call replaces a pending one.
  */
 export async function startTotpSetup(user: User): Promise<{ secret: string; uri: string }> {
-	const { mfaRepository, mfa } = getConfig()
-
 	const secret = generateTotpSecret()
 
 	const result = await mfaRepository.setPendingTotp(user.id, encryptSecret(secret, mfaKey()))
@@ -162,13 +154,14 @@ export async function startTotpSetup(user: User): Promise<{ secret: string; uri:
 		throw new AuthError('totp_exists', 'Remove the authenticator app before adding another')
 	}
 
-	return { secret: base32Encode(secret), uri: totpUri(secret, mfa.issuer, user.email) }
+	return {
+		secret: base32Encode(secret),
+		uri: totpUri(secret, environment().PASSKEY_DOMAIN, user.email),
+	}
 }
 
 /** Turns on the pending authenticator app once it shows a working code. */
 export async function confirmTotp(userId: string, code: string): Promise<void> {
-	const { mfaRepository } = getConfig()
-
 	const totp = await mfaRepository.getTotp(userId)
 
 	if (!totp || totp.confirmed) {
@@ -183,7 +176,7 @@ export async function confirmTotp(userId: string, code: string): Promise<void> {
 }
 
 export async function deleteTotp(userId: string): Promise<void> {
-	const result = await getConfig().mfaRepository.deleteTotp(userId)
+	const result = await mfaRepository.deleteTotp(userId)
 
 	if (result === 'not_found') {
 		throw new AuthError('totp_not_found', 'No authenticator app is set up')
@@ -195,15 +188,13 @@ export async function deleteTotp(userId: string): Promise<void> {
 }
 
 export function deleteStaleFailedSteps(): Promise<number> {
-	return getConfig().mfaRepository.deleteStaleFailedSteps(FAILED_STEP_TTL_SECONDS)
+	return mfaRepository.deleteStaleFailedSteps(FAILED_STEP_TTL_SECONDS)
 }
 
 const RECOVERY_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
 
 function hashRecoveryCode(code: string): string {
-	return createHash('sha256')
-		.update(code.toLowerCase().replace(/[^a-z0-9]/g, ''))
-		.digest('hex')
+	return hash('sha256', code.toLowerCase().replace(/[^a-z0-9]/g, ''))
 }
 
 /**
@@ -211,8 +202,6 @@ function hashRecoveryCode(code: string): string {
  * Each is ten characters (about 49 bits), written as two groups of five.
  */
 export async function generateRecoveryCodes(userId: string): Promise<string[]> {
-	const { mfaRepository } = getConfig()
-
 	if (secondFactorMethods(await mfaRepository.getFactors(userId)).length === 0) {
 		throw new AuthError('no_second_factor', 'Add a passkey or an authenticator app first')
 	}

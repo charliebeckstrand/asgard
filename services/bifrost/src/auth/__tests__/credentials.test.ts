@@ -1,8 +1,18 @@
+vi.mock('../../lib/repositories.js')
+
+vi.mock('../../lib/turnstile.js')
+
+vi.mock('../../lib/breached-passwords.js')
+
+vi.mock('vidar/client')
+
 import { hash } from '@node-rs/argon2'
 import type { User } from 'skuld'
-import { configure, getConfig } from '../config.js'
+import { reportEvent } from 'vidar/client'
+import { isBreachedPassword } from '../../lib/breached-passwords.js'
+import { userRepository } from '../../lib/repositories.js'
+import { turnstile } from '../../lib/turnstile.js'
 import {
-	AuthError,
 	authenticateUser,
 	checkTurnstile,
 	FAILED_LOGIN_WAIT_SECONDS,
@@ -10,16 +20,7 @@ import {
 	MAX_FAILED_LOGINS,
 	registerUser,
 } from '../credentials.js'
-import type {
-	ActivityRepository,
-	CredentialsRow,
-	EmailTokenRepository,
-	MfaRepository,
-	OAuthRepository,
-	PasskeyRepository,
-	SessionRepository,
-	UserRepository,
-} from '../types.js'
+import { AuthError } from '../errors.js'
 
 const IP = '203.0.113.1'
 
@@ -34,59 +35,33 @@ const TEST_USER: User = {
 	updated_at: '2024-01-01T00:00:00Z',
 }
 
+const mockRepo = vi.mocked(userRepository)
+
 let hashedPassword: string
 
-let mockRepo: UserRepository
-
-let mockSessionRepo: SessionRepository
-
 beforeAll(async () => {
-	hashedPassword = await hash('correct-password', { algorithm: 2 })
+	hashedPassword = await hash('correct-password')
 })
 
 beforeEach(() => {
-	mockRepo = {
-		insertUser: vi.fn().mockResolvedValue(TEST_USER),
-		getCredentialsByEmail: vi.fn().mockResolvedValue({
-			id: TEST_USER.id,
-			hashed_password: hashedPassword,
-			is_active: true,
-			is_verified: true,
-		} satisfies CredentialsRow),
-		getUsers: vi.fn().mockResolvedValue([]),
-		getUserById: vi.fn().mockResolvedValue(TEST_USER),
-		setUserActive: vi.fn().mockResolvedValue(TEST_USER),
-		deleteUser: vi.fn().mockResolvedValue(TEST_USER),
-		countFailedLogin: vi.fn().mockResolvedValue(true),
-		clearFailedLogins: vi.fn(),
-		deleteStaleFailedLogins: vi.fn(),
-		countSignUp: vi.fn().mockResolvedValue(true),
-		deleteOldSignUps: vi.fn(),
-	}
+	vi.resetAllMocks()
 
-	mockSessionRepo = {
-		createSession: vi.fn(),
-		findSession: vi.fn(),
-		deleteSession: vi.fn(),
-		deleteUserSessions: vi.fn(),
-		deleteExpiredSessions: vi.fn(),
-		passSecondStep: vi.fn(),
-		failSecondStep: vi.fn(),
-	}
+	mockRepo.insertUser.mockResolvedValue(TEST_USER)
 
-	configure({
-		userRepository: mockRepo,
-		sessionRepository: mockSessionRepo,
-		passkeyRepository: {} as PasskeyRepository,
-		passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
-		mfaRepository: {} as MfaRepository,
-		mfa: { issuer: 'localhost' },
-		oauthRepository: {} as OAuthRepository,
-		emailTokenRepository: {} as EmailTokenRepository,
-		activityRepository: {} as ActivityRepository,
-		sendEmail: vi.fn(),
-		oauth: {},
+	mockRepo.getCredentialsByEmail.mockResolvedValue({
+		id: TEST_USER.id,
+		hashed_password: hashedPassword,
+		is_active: true,
+		is_verified: true,
 	})
+
+	mockRepo.countFailedLogin.mockResolvedValue(true)
+
+	mockRepo.countSignUp.mockResolvedValue(true)
+
+	vi.mocked(turnstile).mockReturnValue(null)
+
+	vi.mocked(isBreachedPassword).mockResolvedValue(false)
 })
 
 describe('AuthError', () => {
@@ -124,7 +99,7 @@ describe('authenticateUser', () => {
 	})
 
 	it('throws invalid_credentials for unknown email', async () => {
-		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue(null)
+		mockRepo.getCredentialsByEmail.mockResolvedValue(null)
 
 		await expect(authenticateUser('nobody@example.com', 'any-password', IP)).rejects.toThrow(
 			AuthError,
@@ -132,7 +107,7 @@ describe('authenticateUser', () => {
 	})
 
 	it('refuses a password for an account made with GitHub or Google', async () => {
-		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
+		mockRepo.getCredentialsByEmail.mockResolvedValue({
 			id: TEST_USER.id,
 			hashed_password: null,
 			is_active: true,
@@ -147,7 +122,7 @@ describe('authenticateUser', () => {
 	})
 
 	it('throws account_inactive for inactive user', async () => {
-		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
+		mockRepo.getCredentialsByEmail.mockResolvedValue({
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: false,
@@ -164,7 +139,7 @@ describe('authenticateUser', () => {
 	})
 
 	it('accepts a correct password for an admin', async () => {
-		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
+		mockRepo.getCredentialsByEmail.mockResolvedValue({
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
@@ -177,7 +152,7 @@ describe('authenticateUser', () => {
 	})
 
 	it('reports invalid_credentials for an admin with a wrong password', async () => {
-		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
+		mockRepo.getCredentialsByEmail.mockResolvedValue({
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: true,
@@ -189,31 +164,16 @@ describe('authenticateUser', () => {
 		expect((err as AuthError).code).toBe('invalid_credentials')
 	})
 
-	it('calls onSecurityEvent on failed login', async () => {
-		const onSecurityEvent = vi.fn()
-
-		configure({
-			userRepository: mockRepo,
-			sessionRepository: mockSessionRepo,
-			passkeyRepository: {} as PasskeyRepository,
-			passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
-			mfaRepository: {} as MfaRepository,
-			mfa: { issuer: 'localhost' },
-			oauthRepository: {} as OAuthRepository,
-			emailTokenRepository: {} as EmailTokenRepository,
-			activityRepository: {} as ActivityRepository,
-			sendEmail: vi.fn(),
-			oauth: {},
-			onSecurityEvent,
-		})
-
-		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue(null)
+	it('reports a failed login to Vidar', async () => {
+		mockRepo.getCredentialsByEmail.mockResolvedValue(null)
 
 		await authenticateUser('alice@example.com', 'wrong', '1.2.3.4').catch(() => {})
 
-		expect(onSecurityEvent).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'login_failed', ip: '1.2.3.4' }),
-		)
+		expect(reportEvent).toHaveBeenCalledWith({
+			type: 'login_failed',
+			ip: '1.2.3.4',
+			details: { email: 'alice@example.com' },
+		})
 	})
 })
 
@@ -229,7 +189,7 @@ describe('failed login limit', () => {
 	})
 
 	it('refuses a try that must wait without checking the password', async () => {
-		vi.mocked(mockRepo.countFailedLogin).mockResolvedValue(false)
+		mockRepo.countFailedLogin.mockResolvedValue(false)
 
 		await expect(
 			authenticateUser('alice@example.com', 'correct-password', IP),
@@ -242,9 +202,9 @@ describe('failed login limit', () => {
 	})
 
 	it('limits an unknown email the same way', async () => {
-		vi.mocked(mockRepo.countFailedLogin).mockResolvedValue(false)
+		mockRepo.countFailedLogin.mockResolvedValue(false)
 
-		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue(null)
+		mockRepo.getCredentialsByEmail.mockResolvedValue(null)
 
 		await expect(authenticateUser('nobody@example.com', 'any-password', IP)).rejects.toMatchObject({
 			code: 'too_many_logins',
@@ -258,7 +218,7 @@ describe('failed login limit', () => {
 	})
 
 	it('clears the count for an inactive account with the right password', async () => {
-		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue({
+		mockRepo.getCredentialsByEmail.mockResolvedValue({
 			id: TEST_USER.id,
 			hashed_password: hashedPassword,
 			is_active: false,
@@ -285,7 +245,7 @@ describe('checkTurnstile', () => {
 	it('passes a token that Cloudflare accepts', async () => {
 		const verify = vi.fn().mockResolvedValue(true)
 
-		configure({ ...getConfig(), turnstile: { siteKey: 'key', verify } })
+		vi.mocked(turnstile).mockReturnValue({ siteKey: 'key', verify })
 
 		await checkTurnstile('token', '203.0.113.1')
 
@@ -296,9 +256,9 @@ describe('checkTurnstile', () => {
 		['a missing token', undefined, true],
 		['a token that Cloudflare refuses', 'token', false],
 	])('refuses %s', async (_, token, accepted) => {
-		configure({
-			...getConfig(),
-			turnstile: { siteKey: 'key', verify: vi.fn().mockResolvedValue(accepted) },
+		vi.mocked(turnstile).mockReturnValue({
+			siteKey: 'key',
+			verify: vi.fn().mockResolvedValue(accepted),
 		})
 
 		await expect(checkTurnstile(token)).rejects.toMatchObject({
@@ -340,13 +300,13 @@ describe('registerUser', () => {
 	it('hashes the password with Argon2id', async () => {
 		await registerUser('bob@example.com', 'password123', IP)
 
-		const hashed = vi.mocked(mockRepo.insertUser).mock.calls[0][1] as string
+		const hashed = mockRepo.insertUser.mock.calls[0][1] as string
 
 		expect(hashed).toContain('$argon2')
 	})
 
 	it('refuses a password known from a data breach before making the account', async () => {
-		configure({ ...getConfig(), isBreachedPassword: vi.fn().mockResolvedValue(true) })
+		vi.mocked(isBreachedPassword).mockResolvedValue(true)
 
 		await expect(registerUser('bob@example.com', 'password123', IP)).rejects.toMatchObject({
 			code: 'password_breached',
@@ -356,13 +316,13 @@ describe('registerUser', () => {
 	})
 
 	it('returns null when the email already has an account', async () => {
-		vi.mocked(mockRepo.insertUser).mockRejectedValue({ code: '23505' })
+		mockRepo.insertUser.mockResolvedValue(null)
 
 		expect(await registerUser('alice@example.com', 'password123', IP)).toBeNull()
 	})
 
 	it('re-throws non-duplicate errors', async () => {
-		vi.mocked(mockRepo.insertUser).mockRejectedValue(new Error('connection refused'))
+		mockRepo.insertUser.mockRejectedValue(new Error('connection refused'))
 
 		await expect(registerUser('bob@example.com', 'password123', IP)).rejects.toThrow(
 			'connection refused',
@@ -376,7 +336,7 @@ describe('registerUser', () => {
 	})
 
 	it('counts a sign-up for a taken email the same way', async () => {
-		vi.mocked(mockRepo.insertUser).mockRejectedValue({ code: '23505' })
+		mockRepo.insertUser.mockResolvedValue(null)
 
 		await registerUser('alice@example.com', 'password123', '1.2.3.4')
 
@@ -384,7 +344,7 @@ describe('registerUser', () => {
 	})
 
 	it('refuses a sign-up past the daily limit without making the account', async () => {
-		vi.mocked(mockRepo.countSignUp).mockResolvedValue(false)
+		mockRepo.countSignUp.mockResolvedValue(false)
 
 		await expect(registerUser('new@example.com', 'password123', '1.2.3.4')).rejects.toMatchObject({
 			code: 'too_many_sign_ups',
@@ -395,35 +355,20 @@ describe('registerUser', () => {
 	})
 
 	it('does not count a password refused for a data breach', async () => {
-		configure({ ...getConfig(), isBreachedPassword: vi.fn().mockResolvedValue(true) })
+		vi.mocked(isBreachedPassword).mockResolvedValue(true)
 
 		await expect(registerUser('bob@example.com', 'password123', '1.2.3.4')).rejects.toThrow()
 
 		expect(mockRepo.countSignUp).not.toHaveBeenCalled()
 	})
 
-	it('calls onSecurityEvent on registration', async () => {
-		const onSecurityEvent = vi.fn()
-
-		configure({
-			userRepository: mockRepo,
-			sessionRepository: mockSessionRepo,
-			passkeyRepository: {} as PasskeyRepository,
-			passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
-			mfaRepository: {} as MfaRepository,
-			mfa: { issuer: 'localhost' },
-			oauthRepository: {} as OAuthRepository,
-			emailTokenRepository: {} as EmailTokenRepository,
-			activityRepository: {} as ActivityRepository,
-			sendEmail: vi.fn(),
-			oauth: {},
-			onSecurityEvent,
-		})
-
+	it('reports the sign-up to Vidar', async () => {
 		await registerUser('new@example.com', 'password123', '1.2.3.4')
 
-		expect(onSecurityEvent).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'registration', ip: '1.2.3.4' }),
-		)
+		expect(reportEvent).toHaveBeenCalledWith({
+			type: 'registration',
+			ip: '1.2.3.4',
+			details: { email: 'new@example.com' },
+		})
 	})
 })

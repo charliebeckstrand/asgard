@@ -1,9 +1,10 @@
 import { createRoute, z } from '@hono/zod-openapi'
 import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
 import { ActivityListSchema, createListSchema, IdSchema, toList, UserSchema } from 'skuld'
-import { deleteUserSessions, getActivity, getConfig } from '../auth/index.js'
+import { getActivity } from '../auth/index.js'
+import { record } from '../lib/activity.js'
+import { sessionRepository, userRepository } from '../lib/repositories.js'
 import { requireRole, requireSession, type SessionEnv } from '../middleware/session.js'
-import { record } from './activity.js'
 
 // Admins manage an account's standing, never its credentials: no passwords,
 // no email, no roles. They also can't act on other admins; admins are made
@@ -82,8 +83,6 @@ const usersRoutes = createRouter<SessionEnv>()
 usersRoutes.use('*', requireRole('admin'))
 
 usersRoutes.openapi(listUsersRoute, async (c) => {
-	const { userRepository } = getConfig()
-
 	const users = await userRepository.getUsers()
 
 	return c.json(toList(users), 200)
@@ -91,8 +90,6 @@ usersRoutes.openapi(listUsersRoute, async (c) => {
 
 usersRoutes.openapi(getUserRoute, async (c) => {
 	const { id } = c.req.valid('param')
-
-	const { userRepository } = getConfig()
 
 	const user = await userRepository.getUserById(id)
 
@@ -114,8 +111,6 @@ usersRoutes.openapi(updateUserRoute, async (c) => {
 
 	const { is_active } = c.req.valid('json')
 
-	const { userRepository } = getConfig()
-
 	const target = await userRepository.getUserById(id)
 
 	if (!target) {
@@ -133,7 +128,7 @@ usersRoutes.openapi(updateUserRoute, async (c) => {
 	}
 
 	if (!is_active) {
-		await deleteUserSessions(id)
+		await sessionRepository.deleteUserSessions(id)
 	}
 
 	await record(c, {

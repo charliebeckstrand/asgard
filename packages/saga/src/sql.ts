@@ -11,9 +11,7 @@ export class SqlFragment {
 
 	/** The query text, with `$1`, `$2`, … in place of each value. */
 	get text(): string {
-		const text = this.strings.reduce((query, part, i) => `${query}$${i}${part}`)
-
-		return text.replace(/\s+/g, ' ').trim()
+		return this.strings.reduce((query, part, i) => `${query}$${i}${part}`)
 	}
 }
 
@@ -47,18 +45,13 @@ function sql(strings: TemplateStringsArray, ...params: unknown[]): SqlFragment {
 	return new SqlFragment(parts, values)
 }
 
-sql.join = function join(fragments: SqlFragment[], separator = ', '): SqlFragment {
-	const glue = new SqlFragment([separator], [])
-
-	return fragments.reduce(
-		(joined, fragment, i) => (i === 0 ? fragment : sql`${joined}${glue}${fragment}`),
-		empty,
-	)
-}
-
 /** `WHERE` with the conditions joined by `AND`, or nothing when there are none. */
 sql.where = function where(conditions: SqlFragment[]): SqlFragment {
-	return conditions.length > 0 ? sql`WHERE ${sql.join(conditions, ' AND ')}` : empty
+	const [first, ...rest] = conditions
+
+	if (!first) return empty
+
+	return rest.reduce((joined, condition) => sql`${joined} AND ${condition}`, sql`WHERE ${first}`)
 }
 
 /** Binds a value as JSON text. node-postgres would send an array as a Postgres array. */

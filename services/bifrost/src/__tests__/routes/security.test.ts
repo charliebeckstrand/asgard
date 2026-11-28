@@ -3,27 +3,14 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
 
-const { mockFindSession, mockListThreats, mockResolveThreat, mockListBans, mockRemoveBan } =
-	vi.hoisted(() => ({
-		mockFindSession: vi.fn(),
-		mockListThreats: vi.fn(),
-		mockResolveThreat: vi.fn(),
-		mockListBans: vi.fn(),
-		mockRemoveBan: vi.fn(),
-	}))
+const { mockListThreats, mockResolveThreat, mockListBans, mockRemoveBan } = vi.hoisted(() => ({
+	mockListThreats: vi.fn(),
+	mockResolveThreat: vi.fn(),
+	mockListBans: vi.fn(),
+	mockRemoveBan: vi.fn(),
+}))
 
-vi.mock('../../auth/index.js', async () => {
-	const errors =
-		await vi.importActual<typeof import('../../auth/errors.js')>('../../auth/errors.js')
-
-	return {
-		configure: vi.fn(),
-		getConfig: () => ({}),
-		AuthError: errors.AuthError,
-		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
-		findSession: (...args: unknown[]) => mockFindSession(...args),
-	}
-})
+vi.mock('../../auth/index.js', { spy: true })
 
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
@@ -41,7 +28,11 @@ vi.mock('../../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
 }))
 
+import type { User } from 'skuld'
 import { createBifrostApp } from '../../app.js'
+import * as auth from '../../auth/index.js'
+
+const mockFindSession = vi.mocked(auth.findSession)
 
 const ORIGIN = 'http://localhost:3000'
 
@@ -49,7 +40,7 @@ const app = createBifrostApp()
 
 const THREAT_ID = '00000000-0000-4000-8000-000000000003'
 
-const sampleUser = {
+const sampleUser: User = {
 	id: '00000000-0000-4000-8000-000000000001',
 	email: 'user@example.com',
 	name: null,
@@ -60,7 +51,7 @@ const sampleUser = {
 	updated_at: '2026-01-01T00:00:00.000Z',
 }
 
-const sampleAdmin = {
+const sampleAdmin: User = {
 	...sampleUser,
 	id: '00000000-0000-4000-8000-000000000002',
 	roles: ['user', 'admin'],

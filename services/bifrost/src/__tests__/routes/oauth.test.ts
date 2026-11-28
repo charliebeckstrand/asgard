@@ -2,58 +2,9 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
 
-const {
-	mockFindSession,
-	mockStartOAuth,
-	mockCompleteOAuth,
-	mockGetFactors,
-	mockCreateSession,
-	mockEnabledProviders,
-	mockGetIdentities,
-	mockUnlinkIdentity,
-	mockSendSecurityNotice,
-	mockRecordActivity,
-} = vi.hoisted(() => ({
-	mockFindSession: vi.fn(),
-	mockStartOAuth: vi.fn(),
-	mockCompleteOAuth: vi.fn(),
-	mockGetFactors: vi.fn(),
-	mockCreateSession: vi.fn(),
-	mockEnabledProviders: vi.fn(),
-	mockGetIdentities: vi.fn(),
-	mockUnlinkIdentity: vi.fn(),
-	mockSendSecurityNotice: vi.fn(),
-	mockRecordActivity: vi.fn(),
-}))
+vi.mock('../../auth/index.js', { spy: true })
 
-vi.mock('../../auth/index.js', async () => {
-	const errors =
-		await vi.importActual<typeof import('../../auth/errors.js')>('../../auth/errors.js')
-
-	const mfa = await vi.importActual<typeof import('../../auth/mfa.js')>('../../auth/mfa.js')
-
-	const oauth = await vi.importActual<typeof import('../../auth/oauth.js')>('../../auth/oauth.js')
-
-	return {
-		configure: vi.fn(),
-		getConfig: vi.fn(),
-		AuthError: errors.AuthError,
-		OAuthFailure: oauth.OAuthFailure,
-		safeReturnTo: oauth.safeReturnTo,
-		secondFactorMethods: mfa.secondFactorMethods,
-		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
-		findSession: (...args: unknown[]) => mockFindSession(...args),
-		startOAuth: (...args: unknown[]) => mockStartOAuth(...args),
-		completeOAuth: (...args: unknown[]) => mockCompleteOAuth(...args),
-		getFactors: (...args: unknown[]) => mockGetFactors(...args),
-		createSession: (...args: unknown[]) => mockCreateSession(...args),
-		enabledProviders: (...args: unknown[]) => mockEnabledProviders(...args),
-		getIdentities: (...args: unknown[]) => mockGetIdentities(...args),
-		unlinkIdentity: (...args: unknown[]) => mockUnlinkIdentity(...args),
-		sendSecurityNotice: async (...args: unknown[]) => mockSendSecurityNotice(...args),
-		recordActivity: (...args: unknown[]) => mockRecordActivity(...args),
-	}
-})
+vi.mock('../../lib/repositories.js')
 
 // Records each request that a rate limit sees, then lets it through.
 const { limited } = vi.hoisted(() => ({ limited: [] as string[] }))
@@ -83,9 +34,33 @@ vi.mock('../../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
 }))
 
+import type { Session } from 'skuld'
 import { createBifrostApp } from '../../app.js'
 import { AuthError } from '../../auth/errors.js'
+import * as auth from '../../auth/index.js'
 import { OAuthFailure } from '../../auth/oauth.js'
+import type { LinkedIdentity } from '../../lib/oauth-repository.js'
+import { mfaRepository, oauthRepository } from '../../lib/repositories.js'
+
+const mockFindSession = vi.mocked(auth.findSession)
+
+const mockStartOAuth = vi.mocked(auth.startOAuth)
+
+const mockCompleteOAuth = vi.mocked(auth.completeOAuth)
+
+const mockGetFactors = vi.mocked(mfaRepository.getFactors)
+
+const mockCreateSession = vi.mocked(auth.createSession)
+
+const mockEnabledProviders = vi.mocked(auth.enabledProviders)
+
+const mockGetIdentities = vi.mocked(oauthRepository.getIdentities)
+
+const mockUnlinkIdentity = vi.mocked(auth.unlinkIdentity)
+
+const mockSendSecurityNotice = vi.mocked(auth.sendSecurityNotice)
+
+const mockRecordActivity = vi.mocked(auth.recordActivity)
 
 const ORIGIN = 'http://localhost:3000'
 
@@ -142,7 +117,7 @@ describe('OAuth routes', () => {
 
 		mockGetFactors.mockResolvedValue({ passkeys: 0, totp: false, recovery_codes: 0 })
 
-		mockCreateSession.mockResolvedValue({ token: 'session-token', session: {} })
+		mockCreateSession.mockResolvedValue({ token: 'session-token', session: {} as Session })
 	})
 
 	describe('GET /auth/oauth/providers', () => {
@@ -154,6 +129,14 @@ describe('OAuth routes', () => {
 			expect(res.status).toBe(200)
 
 			expect(await res.json()).toEqual({ providers: ['github'] })
+		})
+
+		it('leaves the answer cacheable, since Midgard caches it', async () => {
+			mockEnabledProviders.mockReturnValue(['github'])
+
+			const res = await app.request('/auth/oauth/providers')
+
+			expect(res.headers.get('cache-control')).toBeNull()
 		})
 	})
 
@@ -199,7 +182,11 @@ describe('OAuth routes', () => {
 
 			expect(res.status).toBe(400)
 
-			expect(await res.json()).toMatchObject({ statusCode: 400, message: 'Unknown app origin' })
+			expect(await res.json()).toMatchObject({
+				statusCode: 400,
+				code: 'unknown_origin',
+				message: 'Unknown app origin',
+			})
 
 			expect(mockStartOAuth).not.toHaveBeenCalled()
 		})
@@ -373,7 +360,7 @@ describe('OAuth routes', () => {
 		it('lists the accounts of the signed-in user', async () => {
 			signedIn()
 
-			const identities = [
+			const identities: LinkedIdentity[] = [
 				{ provider: 'github', email: 'alice@example.com', created_at: '2026-09-26T00:00:00Z' },
 			]
 

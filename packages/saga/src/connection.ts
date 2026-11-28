@@ -11,22 +11,20 @@ export interface ConnectionOptions {
 }
 
 /**
- * Connection settings for node-postgres, taken apart from the URL. Passing the
- * URL whole would let its `sslmode` override the TLS settings here.
+ * Connection settings for node-postgres. The URL goes to node-postgres without
+ * its `sslmode`, which would otherwise override the TLS settings here.
  */
 export function connectionConfig({ url, ca }: ConnectionOptions): ClientConfig {
 	const parsed = new URL(url)
 
 	const sslmode = parsed.searchParams.get('sslmode')
 
+	parsed.searchParams.delete('sslmode')
+
 	const tls = sslmode !== null && sslmode !== 'disable'
 
 	return {
-		host: parsed.hostname,
-		port: Number.parseInt(parsed.port, 10) || 5432,
-		database: parsed.pathname.slice(1),
-		user: decodeURIComponent(parsed.username),
-		password: decodeURIComponent(parsed.password),
+		connectionString: parsed.href,
 		ssl: tls ? (ca ? { ca } : { rejectUnauthorized: false }) : false,
 	}
 }

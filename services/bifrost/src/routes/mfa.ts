@@ -4,13 +4,17 @@ import {
 	confirmTotp,
 	deleteTotp,
 	generateRecoveryCodes,
-	getFactors,
-	passSecondStep,
 	secondFactorMethods,
 	startTotpSetup,
 } from '../auth/index.js'
-import { authorizeSignInChange, requireSession, type SessionEnv } from '../middleware/session.js'
-import { recordChange } from './activity.js'
+import { recordChange } from '../lib/activity.js'
+import { mfaRepository, sessionRepository } from '../lib/repositories.js'
+import {
+	authorizeSignInChange,
+	requireSession,
+	type SessionEnv,
+	sessionRequired,
+} from '../middleware/session.js'
 
 // A user manages only their own second factors. Passkeys have their own routes
 // under `/auth/passkeys`.
@@ -117,27 +121,18 @@ const recoveryCodesRoute = createRoute({
 
 const mfaRoutes = createRouter<SessionEnv>()
 
-// Answers 401 before a body is validated.
-mfaRoutes.use('*', async (c, next) => {
-	requireSession(c)
-
-	return next()
-})
+mfaRoutes.use('*', sessionRequired)
 
 mfaRoutes.openapi(getFactorsRoute, async (c) => {
 	const { user } = requireSession(c)
 
-	const factors = await getFactors(user.id)
-
-	c.header('Cache-Control', 'private, no-store')
+	const factors = await mfaRepository.getFactors(user.id)
 
 	return c.json({ enabled: secondFactorMethods(factors).length > 0, ...factors }, 200)
 })
 
 mfaRoutes.openapi(totpSetupRoute, async (c) => {
 	const session = await authorizeSignInChange(c)
-
-	c.header('Cache-Control', 'private, no-store')
 
 	return c.json(await startTotpSetup(session.user), 200)
 })
@@ -148,7 +143,7 @@ mfaRoutes.openapi(totpConfirmRoute, async (c) => {
 	await confirmTotp(session.user.id, c.req.valid('json').code)
 
 	// A first factor has no second step to pass, so adding it is one.
-	await passSecondStep(session.id)
+	await sessionRepository.passSecondStep(session.id)
 
 	await recordChange(
 		c,
@@ -186,8 +181,6 @@ mfaRoutes.openapi(recoveryCodesRoute, async (c) => {
 		'recovery_codes_created',
 		'New recovery codes were made for your account',
 	)
-
-	c.header('Cache-Control', 'private, no-store')
 
 	return c.json({ codes }, 200)
 })

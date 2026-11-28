@@ -100,6 +100,10 @@ export function compare(files: Migration[], applied: AppliedMigration[]): Migrat
 async function connect(connection: ConnectionOptions): Promise<Client> {
 	const client = new Client({ ...connectionConfig(connection), application_name: 'saga' })
 
+	// A lost connection fails the query that is running, which reports it. The
+	// client also emits it as an event, which would crash the process unheard.
+	client.on('error', () => {})
+
 	await client.connect()
 
 	return client
@@ -179,7 +183,9 @@ export async function migrate(connection: ConnectionOptions, dir: string): Promi
 
 				await client.query('COMMIT')
 			} catch (err) {
-				await client.query('ROLLBACK')
+				// Report the migration's error, not a failed rollback's: ending the
+				// session rolls the transaction back anyway.
+				await client.query('ROLLBACK').catch(() => {})
 
 				throw new MigrationError(`${file.name} failed: ${(err as Error).message}`, { cause: err })
 			}

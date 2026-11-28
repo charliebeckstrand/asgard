@@ -9,10 +9,22 @@ const { webauthn } = vi.hoisted(() => ({
 
 vi.mock('@simplewebauthn/server', () => webauthn)
 
+vi.mock('../../lib/env.js', () => ({
+	environment: () => ({
+		PASSKEY_DOMAIN: 'ivoryimage.dev',
+		APP_ORIGINS: ['https://admin.ivoryimage.dev'],
+	}),
+}))
+
+vi.mock('../../lib/repositories.js')
+
+vi.mock('vidar/client')
+
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server'
 import type { User } from 'skuld'
-import type { Mock } from 'vitest'
-import { type AuthSecurityEvent, configure } from '../config.js'
+import { reportEvent } from 'vidar/client'
+import type { StoredPasskey } from '../../lib/passkey-repository.js'
+import * as repositories from '../../lib/repositories.js'
 import {
 	authenticatePasskey,
 	CHALLENGE_TTL_SECONDS,
@@ -23,16 +35,6 @@ import {
 	getPasskeys,
 	registerPasskey,
 } from '../passkeys.js'
-import type {
-	ActivityRepository,
-	EmailTokenRepository,
-	MfaRepository,
-	OAuthRepository,
-	PasskeyRepository,
-	SessionRepository,
-	StoredPasskey,
-	UserRepository,
-} from '../types.js'
 
 const IP = '203.0.113.1'
 
@@ -58,52 +60,31 @@ const stored: StoredPasskey = {
 	created_at: '2026-09-26T00:00:00.000Z',
 }
 
-const passkeys = { domain: 'ivoryimage.dev', origins: ['https://admin.ivoryimage.dev'] }
-
 const registration = { id: 'credential-2' } as RegistrationResponseJSON
 
 const assertion = { id: 'credential-1' } as AuthenticationResponseJSON
 
-let passkeyRepository: PasskeyRepository
+const passkeyRepository = vi.mocked(repositories.passkeyRepository)
 
-let userRepository: UserRepository
-
-let onSecurityEvent: Mock<(event: AuthSecurityEvent) => void>
+const userRepository = vi.mocked(repositories.userRepository)
 
 beforeEach(() => {
 	vi.resetAllMocks()
 
-	passkeyRepository = {
-		insertPasskey: vi.fn().mockResolvedValue({ id: 'credential-2', created_at: stored.created_at }),
-		findPasskey: vi.fn().mockResolvedValue(stored),
-		getPasskeys: vi.fn().mockResolvedValue([stored]),
-		setCounter: vi.fn(),
-		deletePasskey: vi.fn().mockResolvedValue('deleted'),
-		createChallenge: vi.fn(),
-		useChallenge: vi.fn().mockResolvedValue(true),
-		deleteExpiredChallenges: vi.fn(),
-	}
-
-	userRepository = {
-		getUserById: vi.fn().mockResolvedValue(user),
-	} as unknown as UserRepository
-
-	onSecurityEvent = vi.fn()
-
-	configure({
-		userRepository,
-		sessionRepository: {} as SessionRepository,
-		passkeyRepository,
-		mfaRepository: {} as MfaRepository,
-		passkeys,
-		mfa: { issuer: 'localhost' },
-		oauthRepository: {} as OAuthRepository,
-		emailTokenRepository: {} as EmailTokenRepository,
-		activityRepository: {} as ActivityRepository,
-		sendEmail: vi.fn(),
-		oauth: {},
-		onSecurityEvent,
+	passkeyRepository.insertPasskey.mockResolvedValue({
+		id: 'credential-2',
+		created_at: stored.created_at,
 	})
+
+	passkeyRepository.findPasskey.mockResolvedValue(stored)
+
+	passkeyRepository.getPasskeys.mockResolvedValue([stored])
+
+	passkeyRepository.deletePasskey.mockResolvedValue('deleted')
+
+	passkeyRepository.useChallenge.mockResolvedValue(true)
+
+	userRepository.getUserById.mockResolvedValue(user)
 })
 
 describe('createRegistrationOptions', () => {
@@ -172,7 +153,7 @@ describe('registerPasskey', () => {
 
 		expect(options).toEqual(
 			expect.objectContaining({
-				expectedOrigin: passkeys.origins,
+				expectedOrigin: ['https://admin.ivoryimage.dev'],
 				expectedRPID: 'ivoryimage.dev',
 				requireUserVerification: true,
 			}),
@@ -282,9 +263,11 @@ describe('authenticatePasskey', () => {
 
 		expect(webauthn.verifyAuthenticationResponse).not.toHaveBeenCalled()
 
-		expect(onSecurityEvent).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'login_failed', ip: '203.0.113.7' }),
-		)
+		expect(reportEvent).toHaveBeenCalledWith({
+			type: 'login_failed',
+			ip: '203.0.113.7',
+			details: { passkey: 'credential-1' },
+		})
 	})
 
 	it('rejects a passkey that fails verification', async () => {

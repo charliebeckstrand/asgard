@@ -1,13 +1,12 @@
-import { randomUUID } from 'node:crypto'
-import type { Pool } from 'pg'
+import { sql } from 'saga'
 import { isDockerAvailable } from 'vali/containers'
-import type { EmailTokenRepository, UserRepository } from '../../auth/types.js'
+import type { EmailTokenRepository } from '../email-token-repository.js'
 import { createEmailTokenRepository } from '../email-token-repository.js'
+import type { UserRepository } from '../user-repository.js'
 import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 
 let testDb: TestDb
-let pool: Pool
 let users: UserRepository
 let tokens: EmailTokenRepository
 
@@ -15,8 +14,6 @@ beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
 	testDb = await startTestDb()
-
-	pool = testDb.pool
 
 	users = createUserRepository(testDb.db)
 
@@ -35,21 +32,18 @@ beforeEach(async () => {
 
 const inAnHour = () => new Date(Date.now() + 60 * 60 * 1000)
 
-async function insertUser() {
-	return (await users.insertUser(`${randomUUID()}@x.dev`, 'old-hash')).id
-}
+const insertUser = () => testDb.insertUser({ hashedPassword: 'old-hash' })
 
 async function getUser(userId: string) {
-	const { rows } = await pool.query(
-		'SELECT hashed_password, is_verified FROM users WHERE id = $1',
-		[userId],
+	const rows = await testDb.db.many(
+		sql`SELECT hashed_password, is_verified FROM users WHERE id = ${userId}`,
 	)
 
 	return rows[0]
 }
 
 async function tokenIds(userId: string) {
-	const { rows } = await pool.query('SELECT id FROM email_tokens WHERE user_id = $1', [userId])
+	const rows = await testDb.db.many(sql`SELECT id FROM email_tokens WHERE user_id = ${userId}`)
 
 	return rows.map((row) => row.id)
 }
@@ -91,7 +85,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
 
-			await pool.query("UPDATE email_tokens SET created_at = now() - interval '2 minutes'")
+			await testDb.db.exec(sql`UPDATE email_tokens SET created_at = now() - interval '2 minutes'`)
 
 			expect(await tokens.createToken('t2', userId, 'verify_email', inAnHour(), link)).toBe(
 				'created',
@@ -117,7 +111,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
 
-			const { rows } = await pool.query('SELECT recipient, verified FROM sent_emails')
+			const rows = await testDb.db.many(sql`SELECT recipient, verified FROM sent_emails`)
 
 			expect(rows).toEqual([{ recipient: 'alice@example.com', verified: true }])
 		})
@@ -129,7 +123,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			await tokens.createToken('t2', userId, 'verify_email', inAnHour(), link)
 
-			const { rows } = await pool.query('SELECT count(*)::int AS count FROM sent_emails')
+			const rows = await testDb.db.many(sql`SELECT count(*)::int AS count FROM sent_emails`)
 
 			expect(rows[0].count).toBe(1)
 		})
@@ -139,7 +133,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
 
-			await pool.query("UPDATE email_tokens SET created_at = now() - interval '2 minutes'")
+			await testDb.db.exec(sql`UPDATE email_tokens SET created_at = now() - interval '2 minutes'`)
 
 			const full = { ...link, limits: { ...link.limits, recipient: 1 } }
 
@@ -191,15 +185,14 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			const { email } = (await users.getUserById(userId)) as { email: string }
 
-			await pool.query('INSERT INTO failed_logins (email, count) VALUES ($1, 5)', [email])
+			await testDb.db.exec(sql`INSERT INTO failed_logins (email, count) VALUES (${email}, 5)`)
 
 			await tokens.createToken('t1', userId, 'reset_password', inAnHour(), link)
 
 			await tokens.createToken('t2', userId, 'verify_email', inAnHour(), link)
 
-			await pool.query(
-				"INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', $1, now() + interval '1 day')",
-				[userId],
+			await testDb.db.exec(
+				sql`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', ${userId}, now() + interval '1 day')`,
 			)
 
 			expect(await tokens.resetPassword('t1', 'new-hash')).toBe(userId)
@@ -208,13 +201,13 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			expect(await tokenIds(userId)).toEqual([])
 
-			const { rows } = await pool.query('SELECT 1 FROM sessions WHERE user_id = $1', [userId])
+			const rows = await testDb.db.many(sql`SELECT 1 FROM sessions WHERE user_id = ${userId}`)
 
 			expect(rows).toHaveLength(0)
 
-			const failed = await pool.query('SELECT 1 FROM failed_logins WHERE email = $1', [email])
+			const failed = await testDb.db.many(sql`SELECT 1 FROM failed_logins WHERE email = ${email}`)
 
-			expect(failed.rows).toHaveLength(0)
+			expect(failed).toHaveLength(0)
 		})
 
 		it('changes nothing with an unknown or expired link', async () => {
@@ -294,8 +287,8 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		})
 
 		it('forgets emails sent more than a day ago', async () => {
-			await pool.query(
-				"INSERT INTO sent_emails (recipient, verified, sent_at) VALUES ('a@x.dev', true, now() - interval '25 hours'), ('a@x.dev', true, now() - interval '25 hours')",
+			await testDb.db.exec(
+				sql`INSERT INTO sent_emails (recipient, verified, sent_at) VALUES ('a@x.dev', true, now() - interval '25 hours'), ('a@x.dev', true, now() - interval '25 hours')`,
 			)
 
 			expect(await tokens.countSentEmail('a@x.dev', true, limits)).toBe(true)

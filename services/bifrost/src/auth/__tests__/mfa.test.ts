@@ -6,10 +6,23 @@ vi.mock('../passkeys.js', () => ({
 	verifyPasskey: (...args: unknown[]) => mockVerifyPasskey(...args),
 }))
 
+const { env } = vi.hoisted(() => ({
+	env: { PASSKEY_DOMAIN: 'ivoryimage.dev' } as {
+		PASSKEY_DOMAIN: string
+		MFA_ENCRYPTION_KEY?: string
+	},
+}))
+
+vi.mock('../../lib/env.js', () => ({ environment: () => env }))
+
+vi.mock('../../lib/repositories.js')
+
+vi.mock('vidar/client')
+
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
 import type { Session, User } from 'skuld'
-import type { Mock } from 'vitest'
-import { type AuthSecurityEvent, configure } from '../config.js'
+import { reportEvent } from 'vidar/client'
+import * as repositories from '../../lib/repositories.js'
 import {
 	checkMfaKey,
 	confirmTotp,
@@ -23,15 +36,6 @@ import {
 	verifySession,
 } from '../mfa.js'
 import { encryptSecret, totpCode, totpStep } from '../totp.js'
-import type {
-	ActivityRepository,
-	EmailTokenRepository,
-	MfaRepository,
-	OAuthRepository,
-	PasskeyRepository,
-	SessionRepository,
-	UserRepository,
-} from '../types.js'
 
 const IP = '203.0.113.1'
 
@@ -60,60 +64,38 @@ const session: Session = {
 
 const secret = Buffer.from('12345678901234567890')
 
-let mfaRepository: { [K in keyof MfaRepository]: Mock<MfaRepository[K]> }
+const mfaRepository = vi.mocked(repositories.mfaRepository)
 
-let sessionRepository: Pick<
-	{ [K in keyof SessionRepository]: Mock<SessionRepository[K]> },
-	'passSecondStep' | 'failSecondStep'
->
-
-let onSecurityEvent: Mock<(event: AuthSecurityEvent) => void>
-
-function setUp(key?: string) {
-	configure({
-		userRepository: {} as UserRepository,
-		sessionRepository: sessionRepository as unknown as SessionRepository,
-		passkeyRepository: {} as PasskeyRepository,
-		mfaRepository,
-		passkeys: { domain: 'ivoryimage.dev', origins: ['https://admin.ivoryimage.dev'] },
-		mfa: { key, issuer: 'ivoryimage.dev' },
-		oauthRepository: {} as OAuthRepository,
-		emailTokenRepository: {} as EmailTokenRepository,
-		activityRepository: {} as ActivityRepository,
-		sendEmail: vi.fn(),
-		oauth: {},
-		onSecurityEvent,
-	})
-}
+const sessionRepository = vi.mocked(repositories.sessionRepository)
 
 beforeEach(() => {
 	vi.resetAllMocks()
 
-	mfaRepository = {
-		getFactors: vi.fn().mockResolvedValue({ passkeys: 0, totp: true, recovery_codes: 10 }),
-		getTotp: vi
-			.fn()
-			.mockResolvedValue({ secret: encryptSecret(secret, KEY), last_step: 0, confirmed: true }),
-		getLatestSecret: vi.fn().mockResolvedValue(encryptSecret(secret, KEY)),
-		setPendingTotp: vi.fn().mockResolvedValue('created'),
-		confirmTotp: vi.fn().mockResolvedValue(true),
-		useTotpStep: vi.fn().mockResolvedValue(true),
-		deleteTotp: vi.fn().mockResolvedValue('deleted'),
-		replaceRecoveryCodes: vi.fn(),
-		useRecoveryCode: vi.fn().mockResolvedValue(true),
-		countFailedStep: vi.fn().mockResolvedValue(true),
-		clearFailedSteps: vi.fn(),
-		deleteStaleFailedSteps: vi.fn(),
-	}
+	env.MFA_ENCRYPTION_KEY = KEY
 
-	sessionRepository = {
-		passSecondStep: vi.fn(),
-		failSecondStep: vi.fn().mockResolvedValue(false),
-	}
+	mfaRepository.getFactors.mockResolvedValue({ passkeys: 0, totp: true, recovery_codes: 10 })
 
-	onSecurityEvent = vi.fn()
+	mfaRepository.getTotp.mockResolvedValue({
+		secret: encryptSecret(secret, KEY),
+		last_step: 0,
+		confirmed: true,
+	})
 
-	setUp(KEY)
+	mfaRepository.getLatestSecret.mockResolvedValue(new Uint8Array(encryptSecret(secret, KEY)))
+
+	mfaRepository.setPendingTotp.mockResolvedValue('created')
+
+	mfaRepository.confirmTotp.mockResolvedValue(true)
+
+	mfaRepository.useTotpStep.mockResolvedValue(true)
+
+	mfaRepository.deleteTotp.mockResolvedValue('deleted')
+
+	mfaRepository.useRecoveryCode.mockResolvedValue(true)
+
+	mfaRepository.countFailedStep.mockResolvedValue(true)
+
+	sessionRepository.failSecondStep.mockResolvedValue(false)
 })
 
 describe('secondFactorMethods', () => {
@@ -138,19 +120,19 @@ describe('checkMfaKey', () => {
 
 		expect(await checkMfaKey()).toBeNull()
 
-		setUp(undefined)
+		env.MFA_ENCRYPTION_KEY = undefined
 
 		expect(await checkMfaKey()).toBeNull()
 	})
 
 	it('refuses a different key', async () => {
-		setUp('d'.repeat(32))
+		env.MFA_ENCRYPTION_KEY = 'd'.repeat(32)
 
 		expect(await checkMfaKey()).toMatch('does not decrypt')
 	})
 
 	it('refuses a missing key when secrets are stored', async () => {
-		setUp(undefined)
+		env.MFA_ENCRYPTION_KEY = undefined
 
 		expect(await checkMfaKey()).toMatch('is unset')
 	})
@@ -212,7 +194,7 @@ describe('verifySession', () => {
 
 		expect(sessionRepository.failSecondStep).toHaveBeenCalledWith('session-1', MAX_FAILED_STEPS)
 
-		expect(onSecurityEvent).toHaveBeenCalledWith({
+		expect(reportEvent).toHaveBeenCalledWith({
 			type: 'login_failed',
 			ip: '203.0.113.7',
 			details: { user_id: USER_ID, method: 'totp' },
@@ -324,7 +306,7 @@ describe('startTotpSetup', () => {
 	})
 
 	it('reports authenticator apps unavailable without a key', async () => {
-		setUp()
+		env.MFA_ENCRYPTION_KEY = undefined
 
 		await expect(startTotpSetup(user)).rejects.toMatchObject({ code: 'mfa_unavailable' })
 
