@@ -1,5 +1,6 @@
-import { createHash } from 'node:crypto'
+import { hash } from 'node:crypto'
 import type { Logger } from 'saga/log'
+import { logger } from './log.js'
 
 /**
  * Checks a password against Have I Been Pwned's list of breached passwords.
@@ -9,10 +10,10 @@ import type { Logger } from 'saga/log'
  */
 export function createBreachCheck(log: Logger): (password: string) => Promise<boolean> {
 	return async (password) => {
-		const hash = createHash('sha1').update(password).digest('hex').toUpperCase()
+		const sha1 = hash('sha1', password).toUpperCase()
 
 		try {
-			const res = await fetch(`https://api.pwnedpasswords.com/range/${hash.slice(0, 5)}`, {
+			const res = await fetch(`https://api.pwnedpasswords.com/range/${sha1.slice(0, 5)}`, {
 				headers: { 'Add-Padding': 'true', 'User-Agent': 'bifrost' },
 				signal: AbortSignal.timeout(3_000),
 			})
@@ -23,7 +24,7 @@ export function createBreachCheck(log: Logger): (password: string) => Promise<bo
 			return (await res.text()).split('\n').some((line) => {
 				const [suffix, count] = line.trim().split(':')
 
-				return suffix === hash.slice(5) && Number(count) > 0
+				return suffix === sha1.slice(5) && Number(count) > 0
 			})
 		} catch (err) {
 			log.warn({ err }, 'breached password check skipped')
@@ -31,4 +32,13 @@ export function createBreachCheck(log: Logger): (password: string) => Promise<bo
 			return false
 		}
 	}
+}
+
+let check: ((password: string) => Promise<boolean>) | undefined
+
+/** Whether a new password is known from a data breach. */
+export function isBreachedPassword(password: string): Promise<boolean> {
+	check ??= createBreachCheck(logger())
+
+	return check(password)
 }

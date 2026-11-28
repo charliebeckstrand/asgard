@@ -4,6 +4,7 @@
 	"vars": {
 		"DATABASE_URL": { "type": "value", "default": "postgres://heimdall:heimdall@localhost:5432/bifrost" },
 		"CLIENT_IP_SECRET": { "type": "value", "default": "" },
+		"APP_ORIGINS": { "type": "value", "default": "http://localhost:3000" },
 		"PASSKEY_DOMAIN": { "type": "value", "default": "localhost" },
 		"MFA_ENCRYPTION_KEY": { "type": "secret" },
 		"OAUTH_GITHUB_CLIENT_ID": { "type": "secret" },
@@ -12,6 +13,8 @@
 		"OAUTH_GOOGLE_CLIENT_SECRET": { "type": "secret" },
 		"RESEND_API_KEY": { "type": "value", "default": "" },
 		"EMAIL_FROM": { "type": "value", "default": "Bifrost <no-reply@localhost>" },
+		"TURNSTILE_SITE_KEY": { "type": "value", "default": "" },
+		"TURNSTILE_SECRET_KEY": { "type": "value", "default": "" },
 		"VIDAR_URL": { "type": "ref", "service": "vidar" },
 		"VIDAR_API_KEY": { "type": "ref", "service": "vidar", "key": "VIDAR_API_KEY" },
 		"MIMIR_URL": { "type": "ref", "service": "mimir" },

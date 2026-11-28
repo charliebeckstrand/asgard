@@ -6,22 +6,7 @@ const MIMIR_API_KEY = 'test-mimir-api-key-that-is-at-least-32-chars'
 
 stubServiceEnv({ MIMIR_URL, MIMIR_API_KEY })
 
-const { mockFindSession } = vi.hoisted(() => ({
-	mockFindSession: vi.fn(),
-}))
-
-vi.mock('../../auth/index.js', async () => {
-	const errors =
-		await vi.importActual<typeof import('../../auth/errors.js')>('../../auth/errors.js')
-
-	return {
-		configure: vi.fn(),
-		getConfig: () => ({}),
-		AuthError: errors.AuthError,
-		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
-		findSession: (...args: unknown[]) => mockFindSession(...args),
-	}
-})
+vi.mock('../../auth/index.js', { spy: true })
 
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
@@ -35,13 +20,17 @@ vi.mock('../../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
 }))
 
+import type { User } from 'skuld'
 import { createBifrostApp } from '../../app.js'
+import * as auth from '../../auth/index.js'
+
+const mockFindSession = vi.mocked(auth.findSession)
 
 const ORIGIN = 'http://localhost:3000'
 
 const app = createBifrostApp()
 
-const user = {
+const user: User = {
 	id: '00000000-0000-4000-8000-000000000001',
 	email: 'user@example.com',
 	name: null,

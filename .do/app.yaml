@@ -198,9 +198,8 @@ services:
         type: SECRET
         value: ${MIMIR_API_KEY}
 
-  # Private: no route or domain, so only the app's own services reach it. One
-  # instance, because its live event stream is kept in memory. Admins read it
-  # through bifrost's /api/security routes.
+  # Private: no route or domain, so only the app's own services reach it.
+  # Admins read it through bifrost's /api/security routes.
   - name: vidar
     github:
       repo: charliebeckstrand/asgard

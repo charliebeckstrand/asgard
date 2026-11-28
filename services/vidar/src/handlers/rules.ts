@@ -8,61 +8,51 @@ import { createThreat } from './threats.js'
 export interface Rule {
 	id: string
 	name: string
-	description: string
 	event_type: string
 	threshold: number
 	window_minutes: number
 	ban_duration_minutes: number
 	severity: RuleSeverity
-	enabled: boolean
 	/** For credential stuffing: minimum distinct accounts targeted */
 	distinct_accounts?: number
 }
 
-const PREDEFINED_RULES: Rule[] = [
+export const RULES: Rule[] = [
 	{
 		id: 'brute_force',
 		name: 'Brute Force Detection',
-		description: 'Bans IP after repeated failed login attempts',
 		event_type: 'login_failed',
 		threshold: 10,
 		window_minutes: 15,
 		ban_duration_minutes: 60,
 		severity: 'medium',
-		enabled: true,
 	},
 	{
 		id: 'registration_spam',
 		name: 'Registration Spam Detection',
-		description: 'Bans IP after excessive registration attempts',
 		event_type: 'registration',
 		threshold: 5,
 		window_minutes: 30,
 		ban_duration_minutes: 1440,
 		severity: 'high',
-		enabled: true,
 	},
 	{
 		id: 'rate_limit_abuse',
 		name: 'Rate Limit Abuse Detection',
-		description: 'Bans IP after repeated rate limit violations',
 		event_type: 'rate_limited',
 		threshold: 20,
 		window_minutes: 10,
 		ban_duration_minutes: 120,
 		severity: 'medium',
-		enabled: true,
 	},
 	{
 		id: 'credential_stuffing',
 		name: 'Credential Stuffing Detection',
-		description: 'Bans IP after failed logins across many distinct accounts',
 		event_type: 'login_failed',
 		threshold: 15,
 		window_minutes: 30,
 		ban_duration_minutes: 1440,
 		severity: 'high',
-		enabled: true,
 		distinct_accounts: 10,
 	},
 ]
@@ -77,12 +67,8 @@ function formatDuration(minutes: number): string {
 	return `${minutes}m`
 }
 
-export function getRules(): Rule[] {
-	return PREDEFINED_RULES
-}
-
 export async function evaluateRules(ip: string, eventType: string): Promise<void> {
-	const matchingRules = PREDEFINED_RULES.filter((r) => r.enabled && r.event_type === eventType)
+	const matchingRules = RULES.filter((r) => r.event_type === eventType)
 
 	for (const rule of matchingRules) {
 		const triggered = await checkRule(ip, rule)

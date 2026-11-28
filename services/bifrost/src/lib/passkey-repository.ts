@@ -1,6 +1,16 @@
 import { type Db, sql } from 'saga'
 import type { Passkey } from 'skuld'
-import type { PasskeyRepository, StoredPasskey } from '../auth/types.js'
+
+/** A passkey with what a ceremony needs: its public key, signature counter and transports. */
+export interface StoredPasskey {
+	id: string
+	user_id: string
+	public_key: Uint8Array<ArrayBuffer>
+	counter: number
+	transports: string[]
+	created_at: string
+}
+
 import { removeSecondFactor } from './mfa-repository.js'
 
 interface PasskeyRow extends Omit<StoredPasskey, 'counter'> {
@@ -14,9 +24,17 @@ function toStoredPasskey(row: PasskeyRow): StoredPasskey {
 	return { ...row, public_key: new Uint8Array(row.public_key), counter: Number(row.counter) }
 }
 
-export function createPasskeyRepository(db: Db): PasskeyRepository {
+export function createPasskeyRepository(db: Db) {
 	return {
-		async insertPasskey(userId, { id, publicKey, counter, transports }) {
+		async insertPasskey(
+			userId: string,
+			{
+				id,
+				publicKey,
+				counter,
+				transports,
+			}: { id: string; publicKey: Uint8Array; counter: number; transports: string[] },
+		) {
 			return db.one<Passkey>(
 				sql`
 					INSERT INTO passkeys (id, user_id, public_key, counter, transports)
@@ -26,13 +44,13 @@ export function createPasskeyRepository(db: Db): PasskeyRepository {
 			)
 		},
 
-		async findPasskey(id) {
+		async findPasskey(id: string) {
 			const row = await db.first<PasskeyRow>(sql`${selectPasskey} WHERE id = ${id}`)
 
 			return row ? toStoredPasskey(row) : null
 		},
 
-		async getPasskeys(userId) {
+		async getPasskeys(userId: string) {
 			const rows = await db.many<PasskeyRow>(
 				sql`${selectPasskey} WHERE user_id = ${userId} ORDER BY created_at`,
 			)
@@ -40,11 +58,12 @@ export function createPasskeyRepository(db: Db): PasskeyRepository {
 			return rows.map(toStoredPasskey)
 		},
 
-		async setCounter(id, counter) {
+		async setCounter(id: string, counter: number) {
 			await db.exec(sql`UPDATE passkeys SET counter = ${counter} WHERE id = ${id}`)
 		},
 
-		async deletePasskey(id, userId) {
+		/** Refuses to delete the last second factor of an admin. */
+		async deletePasskey(id: string, userId: string) {
 			return db.tx((tx) =>
 				removeSecondFactor(
 					tx,
@@ -55,13 +74,15 @@ export function createPasskeyRepository(db: Db): PasskeyRepository {
 			)
 		},
 
-		async createChallenge(id, userId, expiresAt) {
+		/** `userId` binds the challenge to adding a passkey; null means signing in. */
+		async createChallenge(id: string, userId: string | null, expiresAt: Date) {
 			await db.exec(
 				sql`INSERT INTO challenges (id, user_id, expires_at) VALUES (${id}, ${userId}, ${expiresAt})`,
 			)
 		},
 
-		async useChallenge(id, userId) {
+		/** Deletes the live challenge for `userId` and reports whether there was one. */
+		async useChallenge(id: string, userId: string | null) {
 			const owner = userId === null ? sql`user_id IS NULL` : sql`user_id = ${userId}`
 
 			const deleted = await db.exec(
@@ -76,3 +97,5 @@ export function createPasskeyRepository(db: Db): PasskeyRepository {
 		},
 	}
 }
+
+export type PasskeyRepository = ReturnType<typeof createPasskeyRepository>

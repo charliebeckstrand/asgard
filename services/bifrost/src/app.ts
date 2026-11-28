@@ -34,20 +34,43 @@ function limit(route: string, { rate, burst }: { rate: number; burst: number }):
 	)
 }
 
+// Midgard caches these two for hours, so they keep the default caching.
+const CACHEABLE = new Set(['/auth/oauth/providers', '/auth/register/options'])
+
+/**
+ * Marks every answer private and uncacheable unless its handler set its own
+ * caching, so no answer about an account lands in a shared cache.
+ */
+function noStore(): MiddlewareHandler {
+	return async (c, next) => {
+		await next()
+
+		if (!CACHEABLE.has(c.req.path) && !c.res.headers.has('Cache-Control')) {
+			c.header('Cache-Control', 'private, no-store')
+		}
+	}
+}
+
 export function createBifrostApp() {
 	const env = environment()
 
 	const app = createApp({
 		basePath: '/api',
 		title: 'Bifrost',
+		description: 'Accounts and sign-in for the Ivory Image apps.',
 		cors: { origin: env.APP_ORIGINS, credentials: true },
 		logger: logger(),
 	})
 
 	// App Platform overwrites `do-connecting-ip` with the client address on every request.
 	app.use('*', clientIp({ header: 'do-connecting-ip', secret: env.CLIENT_IP_SECRET }))
-	app.use('*', session())
+	// Before the session, so a cross-site write is refused without a database read.
 	app.use('*', csrf({ origin: env.APP_ORIGINS }))
+	app.use('*', session())
+
+	app.use('/auth/*', noStore())
+	app.use('/api/users/*', noStore())
+	app.use('/api/security/*', noStore())
 
 	// Also covers `/auth/login` itself and the second step of a session, so passkey
 	// sign-ins and second steps share the password budget.

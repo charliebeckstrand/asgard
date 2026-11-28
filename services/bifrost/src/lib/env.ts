@@ -1,10 +1,8 @@
 import { createEnvironment } from 'grid/environment'
 import { z } from 'zod'
 
-const optionalValue = z
-	.string()
-	.optional()
-	.transform((v) => (v && v.length > 0 ? v : undefined))
+// grid's createEnvironment drops empty values, so an empty variable is unset here.
+const optionalValue = z.string().optional()
 
 const databaseCaCert = z.string().min(1, 'DATABASE_CA_CERT is required in production')
 
@@ -39,12 +37,8 @@ export const environment = createEnvironment({
 	// won't start with a key that can't read the secrets already stored.
 	MFA_ENCRYPTION_KEY: z
 		.string()
-		.optional()
-		.refine(
-			(v) => !v || v.length >= 32,
-			'MFA_ENCRYPTION_KEY must be at least 32 characters when set',
-		)
-		.transform((v) => (v && v.length > 0 ? v : undefined)),
+		.min(32, 'MFA_ENCRYPTION_KEY must be at least 32 characters when set')
+		.optional(),
 	// OAuth clients for signing in with GitHub and Google. A provider without both
 	// values is off.
 	OAUTH_GITHUB_CLIENT_ID: optionalValue,

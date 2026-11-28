@@ -1,13 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { isDockerAvailable } from 'vali/containers'
-import type {
-	OAuthRepository,
-	PasskeyRepository,
-	StoredOAuthState,
-	UserRepository,
-} from '../../auth/types.js'
+import type { OAuthRepository, StoredOAuthState } from '../oauth-repository.js'
 import { createOAuthRepository } from '../oauth-repository.js'
+import type { PasskeyRepository } from '../passkey-repository.js'
 import { createPasskeyRepository } from '../passkey-repository.js'
+import type { UserRepository } from '../user-repository.js'
 import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 
@@ -48,9 +45,7 @@ const state: StoredOAuthState = {
 
 const inAMinute = () => new Date(Date.now() + 60_000)
 
-async function insertUser(email = `${randomUUID()}@x.dev`) {
-	return (await users.insertUser(email, 'h')).id
-}
+const insertUser = (email?: string) => testDb.insertUser({ email })
 
 async function makeSsoUser(email = `${randomUUID()}@x.dev`, subject: string = randomUUID()) {
 	const created = await oauth.createUserWithIdentity({ provider: 'github', subject, email })
