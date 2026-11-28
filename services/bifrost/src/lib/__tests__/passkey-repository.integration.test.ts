@@ -36,9 +36,7 @@ beforeEach(async () => {
 
 const inAMinute = () => new Date(Date.now() + 60_000)
 
-async function insertUser(email = `${randomUUID()}@x.dev`) {
-	return (await users.insertUser(email, 'h')).id
-}
+const insertUser = (email?: string) => testDb.insertUser({ email })
 
 async function addPasskey(userId: string, id = randomUUID()) {
 	await passkeys.insertPasskey(userId, {

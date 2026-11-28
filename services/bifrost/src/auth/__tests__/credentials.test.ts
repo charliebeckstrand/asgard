@@ -2,7 +2,6 @@ import { hash } from '@node-rs/argon2'
 import type { User } from 'skuld'
 import { configure, getConfig } from '../config.js'
 import {
-	AuthError,
 	authenticateUser,
 	checkTurnstile,
 	FAILED_LOGIN_WAIT_SECONDS,
@@ -10,6 +9,7 @@ import {
 	MAX_FAILED_LOGINS,
 	registerUser,
 } from '../credentials.js'
+import { AuthError } from '../errors.js'
 import type {
 	ActivityRepository,
 	CredentialsRow,
@@ -41,7 +41,7 @@ let mockRepo: UserRepository
 let mockSessionRepo: SessionRepository
 
 beforeAll(async () => {
-	hashedPassword = await hash('correct-password', { algorithm: 2 })
+	hashedPassword = await hash('correct-password')
 })
 
 beforeEach(() => {
@@ -356,7 +356,7 @@ describe('registerUser', () => {
 	})
 
 	it('returns null when the email already has an account', async () => {
-		vi.mocked(mockRepo.insertUser).mockRejectedValue({ code: '23505' })
+		vi.mocked(mockRepo.insertUser).mockResolvedValue(null)
 
 		expect(await registerUser('alice@example.com', 'password123', IP)).toBeNull()
 	})
@@ -376,7 +376,7 @@ describe('registerUser', () => {
 	})
 
 	it('counts a sign-up for a taken email the same way', async () => {
-		vi.mocked(mockRepo.insertUser).mockRejectedValue({ code: '23505' })
+		vi.mocked(mockRepo.insertUser).mockResolvedValue(null)
 
 		await registerUser('alice@example.com', 'password123', '1.2.3.4')
 

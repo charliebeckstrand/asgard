@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import type { Pool } from 'pg'
 import { isDockerAvailable } from 'vali/containers'
 import type { MfaRepository, PasskeyRepository, UserRepository } from '../../auth/types.js'
@@ -40,9 +39,7 @@ beforeEach(async () => {
 
 const secret = new Uint8Array([1, 2, 3])
 
-async function insertUser(email = `${randomUUID()}@x.dev`) {
-	return (await users.insertUser(email, 'h')).id
-}
+const insertUser = (email?: string) => testDb.insertUser({ email })
 
 async function addTotp(userId: string) {
 	await mfa.setPendingTotp(userId, secret)

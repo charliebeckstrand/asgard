@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { Pool } from 'pg'
+import type { User } from 'skuld'
 import { isDockerAvailable } from 'vali/containers'
 import type { UserRepository } from '../../auth/types.js'
 import { createUserRepository } from '../user-repository.js'
@@ -31,10 +32,19 @@ beforeEach(async () => {
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 
+/** Inserts a user whose email must be new. */
+async function insertNew(...args: Parameters<UserRepository['insertUser']>): Promise<User> {
+	const user = await repo.insertUser(...args)
+
+	if (!user) throw new Error(`${args[0]} already has an account`)
+
+	return user
+}
+
 describeWithDocker('createUserRepository (integration)', () => {
 	describe('insertUser + getUserById', () => {
 		it('inserts a user with a version 7 id and retrieves it', async () => {
-			const inserted = await repo.insertUser('alice@example.com', 'hash')
+			const inserted = await insertNew('alice@example.com', 'hash')
 
 			expect(inserted.id.charAt(14)).toBe('7')
 
@@ -56,7 +66,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 		})
 
 		it('stores the name given at sign-up', async () => {
-			const { id } = await repo.insertUser('ada@example.com', 'hash', 'Ada Lovelace')
+			const { id } = await insertNew('ada@example.com', 'hash', 'Ada Lovelace')
 
 			expect((await repo.getUserById(id))?.name).toBe('Ada Lovelace')
 		})
@@ -65,16 +75,16 @@ describeWithDocker('createUserRepository (integration)', () => {
 			expect(await repo.getUserById(randomUUID())).toBeNull()
 		})
 
-		it('rejects duplicate emails via unique index', async () => {
-			await repo.insertUser('dup@example.com', 'hash')
+		it('inserts nothing for an email that has an account', async () => {
+			await insertNew('dup@example.com', 'hash')
 
-			await expect(repo.insertUser('dup@example.com', 'hash')).rejects.toThrow()
+			expect(await repo.insertUser('dup@example.com', 'hash')).toBeNull()
 		})
 	})
 
 	describe('getCredentialsByEmail', () => {
 		it('returns credentials for an existing user', async () => {
-			const { id } = await repo.insertUser('creds@example.com', 'hashed-pw')
+			const { id } = await insertNew('creds@example.com', 'hashed-pw')
 
 			const creds = await repo.getCredentialsByEmail('creds@example.com')
 
@@ -93,15 +103,15 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 	describe('getUsers', () => {
 		it('returns all users ordered by created_at', async () => {
-			await repo.insertUser('a@example.com', 'h')
+			await insertNew('a@example.com', 'h')
 
 			await new Promise((r) => setTimeout(r, 5))
 
-			await repo.insertUser('b@example.com', 'h')
+			await insertNew('b@example.com', 'h')
 
 			await new Promise((r) => setTimeout(r, 5))
 
-			await repo.insertUser('c@example.com', 'h')
+			await insertNew('c@example.com', 'h')
 
 			const users = await repo.getUsers()
 
@@ -115,7 +125,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 	describe('setUserActive', () => {
 		it('updates is_active and refreshes updated_at', async () => {
-			const before = await repo.insertUser('flip@example.com', 'h')
+			const before = await insertNew('flip@example.com', 'h')
 
 			const after = await repo.setUserActive(before.id, false)
 
@@ -127,7 +137,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 		})
 
 		it('leaves admins alone', async () => {
-			const { id } = await repo.insertUser('admin@example.com', 'h')
+			const { id } = await insertNew('admin@example.com', 'h')
 
 			await pool.query(`UPDATE users SET roles = '{user,admin}' WHERE id = $1`, [id])
 
@@ -143,7 +153,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 	describe('deleteUser', () => {
 		it('deletes the user and everything that names them', async () => {
-			const { id } = await repo.insertUser('gone@example.com', 'h')
+			const { id } = await insertNew('gone@example.com', 'h')
 
 			await pool.query(
 				`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s', $1, now() + interval '1 day')`,
@@ -160,7 +170,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 		})
 
 		it('leaves admins alone', async () => {
-			const { id } = await repo.insertUser('admin@example.com', 'h')
+			const { id } = await insertNew('admin@example.com', 'h')
 
 			await pool.query(`UPDATE users SET roles = '{user,admin}' WHERE id = $1`, [id])
 

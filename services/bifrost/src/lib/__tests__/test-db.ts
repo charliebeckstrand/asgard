@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Pool } from 'pg'
@@ -11,6 +12,8 @@ export interface TestDb {
 	db: Db
 	/** Plain node-postgres, for tests that arrange or check rows with raw SQL. */
 	pool: Pool
+	/** Inserts a user, with a random email unless given one, and returns its id. */
+	insertUser(options?: { email?: string; hashedPassword?: string }): Promise<string>
 	/** Empties every table, so each test starts clean. */
 	reset(): Promise<void>
 	stop(): Promise<void>
@@ -29,6 +32,12 @@ export async function startTestDb(): Promise<TestDb> {
 	return {
 		db,
 		pool,
+
+		insertUser({ email = `${randomUUID()}@x.dev`, hashedPassword = 'h' } = {}) {
+			return db.val<string>(
+				sql`INSERT INTO users (email, hashed_password) VALUES (${email}, ${hashedPassword}) RETURNING id`,
+			)
+		},
 
 		async reset() {
 			await db.exec(sql`

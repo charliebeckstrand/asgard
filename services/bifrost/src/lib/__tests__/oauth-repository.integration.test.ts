@@ -48,9 +48,7 @@ const state: StoredOAuthState = {
 
 const inAMinute = () => new Date(Date.now() + 60_000)
 
-async function insertUser(email = `${randomUUID()}@x.dev`) {
-	return (await users.insertUser(email, 'h')).id
-}
+const insertUser = (email?: string) => testDb.insertUser({ email })
 
 async function makeSsoUser(email = `${randomUUID()}@x.dev`, subject: string = randomUUID()) {
 	const created = await oauth.createUserWithIdentity({ provider: 'github', subject, email })

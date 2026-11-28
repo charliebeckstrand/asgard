@@ -2,6 +2,8 @@ import { type Db, sql } from 'saga'
 import type { User } from 'skuld'
 import type { CredentialsRow, UserRepository } from '../auth/types.js'
 
+const userColumns = sql`id, email, name, is_active, is_verified, roles, created_at, updated_at`
+
 /** An address's network: itself for IPv4, its /64 for IPv6. */
 const network = (ip: string) =>
 	sql`network(set_masklen(${ip}::inet, CASE family(${ip}::inet) WHEN 6 THEN 64 ELSE 32 END))`
@@ -9,11 +11,12 @@ const network = (ip: string) =>
 export function createUserRepository(db: Db): UserRepository {
 	return {
 		async insertUser(email, hashedPassword, name = null) {
-			return db.one<User>(
+			return db.first<User>(
 				sql`
 					INSERT INTO users (email, hashed_password, name)
 					VALUES (${email}, ${hashedPassword}, ${name})
-					RETURNING id, email, name, is_active, is_verified, roles, created_at, updated_at
+					ON CONFLICT (email) DO NOTHING
+					RETURNING ${userColumns}
 				`,
 			)
 		},
@@ -29,15 +32,13 @@ export function createUserRepository(db: Db): UserRepository {
 		},
 
 		async getUsers() {
-			return db.many<User>(
-				sql`SELECT id, email, name, is_active, is_verified, roles, created_at, updated_at FROM users ORDER BY created_at`,
-			)
+			return db.many<User>(sql`SELECT ${userColumns} FROM users ORDER BY created_at`)
 		},
 
 		async getUserById(id) {
 			return db.first<User>(
 				sql`
-					SELECT id, email, name, is_active, is_verified, roles, created_at, updated_at
+					SELECT ${userColumns}
 					FROM users
 					WHERE id = ${id}
 				`,
@@ -50,7 +51,7 @@ export function createUserRepository(db: Db): UserRepository {
 					UPDATE users
 					SET is_active = ${isActive}
 					WHERE id = ${id} AND NOT 'admin' = ANY(roles)
-					RETURNING id, email, name, is_active, is_verified, roles, created_at, updated_at
+					RETURNING ${userColumns}
 				`,
 			)
 		},
@@ -60,7 +61,7 @@ export function createUserRepository(db: Db): UserRepository {
 				sql`
 					DELETE FROM users
 					WHERE id = ${id} AND NOT 'admin' = ANY(roles)
-					RETURNING id, email, name, is_active, is_verified, roles, created_at, updated_at
+					RETURNING ${userColumns}
 				`,
 			)
 		},

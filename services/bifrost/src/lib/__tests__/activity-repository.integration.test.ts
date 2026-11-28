@@ -1,15 +1,12 @@
-import { randomUUID } from 'node:crypto'
 import type { Pool } from 'pg'
 import { isDockerAvailable } from 'vali/containers'
-import type { ActivityRepository, UserRepository } from '../../auth/types.js'
+import type { ActivityRepository } from '../../auth/types.js'
 import { createActivityRepository } from '../activity-repository.js'
 import { demote } from '../admins.js'
-import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 
 let testDb: TestDb
 let pool: Pool
-let users: UserRepository
 let activity: ActivityRepository
 
 beforeAll(async () => {
@@ -18,8 +15,6 @@ beforeAll(async () => {
 	testDb = await startTestDb()
 
 	pool = testDb.pool
-
-	users = createUserRepository(testDb.db)
 
 	activity = createActivityRepository(testDb.db)
 }, 60_000)
@@ -34,9 +29,7 @@ beforeEach(async () => {
 	await testDb.reset()
 })
 
-async function insertUser(email = `${randomUUID()}@x.dev`) {
-	return (await users.insertUser(email, 'hash')).id
-}
+const insertUser = (email?: string) => testDb.insertUser({ email })
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 

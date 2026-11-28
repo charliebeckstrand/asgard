@@ -4,12 +4,10 @@ import { normalizeEmail } from 'skuld'
 import { getConfig } from './config.js'
 import { AuthError } from './errors.js'
 
-export { AuthError } from './errors.js'
-
 // Pre-compute a dummy hash for timing-safe login.
 // Ensures argon2 always runs even when the user is not found,
 // preventing timing-based email enumeration.
-const dummyHashPromise = hash('dummy-timing-pad', { algorithm: 2 /* Argon2id */ })
+const dummyHashPromise = hash('dummy-timing-pad')
 
 /** Wrong passwords an email gets before its tries are spaced out. */
 export const MAX_FAILED_LOGINS = 5
@@ -96,7 +94,7 @@ export async function hashNewPassword(password: string): Promise<string> {
 		)
 	}
 
-	return hash(password, { algorithm: 2 /* Argon2id */ })
+	return hash(password)
 }
 
 /** The key that the sign-up page shows Turnstile with, or null when sign-up has no check. */
@@ -138,21 +136,15 @@ export async function registerUser(
 		)
 	}
 
-	try {
-		const user = await userRepository.insertUser(normalizedEmail, hashedPassword, name)
+	const user = await userRepository.insertUser(normalizedEmail, hashedPassword, name)
 
+	if (user) {
 		getConfig().onSecurityEvent?.({
 			type: 'registration',
 			ip,
 			details: { email: normalizedEmail },
 		})
-
-		return user
-	} catch (err: unknown) {
-		if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
-			return null
-		}
-
-		throw err
 	}
+
+	return user
 }

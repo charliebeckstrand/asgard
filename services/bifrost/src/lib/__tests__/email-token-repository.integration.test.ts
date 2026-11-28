@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import type { Pool } from 'pg'
 import { isDockerAvailable } from 'vali/containers'
 import type { EmailTokenRepository, UserRepository } from '../../auth/types.js'
@@ -35,9 +34,7 @@ beforeEach(async () => {
 
 const inAnHour = () => new Date(Date.now() + 60 * 60 * 1000)
 
-async function insertUser() {
-	return (await users.insertUser(`${randomUUID()}@x.dev`, 'old-hash')).id
-}
+const insertUser = () => testDb.insertUser({ hashedPassword: 'old-hash' })
 
 async function getUser(userId: string) {
 	const { rows } = await pool.query(

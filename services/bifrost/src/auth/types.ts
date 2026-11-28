@@ -9,7 +9,8 @@ export interface CredentialsRow {
 }
 
 export interface UserRepository {
-	insertUser(email: string, hashedPassword: string, name?: string | null): Promise<User>
+	/** Returns null, and inserts nothing, when a user already has the email. */
+	insertUser(email: string, hashedPassword: string, name?: string | null): Promise<User | null>
 	getCredentialsByEmail(email: string): Promise<CredentialsRow | null>
 	getUsers(): Promise<User[]>
 	getUserById(id: string): Promise<User | null>

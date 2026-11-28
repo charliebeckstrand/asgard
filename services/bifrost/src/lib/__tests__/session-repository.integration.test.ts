@@ -35,9 +35,7 @@ beforeEach(async () => {
 
 const inADay = () => new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-async function insertUser() {
-	return (await users.insertUser(`${randomUUID()}@x.dev`, 'h')).id
-}
+const insertUser = (email?: string) => testDb.insertUser({ email })
 
 async function openSession(
 	userId: string,
