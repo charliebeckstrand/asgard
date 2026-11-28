@@ -15,7 +15,6 @@ import { readDocument } from './documents.js'
 import { MAX_PLACES, newestFirst } from './places.js'
 import {
 	changeTravel,
-	checkOwnPhotos,
 	hasId,
 	onTrip,
 	presentPlace,
@@ -66,12 +65,9 @@ export async function createTrip(
 	userId: string,
 	{ stops = [], ...draft }: NewTrip,
 ): Promise<{ trip: Trip; places: Place[] }> {
-	checkOwnPhotos(userId, [
-		...draft.photos,
-		...stops.flatMap((stop) => stopVisit(stop)?.photos ?? []),
-	])
+	const photos = [...draft.photos, ...stops.flatMap((stop) => stopVisit(stop)?.photos ?? [])]
 
-	const created = await changeTravel(userId, (places, trips) => {
+	const created = await changeTravel(userId, photos, (places, trips) => {
 		if (trips.length >= MAX_TRIPS) {
 			throw new HTTPException(409, {
 				message: `You can keep up to ${MAX_TRIPS.toLocaleString('en-US')} trips`,
@@ -158,9 +154,7 @@ export async function updateTrip(
 	id: string,
 	draft: TripDraft,
 ): Promise<Trip | null> {
-	checkOwnPhotos(userId, draft.photos)
-
-	const trip = await changeTravel(userId, (places, trips) => {
+	const trip = await changeTravel(userId, draft.photos, (places, trips) => {
 		const held = trips.map(readTrip).find((stored) => stored?.id === id)
 
 		if (held === undefined) return { result: null }
@@ -190,7 +184,7 @@ export async function updateTrip(
  * trip. `false` where no trip carried that id.
  */
 export function removeTrip(userId: string, id: string): Promise<boolean> {
-	return changeTravel(userId, (places, trips) => {
+	return changeTravel(userId, [], (places, trips) => {
 		const kept = trips.filter((record) => !hasId(record, id))
 
 		if (kept.length === trips.length) return { result: false }

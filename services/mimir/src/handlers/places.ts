@@ -3,7 +3,6 @@ import type { Place, PlaceDraft, StoredPlace, StoredVisit } from '../lib/schemas
 import { readDocument } from './documents.js'
 import {
 	changeTravel,
-	checkOwnPhotos,
 	checkVisitsOnTrips,
 	hasId,
 	presentPlace,
@@ -32,14 +31,9 @@ function storedVisits(draft: PlaceDraft): StoredVisit[] {
 	return newestFirst(draft.visits.map((visit) => ({ ...visit, id: visit.id ?? randomUUID() })))
 }
 
-/** Refuses a draft with another user's photos, or a visit outside its trip. */
-function checkDraft(userId: string, draft: PlaceDraft, trips: unknown[]): void {
-	checkOwnPhotos(
-		userId,
-		draft.visits.flatMap((visit) => visit.photos),
-	)
-
-	checkVisitsOnTrips(draft.visits, trips)
+/** The photos of a draft's visits. */
+function draftPhotos(draft: PlaceDraft): string[] {
+	return draft.visits.flatMap((visit) => visit.photos)
 }
 
 /**
@@ -69,8 +63,8 @@ export async function listPlaces(userId: string): Promise<Place[]> {
 
 /** Adds one place. `null` where the user already keeps {@link MAX_PLACES}. */
 export async function addPlace(userId: string, draft: PlaceDraft): Promise<Place | null> {
-	const place = await changeTravel(userId, (places, trips) => {
-		checkDraft(userId, draft, trips)
+	const place = await changeTravel(userId, draftPhotos(draft), (places, trips) => {
+		checkVisitsOnTrips(draft.visits, trips)
 
 		if (places.length >= MAX_PLACES) return { result: null }
 
@@ -96,8 +90,8 @@ export async function updatePlace(
 	id: string,
 	draft: PlaceDraft,
 ): Promise<Place | null> {
-	const place = await changeTravel(userId, (places, trips) => {
-		checkDraft(userId, draft, trips)
+	const place = await changeTravel(userId, draftPhotos(draft), (places, trips) => {
+		checkVisitsOnTrips(draft.visits, trips)
 
 		const held = places.map(readPlace).find((stored) => stored?.id === id)
 
@@ -121,7 +115,7 @@ export async function updatePlace(
 
 /** Removes one place and its photos. `false` where none carried that id. */
 export function removePlace(userId: string, id: string): Promise<boolean> {
-	return changeTravel(userId, (places) => {
+	return changeTravel(userId, [], (places) => {
 		const kept = places.filter((record) => !hasId(record, id))
 
 		if (kept.length === places.length) return { result: false }

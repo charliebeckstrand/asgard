@@ -9,6 +9,13 @@ export const documents = new Map<string, unknown>()
 /** What a change gets as its transaction, for a test of a write that it gives the transaction to. */
 export const transaction = { name: 'transaction' }
 
+let changing = 0
+
+/** Whether a change is running, as a lock and a connection would be held for it. */
+export function isChanging(): boolean {
+	return changing > 0
+}
+
 export async function readDocument(userId: string, name: string): Promise<unknown> {
 	return documents.get(`${userId}:${name}`)
 }
@@ -18,10 +25,16 @@ export async function changeDocuments<T>(
 	names: string[],
 	change: (documents: unknown[], tx: typeof transaction) => Change<T> | Promise<Change<T>>,
 ): Promise<T> {
-	const { result, values } = await change(
-		names.map((name) => documents.get(`${userId}:${name}`)),
-		transaction,
-	)
+	changing++
+
+	const { result, values } = await Promise.resolve(
+		change(
+			names.map((name) => documents.get(`${userId}:${name}`)),
+			transaction,
+		),
+	).finally(() => {
+		changing--
+	})
 
 	for (const [index, name] of names.entries()) {
 		if (values[index] !== undefined) documents.set(`${userId}:${name}`, values[index])

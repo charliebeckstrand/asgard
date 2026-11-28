@@ -18,7 +18,7 @@ import {
 	savedKey,
 	viewKey,
 } from '../lib/storage.js'
-import { changeDocuments } from './documents.js'
+import { changeDocuments, readDocument } from './documents.js'
 
 /**
  * What places and trips share. A visit can name a trip, so a write of either
@@ -109,28 +109,92 @@ export function replaceKeys<V>(value: V, keys: Map<string, string>): V {
 	return value
 }
 
+/** Deletes photos after a write, which stands either way: a photo left behind is only storage. */
+async function deleteUnused(userId: string, keys: Iterable<string>): Promise<void> {
+	const unused = [...new Set(keys)]
+
+	if (unused.length === 0) return
+
+	await deletePhotos(unused).catch((err: unknown) => {
+		logger().error({ err, userId, keys: unused }, 'photo delete failed')
+	})
+}
+
+function photoMissing(): DataError {
+	return new DataError('photo-missing', 'A photo is no longer available. Remove it and save again.')
+}
+
+/** Every photo key the user's places and trips hold now, read without the lock. */
+async function heldPhotos(userId: string): Promise<Set<string>> {
+	const [places, trips] = await Promise.all([
+		readDocument(userId, 'places'),
+		readDocument(userId, 'trips'),
+	])
+
+	return photoKeys(records(places), records(trips))
+}
+
+/**
+ * Keeps each upload of `photos` that the documents don't hold yet under its
+ * saved key, with its view, and answers those saved keys. This is the slow
+ * part of a write, a download, a resize and two writes for each photo, so it
+ * runs before the write takes its lock and a connection. One at a time, so
+ * the resizes of a save with many photos don't fill the memory. Keeping an
+ * upload twice writes the same objects, so two saves of one upload agree.
+ */
+async function keepUploads(userId: string, photos: string[]): Promise<Set<string>> {
+	const uploads = new Set(photos.filter(isUpload))
+
+	const kept = new Set<string>()
+
+	if (uploads.size === 0) return kept
+
+	const held = await heldPhotos(userId)
+
+	for (const key of uploads) {
+		if (held.has(savedKey(key))) continue
+
+		if (!(await keepPhoto(key))) {
+			await deleteUnused(userId, kept)
+
+			throw photoMissing()
+		}
+
+		kept.add(savedKey(key))
+	}
+
+	return kept
+}
+
 /**
  * Reads the user's places and trips, gives their records to `change`, and
  * writes the documents it gives back, in one transaction.
  *
- * A draft holds each photo by a key the documents already hold, or by the key
- * of an upload. The write keeps each new upload under its saved key, with its
- * view, and stores that, so the result answers with saved keys. A draft
- * opened before the view migration can hold a photo's flat key, which stands
- * for the saved key that the documents hold now. A key that is none of these
- * is a photo gone since the draft was opened, and the write is refused. Once
- * it commits, deletes the photos no place or trip holds anymore.
+ * `photos` are the photos of the draft, which must be the user's own. Before
+ * the lock, the write keeps each new upload under its saved key (see
+ * {@link keepUploads}), and stores that, so the result answers with saved keys.
+ * Under the lock, a draft holds each photo by a key the documents hold, or by
+ * an upload kept for it. A draft opened before the view migration can hold a
+ * photo's flat key, which stands for the saved key that the documents hold
+ * now. A key that is none of these is a photo gone since the draft was
+ * opened, and the write is refused. Once it commits, deletes the photos no
+ * place or trip holds anymore, and the kept uploads it didn't store.
  */
 export async function changeTravel<T>(
 	userId: string,
+	photos: string[],
 	change: (places: unknown[], trips: unknown[]) => TravelChange<T> | Promise<TravelChange<T>>,
 ): Promise<T> {
+	checkOwnPhotos(userId, photos)
+
+	const uploads = await keepUploads(userId, photos)
+
 	let unused: string[] = []
 
-	const result = await changeDocuments(
-		userId,
-		['places', 'trips'],
-		async ([placesDoc, tripsDoc]) => {
+	let result: T
+
+	try {
+		result = await changeDocuments(userId, ['places', 'trips'], async ([placesDoc, tripsDoc]) => {
 			const places = records(placesDoc)
 
 			const trips = records(tripsDoc)
@@ -149,45 +213,45 @@ export async function changeTravel<T>(
 				}),
 			)
 
-			const uploads = [...saved].filter(([key, kept]) => key !== kept && !held.has(kept))
-
-			const gone = [...saved].some(([key, kept]) => key === kept && !held.has(key))
-
-			let available = !gone
-
-			// One at a time, so the resizes of a save with many photos don't fill the memory.
-			for (const [key] of uploads) if (available) available = await keepPhoto(key)
-
-			if (!available) {
-				throw new DataError(
-					'photo-missing',
-					'A photo is no longer available. Remove it and save again.',
-				)
+			if ([...saved.values()].some((key) => !held.has(key) && !uploads.has(key))) {
+				throw photoMissing()
 			}
 
-			const kept = new Set(saved.values())
+			const stored = new Set(saved.values())
 
-			unused = [...held].filter((key) => !kept.has(key))
+			unused = [...held, ...uploads].filter((key) => !stored.has(key))
 
 			return {
 				result: replaceKeys(changed.result, saved),
 				values: [replaceKeys(changed.places, saved), replaceKeys(changed.trips, saved)],
 			}
-		},
-	)
-
-	if (unused.length > 0) {
-		// The write stands either way. A photo left behind is only storage.
-		await deletePhotos(unused).catch((err: unknown) => {
-			logger().error({ err, userId, keys: unused }, 'photo delete failed')
 		})
+	} catch (err) {
+		// The uploads kept for a write that didn't commit, unless another write
+		// stored them since. Without the documents, they stay: only storage.
+		if (uploads.size > 0) {
+			await heldPhotos(userId)
+				.then((held) =>
+					deleteUnused(
+						userId,
+						[...uploads].filter((key) => !held.has(key)),
+					),
+				)
+				.catch((cleanup: unknown) => {
+					logger().error({ err: cleanup, userId }, 'kept photos not cleaned up')
+				})
+		}
+
+		throw err
 	}
+
+	await deleteUnused(userId, unused)
 
 	return result
 }
 
 /** Refuses a photo key outside the user's own prefix. */
-export function checkOwnPhotos(userId: string, photos: string[]): void {
+function checkOwnPhotos(userId: string, photos: string[]): void {
 	if (photos.some((photo) => !isOwnPhoto(userId, photo))) {
 		throw new DataError('photo-not-yours', 'A photo is not one you uploaded')
 	}
