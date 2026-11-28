@@ -102,6 +102,22 @@ describe('rateLimit', () => {
 		expect((await app.request('/x', from('203.0.113.7'))).status).toBe(429)
 	})
 
+	it('says when to retry', async () => {
+		const app = new Hono()
+
+		app.use('*', rateLimit({ rate: 1 / 6, burst: 1, key: () => 'k' }))
+
+		app.get('/x', (c) => c.text('OK'))
+
+		await app.request('/x')
+
+		const res = await app.request('/x')
+
+		expect(res.status).toBe(429)
+
+		expect(res.headers.get('Retry-After')).toBe('6')
+	})
+
 	it('keeps a separate budget per address', async () => {
 		const app = buildApp()
 

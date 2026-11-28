@@ -1,8 +1,9 @@
 import type { Server } from 'node:net'
+import type { Logger } from 'pino'
 
 export interface LifecycleOptions {
 	server: Server
-	name: string
+	logger: Logger
 	onShutdown?: () => Promise<void>
 }
 
@@ -12,25 +13,21 @@ const RETRY_DELAY_MS = 500
 // Open streams keep server.close() waiting, so shutdown gives up after this.
 const SHUTDOWN_TIMEOUT_MS = 10_000
 
-export function setupLifecycle({ server, name, onShutdown }: LifecycleOptions) {
+export function setupLifecycle({ server, logger, onShutdown }: LifecycleOptions) {
 	let retries = 0
 
 	server.on('error', (error: NodeJS.ErrnoException & { port?: number }) => {
 		if (error.code !== 'EADDRINUSE' || !error.port) throw error
 
 		if (retries >= MAX_RETRIES) {
-			console.error(
-				`${name}: port ${error.port} still in use after ${MAX_RETRIES} retries, exiting.`,
-			)
+			logger.fatal({ port: error.port }, `port still in use after ${MAX_RETRIES} retries`)
 
 			process.exit(1)
 		}
 
 		retries++
 
-		console.warn(
-			`${name}: port ${error.port} in use, retrying in ${RETRY_DELAY_MS}ms (${retries}/${MAX_RETRIES})...`,
-		)
+		logger.warn({ port: error.port, retries }, `port in use, retrying in ${RETRY_DELAY_MS}ms`)
 
 		setTimeout(() => server.listen(error.port), RETRY_DELAY_MS)
 	})
@@ -43,38 +40,24 @@ export function setupLifecycle({ server, name, onShutdown }: LifecycleOptions) {
 		shuttingDown = true
 
 		setTimeout(() => {
-			console.error(`${name} did not shut down within ${SHUTDOWN_TIMEOUT_MS}ms after ${signal}`)
+			logger.fatal({ signal }, `did not shut down within ${SHUTDOWN_TIMEOUT_MS}ms`)
 
 			process.exit(1)
 		}, SHUTDOWN_TIMEOUT_MS).unref()
 
-		await new Promise<void>((resolve, reject) => {
-			server.close((error) => {
-				if (error) {
-					reject(error)
-
-					return
-				}
-
-				resolve()
-			})
-		})
+		await server[Symbol.asyncDispose]()
 
 		await onShutdown?.()
 
-		console.log(`${name} shut down after ${signal}`)
+		logger.info({ signal }, 'shut down')
 
 		process.exit(0)
 	}
 
 	for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-		// Clear any prior handlers so multiple setupLifecycle calls (e.g. across
-		// hot-reloads or tests in the same process) don't accumulate listeners.
-		process.removeAllListeners(signal)
-
 		process.once(signal, () => {
-			void shutdown(signal).catch((error) => {
-				console.error(`Failed to shut down ${name} cleanly after ${signal}`, error)
+			shutdown(signal).catch((err: unknown) => {
+				logger.fatal({ err, signal }, 'failed to shut down cleanly')
 
 				process.exit(1)
 			})

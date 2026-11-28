@@ -7,7 +7,7 @@ Asgard is the backend for Ivory Image: Hono services in one pnpm and Turborepo w
 Shared packages in `packages/` never import from `services/`.
 
 - `skuld`: shared Zod schemas.
-- `grid`: the service kit. `createApp` (OpenAPI docs at `<basePath>/docs`), error handling, request logging, SSE, the health route, `createEnvironment`, the manifest-driven env sync, `setupLifecycle`, and the `clientIp` and `rateLimit` middleware (per address, or per any key).
+- `grid`: the service kit. `createApp` (OpenAPI docs at `<basePath>/docs`), error handling, request logging, the health route, `createEnvironment` and `requiredInProduction`, the manifest-driven env sync, `setupLifecycle`, `safeEqual`, and the `clientIp` and `rateLimit` middleware (per address, or per any key).
 - `saga`: Postgres. `createDb`, the `sql` template, file migrations and the `saga` CLI (`migrate`, `status`, `new <name>`), pino logging, and `saga-bootstrap` for local roles and databases.
 - `vali`: test helpers. See the `test-quality` skill.
 
@@ -29,7 +29,7 @@ Services in `services/`. Each has `manifest.json`, `migrations/`, `src/index.ts`
 
 ## Environment
 
-Each service's `.env` is generated from its `manifest.json` and the secrets cache (`.secrets.json`, git-ignored). Change the manifest, never the `.env`. `pnpm env:init` writes the files and `pnpm env:rotate` makes new secrets. A new variable goes in both `manifest.json` and `src/lib/env.ts`.
+Each service's `.env` is generated from its `manifest.json` and the secrets cache (`.secrets.json`, git-ignored). Change the manifest, never the `.env`. `pnpm env:init` writes the files, `pnpm env:rotate` makes every secret again, and `pnpm env:rotate MFA_ENCRYPTION_KEY` only the ones named. A new variable goes in both `manifest.json` and `src/lib/env.ts`.
 
 ## Deploy
 

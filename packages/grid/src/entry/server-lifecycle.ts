@@ -1,1 +1,1 @@
-export { type LifecycleOptions, setupLifecycle } from '../server/lifecycle.js'
+export { setupLifecycle } from '../server/lifecycle.js'

@@ -6,18 +6,18 @@ const baseSchema = z.object({
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 })
 
-type BaseSchema = typeof baseSchema
+/**
+ * Required when NODE_ENV is production, so a lost setting fails the deploy, and
+ * optional elsewhere. Reads NODE_ENV when the schema is built.
+ */
+export function requiredInProduction<T extends z.ZodType>(schema: T) {
+	return process.env.NODE_ENV === 'production' ? schema : schema.optional()
+}
 
-type BaseEnvironment = z.infer<BaseSchema>
-
-export function createEnvironment(): () => BaseEnvironment
-
-export function createEnvironment<T extends z.ZodRawShape>(
-	extra: T,
-): () => BaseEnvironment & z.infer<z.ZodObject<T>>
-
-export function createEnvironment<T extends z.ZodRawShape>(extra?: T) {
-	const schema = extra ? baseSchema.extend(extra) : baseSchema
+export function createEnvironment<T extends z.ZodRawShape = Record<never, never>>(
+	extra: T = {} as T,
+) {
+	const schema = baseSchema.extend(extra)
 
 	let cached: z.infer<typeof schema> | null = null
 

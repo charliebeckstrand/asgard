@@ -1,40 +1,35 @@
-import { randomUUID } from 'node:crypto'
 import type { MiddlewareHandler } from 'hono'
+import type { RequestIdVariables } from 'hono/request-id'
 import type { Logger } from 'pino'
 
-export interface RequestLoggerEnv {
-	Variables: {
-		requestId: string
+export type RequestLoggerEnv = {
+	Variables: RequestIdVariables & {
 		logger: Logger
 	}
 }
 
-const REQUEST_ID_HEADER = 'x-request-id'
-
-const REQUEST_ID_PATTERN = /^[\w-]{1,128}$/
+interface RequestLoggerOptions {
+	/** A path, such as the health check's, that gets no access-log line. */
+	skipPath?: string
+}
 
 /**
- * Hono middleware that creates a request-scoped child logger and emits a
- * structured access-log line when the response completes. The request ID
- * is taken from the `X-Request-Id` header when present and echoed back on
- * the response so callers can stitch traces across services.
+ * Hono middleware that creates a request-scoped child logger, bound to the
+ * request ID that Hono's `requestId()` middleware set, and emits a structured
+ * access-log line when the response completes.
  *
- * Routes can read `c.get('logger')` for a child logger pre-bound with the
- * request ID, or `c.get('requestId')` for the bare value.
+ * Routes can read `c.get('logger')` for the child logger.
  */
-export function requestLogger(baseLogger: Logger): MiddlewareHandler<RequestLoggerEnv> {
+export function requestLogger(
+	baseLogger: Logger,
+	{ skipPath }: RequestLoggerOptions = {},
+): MiddlewareHandler<RequestLoggerEnv> {
 	return async (c, next) => {
-		const incoming = c.req.header(REQUEST_ID_HEADER)
+		const logger = baseLogger.child({ requestId: c.var.requestId })
 
-		// The header comes from the client, so only a plain, short ID goes into the logs.
-		const requestId = incoming && REQUEST_ID_PATTERN.test(incoming) ? incoming : randomUUID()
-
-		const logger = baseLogger.child({ requestId })
-
-		c.set('requestId', requestId)
 		c.set('logger', logger)
 
-		c.header(REQUEST_ID_HEADER, requestId)
+		if (c.req.path === skipPath) return next()
 
 		const start = Date.now()
 

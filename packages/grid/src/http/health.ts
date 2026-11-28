@@ -1,24 +1,23 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
+import { createRoute, z } from '@hono/zod-openapi'
 import { ConnectionStatusSchema, HealthStatusSchema } from 'skuld'
+import { createRouter } from './create-app.js'
 import { jsonResponse } from './responses.js'
 
 const ServiceStatusSchema = z.object({
 	status: ConnectionStatusSchema,
-	latency: z.number().optional(),
+	latency: z.number(),
 })
 
 type ServiceStatus = z.infer<typeof ServiceStatusSchema>
 
-export const HealthResponseSchema = z
+const HealthResponseSchema = z
 	.object({
 		status: HealthStatusSchema,
 		version: z.string(),
 		uptime: z.number(),
-		services: z.record(z.string(), ServiceStatusSchema).optional(),
+		services: z.record(z.string(), ServiceStatusSchema),
 	})
 	.openapi('HealthResponse')
-
-export type HealthResponse = z.infer<typeof HealthResponseSchema>
 
 // The commit the running build came from. App Platform sets COMMIT_HASH; anywhere
 // else the build is local.
@@ -28,8 +27,8 @@ type ServiceProbe = () => Promise<{ up: boolean }>
 
 interface CreateHealthRouteOptions {
 	description?: string
-	check?: () => Promise<Record<string, unknown>>
-	services?: Record<string, ServiceProbe>
+	/** What the service depends on, by name. The service is unhealthy when all are down. */
+	services: Record<string, ServiceProbe>
 }
 
 async function runProbe(probe: ServiceProbe): Promise<ServiceStatus> {
@@ -55,41 +54,31 @@ function aggregateStatus(
 	return 'degraded'
 }
 
-export function createHealthRoute(options?: CreateHealthRouteOptions) {
+export function createHealthRoute({ description, services }: CreateHealthRouteOptions) {
 	const healthRoute = createRoute({
 		method: 'get',
 		path: '/health',
 		tags: ['System'],
 		summary: 'Health check',
-		description: options?.description ?? 'Returns the health status of the service',
+		description: description ?? 'Returns the health status of the service',
 		responses: {
 			200: jsonResponse(HealthResponseSchema, 'Service is healthy or degraded'),
 			503: jsonResponse(HealthResponseSchema, 'Service is unhealthy'),
 		},
 	})
 
-	return new OpenAPIHono().openapi(healthRoute, async (c) => {
-		const uptimeSeconds = process.uptime()
+	return createRouter().openapi(healthRoute, async (c) => {
+		const entries = await Promise.all(
+			Object.entries(services).map(async ([name, probe]) => [name, await runProbe(probe)] as const),
+		)
 
-		if (options?.services) {
-			const entries = await Promise.all(
-				Object.entries(options.services).map(
-					async ([name, probe]) => [name, await runProbe(probe)] as const,
-				),
-			)
+		const statuses = Object.fromEntries(entries)
 
-			const services = Object.fromEntries(entries)
+		const status = aggregateStatus(statuses)
 
-			const status = aggregateStatus(services)
-
-			return c.json(
-				{ status, version, uptime: uptimeSeconds, services },
-				status === 'unhealthy' ? 503 : 200,
-			)
-		}
-
-		const extra = options?.check ? await options.check() : {}
-
-		return c.json({ status: 'healthy' as const, version, uptime: uptimeSeconds, ...extra }, 200)
+		return c.json(
+			{ status, version, uptime: process.uptime(), services: statuses },
+			status === 'unhealthy' ? 503 : 200,
+		)
 	})
 }

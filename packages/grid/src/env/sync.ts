@@ -28,11 +28,23 @@ export interface SyncEnvResult {
 
 const SECRET_BYTES = 32
 
+// Only a missing file starts empty. Any other failure stops the sync, which
+// would otherwise make every secret again and overwrite the cache.
 function loadSecrets(path: string): Record<string, string> {
+	let raw: string
+
 	try {
-		return JSON.parse(readFileSync(path, 'utf-8'))
-	} catch {
-		return {}
+		raw = readFileSync(path, 'utf-8')
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {}
+
+		throw error
+	}
+
+	try {
+		return JSON.parse(raw)
+	} catch (error) {
+		throw new Error(`${path} is not valid JSON. Fix or delete it.`, { cause: error })
 	}
 }
 

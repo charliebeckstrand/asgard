@@ -54,7 +54,7 @@ const server = serve(
 
 setupLifecycle({
 	server,
-	name: 'Vidar',
+	logger: log,
 	onShutdown: async () => {
 		clearInterval(cleanupTimer)
 

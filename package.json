@@ -29,7 +29,7 @@
 		"lint:fix": "biome check --write packages/ services/",
 		"format": "biome format --write packages/ services/",
 		"env:init": "pnpm --filter grid run sync-env",
-		"env:rotate": "pnpm --filter grid run sync-env -- --rotate"
+		"env:rotate": "pnpm --filter grid run sync-env --rotate"
 	},
 	"dependencies": {
 		"hlidskjalf": "^0.4.5"

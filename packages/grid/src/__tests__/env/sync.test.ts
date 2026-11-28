@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createTempDir } from 'vali/fixtures'
-import { syncEnv } from '../env/sync.js'
+import { syncEnv } from '../../env/sync.js'
 
 async function writeManifest(
 	root: string,
@@ -181,6 +181,24 @@ describe('syncEnv', () => {
 		const result = syncEnv({ workspaceRoot: tmp.path, services: ['alpha'] })
 
 		expect(result.written).toEqual(['alpha'])
+
+		await tmp.cleanup()
+	})
+
+	it('refuses a secrets cache it cannot parse instead of replacing it', async () => {
+		const tmp = await createTempDir('grid-sync-')
+
+		await writeManifest(tmp.path, 'services', 'alpha', {
+			name: 'alpha',
+			port: 4000,
+			vars: { TOKEN: { type: 'secret' } },
+		})
+
+		await writeFile(join(tmp.path, '.secrets.json'), '{ not json')
+
+		expect(() => syncEnv({ workspaceRoot: tmp.path })).toThrow(/is not valid JSON/)
+
+		expect(await readFile(join(tmp.path, '.secrets.json'), 'utf-8')).toBe('{ not json')
 
 		await tmp.cleanup()
 	})

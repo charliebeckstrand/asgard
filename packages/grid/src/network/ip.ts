@@ -1,7 +1,7 @@
 import { isIP } from 'node:net'
 import { getConnInfo } from '@hono/node-server/conninfo'
 import type { Context, MiddlewareHandler } from 'hono'
-import { timingSafeCompare } from '../auth/bearer.js'
+import { safeEqual } from '../auth/safe-equal.js'
 
 export interface ClientIpEnv {
 	Variables: {
@@ -50,7 +50,7 @@ function validIp(value: string | undefined): string | undefined {
 export function clientIp({ header, secret }: ClientIpOptions): MiddlewareHandler<ClientIpEnv> {
 	return async (c, next) => {
 		const proxied =
-			secret && timingSafeCompare(c.req.header(CLIENT_IP_SECRET_HEADER) ?? '', secret)
+			secret && safeEqual(c.req.header(CLIENT_IP_SECRET_HEADER) ?? '', secret)
 				? validIp(c.req.header(CLIENT_IP_HEADER))
 				: undefined
 

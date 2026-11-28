@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createTempDir } from 'vali/fixtures'
-import { discoverManifests, findWorkspaceRoot } from '../env/manifest.js'
+import { discoverManifests, findWorkspaceRoot } from '../../env/manifest.js'
 
 describe('findWorkspaceRoot', () => {
 	it('walks up to a directory containing pnpm-workspace.yaml', async () => {
@@ -21,19 +21,19 @@ describe('findWorkspaceRoot', () => {
 })
 
 describe('discoverManifests', () => {
-	it('finds manifests across services/ and apps/', async () => {
+	it('finds the manifest of each service', async () => {
 		const tmp = await createTempDir('grid-discover-')
 
 		await mkdir(join(tmp.path, 'services/alpha'), { recursive: true })
-		await mkdir(join(tmp.path, 'apps/beta'), { recursive: true })
+		await mkdir(join(tmp.path, 'services/beta'), { recursive: true })
 
 		await writeFile(
 			join(tmp.path, 'services/alpha/manifest.json'),
 			JSON.stringify({ name: 'alpha', port: 4000 }),
 		)
 		await writeFile(
-			join(tmp.path, 'apps/beta/manifest.json'),
-			JSON.stringify({ name: 'beta', port: 3000 }),
+			join(tmp.path, 'services/beta/manifest.json'),
+			JSON.stringify({ name: 'beta', port: 4001 }),
 		)
 
 		const found = discoverManifests(tmp.path)
@@ -42,7 +42,22 @@ describe('discoverManifests', () => {
 
 		expect(found.get('alpha')?.manifest.port).toBe(4000)
 
-		expect(found.get('beta')?.dir).toBe(join(tmp.path, 'apps/beta'))
+		expect(found.get('beta')?.dir).toBe(join(tmp.path, 'services/beta'))
+
+		await tmp.cleanup()
+	})
+
+	it('names the problem in an invalid manifest', async () => {
+		const tmp = await createTempDir('grid-discover-')
+
+		await mkdir(join(tmp.path, 'services/alpha'), { recursive: true })
+
+		await writeFile(
+			join(tmp.path, 'services/alpha/manifest.json'),
+			JSON.stringify({ name: 'alpha' }),
+		)
+
+		expect(() => discoverManifests(tmp.path)).toThrow(/Invalid manifest at [\s\S]*at port/)
 
 		await tmp.cleanup()
 	})
@@ -65,7 +80,7 @@ describe('discoverManifests', () => {
 		await tmp.cleanup()
 	})
 
-	it('returns an empty map when neither services/ nor apps/ exist', async () => {
+	it('returns an empty map when there is no services/ folder', async () => {
 		const tmp = await createTempDir('grid-discover-')
 
 		const found = discoverManifests(tmp.path)

@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { existsSync, globSync, readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { z } from 'zod'
 
 const ManifestVarValueSchema = z.object({
@@ -36,8 +36,6 @@ const ManifestSchema = z.object({
 	vars: z.record(z.string(), ManifestVarSchema).optional(),
 })
 
-export type ManifestVar = z.infer<typeof ManifestVarSchema>
-export type ManifestDatabase = z.infer<typeof ManifestDatabaseSchema>
 export type Manifest = z.infer<typeof ManifestSchema>
 
 export interface DiscoveredManifest {
@@ -65,7 +63,7 @@ function readManifest(dir: string): Manifest {
 	const parsed = ManifestSchema.safeParse(JSON.parse(readFileSync(path, 'utf-8')))
 
 	if (!parsed.success) {
-		throw new Error(`Invalid manifest at ${path}: ${parsed.error.message}`)
+		throw new Error(`Invalid manifest at ${path}:\n${z.prettifyError(parsed.error)}`)
 	}
 
 	return parsed.data
@@ -81,27 +79,15 @@ export function findWorkspaceRoot(start: string = process.cwd()): string {
 	return walkUpFor(start, 'pnpm-workspace.yaml')
 }
 
-const MANIFEST_DIRS = ['apps', 'services']
-
 export function discoverManifests(workspaceRoot: string): Map<string, DiscoveredManifest> {
 	const found = new Map<string, DiscoveredManifest>()
 
-	for (const subdir of MANIFEST_DIRS) {
-		const root = resolve(workspaceRoot, subdir)
+	for (const path of globSync('services/*/manifest.json', { cwd: workspaceRoot })) {
+		const dir = resolve(workspaceRoot, dirname(path))
 
-		if (!existsSync(root)) continue
+		const manifest = readManifest(dir)
 
-		for (const entry of readdirSync(root, { withFileTypes: true })) {
-			if (!entry.isDirectory()) continue
-
-			const dir = resolve(root, entry.name)
-
-			if (!existsSync(resolve(dir, 'manifest.json'))) continue
-
-			const manifest = readManifest(dir)
-
-			found.set(manifest.name, { manifest, dir })
-		}
+		found.set(manifest.name, { manifest, dir })
 	}
 
 	return found

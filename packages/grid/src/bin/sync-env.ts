@@ -1,26 +1,23 @@
 #!/usr/bin/env tsx
+import { parseArgs } from 'node:util'
 import { syncEnv } from '../env/sync.js'
 
-const args = process.argv.slice(2)
+// `--rotate` alone makes every secret again; `--rotate NAME…` only those.
+const { values, positionals } = parseArgs({
+	options: {
+		rotate: { type: 'boolean' },
+		services: { type: 'string' },
+	},
+	allowPositionals: true,
+})
 
-function readFlag(name: string): string | true | undefined {
-	const flag = args.find((a) => a === `--${name}` || a.startsWith(`--${name}=`))
-
-	if (!flag) return undefined
-
-	if (flag === `--${name}`) return true
-
-	return flag.slice(name.length + 3)
+if (positionals.length > 0 && !values.rotate) {
+	throw new Error(`Secret names only go with --rotate: ${positionals.join(' ')}`)
 }
 
-const rotateValue = readFlag('rotate')
-const servicesValue = readFlag('services')
+const rotate = values.rotate ? (positionals.length > 0 ? positionals : true) : undefined
 
-const rotate: true | string[] | undefined = rotateValue === true ? true : rotateValue?.split(',')
-
-const services = typeof servicesValue === 'string' ? servicesValue.split(',') : undefined
-
-const result = syncEnv({ rotate, services })
+const result = syncEnv({ rotate, services: values.services?.split(',') })
 
 for (const key of result.rotated) console.log(`rotated ${key}`)
 for (const key of result.generated) console.log(`generated ${key}`)

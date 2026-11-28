@@ -90,7 +90,7 @@ const server = serve(
 
 setupLifecycle({
 	server,
-	name: 'Bifrost',
+	logger: log,
 	onShutdown: async () => {
 		clearInterval(sweepTimer)
 

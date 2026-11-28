@@ -8,7 +8,7 @@ type HealthResponse = {
 
 describe('createHealthRoute', () => {
 	it('returns 200 with healthy status', async () => {
-		const app = createHealthRoute()
+		const app = createHealthRoute({ services: { database: async () => ({ up: true }) } })
 
 		const res = await app.request('/health')
 
@@ -32,7 +32,7 @@ describe('createHealthRoute', () => {
 
 		const { createHealthRoute } = await import('../../http/health.js')
 
-		const res = await createHealthRoute().request('/health')
+		const res = await createHealthRoute({ services: {} }).request('/health')
 
 		const body = (await res.json()) as HealthResponse
 
@@ -41,36 +41,9 @@ describe('createHealthRoute', () => {
 		vi.unstubAllEnvs()
 	})
 
-	it('includes extra fields from custom check function', async () => {
-		const app = createHealthRoute({
-			check: async () => ({ db_latency_ms: 5, subscribers: 42 }),
-		})
-
-		const res = await app.request('/health')
-
-		const body = (await res.json()) as HealthResponse & {
-			db_latency_ms: number
-			subscribers: number
-		}
-
-		expect(body.status).toBe('healthy')
-
-		expect(body.db_latency_ms).toBe(5)
-
-		expect(body.subscribers).toBe(42)
-	})
-
-	it('accepts custom description', async () => {
-		const app = createHealthRoute({ description: 'Custom health check' })
-
-		const res = await app.request('/health')
-
-		expect(res.status).toBe(200)
-	})
-
 	describe('with services probes', () => {
 		type HealthWithServices = HealthResponse & {
-			services: Record<string, { status: 'up' | 'down' | 'unknown'; latency?: number }>
+			services: Record<string, { status: 'up' | 'down' | 'unknown'; latency: number }>
 		}
 
 		it('returns 200 healthy when all probes are up', async () => {

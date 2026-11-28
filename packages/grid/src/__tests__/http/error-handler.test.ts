@@ -1,8 +1,17 @@
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { errorHandler, notFoundHandler } from '../../http/error-handler.js'
+import type { RequestLoggerEnv } from '../../http/request-logger.js'
 
-const app = new Hono()
+const logger = { error: vi.fn() }
+
+const app = new Hono<RequestLoggerEnv>()
+
+app.use(async (c, next) => {
+	c.set('logger', logger as never)
+
+	await next()
+})
 
 app.get('/error-with-status', () => {
 	const err = new Error('Upstream said no') as Error & { status: number }
@@ -24,6 +33,20 @@ app.get('/error-with-code', () => {
 	throw new CodedError(403, { message: 'Confirm it is you' })
 })
 
+app.get('/http-exception-with-response', () => {
+	throw new HTTPException(401, {
+		res: new Response('Unauthorized', {
+			headers: { 'WWW-Authenticate': 'Bearer realm=""' },
+		}),
+	})
+})
+
+const cause = new Error('connection refused')
+
+app.get('/unavailable', () => {
+	throw new HTTPException(503, { message: 'Down', cause })
+})
+
 app.get('/unexpected-error', () => {
 	throw new Error('Something broke')
 })
@@ -39,6 +62,10 @@ type ErrorResponse = {
 }
 
 describe('errorHandler', () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
 	it('hides the message of an error that only carries a status', async () => {
 		const res = await app.request('/error-with-status')
 
@@ -76,24 +103,35 @@ describe('errorHandler', () => {
 		})
 	})
 
-	it('logs an unexpected error through the request logger when there is one', async () => {
-		const logger = { error: vi.fn() }
+	it("keeps the headers of an exception's response and names an empty message", async () => {
+		const res = await app.request('/http-exception-with-response')
 
-		const logged = new Hono()
+		expect(res.status).toBe(401)
 
-		logged.use(async (c, next) => {
-			c.set('logger' as never, logger as never)
+		expect(res.headers.get('WWW-Authenticate')).toBe('Bearer realm=""')
 
-			await next()
+		expect(res.headers.get('Content-Type')).toBe('application/json')
+
+		expect(await res.json()).toEqual({
+			error: 'Unauthorized',
+			message: 'Unauthorized',
+			statusCode: 401,
 		})
+	})
 
-		logged.get('/', () => {
-			throw new Error('Something broke')
-		})
+	it('logs an HTTPException of 500 or more with its cause', async () => {
+		const res = await app.request('/unavailable')
 
-		logged.onError(errorHandler)
+		expect(res.status).toBe(503)
 
-		const res = await logged.request('/')
+		expect(logger.error).toHaveBeenCalledWith(
+			{ err: expect.objectContaining({ message: 'Down', cause }) },
+			'request failed',
+		)
+	})
+
+	it('logs an unexpected error through the request logger', async () => {
+		const res = await app.request('/unexpected-error')
 
 		expect(res.status).toBe(500)
 
