@@ -1,26 +1,12 @@
 import { createHash } from 'node:crypto'
-import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
+import { dockerAvailable, type StartedPostgreSqlContainer, startPostgres } from 'vali/containers'
 import { createTempDir } from 'vali/fixtures'
 import { createDb, type Db } from '../db.js'
 import { MigrationError, migrate, migrationStatus } from '../migrations.js'
 import { sql } from '../sql.js'
 
-let testDb: TestDatabase
+let container: StartedPostgreSqlContainer
 let db: Db
-
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
-
-	testDb = await startPostgres()
-
-	db = createDb(() => ({ url: testDb.connectionUri }))
-}, 60_000)
-
-afterAll(async () => {
-	await db?.close()
-
-	await testDb?.stop()
-})
 
 function tableExists(name: string): Promise<boolean> {
 	return db.val<boolean>(sql`SELECT to_regclass(${name}) IS NOT NULL`)
@@ -38,9 +24,19 @@ function sha256(content: string): string {
 	return createHash('sha256').update(content).digest('hex')
 }
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
+describe.skipIf(!dockerAvailable)('migrations (integration)', () => {
+	beforeAll(async () => {
+		container = await startPostgres()
 
-describeWithDocker('migrations (integration)', () => {
+		db = createDb(() => ({ url: container.getConnectionUri() }))
+	}, 60_000)
+
+	afterAll(async () => {
+		await db?.close()
+
+		await container?.stop()
+	})
+
 	let tmp: Awaited<ReturnType<typeof createTempDir>>
 	let connection: { url: string }
 
@@ -53,7 +49,7 @@ describeWithDocker('migrations (integration)', () => {
 
 		tmp = await createTempDir('saga-migrations-')
 
-		connection = { url: testDb.connectionUri }
+		connection = { url: container.getConnectionUri() }
 	})
 
 	afterEach(async () => {

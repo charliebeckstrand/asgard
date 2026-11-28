@@ -1,42 +1,38 @@
-import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
+import { dockerAvailable, type StartedPostgreSqlContainer, startPostgres } from 'vali/containers'
 import { createDb, type Db, NoRowsError } from '../db.js'
 import { sql } from '../sql.js'
 
-let testDb: TestDatabase
+let container: StartedPostgreSqlContainer
 let db: Db
 
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
+describe.skipIf(!dockerAvailable)('createDb (integration)', () => {
+	beforeAll(async () => {
+		container = await startPostgres()
 
-	testDb = await startPostgres()
+		db = createDb(() => ({ url: container.getConnectionUri() }))
 
-	db = createDb(() => ({ url: testDb.connectionUri }))
+		await db.exec(sql`
+			CREATE TABLE users (
+				id SERIAL PRIMARY KEY,
+				name TEXT NOT NULL,
+				email TEXT,
+				active BOOLEAN DEFAULT true
+			)
+		`)
 
-	await db.exec(sql`
-		CREATE TABLE users (
-			id SERIAL PRIMARY KEY,
-			name TEXT NOT NULL,
-			email TEXT,
-			active BOOLEAN DEFAULT true
-		)
-	`)
+		await db.exec(sql`
+			INSERT INTO users (name, email) VALUES
+			('Alice', 'alice@example.com'),
+			('Bob', 'bob@example.com')
+		`)
+	}, 60_000)
 
-	await db.exec(sql`
-		INSERT INTO users (name, email) VALUES
-		('Alice', 'alice@example.com'),
-		('Bob', 'bob@example.com')
-	`)
-}, 60_000)
+	afterAll(async () => {
+		await db?.close()
 
-afterAll(async () => {
-	await db?.close()
+		await container?.stop()
+	})
 
-	await testDb?.stop()
-})
-
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
-
-describeWithDocker('createDb (integration)', () => {
 	describe('first', () => {
 		it('returns the first row from a real database', async () => {
 			const result = await db.first<{ id: number; name: string; email: string }>(

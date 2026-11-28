@@ -2,7 +2,7 @@ import { copyFile, mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { isDockerAvailable, startPostgres } from 'vali/containers'
+import { dockerAvailable, startPostgres } from 'vali/containers'
 import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
@@ -57,15 +57,13 @@ const nameOf = async (n: number) =>
 		)
 	)?.name ?? null
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
-
-describeWithDocker('games', () => {
+describe.skipIf(!dockerAvailable)('games', () => {
 	let stop: () => Promise<unknown>
 
 	beforeAll(async () => {
 		const container = await startPostgres()
 
-		holder.db = createDb(() => ({ url: container.connectionUri, max: 10 }))
+		holder.db = createDb(() => ({ url: container.getConnectionUri(), max: 10 }))
 
 		stop = () => container.stop()
 
@@ -77,7 +75,7 @@ describeWithDocker('games', () => {
 			join(first, '0001_create_documents.sql'),
 		)
 
-		await migrate({ url: container.connectionUri }, first)
+		await migrate({ url: container.getConnectionUri() }, first)
 
 		const stored = {
 			solo: { scores: [], daily: { 20261114: 9, 20261115: 20 } },
@@ -91,7 +89,7 @@ describeWithDocker('games', () => {
 				(${user(92)}, 'places', ${sql.json({ solo: { daily: { 20261115: 1 } } })}::jsonb)
 		`)
 
-		await migrate({ url: container.connectionUri }, migrationsDir)
+		await migrate({ url: container.getConnectionUri() }, migrationsDir)
 	}, 60_000)
 
 	afterAll(async () => {

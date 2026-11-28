@@ -1,7 +1,14 @@
 import type { Logger } from 'grid/log'
 import { clientIp } from 'grid/middleware'
 import { Hono } from 'hono'
-import { banCheck, configure, listThreats, removeBan, reportEvent, resolveThreat } from '@/client'
+import {
+	banCheck,
+	configure,
+	listThreats,
+	removeBan,
+	reportEvent,
+	resolveThreat,
+} from '../client.js'
 
 const VIDAR_URL = 'http://vidar.test'
 

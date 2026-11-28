@@ -1,6 +1,6 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { isDockerAvailable, startPostgres } from 'vali/containers'
+import { dockerAvailable, startPostgres } from 'vali/containers'
 import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
@@ -26,17 +26,15 @@ const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../..
 
 const USER = '00000000-0000-4000-8000-000000000001'
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
-
-describeWithDocker('documents', () => {
+describe.skipIf(!dockerAvailable)('documents', () => {
 	let stop: () => Promise<unknown>
 
 	beforeAll(async () => {
 		const container = await startPostgres()
 
-		await migrate({ url: container.connectionUri }, migrationsDir)
+		await migrate({ url: container.getConnectionUri() }, migrationsDir)
 
-		holder.db = createDb(() => ({ url: container.connectionUri, max: 10 }))
+		holder.db = createDb(() => ({ url: container.getConnectionUri(), max: 10 }))
 
 		stop = () => container.stop()
 	}, 60_000)

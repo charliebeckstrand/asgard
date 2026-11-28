@@ -20,9 +20,11 @@ export interface TestDb {
 export async function startTestDb(): Promise<TestDb> {
 	const container = await startPostgres()
 
-	await migrate({ url: container.connectionUri }, migrationsDir)
+	const url = container.getConnectionUri()
 
-	const db = createDb(() => ({ url: container.connectionUri }))
+	await migrate({ url }, migrationsDir)
+
+	const db = createDb(() => ({ url }))
 
 	return {
 		db,

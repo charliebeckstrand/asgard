@@ -1,5 +1,5 @@
 import { sql } from 'saga'
-import { isDockerAvailable } from 'vali/containers'
+import { dockerAvailable } from 'vali/containers'
 import { promote, resetSecondFactors } from '../admins.js'
 import type { MfaRepository } from '../mfa-repository.js'
 import { createMfaRepository } from '../mfa-repository.js'
@@ -13,28 +13,6 @@ let testDb: TestDb
 let users: UserRepository
 let passkeys: PasskeyRepository
 let mfa: MfaRepository
-
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
-
-	testDb = await startTestDb()
-
-	users = createUserRepository(testDb.db)
-
-	passkeys = createPasskeyRepository(testDb.db)
-
-	mfa = createMfaRepository(testDb.db)
-}, 60_000)
-
-afterAll(async () => {
-	await testDb?.stop()
-})
-
-beforeEach(async () => {
-	if (!isDockerAvailable()) return
-
-	await testDb.reset()
-})
 
 const secret = new Uint8Array([1, 2, 3])
 
@@ -50,9 +28,25 @@ async function makeAdmin(userId: string) {
 	await testDb.db.exec(sql`UPDATE users SET roles = '{user,admin}' WHERE id = ${userId}`)
 }
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
+describe.skipIf(!dockerAvailable)('createMfaRepository (integration)', () => {
+	beforeAll(async () => {
+		testDb = await startTestDb()
 
-describeWithDocker('createMfaRepository (integration)', () => {
+		users = createUserRepository(testDb.db)
+
+		passkeys = createPasskeyRepository(testDb.db)
+
+		mfa = createMfaRepository(testDb.db)
+	}, 60_000)
+
+	afterAll(async () => {
+		await testDb?.stop()
+	})
+
+	beforeEach(async () => {
+		await testDb.reset()
+	})
+
 	describe('authenticator app', () => {
 		it('stays off until confirmed', async () => {
 			const userId = await insertUser()
@@ -290,55 +284,55 @@ describeWithDocker('createMfaRepository (integration)', () => {
 			expect(rows).toEqual([{ user_id: recent }])
 		})
 	})
-})
 
-describeWithDocker('admins (integration)', () => {
-	it('promotes a user whose only second factor is an authenticator app', async () => {
-		const userId = await insertUser('carol@x.dev')
+	describe('admins', () => {
+		it('promotes a user whose only second factor is an authenticator app', async () => {
+			const userId = await insertUser('carol@x.dev')
 
-		await testDb.db.exec(sql`UPDATE users SET is_verified = true WHERE id = ${userId}`)
+			await testDb.db.exec(sql`UPDATE users SET is_verified = true WHERE id = ${userId}`)
 
-		await addTotp(userId)
+			await addTotp(userId)
 
-		expect(await promote(testDb.db, 'carol@x.dev')).toBe('promoted')
-	})
-
-	it('resets every second factor and session of an admin', async () => {
-		const adminId = await insertUser('dave@x.dev')
-
-		await addTotp(adminId)
-
-		await passkeys.insertPasskey(adminId, {
-			id: 'p1',
-			publicKey: new Uint8Array([1]),
-			counter: 0,
-			transports: [],
+			expect(await promote(testDb.db, 'carol@x.dev')).toBe('promoted')
 		})
 
-		await mfa.replaceRecoveryCodes(adminId, ['a'])
+		it('resets every second factor and session of an admin', async () => {
+			const adminId = await insertUser('dave@x.dev')
 
-		await makeAdmin(adminId)
+			await addTotp(adminId)
 
-		await testDb.db.exec(
-			sql`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', ${adminId}, now() + interval '1 day')`,
-		)
+			await passkeys.insertPasskey(adminId, {
+				id: 'p1',
+				publicKey: new Uint8Array([1]),
+				counter: 0,
+				transports: [],
+			})
 
-		const bystanderId = await insertUser()
+			await mfa.replaceRecoveryCodes(adminId, ['a'])
 
-		await addTotp(bystanderId)
+			await makeAdmin(adminId)
 
-		expect(await resetSecondFactors(testDb.db, 'Dave@x.dev')).toBe('reset')
+			await testDb.db.exec(
+				sql`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', ${adminId}, now() + interval '1 day')`,
+			)
 
-		expect(await mfa.getFactors(adminId)).toEqual({ passkeys: 0, totp: false, recovery_codes: 0 })
+			const bystanderId = await insertUser()
 
-		expect(await testDb.db.exec(sql`SELECT 1 FROM sessions WHERE user_id = ${adminId}`)).toBe(0)
+			await addTotp(bystanderId)
 
-		expect((await users.getUserById(adminId))?.roles).toEqual(['user', 'admin'])
+			expect(await resetSecondFactors(testDb.db, 'Dave@x.dev')).toBe('reset')
 
-		expect(await mfa.getFactors(bystanderId)).toMatchObject({ totp: true })
-	})
+			expect(await mfa.getFactors(adminId)).toEqual({ passkeys: 0, totp: false, recovery_codes: 0 })
 
-	it('reports an unknown email on reset', async () => {
-		expect(await resetSecondFactors(testDb.db, 'nobody@x.dev')).toBe('not_found')
+			expect(await testDb.db.exec(sql`SELECT 1 FROM sessions WHERE user_id = ${adminId}`)).toBe(0)
+
+			expect((await users.getUserById(adminId))?.roles).toEqual(['user', 'admin'])
+
+			expect(await mfa.getFactors(bystanderId)).toMatchObject({ totp: true })
+		})
+
+		it('reports an unknown email on reset', async () => {
+			expect(await resetSecondFactors(testDb.db, 'nobody@x.dev')).toBe('not_found')
+		})
 	})
 })

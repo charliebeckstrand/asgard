@@ -3,48 +3,29 @@ import { vi } from 'vitest'
 export const TEST_DATABASE_URL = 'postgres://test:test@localhost:5432/test'
 export const TEST_APP_ORIGINS = 'http://localhost:3000'
 
-/**
- * Default env vars stubbed by {@link stubServiceEnv}. Caller-supplied
- * overrides take precedence; pass `null` to skip stubbing a particular var.
- */
-export const TEST_SERVICE_ENV = {
+const TEST_SERVICE_ENV = {
 	DATABASE_URL: TEST_DATABASE_URL,
 	APP_ORIGINS: TEST_APP_ORIGINS,
-} as const
+}
 
 /**
- * Stub the standard set of service env vars in one call. Returns nothing —
- * Vitest unstubs automatically on teardown when `unstubEnvs` is enabled in
- * config, but explicit `vi.unstubAllEnvs()` in afterEach is also fine.
+ * Stubs `DATABASE_URL` and `APP_ORIGINS` with test values, plus any `overrides`,
+ * which win. An override of `null` leaves that variable alone. Undo with
+ * `vi.unstubAllEnvs()`.
  *
- * Call at module scope (before any `import` of code that reads `process.env`)
- * so the stubs are active during module evaluation.
+ * Call it before importing code that reads `process.env` as it loads.
  *
  * @example
  * ```ts
  * import { stubServiceEnv } from 'vali/env'
  *
- * stubServiceEnv()
- * // …or override individual vars:
  * stubServiceEnv({ APP_ORIGINS: 'http://localhost:4000' })
  *
  * import { createBifrostApp } from '../app.js'
  * ```
  */
-export function stubServiceEnv(overrides: Partial<Record<string, string | null>> = {}): void {
-	for (const [key, defaultValue] of Object.entries(TEST_SERVICE_ENV)) {
-		const override = overrides[key]
-
-		if (override === null) continue
-
-		vi.stubEnv(key, override ?? defaultValue)
-	}
-
-	for (const [key, value] of Object.entries(overrides)) {
-		if (key in TEST_SERVICE_ENV) continue
-
-		if (value === null || value === undefined) continue
-
-		vi.stubEnv(key, value)
+export function stubServiceEnv(overrides: Record<string, string | null> = {}): void {
+	for (const [key, value] of Object.entries({ ...TEST_SERVICE_ENV, ...overrides })) {
+		if (value !== null) vi.stubEnv(key, value)
 	}
 }

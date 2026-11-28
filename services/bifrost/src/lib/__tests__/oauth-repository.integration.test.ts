@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { isDockerAvailable } from 'vali/containers'
+import { dockerAvailable } from 'vali/containers'
 import type { OAuthRepository, StoredOAuthState } from '../oauth-repository.js'
 import { createOAuthRepository } from '../oauth-repository.js'
 import type { PasskeyRepository } from '../passkey-repository.js'
@@ -12,28 +12,6 @@ let testDb: TestDb
 let users: UserRepository
 let passkeys: PasskeyRepository
 let oauth: OAuthRepository
-
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
-
-	testDb = await startTestDb()
-
-	users = createUserRepository(testDb.db)
-
-	passkeys = createPasskeyRepository(testDb.db)
-
-	oauth = createOAuthRepository(testDb.db)
-}, 60_000)
-
-afterAll(async () => {
-	await testDb?.stop()
-})
-
-beforeEach(async () => {
-	if (!isDockerAvailable()) return
-
-	await testDb.reset()
-})
 
 const state: StoredOAuthState = {
 	provider: 'github',
@@ -55,9 +33,25 @@ async function makeSsoUser(email = `${randomUUID()}@x.dev`, subject: string = ra
 	return created.userId
 }
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
+describe.skipIf(!dockerAvailable)('createOAuthRepository (integration)', () => {
+	beforeAll(async () => {
+		testDb = await startTestDb()
 
-describeWithDocker('createOAuthRepository (integration)', () => {
+		users = createUserRepository(testDb.db)
+
+		passkeys = createPasskeyRepository(testDb.db)
+
+		oauth = createOAuthRepository(testDb.db)
+	}, 60_000)
+
+	afterAll(async () => {
+		await testDb?.stop()
+	})
+
+	beforeEach(async () => {
+		await testDb.reset()
+	})
+
 	describe('states', () => {
 		it('returns a live state once', async () => {
 			await oauth.createState('s1', state, inAMinute())

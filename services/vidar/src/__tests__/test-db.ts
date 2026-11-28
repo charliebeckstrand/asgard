@@ -1,7 +1,7 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { migrate, sql } from 'saga'
-import { startPostgresWithEnv } from 'vali/containers'
+import { startPostgres } from 'vali/containers'
 import { db } from '../lib/db.js'
 
 const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../migrations')
@@ -12,14 +12,18 @@ const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../mi
  * query: the pool reads the address on its first one. Returns the teardown.
  */
 export async function startTestDb(): Promise<() => Promise<void>> {
-	const stop = await startPostgresWithEnv()
+	const container = await startPostgres()
 
-	await migrate({ url: process.env.DATABASE_URL ?? '' }, migrationsDir)
+	vi.stubEnv('DATABASE_URL', container.getConnectionUri())
+
+	await migrate({ url: container.getConnectionUri() }, migrationsDir)
 
 	return async () => {
 		await db.close()
 
-		await stop()
+		vi.unstubAllEnvs()
+
+		await container.stop()
 	}
 }
 

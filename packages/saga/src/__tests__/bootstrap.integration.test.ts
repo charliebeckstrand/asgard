@@ -1,24 +1,20 @@
 import { Client } from 'pg'
-import { isDockerAvailable, startPostgres, type TestDatabase } from 'vali/containers'
+import { dockerAvailable, type StartedPostgreSqlContainer, startPostgres } from 'vali/containers'
 import { bootstrapDatabases } from '../bootstrap.js'
 
-let testDb: TestDatabase
+let container: StartedPostgreSqlContainer
 
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
+describe.skipIf(!dockerAvailable)('bootstrapDatabases (integration)', () => {
+	beforeAll(async () => {
+		container = await startPostgres()
+	}, 60_000)
 
-	testDb = await startPostgres()
-}, 60_000)
+	afterAll(async () => {
+		await container?.stop()
+	})
 
-afterAll(async () => {
-	await testDb?.stop()
-})
-
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
-
-describeWithDocker('bootstrapDatabases (integration)', () => {
 	it('creates roles and databases declared in the spec', async () => {
-		const result = await bootstrapDatabases(testDb.connectionUri, [
+		const result = await bootstrapDatabases(container.getConnectionUri(), [
 			{ name: 'alpha_db', role: 'alpha_role', password: 'alpha_pw' },
 			{ name: 'beta_db', role: 'beta_role', password: 'beta_pw' },
 		])
@@ -26,7 +22,7 @@ describeWithDocker('bootstrapDatabases (integration)', () => {
 		expect(result.createdRoles.sort()).toEqual(['alpha_role', 'beta_role'])
 		expect(result.createdDatabases.sort()).toEqual(['alpha_db', 'beta_db'])
 
-		const admin = new Client({ connectionString: testDb.connectionUri })
+		const admin = new Client({ connectionString: container.getConnectionUri() })
 
 		await admin.connect()
 
@@ -47,20 +43,20 @@ describeWithDocker('bootstrapDatabases (integration)', () => {
 	it('is idempotent when run twice with the same spec', async () => {
 		const spec = [{ name: 'gamma_db', role: 'gamma_role', password: 'gamma_pw' }]
 
-		await bootstrapDatabases(testDb.connectionUri, spec)
+		await bootstrapDatabases(container.getConnectionUri(), spec)
 
-		const second = await bootstrapDatabases(testDb.connectionUri, spec)
+		const second = await bootstrapDatabases(container.getConnectionUri(), spec)
 
 		expect(second.createdRoles).toEqual([])
 		expect(second.createdDatabases).toEqual([])
 	})
 
 	it('lets the new role connect to its database', async () => {
-		await bootstrapDatabases(testDb.connectionUri, [
+		await bootstrapDatabases(container.getConnectionUri(), [
 			{ name: 'delta_db', role: 'delta_role', password: 'delta_pw' },
 		])
 
-		const url = new URL(testDb.connectionUri)
+		const url = new URL(container.getConnectionUri())
 
 		url.username = 'delta_role'
 		url.password = 'delta_pw'
