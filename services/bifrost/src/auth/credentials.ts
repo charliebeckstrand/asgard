@@ -31,7 +31,7 @@ const FAILED_LOGIN_TTL_SECONDS = 24 * 60 * 60
 export async function authenticateUser(
 	email: string,
 	password: string,
-	ip?: string,
+	ip: string,
 ): Promise<string> {
 	const normalizedEmail = normalizeEmail(email)
 
@@ -58,12 +58,11 @@ export async function authenticateUser(
 	// An account made with GitHub or Google has no password, and the dummy hash
 	// must never let one in.
 	if (!creds?.hashed_password || !passwordOk) {
-		if (ip)
-			getConfig().onSecurityEvent?.({
-				type: 'login_failed',
-				ip,
-				details: { email: normalizedEmail },
-			})
+		getConfig().onSecurityEvent?.({
+			type: 'login_failed',
+			ip,
+			details: { email: normalizedEmail },
+		})
 
 		throw new AuthError('invalid_credentials', 'Incorrect email or password')
 	}
@@ -123,7 +122,7 @@ export async function checkTurnstile(token: string | undefined, ip?: string): Pr
 export async function registerUser(
 	email: string,
 	password: string,
-	ip?: string,
+	ip: string,
 	name?: string,
 ): Promise<User | null> {
 	const normalizedEmail = normalizeEmail(email)
@@ -132,7 +131,7 @@ export async function registerUser(
 
 	const { userRepository } = getConfig()
 
-	if (ip && !(await userRepository.countSignUp(ip, MAX_DAILY_SIGN_UPS))) {
+	if (!(await userRepository.countSignUp(ip, MAX_DAILY_SIGN_UPS))) {
 		throw new AuthError(
 			'too_many_sign_ups',
 			'Too many sign-ups from your network today. Try again tomorrow.',
@@ -142,12 +141,11 @@ export async function registerUser(
 	try {
 		const user = await userRepository.insertUser(normalizedEmail, hashedPassword, name)
 
-		if (ip)
-			getConfig().onSecurityEvent?.({
-				type: 'registration',
-				ip,
-				details: { email: normalizedEmail },
-			})
+		getConfig().onSecurityEvent?.({
+			type: 'registration',
+			ip,
+			details: { email: normalizedEmail },
+		})
 
 		return user
 	} catch (err: unknown) {

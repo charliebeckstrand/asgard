@@ -34,6 +34,8 @@ import type {
 	UserRepository,
 } from '../types.js'
 
+const IP = '203.0.113.1'
+
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
 const user: User = {
@@ -245,7 +247,7 @@ describe('authenticatePasskey', () => {
 	it("returns the passkey's user and advances its counter", async () => {
 		webauthn.verifyAuthenticationResponse.mockResolvedValue(verified)
 
-		await expect(authenticatePasskey(assertion)).resolves.toBe(USER_ID)
+		await expect(authenticatePasskey(assertion, IP)).resolves.toBe(USER_ID)
 
 		expect(passkeyRepository.setCounter).toHaveBeenCalledWith('credential-1', 5)
 	})
@@ -253,7 +255,7 @@ describe('authenticatePasskey', () => {
 	it('verifies against the stored key and uses up a sign-in challenge', async () => {
 		webauthn.verifyAuthenticationResponse.mockResolvedValue(verified)
 
-		await authenticatePasskey(assertion)
+		await authenticatePasskey(assertion, IP)
 
 		const options = webauthn.verifyAuthenticationResponse.mock.calls[0][0]
 
@@ -288,7 +290,7 @@ describe('authenticatePasskey', () => {
 	it('rejects a passkey that fails verification', async () => {
 		webauthn.verifyAuthenticationResponse.mockRejectedValue(new Error('bad signature'))
 
-		await expect(authenticatePasskey(assertion)).rejects.toMatchObject({
+		await expect(authenticatePasskey(assertion, IP)).rejects.toMatchObject({
 			code: 'invalid_credentials',
 		})
 
@@ -300,7 +302,7 @@ describe('authenticatePasskey', () => {
 
 		vi.mocked(userRepository.getUserById).mockResolvedValue({ ...user, is_active: false })
 
-		await expect(authenticatePasskey(assertion)).rejects.toMatchObject({
+		await expect(authenticatePasskey(assertion, IP)).rejects.toMatchObject({
 			code: 'account_inactive',
 		})
 	})

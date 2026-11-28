@@ -94,23 +94,25 @@ const app = createBifrostApp()
 
 const SWEEP_INTERVAL_MS = 3_600_000 // 1 hour
 
+const sweeps = {
+	sessions: deleteExpiredSessions,
+	challenges: deleteExpiredChallenges,
+	'OAuth states': deleteExpiredOAuthStates,
+	'failed logins': deleteStaleFailedLogins,
+	'sign-up counts': deleteOldSignUps,
+	'failed second steps': deleteStaleFailedSteps,
+	'email links': deleteExpiredEmailTokens,
+	'email counts': deleteOldSentEmails,
+	activity: deleteOldActivity,
+}
+
+/** Deletes what has expired, each table on its own, so one failure doesn't hide the others. */
 function sweep() {
-	Promise.all([
-		deleteExpiredSessions(),
-		deleteExpiredChallenges(),
-		deleteExpiredOAuthStates(),
-		deleteStaleFailedLogins(),
-		deleteOldSignUps(),
-		deleteStaleFailedSteps(),
-		deleteExpiredEmailTokens(),
-		deleteOldSentEmails(),
-		deleteOldActivity(),
-	]).catch((err) => {
-		log.error(
-			{ err },
-			'failed to delete expired sessions, challenges, OAuth states, failed tries, sign-up counts, email links, email counts and old activity',
-		)
-	})
+	for (const [name, run] of Object.entries(sweeps)) {
+		run().catch((err: unknown) => {
+			log.error({ err }, `failed to delete old ${name}`)
+		})
+	}
 }
 
 // Also on start, so deploys more often than hourly don't skip it.

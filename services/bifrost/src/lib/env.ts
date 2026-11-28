@@ -65,5 +65,6 @@ export const environment = createEnvironment({
 	APP_ORIGINS: z
 		.string()
 		.default('http://localhost:3000')
-		.transform((v) => v.split(',')),
+		.transform((v) => v.split(',').map((origin) => origin.trim()))
+		.pipe(z.array(z.url())),
 })

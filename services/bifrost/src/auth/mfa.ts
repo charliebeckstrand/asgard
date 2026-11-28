@@ -3,7 +3,7 @@ import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
 import type { Session, User } from 'skuld'
 import { getConfig } from './config.js'
 import { AuthError } from './errors.js'
-import { authenticatePasskey } from './passkeys.js'
+import { verifyPasskey } from './passkeys.js'
 import {
 	base32Encode,
 	decryptSecret,
@@ -58,7 +58,7 @@ export function secondFactorMethods(factors: Factors): SecondFactorMethod[] {
 export async function verifySession(
 	session: Session,
 	proof: SecondFactorProof,
-	ip?: string,
+	ip: string,
 ): Promise<void> {
 	const { sessionRepository, mfaRepository, onSecurityEvent } = getConfig()
 
@@ -80,13 +80,11 @@ export async function verifySession(
 		return
 	}
 
-	if (ip) {
-		onSecurityEvent?.({
-			type: 'login_failed',
-			ip,
-			details: { user_id: userId, method: Object.keys(proof)[0] },
-		})
-	}
+	onSecurityEvent?.({
+		type: 'login_failed',
+		ip,
+		details: { user_id: userId, method: Object.keys(proof)[0] },
+	})
 
 	if (await sessionRepository.failSecondStep(session.id, MAX_FAILED_STEPS)) {
 		throw new AuthError('sign_in_expired', 'Too many tries. Sign in again')
@@ -99,9 +97,7 @@ async function checkProof(userId: string, proof: SecondFactorProof): Promise<boo
 	const { mfaRepository } = getConfig()
 
 	if ('passkey' in proof) {
-		const owner = await authenticatePasskey(proof.passkey).catch(() => null)
-
-		return owner === userId
+		return (await verifyPasskey(proof.passkey)) === userId
 	}
 
 	if ('recovery_code' in proof) {

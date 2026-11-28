@@ -243,7 +243,7 @@ const registerRoute = createRoute({
 	responses: {
 		202: jsonResponse(MessageSchema, 'Check your email'),
 		400: errorResponse(
-			'Validation error, a failed Turnstile check, or a password known from a data breach',
+			'Validation error, an unknown app origin, a failed Turnstile check, or a password known from a data breach',
 		),
 		429: errorResponse('Too many sign-ups from this network today'),
 	},
@@ -433,25 +433,24 @@ export const authRoutes = createRouter<SessionEnv>()
 	.openapi(registerRoute, async (c) => {
 		const { email, password, name, turnstile_token } = c.req.valid('json')
 
+		// Checked first, so an account is never made without its email.
+		const origin = requireAppOrigin(c)
+
 		const ip = getIpAddress(c)
 
 		await checkTurnstile(turnstile_token, ip)
 
 		const user = await registerUser(email, password, ip, name)
 
-		const origin = appOrigin(c)
-
 		// Sent in the background, so a mail outage never fails a sign-up and both
 		// answers take the same time. The account page can send another link.
-		if (origin) {
-			const sending = user
-				? sendVerificationEmail(user, origin)
-				: sendAccountExistsEmail(email, origin)
+		const sending = user
+			? sendVerificationEmail(user, origin)
+			: sendAccountExistsEmail(email, origin)
 
-			sending.catch((err: unknown) => {
-				logger().error({ err }, 'failed to send a sign-up email')
-			})
-		}
+		sending.catch((err: unknown) => {
+			logger().error({ err }, 'failed to send a sign-up email')
+		})
 
 		return c.json({ message: 'Check your email to finish signing up' }, 202)
 	})

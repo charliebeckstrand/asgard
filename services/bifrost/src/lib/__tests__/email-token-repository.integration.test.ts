@@ -56,12 +56,20 @@ async function tokenIds(userId: string) {
 
 const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 
+const link = {
+	interval: 60,
+	email: { to: 'alice@example.com', verified: true },
+	limits: { total: 100, unverified: 50, recipient: 10 },
+}
+
 describeWithDocker('createEmailTokenRepository (integration)', () => {
 	describe('createToken', () => {
 		it('stores a link', async () => {
 			const userId = await insertUser()
 
-			expect(await tokens.createToken('t1', userId, 'verify_email', inAnHour(), 60)).toBe(true)
+			expect(await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)).toBe(
+				'created',
+			)
 
 			expect(await tokenIds(userId)).toEqual(['t1'])
 		})
@@ -69,9 +77,11 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		it('refuses a second link of one purpose within the interval', async () => {
 			const userId = await insertUser()
 
-			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), 60)
+			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
 
-			expect(await tokens.createToken('t2', userId, 'verify_email', inAnHour(), 60)).toBe(false)
+			expect(await tokens.createToken('t2', userId, 'verify_email', inAnHour(), link)).toBe(
+				'recently_sent',
+			)
 
 			expect(await tokenIds(userId)).toEqual(['t1'])
 		})
@@ -79,11 +89,13 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		it('replaces the last link once the interval passed', async () => {
 			const userId = await insertUser()
 
-			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), 60)
+			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
 
 			await pool.query("UPDATE email_tokens SET created_at = now() - interval '2 minutes'")
 
-			expect(await tokens.createToken('t2', userId, 'verify_email', inAnHour(), 60)).toBe(true)
+			expect(await tokens.createToken('t2', userId, 'verify_email', inAnHour(), link)).toBe(
+				'created',
+			)
 
 			expect(await tokenIds(userId)).toEqual(['t2'])
 		})
@@ -91,11 +103,51 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		it('keeps one link of each purpose', async () => {
 			const userId = await insertUser()
 
-			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), 60)
+			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
 
-			expect(await tokens.createToken('t2', userId, 'reset_password', inAnHour(), 60)).toBe(true)
+			expect(await tokens.createToken('t2', userId, 'reset_password', inAnHour(), link)).toBe(
+				'created',
+			)
 
 			expect((await tokenIds(userId)).sort()).toEqual(['t1', 't2'])
+		})
+
+		it('counts the email that carries the link', async () => {
+			const userId = await insertUser()
+
+			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
+
+			const { rows } = await pool.query('SELECT recipient, verified FROM sent_emails')
+
+			expect(rows).toEqual([{ recipient: 'alice@example.com', verified: true }])
+		})
+
+		it('counts nothing within the interval', async () => {
+			const userId = await insertUser()
+
+			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
+
+			await tokens.createToken('t2', userId, 'verify_email', inAnHour(), link)
+
+			const { rows } = await pool.query('SELECT count(*)::int AS count FROM sent_emails')
+
+			expect(rows[0].count).toBe(1)
+		})
+
+		it('keeps the live link when the email has no room', async () => {
+			const userId = await insertUser()
+
+			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
+
+			await pool.query("UPDATE email_tokens SET created_at = now() - interval '2 minutes'")
+
+			const full = { ...link, limits: { ...link.limits, recipient: 1 } }
+
+			expect(await tokens.createToken('t2', userId, 'verify_email', inAnHour(), full)).toBe(
+				'over_budget',
+			)
+
+			expect(await tokenIds(userId)).toEqual(['t1'])
 		})
 	})
 
@@ -103,7 +155,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		it('verifies the email once', async () => {
 			const userId = await insertUser()
 
-			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), 60)
+			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
 
 			expect(await tokens.verifyEmail('t1')).toBe(userId)
 
@@ -115,7 +167,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		it('ignores an expired link', async () => {
 			const userId = await insertUser()
 
-			await tokens.createToken('t1', userId, 'verify_email', new Date(Date.now() - 1000), 60)
+			await tokens.createToken('t1', userId, 'verify_email', new Date(Date.now() - 1000), link)
 
 			expect(await tokens.verifyEmail('t1')).toBeNull()
 
@@ -125,7 +177,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		it("won't use a reset link", async () => {
 			const userId = await insertUser()
 
-			await tokens.createToken('t1', userId, 'reset_password', inAnHour(), 60)
+			await tokens.createToken('t1', userId, 'reset_password', inAnHour(), link)
 
 			expect(await tokens.verifyEmail('t1')).toBeNull()
 
@@ -141,9 +193,9 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 
 			await pool.query('INSERT INTO failed_logins (email, count) VALUES ($1, 5)', [email])
 
-			await tokens.createToken('t1', userId, 'reset_password', inAnHour(), 60)
+			await tokens.createToken('t1', userId, 'reset_password', inAnHour(), link)
 
-			await tokens.createToken('t2', userId, 'verify_email', inAnHour(), 60)
+			await tokens.createToken('t2', userId, 'verify_email', inAnHour(), link)
 
 			await pool.query(
 				"INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', $1, now() + interval '1 day')",
@@ -168,7 +220,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		it('changes nothing with an unknown or expired link', async () => {
 			const userId = await insertUser()
 
-			await tokens.createToken('t1', userId, 'reset_password', new Date(Date.now() - 1000), 60)
+			await tokens.createToken('t1', userId, 'reset_password', new Date(Date.now() - 1000), link)
 
 			expect(await tokens.resetPassword('t1', 'new-hash')).toBeNull()
 
@@ -180,7 +232,7 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 		it("won't use a verification link", async () => {
 			const userId = await insertUser()
 
-			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), 60)
+			await tokens.createToken('t1', userId, 'verify_email', inAnHour(), link)
 
 			expect(await tokens.resetPassword('t1', 'new-hash')).toBeNull()
 
@@ -191,9 +243,9 @@ describeWithDocker('createEmailTokenRepository (integration)', () => {
 	it('sweeps expired links', async () => {
 		const userId = await insertUser()
 
-		await tokens.createToken('t1', userId, 'verify_email', new Date(Date.now() - 1000), 60)
+		await tokens.createToken('t1', userId, 'verify_email', new Date(Date.now() - 1000), link)
 
-		await tokens.createToken('t2', userId, 'reset_password', inAnHour(), 60)
+		await tokens.createToken('t2', userId, 'reset_password', inAnHour(), link)
 
 		expect(await tokens.deleteExpiredTokens()).toBe(1)
 

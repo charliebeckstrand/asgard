@@ -41,7 +41,7 @@ let sendEmail: Mock<(email: Email) => Promise<void>>
 
 beforeEach(() => {
 	emailTokenRepository = {
-		createToken: vi.fn().mockResolvedValue(true),
+		createToken: vi.fn().mockResolvedValue('created'),
 		verifyEmail: vi.fn().mockResolvedValue('user-1'),
 		resetPassword: vi.fn().mockResolvedValue('user-1'),
 		deleteExpiredTokens: vi.fn(),
@@ -104,7 +104,7 @@ describe('sendVerificationEmail', () => {
 
 		expect(token).toHaveLength(43)
 
-		const [id, userId, purpose, expiresAt, interval] = emailTokenRepository.createToken.mock
+		const [id, userId, purpose, expiresAt, { interval }] = emailTokenRepository.createToken.mock
 			.calls[0] as Parameters<EmailTokenRepository['createToken']>
 
 		expect([id, userId, purpose, interval]).toEqual([
@@ -117,18 +117,26 @@ describe('sendVerificationEmail', () => {
 		expect(expiresAt.getTime()).toBeCloseTo(Date.now() + VERIFY_EMAIL_TTL_SECONDS * 1000, -4)
 	})
 
-	it('counts the email as one to an unverified address', async () => {
+	it('counts the email as one to an unverified address, with the link', async () => {
 		await sendVerificationEmail({ id: USER_ID, email: 'alice@example.com' }, ORIGIN)
 
-		expect(emailTokenRepository.countSentEmail).toHaveBeenCalledWith(
-			'alice@example.com',
-			false,
-			EMAIL_LIMITS,
+		expect(emailTokenRepository.createToken).toHaveBeenCalledWith(
+			expect.any(String),
+			USER_ID,
+			'verify_email',
+			expect.any(Date),
+			{
+				interval: EMAIL_INTERVAL_SECONDS,
+				email: { to: 'alice@example.com', verified: false },
+				limits: EMAIL_LIMITS,
+			},
 		)
+
+		expect(emailTokenRepository.countSentEmail).not.toHaveBeenCalled()
 	})
 
 	it("refuses to send past the day's limits", async () => {
-		emailTokenRepository.countSentEmail.mockResolvedValue(false)
+		emailTokenRepository.createToken.mockResolvedValue('over_budget')
 
 		const sending = sendVerificationEmail({ id: USER_ID, email: 'alice@example.com' }, ORIGIN)
 
@@ -138,7 +146,7 @@ describe('sendVerificationEmail', () => {
 	})
 
 	it('refuses to send another link within a minute', async () => {
-		emailTokenRepository.createToken.mockResolvedValue(false)
+		emailTokenRepository.createToken.mockResolvedValue('recently_sent')
 
 		const sending = sendVerificationEmail({ id: USER_ID, email: 'alice@example.com' }, ORIGIN)
 
@@ -203,11 +211,9 @@ describe('requestPasswordReset', () => {
 	})
 
 	it('sends nothing within a minute of the last link', async () => {
-		emailTokenRepository.createToken.mockResolvedValue(false)
+		emailTokenRepository.createToken.mockResolvedValue('recently_sent')
 
 		await requestPasswordReset('alice@example.com', ORIGIN)
-
-		expect(emailTokenRepository.countSentEmail).not.toHaveBeenCalled()
 
 		expect(sendEmail).not.toHaveBeenCalled()
 	})
@@ -224,16 +230,16 @@ describe('requestPasswordReset', () => {
 
 			await requestPasswordReset('alice@example.com', ORIGIN)
 
-			expect(emailTokenRepository.countSentEmail).toHaveBeenCalledWith(
-				'alice@example.com',
-				isVerified,
-				EMAIL_LIMITS,
-			)
+			const [, , , , { email }] = emailTokenRepository.createToken.mock.calls[0] as Parameters<
+				EmailTokenRepository['createToken']
+			>
+
+			expect(email).toEqual({ to: 'alice@example.com', verified: isVerified })
 		},
 	)
 
 	it("sends nothing past the day's limits", async () => {
-		emailTokenRepository.countSentEmail.mockResolvedValue(false)
+		emailTokenRepository.createToken.mockResolvedValue('over_budget')
 
 		await expect(requestPasswordReset('alice@example.com', ORIGIN)).rejects.toMatchObject({
 			code: 'too_many_emails',
@@ -267,9 +273,9 @@ describe('sendAccountExistsEmail', () => {
 	})
 
 	it.each([
-		['the user is inactive', false, true],
-		['a link went out less than a minute ago', true, false],
-	])('sends nothing when %s', async (_, isActive, created) => {
+		['the user is inactive', false, 'created'],
+		['a link went out less than a minute ago', true, 'recently_sent'],
+	] as const)('sends nothing when %s', async (_, isActive, created) => {
 		userRepository.getCredentialsByEmail.mockResolvedValue({
 			id: USER_ID,
 			hashed_password: 'h',

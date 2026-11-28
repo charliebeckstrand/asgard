@@ -42,17 +42,18 @@ export type EmailPurpose = 'verify_email' | 'reset_password'
 
 export interface EmailTokenRepository {
 	/**
-	 * Stores a link for the user, replacing their live link of the same purpose.
-	 * Returns false, and stores nothing, when that one is less than `interval`
-	 * seconds old.
+	 * Stores a link for the user, replacing their live link of the same purpose,
+	 * and counts the email that carries it against `limits`. Stores and counts
+	 * nothing when that link is less than `interval` seconds old
+	 * (`recently_sent`), or when the email would pass a limit (`over_budget`).
 	 */
 	createToken(
 		id: string,
 		userId: string,
 		purpose: EmailPurpose,
 		expiresAt: Date,
-		interval: number,
-	): Promise<boolean>
+		options: { interval: number; email: { to: string; verified: boolean }; limits: EmailLimits },
+	): Promise<'created' | 'recently_sent' | 'over_budget'>
 	/**
 	 * Uses a live verification link and marks its user's email verified. Returns
 	 * the user's id, or null when the link is not live.

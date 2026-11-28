@@ -1,22 +1,77 @@
-import { type Db, sql } from 'saga'
-import type { EmailTokenRepository } from '../auth/types.js'
+import { type Db, type Queryable, sql } from 'saga'
+import type { EmailLimits, EmailTokenRepository } from '../auth/types.js'
+
+/** Lets other writers wait, so two emails can't both take the last room. */
+async function lockSentEmails(tx: Queryable): Promise<void> {
+	await tx.exec(sql`LOCK TABLE sent_emails IN EXCLUSIVE MODE`)
+}
+
+/**
+ * Counts an email to `to` as sent, unless it would pass one of `limits` for the
+ * last day. Returns false, and counts nothing, when it would. Runs under
+ * {@link lockSentEmails}.
+ */
+async function countSent(
+	tx: Queryable,
+	to: string,
+	verified: boolean,
+	limits: EmailLimits,
+): Promise<boolean> {
+	const sent = await tx.one<{ total: number; unverified: number; recipient: number }>(
+		sql`
+			SELECT
+				count(*)::int AS total,
+				count(*) FILTER (WHERE NOT verified)::int AS unverified,
+				count(*) FILTER (WHERE recipient = ${to})::int AS recipient
+			FROM sent_emails
+			WHERE sent_at > now() - interval '1 day'
+		`,
+	)
+
+	if (
+		sent.total >= limits.total ||
+		sent.recipient >= limits.recipient ||
+		(!verified && sent.unverified >= limits.unverified)
+	) {
+		return false
+	}
+
+	await tx.exec(sql`INSERT INTO sent_emails (recipient, verified) VALUES (${to}, ${verified})`)
+
+	return true
+}
 
 export function createEmailTokenRepository(db: Db): EmailTokenRepository {
 	return {
-		async createToken(id, userId, purpose, expiresAt, interval) {
-			// Replaces the user's live link of this purpose, unless it is newer than `interval`.
-			const created = await db.first(
-				sql`
-					INSERT INTO email_tokens (id, user_id, purpose, expires_at)
-					VALUES (${id}, ${userId}, ${purpose}, ${expiresAt})
-					ON CONFLICT (user_id, purpose) DO UPDATE
-					SET id = EXCLUDED.id, created_at = now(), expires_at = EXCLUDED.expires_at
-					WHERE email_tokens.created_at <= now() - make_interval(secs => ${interval})
-					RETURNING id
-				`,
-			)
+		async createToken(id, userId, purpose, expiresAt, { interval, email, limits }) {
+			return db.tx(async (tx) => {
+				// Taken before the checks, so two links can't both pass them.
+				await lockSentEmails(tx)
 
-			return created !== null
+				const recent = await tx.first(
+					sql`
+						SELECT 1 FROM email_tokens
+						WHERE user_id = ${userId} AND purpose = ${purpose}
+						AND created_at > now() - make_interval(secs => ${interval})
+					`,
+				)
+
+				if (recent) return 'recently_sent'
+
+				if (!(await countSent(tx, email.to, email.verified, limits))) return 'over_budget'
+
+				// Replaces the user's live link of this purpose.
+				await tx.exec(
+					sql`
+						INSERT INTO email_tokens (id, user_id, purpose, expires_at)
+						VALUES (${id}, ${userId}, ${purpose}, ${expiresAt})
+						ON CONFLICT (user_id, purpose) DO UPDATE
+						SET id = EXCLUDED.id, created_at = now(), expires_at = EXCLUDED.expires_at
+					`,
+				)
+
+				return 'created'
+			})
 		},
 
 		async verifyEmail(id) {
@@ -74,33 +129,9 @@ export function createEmailTokenRepository(db: Db): EmailTokenRepository {
 
 		async countSentEmail(to, verified, limits) {
 			return db.tx(async (tx) => {
-				// Lets other writers wait, so two emails can't both take the last room.
-				await tx.exec(sql`LOCK TABLE sent_emails IN EXCLUSIVE MODE`)
+				await lockSentEmails(tx)
 
-				const sent = await tx.one<{ total: number; unverified: number; recipient: number }>(
-					sql`
-						SELECT
-							count(*)::int AS total,
-							count(*) FILTER (WHERE NOT verified)::int AS unverified,
-							count(*) FILTER (WHERE recipient = ${to})::int AS recipient
-						FROM sent_emails
-						WHERE sent_at > now() - interval '1 day'
-					`,
-				)
-
-				if (
-					sent.total >= limits.total ||
-					sent.recipient >= limits.recipient ||
-					(!verified && sent.unverified >= limits.unverified)
-				) {
-					return false
-				}
-
-				await tx.exec(
-					sql`INSERT INTO sent_emails (recipient, verified) VALUES (${to}, ${verified})`,
-				)
-
-				return true
+				return countSent(tx, to, verified, limits)
 			})
 		},
 

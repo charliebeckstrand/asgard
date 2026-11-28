@@ -110,12 +110,12 @@ export async function createSecondFactorOptions(
 	return options
 }
 
-/** Verifies a passkey sign-in and returns the user's id. */
-export async function authenticatePasskey(
-	response: AuthenticationResponseJSON,
-	ip?: string,
-): Promise<string> {
-	const { passkeyRepository, userRepository, passkeys, onSecurityEvent } = getConfig()
+/**
+ * The user whose passkey signed `response` against a live challenge, or null
+ * when it doesn't verify. Counts the use against the passkey's counter.
+ */
+export async function verifyPasskey(response: AuthenticationResponseJSON): Promise<string | null> {
+	const { passkeyRepository, passkeys } = getConfig()
 
 	const passkey = await passkeyRepository.findPasskey(response.id)
 
@@ -135,15 +135,29 @@ export async function authenticatePasskey(
 			}).catch(() => null)
 		: null
 
-	if (!passkey || !verification?.verified) {
-		if (ip) onSecurityEvent?.({ type: 'login_failed', ip, details: { passkey: response.id } })
+	if (!passkey || !verification?.verified) return null
+
+	await passkeyRepository.setCounter(passkey.id, verification.authenticationInfo.newCounter)
+
+	return passkey.user_id
+}
+
+/** Verifies a passkey sign-in and returns the user's id. */
+export async function authenticatePasskey(
+	response: AuthenticationResponseJSON,
+	ip: string,
+): Promise<string> {
+	const { userRepository, onSecurityEvent } = getConfig()
+
+	const userId = await verifyPasskey(response)
+
+	if (!userId) {
+		onSecurityEvent?.({ type: 'login_failed', ip, details: { passkey: response.id } })
 
 		throw new AuthError('invalid_credentials', 'Passkey not recognized')
 	}
 
-	await passkeyRepository.setCounter(passkey.id, verification.authenticationInfo.newCounter)
-
-	const user = await userRepository.getUserById(passkey.user_id)
+	const user = await userRepository.getUserById(userId)
 
 	if (!user?.is_active) {
 		throw new AuthError('account_inactive', 'Account is inactive')

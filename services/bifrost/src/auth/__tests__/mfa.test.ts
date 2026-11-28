@@ -1,9 +1,9 @@
-const { mockAuthenticatePasskey } = vi.hoisted(() => ({
-	mockAuthenticatePasskey: vi.fn(),
+const { mockVerifyPasskey } = vi.hoisted(() => ({
+	mockVerifyPasskey: vi.fn(),
 }))
 
 vi.mock('../passkeys.js', () => ({
-	authenticatePasskey: (...args: unknown[]) => mockAuthenticatePasskey(...args),
+	verifyPasskey: (...args: unknown[]) => mockVerifyPasskey(...args),
 }))
 
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
@@ -32,6 +32,8 @@ import type {
 	SessionRepository,
 	UserRepository,
 } from '../types.js'
+
+const IP = '203.0.113.1'
 
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
@@ -156,7 +158,7 @@ describe('checkMfaKey', () => {
 
 describe('verifySession', () => {
 	it('passes the session with a current authenticator code and records its step', async () => {
-		await verifySession(session, { totp: totpCode(secret, totpStep()) })
+		await verifySession(session, { totp: totpCode(secret, totpStep()) }, IP)
 
 		expect(mfaRepository.useTotpStep).toHaveBeenCalledWith(USER_ID, expect.any(Number))
 
@@ -168,7 +170,7 @@ describe('verifySession', () => {
 	})
 
 	it('counts each try against the user, across sessions, before checking it', async () => {
-		await verifySession(session, { totp: '000000' }).catch(() => {})
+		await verifySession(session, { totp: '000000' }, IP).catch(() => {})
 
 		expect(mfaRepository.countFailedStep).toHaveBeenCalledWith(
 			USER_ID,
@@ -183,7 +185,7 @@ describe('verifySession', () => {
 		mfaRepository.countFailedStep.mockResolvedValueOnce(false)
 
 		await expect(
-			verifySession(session, { totp: totpCode(secret, totpStep()) }),
+			verifySession(session, { totp: totpCode(secret, totpStep()) }, IP),
 		).rejects.toMatchObject({ code: 'too_many_steps' })
 
 		expect(mfaRepository.useTotpStep).not.toHaveBeenCalled()
@@ -195,7 +197,7 @@ describe('verifySession', () => {
 		mfaRepository.useTotpStep.mockResolvedValueOnce(false)
 
 		await expect(
-			verifySession(session, { totp: totpCode(secret, totpStep()) }),
+			verifySession(session, { totp: totpCode(secret, totpStep()) }, IP),
 		).rejects.toMatchObject({ code: 'code_rejected' })
 
 		expect(sessionRepository.passSecondStep).not.toHaveBeenCalled()
@@ -220,7 +222,7 @@ describe('verifySession', () => {
 	it('asks to sign in again when a wrong try ends the session', async () => {
 		sessionRepository.failSecondStep.mockResolvedValueOnce(true)
 
-		await expect(verifySession(session, { totp: '000000' })).rejects.toMatchObject({
+		await expect(verifySession(session, { totp: '000000' }, IP)).rejects.toMatchObject({
 			code: 'sign_in_expired',
 		})
 	})
@@ -233,16 +235,16 @@ describe('verifySession', () => {
 		})
 
 		await expect(
-			verifySession(session, { totp: totpCode(secret, totpStep()) }),
+			verifySession(session, { totp: totpCode(secret, totpStep()) }, IP),
 		).rejects.toMatchObject({ code: 'code_rejected' })
 	})
 
 	it('uses a recovery code whatever its case and dashes', async () => {
-		await verifySession(session, { recovery_code: 'ABCDE-FGHJK' })
+		await verifySession(session, { recovery_code: 'ABCDE-FGHJK' }, IP)
 
 		const [, lower] = mfaRepository.useRecoveryCode.mock.calls[0] ?? []
 
-		await verifySession(session, { recovery_code: 'abcdefghjk' })
+		await verifySession(session, { recovery_code: 'abcdefghjk' }, IP)
 
 		expect(mfaRepository.useRecoveryCode.mock.calls[1]?.[1]).toBe(lower)
 	})
@@ -250,37 +252,39 @@ describe('verifySession', () => {
 	it('refuses a used or unknown recovery code', async () => {
 		mfaRepository.useRecoveryCode.mockResolvedValueOnce(false)
 
-		await expect(verifySession(session, { recovery_code: 'abcde-fghjk' })).rejects.toMatchObject({
+		await expect(
+			verifySession(session, { recovery_code: 'abcde-fghjk' }, IP),
+		).rejects.toMatchObject({
 			code: 'code_rejected',
 		})
 	})
 
 	it("accepts the user's own passkey", async () => {
-		mockAuthenticatePasskey.mockResolvedValueOnce(USER_ID)
+		mockVerifyPasskey.mockResolvedValueOnce(USER_ID)
 
 		const passkey = { id: 'credential-1' } as AuthenticationResponseJSON
 
-		await verifySession(session, { passkey })
+		await verifySession(session, { passkey }, IP)
 
 		expect(sessionRepository.passSecondStep).toHaveBeenCalledWith('session-1')
 	})
 
 	it("refuses another user's passkey", async () => {
-		mockAuthenticatePasskey.mockResolvedValueOnce('00000000-0000-4000-8000-000000000002')
+		mockVerifyPasskey.mockResolvedValueOnce('00000000-0000-4000-8000-000000000002')
 
 		const passkey = { id: 'credential-9' } as AuthenticationResponseJSON
 
-		await expect(verifySession(session, { passkey })).rejects.toMatchObject({
+		await expect(verifySession(session, { passkey }, IP)).rejects.toMatchObject({
 			code: 'code_rejected',
 		})
 	})
 
 	it('refuses a passkey that fails to verify', async () => {
-		mockAuthenticatePasskey.mockRejectedValueOnce(new Error('bad signature'))
+		mockVerifyPasskey.mockResolvedValueOnce(null)
 
 		const passkey = { id: 'credential-1' } as AuthenticationResponseJSON
 
-		await expect(verifySession(session, { passkey })).rejects.toMatchObject({
+		await expect(verifySession(session, { passkey }, IP)).rejects.toMatchObject({
 			code: 'code_rejected',
 		})
 	})
@@ -288,7 +292,7 @@ describe('verifySession', () => {
 	it('refuses a user without a second factor', async () => {
 		mfaRepository.getFactors.mockResolvedValueOnce({ passkeys: 0, totp: false, recovery_codes: 0 })
 
-		await expect(verifySession(session, { totp: '123456' })).rejects.toMatchObject({
+		await expect(verifySession(session, { totp: '123456' }, IP)).rejects.toMatchObject({
 			code: 'no_second_factor',
 		})
 

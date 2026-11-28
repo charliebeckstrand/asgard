@@ -145,7 +145,7 @@ export async function completeOAuth(
 	provider: OAuthProvider,
 	state: string,
 	code: string,
-	ip?: string,
+	ip: string,
 ): Promise<OAuthOutcome> {
 	const { oauthRepository, userRepository, onSecurityEvent } = getConfig()
 
@@ -198,8 +198,7 @@ export async function completeOAuth(
 
 		userId = created.userId
 
-		if (ip)
-			onSecurityEvent?.({ type: 'registration', ip, details: { email: identity.email, provider } })
+		onSecurityEvent?.({ type: 'registration', ip, details: { email: identity.email, provider } })
 	}
 
 	const user = await userRepository.getUserById(userId)
@@ -218,7 +217,7 @@ async function fetchIdentity(
 ): Promise<OAuthIdentity> {
 	const { clientId, clientSecret } = client(provider)
 
-	const tokenResponse = await fetch(endpoints[provider].token, {
+	const token = await requestJson<{ access_token?: string }>(endpoints[provider].token, {
 		method: 'POST',
 		headers: {
 			Accept: 'application/json',
@@ -232,11 +231,7 @@ async function fetchIdentity(
 			grant_type: 'authorization_code',
 			redirect_uri: callbackUrl(stored.origin, provider),
 		}),
-	}).catch(() => null)
-
-	const token = tokenResponse?.ok
-		? ((await tokenResponse.json()) as { access_token?: string })
-		: null
+	})
 
 	if (!token?.access_token) {
 		throw new OAuthFailure('oauth_failed', 'The provider did not accept the sign-in')
@@ -254,16 +249,28 @@ async function fetchIdentity(
 	return identity
 }
 
-async function getJson<T>(url: string, accessToken: string): Promise<T | null> {
-	const res = await fetch(url, {
+// How long a provider gets to answer each call, so a hung one can't hold the callback open.
+const PROVIDER_TIMEOUT_MS = 10_000
+
+/** The provider's JSON answer, or null when it fails, times out, or isn't JSON. */
+async function requestJson<T>(url: string, init: RequestInit): Promise<T | null> {
+	try {
+		const res = await fetch(url, { ...init, signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS) })
+
+		return res.ok ? ((await res.json()) as T) : null
+	} catch {
+		return null
+	}
+}
+
+function getJson<T>(url: string, accessToken: string): Promise<T | null> {
+	return requestJson<T>(url, {
 		headers: {
 			Accept: 'application/json',
 			Authorization: `Bearer ${accessToken}`,
 			'User-Agent': 'bifrost',
 		},
-	}).catch(() => null)
-
-	return res?.ok ? ((await res.json()) as T) : null
+	})
 }
 
 async function fetchGoogleIdentity(accessToken: string): Promise<OAuthIdentity | null> {
