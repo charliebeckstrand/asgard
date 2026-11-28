@@ -1,5 +1,5 @@
 import { type Db, sql } from 'saga'
-import type { Passkey } from 'skuld'
+import type { Passkey } from './schemas.js'
 
 /** A passkey with what a ceremony needs: its public key, signature counter and transports. */
 export interface StoredPasskey {

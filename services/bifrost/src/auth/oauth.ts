@@ -1,9 +1,9 @@
 import { hash } from 'node:crypto'
-import { normalizeEmail } from 'skuld'
 import { reportEvent } from 'vidar/client'
 import { environment } from '../lib/env.js'
 import type { OAuthIdentity, OAuthProvider, StoredOAuthState } from '../lib/oauth-repository.js'
 import { oauthRepository, userRepository } from '../lib/repositories.js'
+import { normalizeEmail } from '../lib/schemas.js'
 import { AuthError } from './errors.js'
 import { expiresIn, hashToken, randomToken } from './sessions.js'
 

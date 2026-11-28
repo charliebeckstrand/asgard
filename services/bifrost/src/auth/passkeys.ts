@@ -8,10 +8,11 @@ import {
 	verifyAuthenticationResponse,
 	verifyRegistrationResponse,
 } from '@simplewebauthn/server'
-import type { Passkey, User } from 'skuld'
+import type { User } from 'skuld'
 import { reportEvent } from 'vidar/client'
 import { environment } from '../lib/env.js'
 import { passkeyRepository, userRepository } from '../lib/repositories.js'
+import type { Passkey } from '../lib/schemas.js'
 import { AuthError } from './errors.js'
 import { expiresIn } from './sessions.js'
 

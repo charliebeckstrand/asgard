@@ -1,9 +1,10 @@
 import { createRoute, z } from '@hono/zod-openapi'
 import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
-import { ActivityListSchema, createListSchema, IdSchema, toList, UserSchema } from 'skuld'
+import { createListSchema, IdSchema, toList, UserSchema } from 'skuld'
 import { getActivity } from '../auth/index.js'
 import { record } from '../lib/activity.js'
 import { sessionRepository, userRepository } from '../lib/repositories.js'
+import { ActivityListSchema } from '../lib/schemas.js'
 import { requireRole, requireSession, type SessionEnv } from '../middleware/session.js'
 
 // Admins manage an account's standing, never its credentials: no passwords,

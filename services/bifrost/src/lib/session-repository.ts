@@ -1,5 +1,6 @@
 import { type Db, sql } from 'saga'
-import type { Role, Session } from 'skuld'
+import type { Role } from 'skuld'
+import type { Session } from './schemas.js'
 
 interface SessionRow {
 	id: string

@@ -1,10 +1,11 @@
 import { hash, randomInt } from 'node:crypto'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
-import type { Session, User } from 'skuld'
+import type { User } from 'skuld'
 import { reportEvent } from 'vidar/client'
 import { environment } from '../lib/env.js'
 import type { Factors } from '../lib/mfa-repository.js'
 import { mfaRepository, sessionRepository } from '../lib/repositories.js'
+import type { Session } from '../lib/schemas.js'
 import { AuthError } from './errors.js'
 import { verifyPasskey } from './passkeys.js'
 import {

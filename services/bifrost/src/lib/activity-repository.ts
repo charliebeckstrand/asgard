@@ -1,5 +1,5 @@
 import { type Db, sql } from 'saga'
-import type { Activity, ActivityAction } from 'skuld'
+import type { Activity, ActivityAction } from './schemas.js'
 
 /** One thing that happened to an account, as it is recorded. */
 export interface ActivityEntry {

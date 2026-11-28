@@ -1,6 +1,6 @@
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
-import type { Role, Session } from 'skuld'
+import type { Role } from 'skuld'
 import {
 	AuthError,
 	createSession,
@@ -11,6 +11,7 @@ import {
 } from '../auth/index.js'
 import { record } from '../lib/activity.js'
 import { mfaRepository } from '../lib/repositories.js'
+import type { Session } from '../lib/schemas.js'
 
 export type SessionEnv = {
 	Variables: {

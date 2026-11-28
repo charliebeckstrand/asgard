@@ -20,9 +20,10 @@ vi.mock('../../lib/repositories.js')
 vi.mock('vidar/client')
 
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
-import type { Session, User } from 'skuld'
+import type { User } from 'skuld'
 import { reportEvent } from 'vidar/client'
 import * as repositories from '../../lib/repositories.js'
+import type { Session } from '../../lib/schemas.js'
 import {
 	checkMfaKey,
 	confirmTotp,

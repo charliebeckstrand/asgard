@@ -1,10 +1,10 @@
 import { getIpAddress } from 'grid/middleware'
 import type { Context } from 'hono'
-import type { ActivityAction } from 'skuld'
 import { recordActivity, sendSecurityNotice } from '../auth/index.js'
 import type { ActivityEntry } from './activity-repository.js'
 import { appOrigin } from './app-origin.js'
 import { logger } from './log.js'
+import type { ActivityAction } from './schemas.js'
 
 /**
  * Records that `action` happened to an account, with the request's IP. The

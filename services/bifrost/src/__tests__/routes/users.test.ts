@@ -18,10 +18,11 @@ vi.mock('../../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
 }))
 
-import type { Activity, User } from 'skuld'
+import type { User } from 'skuld'
 import { createBifrostApp } from '../../app.js'
 import * as auth from '../../auth/index.js'
 import { sessionRepository, userRepository } from '../../lib/repositories.js'
+import type { Activity } from '../../lib/schemas.js'
 
 const mockUserRepository = vi.mocked(userRepository)
 

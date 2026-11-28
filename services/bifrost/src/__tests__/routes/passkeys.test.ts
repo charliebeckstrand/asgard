@@ -21,10 +21,10 @@ vi.mock('../../lib/db.js', () => ({
 }))
 
 import type { PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/server'
-import type { Session } from 'skuld'
 import { createBifrostApp } from '../../app.js'
 import * as auth from '../../auth/index.js'
 import { mfaRepository, sessionRepository } from '../../lib/repositories.js'
+import type { Session } from '../../lib/schemas.js'
 
 const mockFindSession = vi.mocked(auth.findSession)
 

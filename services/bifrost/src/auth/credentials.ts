@@ -1,9 +1,9 @@
 import { hash, verify } from '@node-rs/argon2'
 import type { User } from 'skuld'
-import { normalizeEmail } from 'skuld'
 import { reportEvent } from 'vidar/client'
 import { isBreachedPassword } from '../lib/breached-passwords.js'
 import { userRepository } from '../lib/repositories.js'
+import { normalizeEmail } from '../lib/schemas.js'
 import { turnstile } from '../lib/turnstile.js'
 import { AuthError } from './errors.js'
 

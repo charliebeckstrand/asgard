@@ -1,6 +1,6 @@
 import { type Db, type Queryable, sql } from 'saga'
-import { type ActivityAction, normalizeEmail } from 'skuld'
 import { countSecondFactors } from './mfa-repository.js'
+import { type ActivityAction, normalizeEmail } from './schemas.js'
 
 // Admins are made and unmade by the operator from the command line, never through
 // the API, so a compromised admin can't make more admins.
