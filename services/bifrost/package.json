@@ -29,26 +29,26 @@
 	},
 	"packageManager": "pnpm@12.23.0",
 	"dependencies": {
-		"@hono/node-server": "^2.1.1",
+		"@hono/node-server": "^2.1.11",
 		"@hono/zod-openapi": "^1.6.3",
-		"@node-rs/argon2": "^2.2.1",
-		"@simplewebauthn/server": "^14.0.2",
+		"@node-rs/argon2": "^2.2.2",
+		"@simplewebauthn/server": "^14.1.0",
 		"grid": "workspace:*",
-		"hono": "^4.13.9",
+		"hono": "^4.13.23",
 		"saga": "workspace:*",
 		"skuld": "workspace:*",
 		"vidar": "workspace:*",
-		"zod": "^4.6.5"
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.14",
-		"@types/node": "^26.6.2",
+		"@biomejs/biome": "^2.6.9",
+		"@types/node": "^26.6.11",
 		"@types/pg": "^8.23.1",
-		"pg": "^8.23.0",
+		"pg": "^8.23.1",
 		"tsup": "^9.0.0",
 		"tsx": "^4.23.15",
 		"typescript": "^7.0.2",
 		"vali": "workspace:*",
-		"vitest": "^5.0.1"
+		"vitest": "^5.1.2"
 	}
 }
