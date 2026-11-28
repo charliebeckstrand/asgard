@@ -40,15 +40,16 @@ export function createBifrostApp() {
 	const app = createApp({
 		basePath: '/api',
 		title: 'Bifrost',
-		description: '',
+		description: 'Accounts and sign-in for the Ivory Image apps.',
 		cors: { origin: env.APP_ORIGINS, credentials: true },
 		logger: logger(),
 	})
 
 	// App Platform overwrites `do-connecting-ip` with the client address on every request.
 	app.use('*', clientIp({ header: 'do-connecting-ip', secret: env.CLIENT_IP_SECRET }))
-	app.use('*', session())
+	// Before the session, so a cross-site write is refused without a database read.
 	app.use('*', csrf({ origin: env.APP_ORIGINS }))
+	app.use('*', session())
 
 	// Also covers `/auth/login` itself and the second step of a session, so passkey
 	// sign-ins and second steps share the password budget.
