@@ -1,6 +1,6 @@
 # Overview
 
-Asgard is the backend for Ivory Image: Hono services in one pnpm and Turborepo workspace. Node 24 (`.nvmrc`), TypeScript 7, ESM, Vitest, Biome, Knip. The frontend is [midgard](midgard.md).
+Asgard is the backend for Ivory Image: Hono services in one pnpm and Turborepo workspace. Node 26 (`.nvmrc`, and the Dockerfile's base image), TypeScript 7, ESM, Vitest, Biome, Knip. The frontend is [midgard](midgard.md).
 
 ## Layout
 
@@ -39,7 +39,7 @@ Renovate's minor and patch updates (`renovate.json`) merge themselves once CI pa
 
 ## Cloud sessions
 
-- The SessionStart hook installs Node 24 and the pinned pnpm.
+- The SessionStart hook installs the Node in `.nvmrc` and the pinned pnpm.
 - There is no Docker, so `*.integration.test.ts` skip. A skip is not a pass: CI runs them.
 - For a real Postgres without Docker, `npm i @embedded-postgres/linux-x64` in a scratch directory gives PG 18 binaries. Run `initdb` and `pg_ctl` as `nobody` (root is refused).
 - auth.ivoryimage.dev and docs.digitalocean.com are blocked. For App Platform spec values, read `apps.gen.go` in the digitalocean/godo repo.
