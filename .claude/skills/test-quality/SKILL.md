@@ -33,7 +33,7 @@ Apply these rules every time a test file is authored or modified. They reflect t
 
 - Colocate tests under `src/__tests__/` (or `src/<area>/__tests__/`) mirroring the source path.
 - Naming: `<source>.test.ts` for unit/route tests, `<source>.integration.test.ts` for tests that need a real Postgres testcontainer.
-- Use the `@/` alias (`@/handlers/rules`) when importing from the source root in vidar; relative imports (`../../auth/index.js`) elsewhere — match the surrounding file.
+- Import source with relative paths ending in `.js` (`../../handlers/rules.js`).
 
 ## Reuse vali utilities — do not rebuild
 
@@ -44,7 +44,7 @@ The `vali` package centralizes the patterns that used to be duplicated. When you
 | Stub the standard service env (`DATABASE_URL`, `APP_ORIGINS`) | `stubServiceEnv` from `vali/env` |
 | Start a Postgres testcontainer | `startPostgres` from `vali/containers` |
 | Apply a service's migrations to it | `migrate` from `saga` |
-| Skip a suite when Docker is unavailable | `isDockerAvailable() ? describe : describe.skip` |
+| Skip a suite when Docker is unavailable | `describe.skipIf(!dockerAvailable)` from `vali/containers` |
 
 If you find yourself re-implementing one of these, stop and import from `vali` instead. If a new pattern is being duplicated across two or more test files, propose extracting it into `vali` (CLAUDE.md: "abstractions are extracted, not predicted" — but two uses earns the abstraction).
 
@@ -76,22 +76,22 @@ Bifrost's repositories take the database as an argument, so integration tests pa
 let testDb: TestDb
 let users: UserRepository
 
-beforeAll(async () => {
-    if (!isDockerAvailable()) return
+describe.skipIf(!dockerAvailable)('createUserRepository (integration)', () => {
+    beforeAll(async () => {
+        testDb = await startTestDb()
 
-    testDb = await startTestDb()
+        users = createUserRepository(testDb.db)
+    }, 60_000)
 
-    users = createUserRepository(testDb.db)
-}, 60_000)
+    afterAll(async () => {
+        await testDb?.stop()
+    })
 
-afterAll(async () => {
-    await testDb?.stop()
-})
+    beforeEach(async () => {
+        await testDb.reset()
+    })
 
-beforeEach(async () => {
-    if (!isDockerAvailable()) return
-
-    await testDb.reset()
+    // ...
 })
 ```
 
@@ -122,7 +122,7 @@ vi.mock('vidar/client', () => ({
 ## Integration tests (testcontainers)
 
 - Suffix the file `*.integration.test.ts` so coverage tooling can target them separately if needed.
-- Gate with `const describeWithDocker = isDockerAvailable() ? describe : describe.skip`.
+- Gate with `describe.skipIf(!dockerAvailable)` and put the hooks inside it, so a skipped suite starts nothing. One gated suite per file; nest the rest under it to share the container.
 - Use `beforeAll(async () => { ... }, 60_000)` for container startup — the default 5s timeout is not enough.
 - Empty the tables in `beforeEach` (bifrost: `testDb.reset()`).
 - Apply migrations from `<service>/migrations` via saga's `migrate({ url }, migrationsDir)` rather than re-encoding schema in the test (drift risk). Bifrost's `startTestDb()` does this.
