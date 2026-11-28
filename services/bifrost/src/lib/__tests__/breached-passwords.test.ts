@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { Logger } from 'saga/log'
+import type { Logger } from 'grid/log'
 import { createBreachCheck } from '../breached-passwords.js'
 
 // SHA-1 of 'password123', split the way the range API splits it.

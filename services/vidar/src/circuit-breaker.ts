@@ -1,4 +1,4 @@
-import type { Logger } from 'saga/log'
+import type { Logger } from 'grid/log'
 
 export interface CircuitBreakerOptions {
 	logger: Logger

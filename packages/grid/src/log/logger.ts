@@ -1,6 +1,6 @@
-import { type DestinationStream, type Level, type LevelWithSilent, type Logger, pino } from 'pino'
+import { type DestinationStream, type LevelWithSilent, type Logger, pino } from 'pino'
 
-export type { Level, Logger }
+export type { Logger }
 
 export interface LoggerOptions {
 	/** Service name; emitted as the `service` binding on every log line. */
@@ -21,7 +21,7 @@ export interface LoggerOptions {
 }
 
 /**
- * Creates a Pino logger with saga's defaults — JSON output, ISO
+ * Creates a Pino logger with grid's defaults — JSON output, ISO
  * timestamps, level emitted as a string label, and a `service` binding
  * on every line. Returns the underlying Pino logger directly so callers
  * can use `logger.child({...})` and the rest of Pino's API without a

@@ -1,5 +1,5 @@
 import type { Server } from 'node:net'
-import type { Logger } from 'pino'
+import type { Logger } from '../log/logger.js'
 
 export interface LifecycleOptions {
 	server: Server
