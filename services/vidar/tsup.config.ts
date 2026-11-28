@@ -1,11 +1,3 @@
-import { defineConfig } from 'tsup'
+import base from '../../tsup.config.js'
 
-export default defineConfig({
-	entry: { index: 'src/index.ts', client: 'src/client.ts' },
-	format: ['esm'],
-	target: 'node24',
-	outDir: 'dist',
-	clean: true,
-	sourcemap: true,
-	splitting: false,
-})
+export default { ...base, entry: { index: 'src/index.ts', client: 'src/client.ts' } }

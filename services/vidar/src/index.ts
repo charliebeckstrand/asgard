@@ -1,5 +1,3 @@
-export type { VidarApp } from './app.js'
-
 import { serve } from '@hono/node-server'
 import { setupLifecycle } from 'grid/server-lifecycle'
 import { createVidarApp } from './app.js'
@@ -22,18 +20,18 @@ const CLEANUP_INTERVAL_MS = 3_600_000 // 1 hour
 const EVENT_RETENTION_DAYS = 1
 const THREAT_RETENTION_DAYS = 30
 
+const cleanupTasks: [string, () => Promise<number>][] = [
+	['clean expired bans', cleanExpiredBans],
+	['purge old events', () => purgeOldEvents(EVENT_RETENTION_DAYS)],
+	['purge old threats', () => purgeOldThreats(THREAT_RETENTION_DAYS)],
+]
+
 function cleanUp() {
-	cleanExpiredBans().catch((err) => {
-		log.error({ err }, 'failed to clean expired bans')
-	})
-
-	purgeOldEvents(EVENT_RETENTION_DAYS).catch((err) => {
-		log.error({ err }, 'failed to purge old events')
-	})
-
-	purgeOldThreats(THREAT_RETENTION_DAYS).catch((err) => {
-		log.error({ err }, 'failed to purge old threats')
-	})
+	for (const [name, task] of cleanupTasks) {
+		task().catch((err) => {
+			log.error({ err }, `failed to ${name}`)
+		})
+	}
 }
 
 // Also on start, so deploys more often than hourly don't skip it.
