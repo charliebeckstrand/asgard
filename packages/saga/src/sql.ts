@@ -11,9 +11,7 @@ export class SqlFragment {
 
 	/** The query text, with `$1`, `$2`, … in place of each value. */
 	get text(): string {
-		const text = this.strings.reduce((query, part, i) => `${query}$${i}${part}`)
-
-		return text.replace(/\s+/g, ' ').trim()
+		return this.strings.reduce((query, part, i) => `${query}$${i}${part}`)
 	}
 }
 

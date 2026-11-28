@@ -7,7 +7,8 @@ export class NoRowsError extends Error {
 	constructor(query?: string) {
 		const base = 'Expected at least one row, but got none'
 
-		super(query ? `${base}: ${query}` : base)
+		// The query on one line, so the message reads well in a log.
+		super(query ? `${base}: ${query.replace(/\s+/g, ' ').trim()}` : base)
 
 		this.name = 'NoRowsError'
 	}

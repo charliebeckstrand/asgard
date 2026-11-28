@@ -44,11 +44,9 @@ describe('createDb', () => {
 
 			const db = createDb(() => ({ url }))
 
-			const result = await db.first<{ id: number; name: string }>(sql`
-				SELECT *
-				FROM users
-				WHERE id = ${1}
-			`)
+			const result = await db.first<{ id: number; name: string }>(
+				sql`SELECT * FROM users WHERE id = ${1}`,
+			)
 
 			expect(result).toEqual({ id: 1, name: 'Alice' })
 
@@ -310,11 +308,7 @@ describe('createDb', () => {
 			const db = createDb(() => ({ url }))
 
 			const result = await db.tx((tx) =>
-				tx.one<{ id: number }>(sql`
-					INSERT INTO t (v)
-					VALUES (${1})
-					RETURNING id
-				`),
+				tx.one<{ id: number }>(sql`INSERT INTO t (v) VALUES (${1}) RETURNING id`),
 			)
 
 			expect(result).toEqual({ id: 1 })
