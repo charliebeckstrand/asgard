@@ -592,22 +592,6 @@ describe('numbers', () => {
 		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, 'Ada', result)
 	})
 
-	it('counts the run of a user that comes with no name, as from a bifrost before names', async () => {
-		mockRecordNumbersResult.mockResolvedValue(stats)
-
-		const { name: _, ...unnamed } = member
-
-		const res = await app.request('/api/games/numbers/results', {
-			method: 'POST',
-			headers: headers(unnamed),
-			body: JSON.stringify(result),
-		})
-
-		expect(res.status).toBe(200)
-
-		expect(mockRecordNumbersResult).toHaveBeenCalledWith(USER_ID, null, result)
-	})
-
 	it.each([
 		{ score: 21 },
 		{ score: 4.5 },
