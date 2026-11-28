@@ -182,7 +182,11 @@ describe('OAuth routes', () => {
 
 			expect(res.status).toBe(400)
 
-			expect(await res.json()).toMatchObject({ statusCode: 400, message: 'Unknown app origin' })
+			expect(await res.json()).toMatchObject({
+				statusCode: 400,
+				code: 'unknown_origin',
+				message: 'Unknown app origin',
+			})
 
 			expect(mockStartOAuth).not.toHaveBeenCalled()
 		})

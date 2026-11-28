@@ -122,6 +122,8 @@ describe('Users routes', () => {
 
 			expect(res.status).toBe(403)
 
+			expect(await res.json()).toMatchObject({ code: 'role_required' })
+
 			expect(mockUserRepository.getUsers).not.toHaveBeenCalled()
 
 			expect(mockUserRepository.setUserActive).not.toHaveBeenCalled()
@@ -175,16 +177,15 @@ describe('Users routes', () => {
 
 			expect(await res.json()).toEqual({ data: [sampleUser], total: 1 })
 		})
-	})
+		it('keeps the list out of every cache', async () => {
+			mockUserRepository.getUsers.mockResolvedValueOnce([sampleUser])
 
-	it('keeps the list out of every cache', async () => {
-		mockUserRepository.getUsers.mockResolvedValueOnce([sampleUser])
+			const res = await app.request('/api/users', { headers })
 
-		const res = await app.request('/api/users', { headers })
+			expect(res.headers.get('cache-control')).toBe('private, no-store')
+		})
+		describe('GET /api/users/:id', () => {})
 
-		expect(res.headers.get('cache-control')).toBe('private, no-store')
-	})
-	describe('GET /api/users/:id', () => {
 		it('returns the user when found', async () => {
 			mockUserRepository.getUserById.mockResolvedValueOnce(sampleUser)
 

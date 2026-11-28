@@ -1,4 +1,3 @@
-import { HTTPException } from 'grid'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import type { Role, Session } from 'skuld'
@@ -90,10 +89,17 @@ export function requireSession(c: Context<SessionEnv>): Session {
 	const current = c.get('session')
 
 	if (!current) {
-		throw new HTTPException(401, { message: 'Not authenticated' })
+		throw new AuthError('not_authenticated', 'Not authenticated')
 	}
 
 	return current
+}
+
+/** Answers 401 without a session, before a route validates its body. */
+export const sessionRequired: MiddlewareHandler<SessionEnv> = async (c, next) => {
+	requireSession(c)
+
+	return next()
 }
 
 // How long after signing in a session may still change how its user signs in.
@@ -162,7 +168,7 @@ export function requireRole(role: Role): MiddlewareHandler<SessionEnv> {
 		const current = requireSession(c)
 
 		if (!current.user.roles.includes(role)) {
-			throw new HTTPException(403, { message: `The ${role} role is required` })
+			throw new AuthError('role_required', `The ${role} role is required`)
 		}
 
 		if (STEP_UP_ROLES.has(role) && !current.two_step) {

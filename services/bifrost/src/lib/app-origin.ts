@@ -1,5 +1,5 @@
-import { HTTPException } from 'grid'
 import type { Context } from 'hono'
+import { AuthError } from '../auth/errors.js'
 import { environment } from './env.js'
 
 /**
@@ -18,7 +18,7 @@ export function requireAppOrigin(c: Context): string {
 	const origin = appOrigin(c)
 
 	if (!origin) {
-		throw new HTTPException(400, { message: 'Unknown app origin' })
+		throw new AuthError('unknown_origin', 'Unknown app origin')
 	}
 
 	return origin

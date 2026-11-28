@@ -63,6 +63,8 @@ describe('Session routes', () => {
 
 			expect(res.status).toBe(401)
 
+			expect(await res.json()).toMatchObject({ code: 'not_authenticated' })
+
 			expect(auth.findSession).not.toHaveBeenCalled()
 		})
 

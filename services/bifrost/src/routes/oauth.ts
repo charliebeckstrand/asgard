@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 import { createRoute, z } from '@hono/zod-openapi'
-import { createRouter, errorResponse, HTTPException, jsonResponse } from 'grid'
+import { createRouter, errorResponse, jsonResponse } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import type { Context } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
@@ -183,12 +183,12 @@ oauthRoutes.get('/:provider/start', async (c) => {
 
 		return c.redirect(url, 302)
 	} catch (err) {
-		if (err instanceof AuthError) return c.redirect(withError(failed, err.code), 302)
+		if (!(err instanceof AuthError)) throw err
 
 		// No session to connect the account to.
-		if (err instanceof HTTPException) return c.redirect('/login', 302)
+		if (err.code === 'not_authenticated') return c.redirect('/login', 302)
 
-		throw err
+		return c.redirect(withError(failed, err.code), 302)
 	}
 })
 

@@ -9,7 +9,12 @@ import {
 } from '../auth/index.js'
 import { recordChange } from '../lib/activity.js'
 import { mfaRepository, sessionRepository } from '../lib/repositories.js'
-import { authorizeSignInChange, requireSession, type SessionEnv } from '../middleware/session.js'
+import {
+	authorizeSignInChange,
+	requireSession,
+	type SessionEnv,
+	sessionRequired,
+} from '../middleware/session.js'
 
 // A user manages only their own second factors. Passkeys have their own routes
 // under `/auth/passkeys`.
@@ -116,12 +121,7 @@ const recoveryCodesRoute = createRoute({
 
 const mfaRoutes = createRouter<SessionEnv>()
 
-// Answers 401 before a body is validated.
-mfaRoutes.use('*', async (c, next) => {
-	requireSession(c)
-
-	return next()
-})
+mfaRoutes.use('*', sessionRequired)
 
 mfaRoutes.openapi(getFactorsRoute, async (c) => {
 	const { user } = requireSession(c)

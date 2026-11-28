@@ -10,7 +10,12 @@ import {
 } from '../auth/index.js'
 import { recordChange } from '../lib/activity.js'
 import { sessionRepository } from '../lib/repositories.js'
-import { authorizeSignInChange, requireSession, type SessionEnv } from '../middleware/session.js'
+import {
+	authorizeSignInChange,
+	requireSession,
+	type SessionEnv,
+	sessionRequired,
+} from '../middleware/session.js'
 
 // A user manages only their own passkeys; no one else can add or remove them.
 
@@ -99,12 +104,7 @@ const deletePasskeyRoute = createRoute({
 
 const passkeysRoutes = createRouter<SessionEnv>()
 
-// Answers 401 before a body is validated.
-passkeysRoutes.use('*', async (c, next) => {
-	requireSession(c)
-
-	return next()
-})
+passkeysRoutes.use('*', sessionRequired)
 
 passkeysRoutes.openapi(listPasskeysRoute, async (c) => {
 	const { user } = requireSession(c)

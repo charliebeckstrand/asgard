@@ -1,6 +1,6 @@
 import { createRoute, z } from '@hono/zod-openapi'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
-import { createRouter, errorResponse, HTTPException, jsonRequest, jsonResponse } from 'grid'
+import { createRouter, errorResponse, jsonRequest, jsonResponse } from 'grid'
 import { getIpAddress } from 'grid/middleware'
 import {
 	ActivityListSchema,
@@ -337,11 +337,7 @@ export const authRoutes = createRouter<SessionEnv>()
 		return c.json({ message: 'Logged out' }, 200)
 	})
 	.openapi(sessionRoute, async (c) => {
-		const current = c.get('session')
-
-		if (!current) {
-			throw new HTTPException(401, { message: 'Not authenticated' })
-		}
+		const current = requireSession(c)
 
 		return c.json(current, 200)
 	})
@@ -351,11 +347,7 @@ export const authRoutes = createRouter<SessionEnv>()
 		return c.json(toList(await getActivity(current.user.id)), 200)
 	})
 	.openapi(deleteOtherSessionsRoute, async (c) => {
-		const current = c.get('session')
-
-		if (!current) {
-			throw new HTTPException(401, { message: 'Not authenticated' })
-		}
+		const current = requireSession(c)
 
 		await sessionRepository.deleteUserSessions(current.user.id, { except: current.id })
 
