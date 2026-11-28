@@ -25,6 +25,6 @@ const server = serve(
 
 setupLifecycle({
 	server,
-	name: 'Mimir',
+	logger: log,
 	onShutdown: () => db.close(),
 })
