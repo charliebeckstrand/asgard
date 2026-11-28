@@ -100,6 +100,10 @@ export function compare(files: Migration[], applied: AppliedMigration[]): Migrat
 async function connect(connection: ConnectionOptions): Promise<Client> {
 	const client = new Client({ ...connectionConfig(connection), application_name: 'saga' })
 
+	// A lost connection fails the query that is running, which reports it. The
+	// client also emits it as an event, which would crash the process unheard.
+	client.on('error', () => {})
+
 	await client.connect()
 
 	return client
