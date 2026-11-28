@@ -26,7 +26,7 @@ function tableExists(name: string): Promise<boolean> {
 	return db.val<boolean>(sql`SELECT to_regclass(${name}) IS NOT NULL`)
 }
 
-function recorded(): Promise<{ name: string; checksum: string | null }[]> {
+function recorded(): Promise<{ name: string; checksum: string }[]> {
 	return db.many(sql`
 		SELECT name, checksum
 		FROM saga.migrations
@@ -149,32 +149,6 @@ describeWithDocker('migrations (integration)', () => {
 			expect(await tableExists('gadgets')).toBe(false)
 
 			expect((await recorded()).map((m) => m.name)).toEqual(['0001_create_widgets.sql'])
-		})
-
-		it('fills in the checksum of a row recorded before checksums existed', async () => {
-			const content = 'CREATE TABLE widgets (id INT)'
-
-			await tmp.writeFile('0001_create_widgets.sql', content)
-
-			await db.exec(sql`CREATE SCHEMA saga`)
-
-			await db.exec(sql`
-				CREATE TABLE saga.migrations (
-					id SERIAL PRIMARY KEY,
-					name TEXT NOT NULL UNIQUE,
-					applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-				)
-			`)
-
-			await db.exec(sql`INSERT INTO saga.migrations (name) VALUES (${'0001_create_widgets.sql'})`)
-
-			const applied = await migrate(connection, tmp.path)
-
-			expect(applied).toEqual([])
-
-			expect(await recorded()).toEqual([
-				{ name: '0001_create_widgets.sql', checksum: sha256(content) },
-			])
 		})
 
 		it('applies each file once when two runs start at the same time', async () => {

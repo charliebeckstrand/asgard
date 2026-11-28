@@ -24,7 +24,7 @@ export interface MigrationStatus {
 
 interface AppliedMigration {
 	name: string
-	checksum: string | null
+	checksum: string
 }
 
 export class MigrationError extends Error {
@@ -84,10 +84,7 @@ export function compare(files: Migration[], applied: AppliedMigration[]): Migrat
 	const statuses: MigrationStatus[] = files.map(({ name, checksum }) => {
 		if (!recorded.has(name)) return { name, state: 'pending' }
 
-		const stored = recorded.get(name)
-
-		// Rows from before checksums were recorded match whatever is on disk.
-		return { name, state: stored === null || stored === checksum ? 'applied' : 'changed' }
+		return { name, state: recorded.get(name) === checksum ? 'applied' : 'changed' }
 	})
 
 	const missing: MigrationStatus[] = applied
@@ -110,10 +107,8 @@ async function connect(connection: ConnectionOptions): Promise<Client> {
 }
 
 async function readApplied(client: Client): Promise<AppliedMigration[]> {
-	// Read through jsonb so a table from before checksums, which `status` doesn't
-	// alter, reads as having none.
 	const { rows } = await client.query<AppliedMigration>(
-		"SELECT name, to_jsonb(m) ->> 'checksum' AS checksum FROM saga.migrations m ORDER BY name",
+		'SELECT name, checksum FROM saga.migrations ORDER BY name',
 	)
 
 	return rows
@@ -138,11 +133,10 @@ export async function migrate(connection: ConnectionOptions, dir: string): Promi
 			CREATE TABLE IF NOT EXISTS saga.migrations (
 				id SERIAL PRIMARY KEY,
 				name TEXT NOT NULL UNIQUE,
+				checksum TEXT NOT NULL,
 				applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 			)
 		`)
-
-		await client.query('ALTER TABLE saga.migrations ADD COLUMN IF NOT EXISTS checksum TEXT')
 
 		const recorded = await readApplied(client)
 
@@ -154,16 +148,6 @@ export async function migrate(connection: ConnectionOptions, dir: string): Promi
 			throw new MigrationError(
 				`Applied migrations were edited: ${changed.join(', ')}. Restore them and add a new migration instead.`,
 			)
-		}
-
-		// Record checksums for rows applied before saga kept them.
-		for (const file of files) {
-			if (recorded.some((m) => m.name === file.name && m.checksum === null)) {
-				await client.query('UPDATE saga.migrations SET checksum = $2 WHERE name = $1', [
-					file.name,
-					file.checksum,
-				])
-			}
 		}
 
 		const pending = new Set(statuses.filter((s) => s.state === 'pending').map((s) => s.name))
