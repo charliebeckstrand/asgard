@@ -247,6 +247,16 @@ describe('createDb', () => {
 			expect(types.getTypeParser(pgTypes.builtins.INT4)('42')).toBe(42)
 		})
 
+		it('keeps dates as their YYYY-MM-DD text', async () => {
+			const db = createDb(() => ({ url }))
+
+			await db.ping()
+
+			const [{ types }] = Pool.mock.lastCall as unknown as [{ types: typeof pgTypes }]
+
+			expect(types.getTypeParser(pgTypes.builtins.DATE)('2026-11-28')).toBe('2026-11-28')
+		})
+
 		it('uses the pool options from config', async () => {
 			const db = createDb(() => ({
 				url,

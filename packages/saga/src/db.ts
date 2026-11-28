@@ -90,13 +90,19 @@ function createQueryable(run: Run): Queryable {
 
 const parseTimestamp = types.getTypeParser(types.builtins.TIMESTAMPTZ)
 
-// Timestamps come back as ISO strings, the shape rows and API schemas use,
-// rather than the Date objects node-postgres makes by default.
+// Timestamps come back as ISO strings, the shape rows and API schemas use, and
+// dates as their `YYYY-MM-DD` text, rather than the Date objects node-postgres
+// makes by default. A date's Date is its local midnight, a day off in UTC.
 const typeParsers = {
-	getTypeParser: ((oid: number, format?: 'text' | 'binary') =>
-		oid === types.builtins.TIMESTAMPTZ
-			? (value: string) => parseTimestamp(value).toISOString()
-			: types.getTypeParser(oid, format)) as typeof types.getTypeParser,
+	getTypeParser: ((oid: number, format?: 'text' | 'binary') => {
+		if (oid === types.builtins.TIMESTAMPTZ) {
+			return (value: string) => parseTimestamp(value).toISOString()
+		}
+
+		if (oid === types.builtins.DATE) return (value: string) => value
+
+		return types.getTypeParser(oid, format)
+	}) as typeof types.getTypeParser,
 }
 
 function createPool({

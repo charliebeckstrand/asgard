@@ -164,6 +164,12 @@ describeWithDocker('createDb (integration)', () => {
 
 			expect(result).toBe('2026-09-27T15:38:06.123Z')
 		})
+
+		it('returns date values as their YYYY-MM-DD text', async () => {
+			const result = await db.val<string>(sql`SELECT DATE '2026-11-28'`)
+
+			expect(result).toBe('2026-11-28')
+		})
 	})
 
 	describe('tx', () => {

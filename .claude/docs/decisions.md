@@ -19,6 +19,7 @@ Choices Charlie made that the code doesn't explain, with what was turned down. A
 - **DigitalOcean managed Postgres 18.** Turned down: Neon, PlanetScale Postgres, Turso, Supabase, CockroachDB.
 - **Apps bind the standalone cluster, never an app-scoped dev database**, so data outlives the app. App Platform dev databases also can't create schemas.
 - **Don't add IP addresses to the cluster's trusted sources.** Doing so once cut the app off from Postgres and took auth.ivoryimage.dev down. For a one-off query, use the bifrost component's console in App Platform.
+- **Saga sends each query's text as written.** It once collapsed every run of whitespace to one space, which would turn the rest of a query into a comment after a `--` and change the spaces inside a quoted literal. Tests that compare query text collapse it themselves. Saga reads a `date` column as its `YYYY-MM-DD` text, as it reads a `timestamptz` as an ISO string: node-postgres would make a Date at local midnight.
 
 ## Services
 
