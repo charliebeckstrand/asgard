@@ -179,7 +179,9 @@ export async function migrate(connection: ConnectionOptions, dir: string): Promi
 
 				await client.query('COMMIT')
 			} catch (err) {
-				await client.query('ROLLBACK')
+				// Report the migration's error, not a failed rollback's: ending the
+				// session rolls the transaction back anyway.
+				await client.query('ROLLBACK').catch(() => {})
 
 				throw new MigrationError(`${file.name} failed: ${(err as Error).message}`, { cause: err })
 			}
