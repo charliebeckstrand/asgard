@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { Pool } from 'pg'
+import { sql } from 'saga'
 import { isDockerAvailable } from 'vali/containers'
 import type { SessionRepository } from '../session-repository.js'
 import { createSessionRepository } from '../session-repository.js'
@@ -8,7 +8,6 @@ import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 
 let testDb: TestDb
-let pool: Pool
 let users: UserRepository
 let sessions: SessionRepository
 
@@ -16,8 +15,6 @@ beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
 	testDb = await startTestDb()
-
-	pool = testDb.pool
 
 	users = createUserRepository(testDb.db)
 
@@ -50,9 +47,8 @@ async function openSession(
 }
 
 async function sessionIds(userId: string) {
-	const { rows } = await pool.query<{ id: string }>(
-		'SELECT id FROM sessions WHERE user_id = $1 ORDER BY created_at',
-		[userId],
+	const rows = await testDb.db.many<{ id: string }>(
+		sql`SELECT id FROM sessions WHERE user_id = ${userId} ORDER BY created_at`,
 	)
 
 	return rows.map((r) => r.id)
@@ -123,9 +119,8 @@ describeWithDocker('createSessionRepository (integration)', () => {
 			const userId = await insertUser()
 
 			// A sign-in that began later but committed first, while this one waited on the lock.
-			await pool.query(
-				"INSERT INTO sessions (id, user_id, created_at, expires_at) VALUES ('later', $1, now() + interval '1 second', now() + interval '1 day')",
-				[userId],
+			await testDb.db.exec(
+				sql`INSERT INTO sessions (id, user_id, created_at, expires_at) VALUES ('later', ${userId}, now() + interval '1 second', now() + interval '1 day')`,
 			)
 
 			const id = await openSession(userId, { limit: 1 })
@@ -157,7 +152,7 @@ describeWithDocker('createSessionRepository (integration)', () => {
 		it('ignores an expired session', async () => {
 			const id = await openSession(await insertUser())
 
-			await pool.query("UPDATE sessions SET expires_at = now() - interval '1 second'")
+			await testDb.db.exec(sql`UPDATE sessions SET expires_at = now() - interval '1 second'`)
 
 			expect(await sessions.findSession(id)).toBeNull()
 		})
@@ -177,7 +172,7 @@ describeWithDocker('createSessionRepository (integration)', () => {
 
 			const id = await openSession(userId)
 
-			await pool.query(`UPDATE users SET roles = '{user,admin}' WHERE id = $1`, [userId])
+			await testDb.db.exec(sql`UPDATE users SET roles = '{user,admin}' WHERE id = ${userId}`)
 
 			expect((await sessions.findSession(id))?.user.roles).toEqual(['user', 'admin'])
 		})
@@ -193,7 +188,7 @@ describeWithDocker('createSessionRepository (integration)', () => {
 
 			expect((await sessions.findSession(id))?.two_step).toBe(true)
 
-			const { rows } = await pool.query('SELECT failed_steps FROM sessions WHERE id = $1', [id])
+			const rows = await testDb.db.many(sql`SELECT failed_steps FROM sessions WHERE id = ${id}`)
 
 			expect(rows[0].failed_steps).toBe(0)
 		})
@@ -255,9 +250,9 @@ describeWithDocker('createSessionRepository (integration)', () => {
 		const expired = await openSession(userId)
 		const live = await openSession(userId)
 
-		await pool.query("UPDATE sessions SET expires_at = now() - interval '1 second' WHERE id = $1", [
-			expired,
-		])
+		await testDb.db.exec(
+			sql`UPDATE sessions SET expires_at = now() - interval '1 second' WHERE id = ${expired}`,
+		)
 
 		expect(await sessions.deleteExpiredSessions()).toBe(1)
 
@@ -269,7 +264,7 @@ describeWithDocker('createSessionRepository (integration)', () => {
 
 		await openSession(userId)
 
-		await pool.query('DELETE FROM users WHERE id = $1', [userId])
+		await testDb.db.exec(sql`DELETE FROM users WHERE id = ${userId}`)
 
 		expect(await sessionIds(userId)).toEqual([])
 	})

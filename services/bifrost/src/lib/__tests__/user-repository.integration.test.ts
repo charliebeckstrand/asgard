@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { Pool } from 'pg'
+import { sql } from 'saga'
 import type { User } from 'skuld'
 import { isDockerAvailable } from 'vali/containers'
 import type { UserRepository } from '../user-repository.js'
@@ -7,15 +7,12 @@ import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 
 let testDb: TestDb
-let pool: Pool
 let repo: UserRepository
 
 beforeAll(async () => {
 	if (!isDockerAvailable()) return
 
 	testDb = await startTestDb()
-
-	pool = testDb.pool
 
 	repo = createUserRepository(testDb.db)
 }, 60_000)
@@ -139,7 +136,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 		it('leaves admins alone', async () => {
 			const { id } = await insertNew('admin@example.com', 'h')
 
-			await pool.query(`UPDATE users SET roles = '{user,admin}' WHERE id = $1`, [id])
+			await testDb.db.exec(sql`UPDATE users SET roles = '{user,admin}' WHERE id = ${id}`)
 
 			expect(await repo.setUserActive(id, false)).toBeNull()
 
@@ -155,16 +152,15 @@ describeWithDocker('createUserRepository (integration)', () => {
 		it('deletes the user and everything that names them', async () => {
 			const { id } = await insertNew('gone@example.com', 'h')
 
-			await pool.query(
-				`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s', $1, now() + interval '1 day')`,
-				[id],
+			await testDb.db.exec(
+				sql`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s', ${id}, now() + interval '1 day')`,
 			)
 
 			expect((await repo.deleteUser(id))?.email).toBe('gone@example.com')
 
 			expect(await repo.getUserById(id)).toBeNull()
 
-			const { rowCount } = await pool.query('SELECT 1 FROM sessions WHERE user_id = $1', [id])
+			const rowCount = await testDb.db.exec(sql`SELECT 1 FROM sessions WHERE user_id = ${id}`)
 
 			expect(rowCount).toBe(0)
 		})
@@ -172,7 +168,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 		it('leaves admins alone', async () => {
 			const { id } = await insertNew('admin@example.com', 'h')
 
-			await pool.query(`UPDATE users SET roles = '{user,admin}' WHERE id = $1`, [id])
+			await testDb.db.exec(sql`UPDATE users SET roles = '{user,admin}' WHERE id = ${id}`)
 
 			expect(await repo.deleteUser(id)).toBeNull()
 
@@ -188,9 +184,9 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 			expect(await repo.countFailedLogin('guess@example.com', 3, 60)).toBe(false)
 
-			const { rows } = await pool.query('SELECT count FROM failed_logins WHERE email = $1', [
-				'guess@example.com',
-			])
+			const rows = await testDb.db.many(
+				sql`SELECT count FROM failed_logins WHERE email = 'guess@example.com'`,
+			)
 
 			expect(rows[0].count).toBe(3)
 		})
@@ -198,9 +194,8 @@ describeWithDocker('createUserRepository (integration)', () => {
 		it('lets a try through once the wait is over', async () => {
 			await repo.countFailedLogin('guess@example.com', 1, 60)
 
-			await pool.query(
-				`UPDATE failed_logins SET last_failed_at = now() - interval '61 seconds' WHERE email = $1`,
-				['guess@example.com'],
+			await testDb.db.exec(
+				sql`UPDATE failed_logins SET last_failed_at = now() - interval '61 seconds' WHERE email = 'guess@example.com'`,
 			)
 
 			expect(await repo.countFailedLogin('guess@example.com', 1, 60)).toBe(true)
@@ -229,14 +224,13 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 			await repo.countFailedLogin('new@example.com', 5, 60)
 
-			await pool.query(
-				`UPDATE failed_logins SET last_failed_at = now() - interval '2 days' WHERE email = $1`,
-				['old@example.com'],
+			await testDb.db.exec(
+				sql`UPDATE failed_logins SET last_failed_at = now() - interval '2 days' WHERE email = 'old@example.com'`,
 			)
 
 			expect(await repo.deleteStaleFailedLogins(24 * 60 * 60)).toBe(1)
 
-			const { rows } = await pool.query('SELECT email FROM failed_logins')
+			const rows = await testDb.db.many(sql`SELECT email FROM failed_logins`)
 
 			expect(rows).toEqual([{ email: 'new@example.com' }])
 		})
@@ -249,7 +243,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 			expect(await repo.countSignUp('1.2.3.4', 3)).toBe(false)
 
-			const { rows } = await pool.query('SELECT count(*)::int AS count FROM sign_ups')
+			const rows = await testDb.db.many(sql`SELECT count(*)::int AS count FROM sign_ups`)
 
 			expect(rows[0].count).toBe(3)
 		})
@@ -271,7 +265,7 @@ describeWithDocker('createUserRepository (integration)', () => {
 		it('lets a sign-up through once the oldest is a day old', async () => {
 			await repo.countSignUp('1.2.3.4', 1)
 
-			await pool.query(`UPDATE sign_ups SET created_at = now() - interval '1 day'`)
+			await testDb.db.exec(sql`UPDATE sign_ups SET created_at = now() - interval '1 day'`)
 
 			expect(await repo.countSignUp('1.2.3.4', 1)).toBe(true)
 		})
@@ -283,13 +277,13 @@ describeWithDocker('createUserRepository (integration)', () => {
 
 			await repo.countSignUp('5.6.7.8', 5)
 
-			await pool.query(
-				`UPDATE sign_ups SET created_at = now() - interval '2 days' WHERE network = '1.2.3.4'`,
+			await testDb.db.exec(
+				sql`UPDATE sign_ups SET created_at = now() - interval '2 days' WHERE network = '1.2.3.4'`,
 			)
 
 			expect(await repo.deleteOldSignUps()).toBe(1)
 
-			const { rows } = await pool.query('SELECT network FROM sign_ups')
+			const rows = await testDb.db.many(sql`SELECT network FROM sign_ups`)
 
 			expect(rows).toEqual([{ network: '5.6.7.8/32' }])
 		})
