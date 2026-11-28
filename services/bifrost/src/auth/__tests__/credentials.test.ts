@@ -21,6 +21,8 @@ import type {
 	UserRepository,
 } from '../types.js'
 
+const IP = '203.0.113.1'
+
 const TEST_USER: User = {
 	id: 'user-123',
 	email: 'alice@example.com',
@@ -100,20 +102,22 @@ describe('AuthError', () => {
 
 describe('authenticateUser', () => {
 	it("returns the user's id for valid credentials", async () => {
-		expect(await authenticateUser('alice@example.com', 'correct-password')).toBe(TEST_USER.id)
+		expect(await authenticateUser('alice@example.com', 'correct-password', IP)).toBe(TEST_USER.id)
 	})
 
 	it('normalizes email to lowercase and trimmed', async () => {
-		await authenticateUser('  Alice@Example.COM  ', 'correct-password')
+		await authenticateUser('  Alice@Example.COM  ', 'correct-password', IP)
 
 		expect(mockRepo.getCredentialsByEmail).toHaveBeenCalledWith('alice@example.com')
 	})
 
 	it('throws invalid_credentials for wrong password', async () => {
-		await expect(authenticateUser('alice@example.com', 'wrong-password')).rejects.toThrow(AuthError)
+		await expect(authenticateUser('alice@example.com', 'wrong-password', IP)).rejects.toThrow(
+			AuthError,
+		)
 
 		try {
-			await authenticateUser('alice@example.com', 'wrong-password')
+			await authenticateUser('alice@example.com', 'wrong-password', IP)
 		} catch (err) {
 			expect((err as AuthError).code).toBe('invalid_credentials')
 		}
@@ -122,7 +126,9 @@ describe('authenticateUser', () => {
 	it('throws invalid_credentials for unknown email', async () => {
 		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue(null)
 
-		await expect(authenticateUser('nobody@example.com', 'any-password')).rejects.toThrow(AuthError)
+		await expect(authenticateUser('nobody@example.com', 'any-password', IP)).rejects.toThrow(
+			AuthError,
+		)
 	})
 
 	it('refuses a password for an account made with GitHub or Google', async () => {
@@ -133,7 +139,9 @@ describe('authenticateUser', () => {
 			is_verified: true,
 		})
 
-		await expect(authenticateUser('alice@example.com', 'dummy-timing-pad')).rejects.toMatchObject({
+		await expect(
+			authenticateUser('alice@example.com', 'dummy-timing-pad', IP),
+		).rejects.toMatchObject({
 			code: 'invalid_credentials',
 		})
 	})
@@ -147,7 +155,7 @@ describe('authenticateUser', () => {
 		})
 
 		try {
-			await authenticateUser('alice@example.com', 'correct-password')
+			await authenticateUser('alice@example.com', 'correct-password', IP)
 
 			expect.unreachable('should have thrown')
 		} catch (err) {
@@ -163,7 +171,7 @@ describe('authenticateUser', () => {
 			is_verified: true,
 		})
 
-		await expect(authenticateUser('alice@example.com', 'correct-password')).resolves.toBe(
+		await expect(authenticateUser('alice@example.com', 'correct-password', IP)).resolves.toBe(
 			TEST_USER.id,
 		)
 	})
@@ -176,7 +184,7 @@ describe('authenticateUser', () => {
 			is_verified: true,
 		})
 
-		const err = await authenticateUser('alice@example.com', 'wrong-password').catch((e) => e)
+		const err = await authenticateUser('alice@example.com', 'wrong-password', IP).catch((e) => e)
 
 		expect((err as AuthError).code).toBe('invalid_credentials')
 	})
@@ -211,7 +219,7 @@ describe('authenticateUser', () => {
 
 describe('failed login limit', () => {
 	it('counts each try against the normalized email', async () => {
-		await authenticateUser('  Alice@Example.COM  ', 'wrong-password').catch(() => {})
+		await authenticateUser('  Alice@Example.COM  ', 'wrong-password', IP).catch(() => {})
 
 		expect(mockRepo.countFailedLogin).toHaveBeenCalledWith(
 			'alice@example.com',
@@ -223,7 +231,9 @@ describe('failed login limit', () => {
 	it('refuses a try that must wait without checking the password', async () => {
 		vi.mocked(mockRepo.countFailedLogin).mockResolvedValue(false)
 
-		await expect(authenticateUser('alice@example.com', 'correct-password')).rejects.toMatchObject({
+		await expect(
+			authenticateUser('alice@example.com', 'correct-password', IP),
+		).rejects.toMatchObject({
 			code: 'too_many_logins',
 			status: 429,
 		})
@@ -236,13 +246,13 @@ describe('failed login limit', () => {
 
 		vi.mocked(mockRepo.getCredentialsByEmail).mockResolvedValue(null)
 
-		await expect(authenticateUser('nobody@example.com', 'any-password')).rejects.toMatchObject({
+		await expect(authenticateUser('nobody@example.com', 'any-password', IP)).rejects.toMatchObject({
 			code: 'too_many_logins',
 		})
 	})
 
 	it('clears the count when the password is right', async () => {
-		await authenticateUser('alice@example.com', 'correct-password')
+		await authenticateUser('alice@example.com', 'correct-password', IP)
 
 		expect(mockRepo.clearFailedLogins).toHaveBeenCalledWith('alice@example.com')
 	})
@@ -255,13 +265,13 @@ describe('failed login limit', () => {
 			is_verified: true,
 		})
 
-		await authenticateUser('alice@example.com', 'correct-password').catch(() => {})
+		await authenticateUser('alice@example.com', 'correct-password', IP).catch(() => {})
 
 		expect(mockRepo.clearFailedLogins).toHaveBeenCalledWith('alice@example.com')
 	})
 
 	it('keeps the count when the password is wrong', async () => {
-		await authenticateUser('alice@example.com', 'wrong-password').catch(() => {})
+		await authenticateUser('alice@example.com', 'wrong-password', IP).catch(() => {})
 
 		expect(mockRepo.clearFailedLogins).not.toHaveBeenCalled()
 	})
@@ -300,7 +310,7 @@ describe('checkTurnstile', () => {
 
 describe('registerUser', () => {
 	it('returns user row on success', async () => {
-		const user = await registerUser('new@example.com', 'password123')
+		const user = await registerUser('new@example.com', 'password123', IP)
 
 		expect(user?.id).toBe(TEST_USER.id)
 
@@ -308,7 +318,7 @@ describe('registerUser', () => {
 	})
 
 	it('normalizes email before inserting', async () => {
-		await registerUser('  Bob@EXAMPLE.COM  ', 'password123')
+		await registerUser('  Bob@EXAMPLE.COM  ', 'password123', IP)
 
 		expect(mockRepo.insertUser).toHaveBeenCalledWith(
 			'bob@example.com',
@@ -318,7 +328,7 @@ describe('registerUser', () => {
 	})
 
 	it('stores the name the user gave', async () => {
-		await registerUser('bob@example.com', 'password123', undefined, 'Bob Smith')
+		await registerUser('bob@example.com', 'password123', IP, 'Bob Smith')
 
 		expect(mockRepo.insertUser).toHaveBeenCalledWith(
 			'bob@example.com',
@@ -328,7 +338,7 @@ describe('registerUser', () => {
 	})
 
 	it('hashes the password with Argon2id', async () => {
-		await registerUser('bob@example.com', 'password123')
+		await registerUser('bob@example.com', 'password123', IP)
 
 		const hashed = vi.mocked(mockRepo.insertUser).mock.calls[0][1] as string
 
@@ -338,7 +348,7 @@ describe('registerUser', () => {
 	it('refuses a password known from a data breach before making the account', async () => {
 		configure({ ...getConfig(), isBreachedPassword: vi.fn().mockResolvedValue(true) })
 
-		await expect(registerUser('bob@example.com', 'password123')).rejects.toMatchObject({
+		await expect(registerUser('bob@example.com', 'password123', IP)).rejects.toMatchObject({
 			code: 'password_breached',
 		})
 
@@ -348,13 +358,13 @@ describe('registerUser', () => {
 	it('returns null when the email already has an account', async () => {
 		vi.mocked(mockRepo.insertUser).mockRejectedValue({ code: '23505' })
 
-		expect(await registerUser('alice@example.com', 'password123')).toBeNull()
+		expect(await registerUser('alice@example.com', 'password123', IP)).toBeNull()
 	})
 
 	it('re-throws non-duplicate errors', async () => {
 		vi.mocked(mockRepo.insertUser).mockRejectedValue(new Error('connection refused'))
 
-		await expect(registerUser('bob@example.com', 'password123')).rejects.toThrow(
+		await expect(registerUser('bob@example.com', 'password123', IP)).rejects.toThrow(
 			'connection refused',
 		)
 	})

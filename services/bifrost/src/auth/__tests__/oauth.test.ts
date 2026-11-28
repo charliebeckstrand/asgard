@@ -22,6 +22,8 @@ import type {
 	UserRepository,
 } from '../types.js'
 
+const IP = '203.0.113.1'
+
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
 const ORIGIN = 'https://admin.ivoryimage.dev'
@@ -241,13 +243,13 @@ describe('completeOAuth', () => {
 	it('fails without a live state for the provider', async () => {
 		oauthRepository.useState.mockResolvedValue(null)
 
-		await expect(completeOAuth('google', 'state', 'code')).rejects.toMatchObject({
+		await expect(completeOAuth('google', 'state', 'code', IP)).rejects.toMatchObject({
 			code: 'oauth_failed',
 		})
 
 		oauthRepository.useState.mockResolvedValue({ ...signInState, provider: 'github' })
 
-		await expect(completeOAuth('google', 'state', 'code')).rejects.toMatchObject({
+		await expect(completeOAuth('google', 'state', 'code', IP)).rejects.toMatchObject({
 			code: 'oauth_failed',
 		})
 
@@ -259,7 +261,7 @@ describe('completeOAuth', () => {
 	it('trades the code with the verifier and the same redirect URI', async () => {
 		googleAnswers({ sub: 'g-1', email: 'alice@example.com', email_verified: true })
 
-		await completeOAuth('google', 'state', 'the-code')
+		await completeOAuth('google', 'state', 'the-code', IP)
 
 		const [url, init] = fetchMock.mock.calls[0] ?? []
 
@@ -298,7 +300,7 @@ describe('completeOAuth', () => {
 	it('refuses a new Google account whose email is not verified', async () => {
 		googleAnswers({ sub: 'g-1', email: 'alice@example.com', email_verified: false })
 
-		await expect(completeOAuth('google', 'state', 'code')).rejects.toMatchObject({
+		await expect(completeOAuth('google', 'state', 'code', IP)).rejects.toMatchObject({
 			code: 'email_unverified',
 		})
 
@@ -313,7 +315,7 @@ describe('completeOAuth', () => {
 			{ email: 'alice@example.com', primary: true, verified: true },
 		])
 
-		await completeOAuth('github', 'state', 'code')
+		await completeOAuth('github', 'state', 'code', IP)
 
 		expect(oauthRepository.createUserWithIdentity).toHaveBeenCalledWith({
 			provider: 'github',
@@ -330,7 +332,7 @@ describe('completeOAuth', () => {
 			{ email: 'other@example.com', primary: false, verified: true },
 		])
 
-		await expect(completeOAuth('github', 'state', 'code')).rejects.toMatchObject({
+		await expect(completeOAuth('github', 'state', 'code', IP)).rejects.toMatchObject({
 			code: 'email_unverified',
 		})
 	})
@@ -340,7 +342,7 @@ describe('completeOAuth', () => {
 
 		googleAnswers({ sub: 'g-1', email_verified: false })
 
-		const outcome = await completeOAuth('google', 'state', 'code')
+		const outcome = await completeOAuth('google', 'state', 'code', IP)
 
 		expect(outcome).toEqual({ kind: 'sign_in', userId: USER_ID, returnTo: '/users' })
 
@@ -354,7 +356,7 @@ describe('completeOAuth', () => {
 
 		googleAnswers({ sub: 'g-1', email: 'alice@example.com', email_verified: true })
 
-		await expect(completeOAuth('google', 'state', 'code')).rejects.toMatchObject({
+		await expect(completeOAuth('google', 'state', 'code', IP)).rejects.toMatchObject({
 			code: 'account_exists',
 			linking: false,
 		})
@@ -369,7 +371,7 @@ describe('completeOAuth', () => {
 
 		googleAnswers({ sub: 'g-1' })
 
-		await expect(completeOAuth('google', 'state', 'code')).rejects.toMatchObject({
+		await expect(completeOAuth('google', 'state', 'code', IP)).rejects.toMatchObject({
 			code: 'account_inactive',
 		})
 	})
@@ -386,15 +388,33 @@ describe('completeOAuth', () => {
 	])('fails when %s', async (_case, routes) => {
 		providerAnswers(routes)
 
-		await expect(completeOAuth('google', 'state', 'code')).rejects.toBeInstanceOf(OAuthFailure)
+		await expect(completeOAuth('google', 'state', 'code', IP)).rejects.toBeInstanceOf(OAuthFailure)
 	})
 
 	it('fails when the provider cannot be reached', async () => {
 		fetchMock.mockRejectedValue(new TypeError('fetch failed'))
 
-		await expect(completeOAuth('google', 'state', 'code')).rejects.toMatchObject({
+		await expect(completeOAuth('google', 'state', 'code', IP)).rejects.toMatchObject({
 			code: 'oauth_failed',
 		})
+	})
+
+	it('fails when the provider answers with something other than JSON', async () => {
+		fetchMock.mockResolvedValue(new Response('<html>Bad gateway</html>', { status: 200 }))
+
+		await expect(completeOAuth('google', 'state', 'code', IP)).rejects.toMatchObject({
+			code: 'oauth_failed',
+		})
+	})
+
+	it('gives up on a provider that does not answer', async () => {
+		googleAnswers({ sub: 'g-1', email: 'alice@example.com', email_verified: true })
+
+		await completeOAuth('google', 'state', 'code', IP)
+
+		for (const [, init] of fetchMock.mock.calls) {
+			expect(init?.signal).toBeInstanceOf(AbortSignal)
+		}
 	})
 
 	describe('connecting an account', () => {
@@ -409,7 +429,7 @@ describe('completeOAuth', () => {
 		})
 
 		it('gives the account to the user who started it', async () => {
-			const outcome = await completeOAuth('google', 'state', 'code')
+			const outcome = await completeOAuth('google', 'state', 'code', IP)
 
 			expect(outcome).toEqual({ kind: 'linked', userId: USER_ID, returnTo: '/account' })
 
@@ -428,7 +448,7 @@ describe('completeOAuth', () => {
 		] as const)('reports %s as %s', async (result, code) => {
 			oauthRepository.linkIdentity.mockResolvedValue(result)
 
-			await expect(completeOAuth('google', 'state', 'code')).rejects.toMatchObject({
+			await expect(completeOAuth('google', 'state', 'code', IP)).rejects.toMatchObject({
 				code,
 				linking: true,
 			})
@@ -437,7 +457,7 @@ describe('completeOAuth', () => {
 		it('marks a provider failure as part of the connect', async () => {
 			providerAnswers({})
 
-			await expect(completeOAuth('google', 'state', 'code')).rejects.toMatchObject({
+			await expect(completeOAuth('google', 'state', 'code', IP)).rejects.toMatchObject({
 				code: 'oauth_failed',
 				linking: true,
 			})
