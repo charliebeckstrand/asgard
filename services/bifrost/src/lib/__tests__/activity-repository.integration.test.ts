@@ -1,5 +1,5 @@
 import { sql } from 'saga'
-import { isDockerAvailable } from 'vali/containers'
+import { dockerAvailable } from 'vali/containers'
 import type { ActivityRepository } from '../activity-repository.js'
 import { createActivityRepository } from '../activity-repository.js'
 import { demote } from '../admins.js'
@@ -8,29 +8,23 @@ import { startTestDb, type TestDb } from './test-db.js'
 let testDb: TestDb
 let activity: ActivityRepository
 
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
-
-	testDb = await startTestDb()
-
-	activity = createActivityRepository(testDb.db)
-}, 60_000)
-
-afterAll(async () => {
-	await testDb?.stop()
-})
-
-beforeEach(async () => {
-	if (!isDockerAvailable()) return
-
-	await testDb.reset()
-})
-
 const insertUser = (email?: string) => testDb.insertUser({ email })
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
+describe.skipIf(!dockerAvailable)('createActivityRepository (integration)', () => {
+	beforeAll(async () => {
+		testDb = await startTestDb()
 
-describeWithDocker('createActivityRepository (integration)', () => {
+		activity = createActivityRepository(testDb.db)
+	}, 60_000)
+
+	afterAll(async () => {
+		await testDb?.stop()
+	})
+
+	beforeEach(async () => {
+		await testDb.reset()
+	})
+
 	it('lists what happened to the user, newest first', async () => {
 		const userId = await insertUser()
 

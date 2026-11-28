@@ -3,32 +3,16 @@ import { stubServiceEnv } from 'vali/env'
 stubServiceEnv({ VIDAR_API_KEY: 'test-vidar-api-key-that-is-at-least-32-chars' })
 
 import { sql } from 'saga'
-import { isDockerAvailable } from 'vali/containers'
-import { cleanExpiredBans, isIpBanned, removeBan } from '@/handlers/bans'
-import { purgeOldEvents } from '@/handlers/events'
-import { purgeOldThreats } from '@/handlers/threats'
-import { db } from '@/lib/db'
+import { dockerAvailable } from 'vali/containers'
+import { cleanExpiredBans, isIpBanned, removeBan } from '../../handlers/bans.js'
+import { purgeOldEvents } from '../../handlers/events.js'
+import { purgeOldThreats } from '../../handlers/threats.js'
+import { db } from '../../lib/db.js'
 import { insertEvents, resetTables, startTestDb } from '../test-db.js'
 
 const IP = '203.0.113.42'
 
 let stopDb: (() => Promise<void>) | undefined
-
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
-
-	stopDb = await startTestDb()
-}, 60_000)
-
-afterAll(async () => {
-	await stopDb?.()
-})
-
-beforeEach(async () => {
-	if (!isDockerAvailable()) return
-
-	await resetTables()
-})
 
 async function insertBan(ip: string, expiresIn: string | null) {
 	await db.exec(sql`
@@ -37,9 +21,19 @@ async function insertBan(ip: string, expiresIn: string | null) {
 	`)
 }
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
+describe.skipIf(!dockerAvailable)('bans (integration)', () => {
+	beforeAll(async () => {
+		stopDb = await startTestDb()
+	}, 60_000)
 
-describeWithDocker('bans (integration)', () => {
+	afterAll(async () => {
+		await stopDb?.()
+	})
+
+	beforeEach(async () => {
+		await resetTables()
+	})
+
 	it('reads an active ban as banned', async () => {
 		await insertBan(IP, '1 hour')
 
@@ -85,25 +79,25 @@ describeWithDocker('bans (integration)', () => {
 
 		expect(await removeBan(IP)).toBe(false)
 	})
-})
 
-describeWithDocker('retention (integration)', () => {
-	it('purges events older than the retention', async () => {
-		await insertEvents(IP, 'login_failed', 2, { minutesAgo: 25 * 60 })
+	describe('retention', () => {
+		it('purges events older than the retention', async () => {
+			await insertEvents(IP, 'login_failed', 2, { minutesAgo: 25 * 60 })
 
-		await insertEvents(IP, 'login_failed', 1)
+			await insertEvents(IP, 'login_failed', 1)
 
-		expect(await purgeOldEvents(1)).toBe(2)
-	})
+			expect(await purgeOldEvents(1)).toBe(2)
+		})
 
-	it('purges threats older than the retention', async () => {
-		await db.exec(sql`
+		it('purges threats older than the retention', async () => {
+			await db.exec(sql`
 			INSERT INTO vdr_threats (threat_type, ip, created_at)
 			VALUES
 				('brute_force', ${IP}, now() - interval '31 days'),
 				('brute_force', ${IP}, now())
 		`)
 
-		expect(await purgeOldThreats(30)).toBe(1)
+			expect(await purgeOldThreats(30)).toBe(1)
+		})
 	})
 })

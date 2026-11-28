@@ -1,5 +1,5 @@
 import { sql } from 'saga'
-import { isDockerAvailable } from 'vali/containers'
+import { dockerAvailable } from 'vali/containers'
 import type { EmailTokenRepository } from '../email-token-repository.js'
 import { createEmailTokenRepository } from '../email-token-repository.js'
 import type { UserRepository } from '../user-repository.js'
@@ -9,26 +9,6 @@ import { startTestDb, type TestDb } from './test-db.js'
 let testDb: TestDb
 let users: UserRepository
 let tokens: EmailTokenRepository
-
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
-
-	testDb = await startTestDb()
-
-	users = createUserRepository(testDb.db)
-
-	tokens = createEmailTokenRepository(testDb.db)
-}, 60_000)
-
-afterAll(async () => {
-	await testDb?.stop()
-})
-
-beforeEach(async () => {
-	if (!isDockerAvailable()) return
-
-	await testDb.reset()
-})
 
 const inAnHour = () => new Date(Date.now() + 60 * 60 * 1000)
 
@@ -48,15 +28,29 @@ async function tokenIds(userId: string) {
 	return rows.map((row) => row.id)
 }
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
-
 const link = {
 	interval: 60,
 	email: { to: 'alice@example.com', verified: true },
 	limits: { total: 100, unverified: 50, recipient: 10 },
 }
 
-describeWithDocker('createEmailTokenRepository (integration)', () => {
+describe.skipIf(!dockerAvailable)('createEmailTokenRepository (integration)', () => {
+	beforeAll(async () => {
+		testDb = await startTestDb()
+
+		users = createUserRepository(testDb.db)
+
+		tokens = createEmailTokenRepository(testDb.db)
+	}, 60_000)
+
+	afterAll(async () => {
+		await testDb?.stop()
+	})
+
+	beforeEach(async () => {
+		await testDb.reset()
+	})
+
 	describe('createToken', () => {
 		it('stores a link', async () => {
 			const userId = await insertUser()

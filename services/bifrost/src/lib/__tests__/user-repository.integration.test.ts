@@ -1,33 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { sql } from 'saga'
 import type { User } from 'skuld'
-import { isDockerAvailable } from 'vali/containers'
+import { dockerAvailable } from 'vali/containers'
 import type { UserRepository } from '../user-repository.js'
 import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 
 let testDb: TestDb
 let repo: UserRepository
-
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
-
-	testDb = await startTestDb()
-
-	repo = createUserRepository(testDb.db)
-}, 60_000)
-
-afterAll(async () => {
-	await testDb?.stop()
-})
-
-beforeEach(async () => {
-	if (!isDockerAvailable()) return
-
-	await testDb.reset()
-})
-
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
 
 /** Inserts a user whose email must be new. */
 async function insertNew(...args: Parameters<UserRepository['insertUser']>): Promise<User> {
@@ -38,7 +18,21 @@ async function insertNew(...args: Parameters<UserRepository['insertUser']>): Pro
 	return user
 }
 
-describeWithDocker('createUserRepository (integration)', () => {
+describe.skipIf(!dockerAvailable)('createUserRepository (integration)', () => {
+	beforeAll(async () => {
+		testDb = await startTestDb()
+
+		repo = createUserRepository(testDb.db)
+	}, 60_000)
+
+	afterAll(async () => {
+		await testDb?.stop()
+	})
+
+	beforeEach(async () => {
+		await testDb.reset()
+	})
+
 	describe('insertUser + getUserById', () => {
 		it('inserts a user with a version 7 id and retrieves it', async () => {
 			const inserted = await insertNew('alice@example.com', 'hash')

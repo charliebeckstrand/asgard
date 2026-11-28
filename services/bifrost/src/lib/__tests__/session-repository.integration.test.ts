@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { sql } from 'saga'
-import { isDockerAvailable } from 'vali/containers'
+import { dockerAvailable } from 'vali/containers'
 import type { SessionRepository } from '../session-repository.js'
 import { createSessionRepository } from '../session-repository.js'
 import type { UserRepository } from '../user-repository.js'
@@ -10,26 +10,6 @@ import { startTestDb, type TestDb } from './test-db.js'
 let testDb: TestDb
 let users: UserRepository
 let sessions: SessionRepository
-
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
-
-	testDb = await startTestDb()
-
-	users = createUserRepository(testDb.db)
-
-	sessions = createSessionRepository(testDb.db)
-}, 60_000)
-
-afterAll(async () => {
-	await testDb?.stop()
-})
-
-beforeEach(async () => {
-	if (!isDockerAvailable()) return
-
-	await testDb.reset()
-})
 
 const inADay = () => new Date(Date.now() + 24 * 60 * 60 * 1000)
 
@@ -54,9 +34,23 @@ async function sessionIds(userId: string) {
 	return rows.map((r) => r.id)
 }
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
+describe.skipIf(!dockerAvailable)('createSessionRepository (integration)', () => {
+	beforeAll(async () => {
+		testDb = await startTestDb()
 
-describeWithDocker('createSessionRepository (integration)', () => {
+		users = createUserRepository(testDb.db)
+
+		sessions = createSessionRepository(testDb.db)
+	}, 60_000)
+
+	afterAll(async () => {
+		await testDb?.stop()
+	})
+
+	beforeEach(async () => {
+		await testDb.reset()
+	})
+
 	describe('createSession', () => {
 		it('returns the session with its user', async () => {
 			const userId = await insertUser()

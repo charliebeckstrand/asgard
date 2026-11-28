@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { sql } from 'saga'
-import { isDockerAvailable } from 'vali/containers'
+import { dockerAvailable } from 'vali/containers'
 import { demote, promote } from '../admins.js'
 import type { PasskeyRepository } from '../passkey-repository.js'
 import { createPasskeyRepository } from '../passkey-repository.js'
@@ -11,26 +11,6 @@ import { startTestDb, type TestDb } from './test-db.js'
 let testDb: TestDb
 let users: UserRepository
 let passkeys: PasskeyRepository
-
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
-
-	testDb = await startTestDb()
-
-	users = createUserRepository(testDb.db)
-
-	passkeys = createPasskeyRepository(testDb.db)
-}, 60_000)
-
-afterAll(async () => {
-	await testDb?.stop()
-})
-
-beforeEach(async () => {
-	if (!isDockerAvailable()) return
-
-	await testDb.reset()
-})
 
 const inAMinute = () => new Date(Date.now() + 60_000)
 
@@ -55,9 +35,23 @@ async function makeAdmin(userId: string) {
 	await testDb.db.exec(sql`UPDATE users SET roles = '{user,admin}' WHERE id = ${userId}`)
 }
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
+describe.skipIf(!dockerAvailable)('createPasskeyRepository (integration)', () => {
+	beforeAll(async () => {
+		testDb = await startTestDb()
 
-describeWithDocker('createPasskeyRepository (integration)', () => {
+		users = createUserRepository(testDb.db)
+
+		passkeys = createPasskeyRepository(testDb.db)
+	}, 60_000)
+
+	afterAll(async () => {
+		await testDb?.stop()
+	})
+
+	beforeEach(async () => {
+		await testDb.reset()
+	})
+
 	describe('passkeys', () => {
 		it('stores a passkey and reads it back whole', async () => {
 			const userId = await insertUser()
@@ -210,80 +204,80 @@ describeWithDocker('createPasskeyRepository (integration)', () => {
 			expect(await passkeys.useChallenge('live', null)).toBe(true)
 		})
 	})
-})
 
-describeWithDocker('admins (integration)', () => {
-	async function roles(userId: string) {
-		return (await users.getUserById(userId))?.roles
-	}
+	describe('admins', () => {
+		async function roles(userId: string) {
+			return (await users.getUserById(userId))?.roles
+		}
 
-	it('promotes a user who has a passkey, and ends their sessions', async () => {
-		const userId = await insertUser('alice@x.dev')
+		it('promotes a user who has a passkey, and ends their sessions', async () => {
+			const userId = await insertUser('alice@x.dev')
 
-		await verify(userId)
+			await verify(userId)
 
-		await addPasskey(userId)
+			await addPasskey(userId)
 
-		await testDb.db.exec(
-			sql`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', ${userId}, now() + interval '1 day')`,
-		)
+			await testDb.db.exec(
+				sql`INSERT INTO sessions (id, user_id, expires_at) VALUES ('s1', ${userId}, now() + interval '1 day')`,
+			)
 
-		expect(await promote(testDb.db, ' Alice@X.dev ')).toBe('promoted')
+			expect(await promote(testDb.db, ' Alice@X.dev ')).toBe('promoted')
 
-		expect(await roles(userId)).toEqual(['user', 'admin'])
+			expect(await roles(userId)).toEqual(['user', 'admin'])
 
-		const rows = await testDb.db.many(sql`SELECT 1 FROM sessions WHERE user_id = ${userId}`)
+			const rows = await testDb.db.many(sql`SELECT 1 FROM sessions WHERE user_id = ${userId}`)
 
-		expect(rows).toHaveLength(0)
-	})
+			expect(rows).toHaveLength(0)
+		})
 
-	it('adds the admin role only once', async () => {
-		const userId = await insertUser('dan@x.dev')
+		it('adds the admin role only once', async () => {
+			const userId = await insertUser('dan@x.dev')
 
-		await verify(userId)
+			await verify(userId)
 
-		await addPasskey(userId)
+			await addPasskey(userId)
 
-		await promote(testDb.db, 'dan@x.dev')
+			await promote(testDb.db, 'dan@x.dev')
 
-		await promote(testDb.db, 'dan@x.dev')
+			await promote(testDb.db, 'dan@x.dev')
 
-		expect(await roles(userId)).toEqual(['user', 'admin'])
-	})
+			expect(await roles(userId)).toEqual(['user', 'admin'])
+		})
 
-	it("won't promote a user without a second factor", async () => {
-		const userId = await insertUser('bob@x.dev')
+		it("won't promote a user without a second factor", async () => {
+			const userId = await insertUser('bob@x.dev')
 
-		await verify(userId)
+			await verify(userId)
 
-		expect(await promote(testDb.db, 'bob@x.dev')).toBe('no_second_factor')
+			expect(await promote(testDb.db, 'bob@x.dev')).toBe('no_second_factor')
 
-		expect(await roles(userId)).toEqual(['user'])
-	})
+			expect(await roles(userId)).toEqual(['user'])
+		})
 
-	it("won't promote a user who hasn't verified their email", async () => {
-		const userId = await insertUser('erin@x.dev')
+		it("won't promote a user who hasn't verified their email", async () => {
+			const userId = await insertUser('erin@x.dev')
 
-		await addPasskey(userId)
+			await addPasskey(userId)
 
-		expect(await promote(testDb.db, 'erin@x.dev')).toBe('unverified')
+			expect(await promote(testDb.db, 'erin@x.dev')).toBe('unverified')
 
-		expect(await roles(userId)).toEqual(['user'])
-	})
+			expect(await roles(userId)).toEqual(['user'])
+		})
 
-	it('reports an unknown email', async () => {
-		expect(await promote(testDb.db, 'nobody@x.dev')).toBe('not_found')
+		it('reports an unknown email', async () => {
+			expect(await promote(testDb.db, 'nobody@x.dev')).toBe('not_found')
 
-		expect(await demote(testDb.db, 'nobody@x.dev')).toBe('not_found')
-	})
+			expect(await demote(testDb.db, 'nobody@x.dev')).toBe('not_found')
+		})
 
-	it('demotes an admin', async () => {
-		const userId = await insertUser('carol@x.dev')
+		it('demotes an admin', async () => {
+			const userId = await insertUser('carol@x.dev')
 
-		await makeAdmin(userId)
+			await makeAdmin(userId)
 
-		expect(await demote(testDb.db, 'carol@x.dev')).toBe('demoted')
+			expect(await demote(testDb.db, 'carol@x.dev')).toBe('demoted')
 
-		expect(await roles(userId)).toEqual(['user'])
+			expect(await roles(userId)).toEqual(['user'])
+		})
 	})
 })

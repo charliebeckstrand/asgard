@@ -3,30 +3,14 @@ import { stubServiceEnv } from 'vali/env'
 stubServiceEnv({ VIDAR_API_KEY: 'test-vidar-api-key-that-is-at-least-32-chars' })
 
 import { sql } from 'saga'
-import { isDockerAvailable } from 'vali/containers'
-import { evaluateRules } from '@/handlers/rules'
-import { db } from '@/lib/db'
+import { dockerAvailable } from 'vali/containers'
+import { evaluateRules } from '../../handlers/rules.js'
+import { db } from '../../lib/db.js'
 import { insertEvents, resetTables, startTestDb } from '../test-db.js'
 
 const IP = '203.0.113.42'
 
 let stopDb: (() => Promise<void>) | undefined
-
-beforeAll(async () => {
-	if (!isDockerAvailable()) return
-
-	stopDb = await startTestDb()
-}, 60_000)
-
-afterAll(async () => {
-	await stopDb?.()
-})
-
-beforeEach(async () => {
-	if (!isDockerAvailable()) return
-
-	await resetTables()
-})
 
 async function threats() {
 	return db.many<{ threat_type: string; action_taken: string | null }>(
@@ -42,9 +26,19 @@ async function ban() {
 	`)
 }
 
-const describeWithDocker = isDockerAvailable() ? describe : describe.skip
+describe.skipIf(!dockerAvailable)('evaluateRules (integration)', () => {
+	beforeAll(async () => {
+		stopDb = await startTestDb()
+	}, 60_000)
 
-describeWithDocker('evaluateRules (integration)', () => {
+	afterAll(async () => {
+		await stopDb?.()
+	})
+
+	beforeEach(async () => {
+		await resetTables()
+	})
+
 	describe('brute_force', () => {
 		it('bans for an hour at ten failed sign-ins', async () => {
 			await insertEvents(IP, 'login_failed', 10, { email: () => 'a@example.com' })
