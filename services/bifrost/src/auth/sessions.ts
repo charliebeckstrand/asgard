@@ -1,6 +1,6 @@
 import { hash, randomBytes } from 'node:crypto'
 import type { Session } from 'skuld'
-import { getConfig } from './config.js'
+import { sessionRepository } from '../lib/repositories.js'
 
 export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
 
@@ -36,7 +36,7 @@ export async function createSession(
 ): Promise<{ token: string; session: Session }> {
 	const token = randomToken()
 
-	const session = await getConfig().sessionRepository.createSession(
+	const session = await sessionRepository.createSession(
 		hashToken(token),
 		userId,
 		expiresIn(SESSION_TTL_SECONDS),
@@ -51,23 +51,9 @@ export async function createSession(
 }
 
 export function findSession(token: string): Promise<Session | null> {
-	return getConfig().sessionRepository.findSession(hashToken(token))
-}
-
-/** Marks the session as past its second step, for example when the user adds their first factor. */
-export function passSecondStep(id: string): Promise<void> {
-	return getConfig().sessionRepository.passSecondStep(id)
-}
-
-export function deleteSession(id: string): Promise<void> {
-	return getConfig().sessionRepository.deleteSession(id)
-}
-
-/** Signs the user out everywhere, or everywhere but `except`. */
-export function deleteUserSessions(userId: string, except?: string): Promise<void> {
-	return getConfig().sessionRepository.deleteUserSessions(userId, { except })
+	return sessionRepository.findSession(hashToken(token))
 }
 
 export function deleteExpiredSessions(): Promise<number> {
-	return getConfig().sessionRepository.deleteExpiredSessions()
+	return sessionRepository.deleteExpiredSessions()
 }

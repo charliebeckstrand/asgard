@@ -1,23 +1,15 @@
+vi.mock('../../lib/repositories.js')
+
 import { createHash } from 'node:crypto'
 import type { Session } from 'skuld'
-import { configure } from '../config.js'
+import { sessionRepository } from '../../lib/repositories.js'
 import {
 	createSession,
-	deleteUserSessions,
 	findSession,
 	hashToken,
 	MAX_SESSIONS_PER_USER,
 	SESSION_TTL_SECONDS,
 } from '../sessions.js'
-import type {
-	ActivityRepository,
-	EmailTokenRepository,
-	MfaRepository,
-	OAuthRepository,
-	PasskeyRepository,
-	SessionRepository,
-	UserRepository,
-} from '../types.js'
 
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
@@ -38,32 +30,12 @@ const session: Session = {
 	},
 }
 
-let sessionRepository: SessionRepository
-
 beforeEach(() => {
-	sessionRepository = {
-		createSession: vi.fn().mockResolvedValue(session),
-		findSession: vi.fn().mockResolvedValue(session),
-		deleteSession: vi.fn(),
-		deleteUserSessions: vi.fn(),
-		deleteExpiredSessions: vi.fn(),
-		passSecondStep: vi.fn(),
-		failSecondStep: vi.fn(),
-	}
+	vi.resetAllMocks()
 
-	configure({
-		userRepository: {} as UserRepository,
-		sessionRepository,
-		passkeyRepository: {} as PasskeyRepository,
-		passkeys: { domain: 'localhost', origins: ['http://localhost:3000'] },
-		mfaRepository: {} as MfaRepository,
-		mfa: { issuer: 'localhost' },
-		oauthRepository: {} as OAuthRepository,
-		emailTokenRepository: {} as EmailTokenRepository,
-		activityRepository: {} as ActivityRepository,
-		sendEmail: vi.fn(),
-		oauth: {},
-	})
+	vi.mocked(sessionRepository.createSession).mockResolvedValue(session)
+
+	vi.mocked(sessionRepository.findSession).mockResolvedValue(session)
 })
 
 describe('hashToken', () => {
@@ -132,15 +104,5 @@ describe('findSession', () => {
 		await findSession('token')
 
 		expect(sessionRepository.findSession).toHaveBeenCalledWith(hashToken('token'))
-	})
-})
-
-describe('deleteUserSessions', () => {
-	it('keeps the session it is told to keep', async () => {
-		await deleteUserSessions(USER_ID, 'current')
-
-		expect(sessionRepository.deleteUserSessions).toHaveBeenCalledWith(USER_ID, {
-			except: 'current',
-		})
 	})
 })

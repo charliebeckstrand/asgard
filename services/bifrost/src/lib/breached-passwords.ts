@@ -1,5 +1,6 @@
 import { hash } from 'node:crypto'
 import type { Logger } from 'saga/log'
+import { logger } from './log.js'
 
 /**
  * Checks a password against Have I Been Pwned's list of breached passwords.
@@ -31,4 +32,13 @@ export function createBreachCheck(log: Logger): (password: string) => Promise<bo
 			return false
 		}
 	}
+}
+
+let check: ((password: string) => Promise<boolean>) | undefined
+
+/** Whether a new password is known from a data breach. */
+export function isBreachedPassword(password: string): Promise<boolean> {
+	check ??= createBreachCheck(logger())
+
+	return check(password)
 }

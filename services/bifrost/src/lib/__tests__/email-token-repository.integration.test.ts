@@ -1,7 +1,8 @@
 import type { Pool } from 'pg'
 import { isDockerAvailable } from 'vali/containers'
-import type { EmailTokenRepository, UserRepository } from '../../auth/types.js'
+import type { EmailTokenRepository } from '../email-token-repository.js'
 import { createEmailTokenRepository } from '../email-token-repository.js'
+import type { UserRepository } from '../user-repository.js'
 import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 

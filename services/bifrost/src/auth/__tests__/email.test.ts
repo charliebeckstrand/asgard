@@ -1,6 +1,14 @@
+vi.mock('../../lib/repositories.js')
+
+vi.mock('../../lib/mailer.js')
+
+vi.mock('../../lib/breached-passwords.js')
+
 import { verify } from '@node-rs/argon2'
-import type { Mock } from 'vitest'
-import { configure, getConfig } from '../config.js'
+import { isBreachedPassword } from '../../lib/breached-passwords.js'
+import type { EmailTokenRepository } from '../../lib/email-token-repository.js'
+import { type Email, sendEmail as send } from '../../lib/mailer.js'
+import * as repositories from '../../lib/repositories.js'
 import {
 	EMAIL_INTERVAL_SECONDS,
 	EMAIL_LIMITS,
@@ -15,71 +23,49 @@ import {
 } from '../email.js'
 import { AuthError } from '../errors.js'
 import { hashToken } from '../sessions.js'
-import type {
-	ActivityRepository,
-	Email,
-	EmailTokenRepository,
-	MfaRepository,
-	OAuthRepository,
-	PasskeyRepository,
-	SessionRepository,
-	UserRepository,
-} from '../types.js'
 
 const USER_ID = '00000000-0000-4000-8000-000000000001'
 
 const ORIGIN = 'https://places.example.com'
 
-let emailTokenRepository: { [K in keyof EmailTokenRepository]: Mock<EmailTokenRepository[K]> }
+const emailTokenRepository = vi.mocked(repositories.emailTokenRepository)
 
-let userRepository: {
-	getCredentialsByEmail: Mock<UserRepository['getCredentialsByEmail']>
-	getUserById: Mock<UserRepository['getUserById']>
-}
+const userRepository = vi.mocked(repositories.userRepository)
 
-let sendEmail: Mock<(email: Email) => Promise<void>>
+const sendEmail = vi.mocked(send)
 
 beforeEach(() => {
-	emailTokenRepository = {
-		createToken: vi.fn().mockResolvedValue('created'),
-		verifyEmail: vi.fn().mockResolvedValue('user-1'),
-		resetPassword: vi.fn().mockResolvedValue('user-1'),
-		deleteExpiredTokens: vi.fn(),
-		countSentEmail: vi.fn().mockResolvedValue(true),
-		deleteOldSentEmails: vi.fn(),
-	}
+	vi.resetAllMocks()
 
-	userRepository = {
-		getCredentialsByEmail: vi
-			.fn()
-			.mockResolvedValue({ id: USER_ID, hashed_password: 'h', is_active: true, is_verified: true }),
-		getUserById: vi.fn().mockResolvedValue({
-			id: USER_ID,
-			email: 'alice@example.com',
-			name: null,
-			is_active: true,
-			is_verified: true,
-			roles: ['user'],
-			created_at: '2026-01-01T00:00:00.000Z',
-			updated_at: '2026-01-01T00:00:00.000Z',
-		}),
-	}
+	emailTokenRepository.createToken.mockResolvedValue('created')
 
-	sendEmail = vi.fn().mockResolvedValue(undefined)
+	emailTokenRepository.verifyEmail.mockResolvedValue('user-1')
 
-	configure({
-		userRepository: userRepository as unknown as UserRepository,
-		sessionRepository: {} as SessionRepository,
-		passkeyRepository: {} as PasskeyRepository,
-		passkeys: { domain: 'localhost', origins: [ORIGIN] },
-		mfaRepository: {} as MfaRepository,
-		mfa: { issuer: 'localhost' },
-		oauthRepository: {} as OAuthRepository,
-		emailTokenRepository,
-		activityRepository: {} as ActivityRepository,
-		sendEmail,
-		oauth: {},
+	emailTokenRepository.resetPassword.mockResolvedValue('user-1')
+
+	emailTokenRepository.countSentEmail.mockResolvedValue(true)
+
+	userRepository.getCredentialsByEmail.mockResolvedValue({
+		id: USER_ID,
+		hashed_password: 'h',
+		is_active: true,
+		is_verified: true,
 	})
+
+	userRepository.getUserById.mockResolvedValue({
+		id: USER_ID,
+		email: 'alice@example.com',
+		name: null,
+		is_active: true,
+		is_verified: true,
+		roles: ['user'],
+		created_at: '2026-01-01T00:00:00.000Z',
+		updated_at: '2026-01-01T00:00:00.000Z',
+	})
+
+	sendEmail.mockResolvedValue()
+
+	vi.mocked(isBreachedPassword).mockResolvedValue(false)
 })
 
 /** The token in the link of the one email sent. */
@@ -334,7 +320,7 @@ describe('resetPassword', () => {
 	})
 
 	it('refuses a password known from a data breach before using the link', async () => {
-		configure({ ...getConfig(), isBreachedPassword: vi.fn().mockResolvedValue(true) })
+		vi.mocked(isBreachedPassword).mockResolvedValue(true)
 
 		await expect(resetPassword('token', 'new password')).rejects.toMatchObject({
 			code: 'password_breached',

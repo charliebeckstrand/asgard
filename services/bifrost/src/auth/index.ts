@@ -1,6 +1,5 @@
+export type { OAuthProvider } from '../lib/oauth-repository.js'
 export { deleteOldActivity, getActivity, recordActivity } from './activity.js'
-export type { OAuthClient } from './config.js'
-export { configure, getConfig } from './config.js'
 export {
 	authenticateUser,
 	checkTurnstile,
@@ -27,7 +26,6 @@ export {
 	deleteStaleFailedSteps,
 	deleteTotp,
 	generateRecoveryCodes,
-	getFactors,
 	type SecondFactorProof,
 	secondFactorMethods,
 	startTotpSetup,
@@ -37,7 +35,6 @@ export {
 	completeOAuth,
 	deleteExpiredOAuthStates,
 	enabledProviders,
-	getIdentities,
 	OAuthFailure,
 	safeReturnTo,
 	startOAuth,
@@ -56,10 +53,6 @@ export {
 export {
 	createSession,
 	deleteExpiredSessions,
-	deleteSession,
-	deleteUserSessions,
 	findSession,
-	passSecondStep,
 	SESSION_TTL_SECONDS,
 } from './sessions.js'
-export type { Email, OAuthProvider } from './types.js'

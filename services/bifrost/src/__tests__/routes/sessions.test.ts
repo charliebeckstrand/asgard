@@ -4,6 +4,8 @@ stubServiceEnv()
 
 vi.mock('../../auth/index.js', { spy: true })
 
+vi.mock('../../lib/repositories.js')
+
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
 	banCheck: vi.fn().mockReturnValue(async (_c: unknown, next: () => Promise<void>) => {
@@ -19,6 +21,7 @@ vi.mock('../../lib/db.js', () => ({
 import type { Activity, Session } from 'skuld'
 import { createBifrostApp } from '../../app.js'
 import * as auth from '../../auth/index.js'
+import { sessionRepository } from '../../lib/repositories.js'
 
 const ORIGIN = 'http://localhost:3000'
 
@@ -50,10 +53,6 @@ describe('Session routes', () => {
 		vi.resetAllMocks()
 
 		vi.mocked(auth.findSession).mockResolvedValue(session)
-
-		vi.mocked(auth.deleteSession).mockResolvedValue()
-
-		vi.mocked(auth.deleteUserSessions).mockResolvedValue()
 
 		vi.mocked(auth.recordActivity).mockResolvedValue()
 	})
@@ -99,7 +98,7 @@ describe('Session routes', () => {
 
 			expect(res.status).toBe(200)
 
-			expect(auth.deleteSession).toHaveBeenCalledWith(session.id)
+			expect(sessionRepository.deleteSession).toHaveBeenCalledWith(session.id)
 
 			expect(res.headers.get('set-cookie')).toContain('__Host-session=;')
 		})
@@ -112,7 +111,7 @@ describe('Session routes', () => {
 
 			expect(res.status).toBe(200)
 
-			expect(auth.deleteSession).not.toHaveBeenCalled()
+			expect(sessionRepository.deleteSession).not.toHaveBeenCalled()
 		})
 	})
 
@@ -125,7 +124,7 @@ describe('Session routes', () => {
 
 			expect(res.status).toBe(401)
 
-			expect(auth.deleteUserSessions).not.toHaveBeenCalled()
+			expect(sessionRepository.deleteUserSessions).not.toHaveBeenCalled()
 		})
 
 		it("deletes the user's other sessions and keeps this one", async () => {
@@ -136,7 +135,9 @@ describe('Session routes', () => {
 
 			expect(res.status).toBe(204)
 
-			expect(auth.deleteUserSessions).toHaveBeenCalledWith(USER_ID, session.id)
+			expect(sessionRepository.deleteUserSessions).toHaveBeenCalledWith(USER_ID, {
+				except: session.id,
+			})
 
 			expect(auth.recordActivity).toHaveBeenCalledWith(
 				expect.objectContaining({ userId: USER_ID, action: 'signed_out_elsewhere' }),

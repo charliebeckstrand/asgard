@@ -2,41 +2,9 @@ import { stubServiceEnv } from 'vali/env'
 
 stubServiceEnv()
 
-const {
-	mockUserRepository,
-	mockFindSession,
-	mockDeleteUserSessions,
-	mockRecordActivity,
-	mockGetActivity,
-} = vi.hoisted(() => ({
-	mockUserRepository: {
-		getUsers: vi.fn(),
-		getUserById: vi.fn(),
-		setUserActive: vi.fn(),
-		insertUser: vi.fn(),
-		getCredentialsByEmail: vi.fn(),
-	},
-	mockFindSession: vi.fn(),
-	mockDeleteUserSessions: vi.fn(),
-	mockRecordActivity: vi.fn(),
-	mockGetActivity: vi.fn(),
-}))
+vi.mock('../../auth/index.js', { spy: true })
 
-vi.mock('../../auth/index.js', async () => {
-	const errors =
-		await vi.importActual<typeof import('../../auth/errors.js')>('../../auth/errors.js')
-
-	return {
-		configure: vi.fn(),
-		getConfig: () => ({ userRepository: mockUserRepository }),
-		AuthError: errors.AuthError,
-		SESSION_TTL_SECONDS: 30 * 24 * 60 * 60,
-		findSession: (...args: unknown[]) => mockFindSession(...args),
-		deleteUserSessions: (...args: unknown[]) => mockDeleteUserSessions(...args),
-		recordActivity: (...args: unknown[]) => mockRecordActivity(...args),
-		getActivity: (...args: unknown[]) => mockGetActivity(...args),
-	}
-})
+vi.mock('../../lib/repositories.js')
 
 vi.mock('vidar/client', () => ({
 	configure: vi.fn(),
@@ -50,7 +18,20 @@ vi.mock('../../lib/db.js', () => ({
 	db: { ping: vi.fn().mockResolvedValue(true) },
 }))
 
+import type { Activity, User } from 'skuld'
 import { createBifrostApp } from '../../app.js'
+import * as auth from '../../auth/index.js'
+import { sessionRepository, userRepository } from '../../lib/repositories.js'
+
+const mockUserRepository = vi.mocked(userRepository)
+
+const mockFindSession = vi.mocked(auth.findSession)
+
+const mockDeleteUserSessions = vi.mocked(sessionRepository.deleteUserSessions)
+
+const mockRecordActivity = vi.mocked(auth.recordActivity)
+
+const mockGetActivity = vi.mocked(auth.getActivity)
 
 const ORIGIN = 'http://localhost:3000'
 
@@ -60,7 +41,7 @@ const USER_ID = '00000000-0000-4000-8000-000000000001'
 
 const ADMIN_ID = '00000000-0000-4000-8000-000000000002'
 
-const sampleUser = {
+const sampleUser: User = {
 	id: USER_ID,
 	email: 'user@example.com',
 	name: null,
@@ -71,7 +52,7 @@ const sampleUser = {
 	updated_at: '2026-01-01T00:00:00.000Z',
 }
 
-const sampleAdmin = {
+const sampleAdmin: User = {
 	...sampleUser,
 	id: ADMIN_ID,
 	email: 'admin@example.com',
@@ -224,7 +205,7 @@ describe('Users routes', () => {
 
 	describe('GET /api/users/:id/activity', () => {
 		it("returns the user's recent activity", async () => {
-			const entry = {
+			const entry: Activity = {
 				id: '00000000-0000-7000-8000-000000000003',
 				action: 'signed_in',
 				detail: 'password',

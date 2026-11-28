@@ -1,10 +1,19 @@
 import { type Db, sql } from 'saga'
-import type { Activity } from 'skuld'
-import type { ActivityRepository } from '../auth/types.js'
+import type { Activity, ActivityAction } from 'skuld'
 
-export function createActivityRepository(db: Db): ActivityRepository {
+/** One thing that happened to an account, as it is recorded. */
+export interface ActivityEntry {
+	userId: string
+	/** Who did it: the user, an admin, or null for the operator. */
+	actorId: string | null
+	action: ActivityAction
+	detail?: string
+	ip?: string
+}
+
+export function createActivityRepository(db: Db) {
 	return {
-		async record({ userId, actorId, action, detail, ip }) {
+		async record({ userId, actorId, action, detail, ip }: ActivityEntry) {
 			await db.exec(
 				sql`
 					INSERT INTO activity (user_id, actor_id, action, detail, ip)
@@ -13,7 +22,8 @@ export function createActivityRepository(db: Db): ActivityRepository {
 			)
 		},
 
-		async listActivity(userId, limit) {
+		/** The user's latest entries, newest first. */
+		async listActivity(userId: string, limit: number) {
 			return db.many<Activity>(
 				sql`
 					SELECT id, action, detail, actor_id, host(ip) AS ip, created_at
@@ -25,10 +35,13 @@ export function createActivityRepository(db: Db): ActivityRepository {
 			)
 		},
 
-		async deleteOldActivity(days) {
+		/** Deletes the entries older than `days`. */
+		async deleteOldActivity(days: number) {
 			return db.exec(
 				sql`DELETE FROM activity WHERE created_at <= now() - make_interval(days => ${days})`,
 			)
 		},
 	}
 }
+
+export type ActivityRepository = ReturnType<typeof createActivityRepository>

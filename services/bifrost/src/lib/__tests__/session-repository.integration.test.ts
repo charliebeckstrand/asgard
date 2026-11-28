@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import type { Pool } from 'pg'
 import { isDockerAvailable } from 'vali/containers'
-import type { SessionRepository, UserRepository } from '../../auth/types.js'
+import type { SessionRepository } from '../session-repository.js'
 import { createSessionRepository } from '../session-repository.js'
+import type { UserRepository } from '../user-repository.js'
 import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 

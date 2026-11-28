@@ -1,16 +1,14 @@
 import { createRoute, z } from '@hono/zod-openapi'
 import { createRouter, errorResponse, HTTPException, jsonResponse } from 'grid'
 import { ActivitySchema, PasskeySchema, type Session, TimestampSchema, UserSchema } from 'skuld'
-import {
-	deleteUserSessions,
-	getActivity,
-	getConfig,
-	getFactors,
-	getIdentities,
-	getPasskeys,
-	sendAccountDeletedEmail,
-} from '../auth/index.js'
+import { getActivity, getPasskeys, sendAccountDeletedEmail } from '../auth/index.js'
 import { logger } from '../lib/log.js'
+import {
+	mfaRepository,
+	oauthRepository,
+	sessionRepository,
+	userRepository,
+} from '../lib/repositories.js'
 import {
 	authorizeAccountDeletion,
 	clearSessionCookie,
@@ -91,8 +89,8 @@ export const accountRoutes = createRouter<SessionEnv>()
 
 		const [passkeys, identities, factors, activity, appData] = await Promise.all([
 			getPasskeys(user.id),
-			getIdentities(user.id),
-			getFactors(user.id),
+			oauthRepository.getIdentities(user.id),
+			mfaRepository.getFactors(user.id),
 			getActivity(user.id),
 			accountData(user, 'GET').then((res) => res.json() as Promise<object>),
 		])
@@ -122,11 +120,11 @@ export const accountRoutes = createRouter<SessionEnv>()
 		// Other sessions end first, so none of them can write app data after
 		// Mimir deletes it. When Mimir fails, the account stays, and the user can
 		// try again from this session.
-		await deleteUserSessions(user.id, current.id)
+		await sessionRepository.deleteUserSessions(user.id, { except: current.id })
 
 		await accountData(user, 'DELETE')
 
-		const deleted = await getConfig().userRepository.deleteUser(user.id)
+		const deleted = await userRepository.deleteUser(user.id)
 
 		if (!deleted) throw adminAccount()
 

@@ -4,13 +4,12 @@ import {
 	confirmTotp,
 	deleteTotp,
 	generateRecoveryCodes,
-	getFactors,
-	passSecondStep,
 	secondFactorMethods,
 	startTotpSetup,
 } from '../auth/index.js'
+import { recordChange } from '../lib/activity.js'
+import { mfaRepository, sessionRepository } from '../lib/repositories.js'
 import { authorizeSignInChange, requireSession, type SessionEnv } from '../middleware/session.js'
-import { recordChange } from './activity.js'
 
 // A user manages only their own second factors. Passkeys have their own routes
 // under `/auth/passkeys`.
@@ -127,7 +126,7 @@ mfaRoutes.use('*', async (c, next) => {
 mfaRoutes.openapi(getFactorsRoute, async (c) => {
 	const { user } = requireSession(c)
 
-	const factors = await getFactors(user.id)
+	const factors = await mfaRepository.getFactors(user.id)
 
 	c.header('Cache-Control', 'private, no-store')
 
@@ -148,7 +147,7 @@ mfaRoutes.openapi(totpConfirmRoute, async (c) => {
 	await confirmTotp(session.user.id, c.req.valid('json').code)
 
 	// A first factor has no second step to pass, so adding it is one.
-	await passSecondStep(session.id)
+	await sessionRepository.passSecondStep(session.id)
 
 	await recordChange(
 		c,

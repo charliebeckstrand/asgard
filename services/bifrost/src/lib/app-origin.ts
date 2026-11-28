@@ -1,3 +1,4 @@
+import { HTTPException } from 'grid'
 import type { Context } from 'hono'
 import { environment } from './env.js'
 
@@ -10,4 +11,15 @@ export function appOrigin(c: Context): string | undefined {
 	const host = c.req.header('x-forwarded-host') ?? c.req.header('host')
 
 	return environment().APP_ORIGINS.find((origin) => new URL(origin).host === host)
+}
+
+/** The app the request came through, which emailed links and redirects open, or a 400. */
+export function requireAppOrigin(c: Context): string {
+	const origin = appOrigin(c)
+
+	if (!origin) {
+		throw new HTTPException(400, { message: 'Unknown app origin' })
+	}
+
+	return origin
 }

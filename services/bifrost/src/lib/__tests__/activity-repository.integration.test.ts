@@ -1,6 +1,6 @@
 import type { Pool } from 'pg'
 import { isDockerAvailable } from 'vali/containers'
-import type { ActivityRepository } from '../../auth/types.js'
+import type { ActivityRepository } from '../activity-repository.js'
 import { createActivityRepository } from '../activity-repository.js'
 import { demote } from '../admins.js'
 import { startTestDb, type TestDb } from './test-db.js'

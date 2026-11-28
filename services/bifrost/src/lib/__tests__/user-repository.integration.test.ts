@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { Pool } from 'pg'
 import type { User } from 'skuld'
 import { isDockerAvailable } from 'vali/containers'
-import type { UserRepository } from '../../auth/types.js'
+import type { UserRepository } from '../user-repository.js'
 import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 

@@ -1,9 +1,10 @@
 import { normalizeEmail, type User } from 'skuld'
-import { getConfig } from './config.js'
+import type { EmailLimits, EmailPurpose } from '../lib/email-token-repository.js'
+import { type Email, sendEmail } from '../lib/mailer.js'
+import { emailTokenRepository, userRepository } from '../lib/repositories.js'
 import { hashNewPassword } from './credentials.js'
 import { AuthError } from './errors.js'
 import { expiresIn, hashToken, randomToken } from './sessions.js'
-import type { Email, EmailLimits, EmailPurpose } from './types.js'
 
 export const VERIFY_EMAIL_TTL_SECONDS = 24 * 60 * 60
 
@@ -29,13 +30,11 @@ function tooManyEmails(): AuthError {
 
 /** Sends `email` when the last day's limits leave room for it. */
 async function send(email: Email, verified: boolean): Promise<void> {
-	const config = getConfig()
-
-	if (!(await config.emailTokenRepository.countSentEmail(email.to, verified, EMAIL_LIMITS))) {
+	if (!(await emailTokenRepository.countSentEmail(email.to, verified, EMAIL_LIMITS))) {
 		throw tooManyEmails()
 	}
 
-	await config.sendEmail(email)
+	await sendEmail(email)
 }
 
 interface LinkEmail {
@@ -59,11 +58,9 @@ async function sendLink(
 	origin: string,
 	email: LinkEmail,
 ): Promise<boolean> {
-	const config = getConfig()
-
 	const token = randomToken()
 
-	const created = await config.emailTokenRepository.createToken(
+	const created = await emailTokenRepository.createToken(
 		hashToken(token),
 		user.id,
 		email.purpose,
@@ -81,7 +78,7 @@ async function sendLink(
 
 	const link = `${origin}${email.path}?token=${token}`
 
-	await config.sendEmail({
+	await sendEmail({
 		to: user.to,
 		subject: email.subject,
 		text: email.text(link).join('\n\n'),
@@ -114,7 +111,7 @@ export async function sendVerificationEmail(
 
 /** Marks the email of the link's user as verified. Returns the user's id. */
 export async function verifyEmail(token: string): Promise<string> {
-	const userId = await getConfig().emailTokenRepository.verifyEmail(hashToken(token))
+	const userId = await emailTokenRepository.verifyEmail(hashToken(token))
 
 	if (!userId) {
 		throw new AuthError('link_expired', 'This link has expired or was already used')
@@ -133,7 +130,7 @@ async function sendResetLink(
 	origin: string,
 	content: Pick<LinkEmail, 'subject' | 'text'>,
 ): Promise<void> {
-	const creds = await getConfig().userRepository.getCredentialsByEmail(email)
+	const creds = await userRepository.getCredentialsByEmail(email)
 
 	if (!creds?.is_active) return
 
@@ -186,10 +183,7 @@ export async function sendAccountExistsEmail(email: string, origin: string): Pro
 export async function resetPassword(token: string, password: string): Promise<string> {
 	const hashedPassword = await hashNewPassword(password)
 
-	const userId = await getConfig().emailTokenRepository.resetPassword(
-		hashToken(token),
-		hashedPassword,
-	)
+	const userId = await emailTokenRepository.resetPassword(hashToken(token), hashedPassword)
 
 	if (!userId) {
 		throw new AuthError('link_expired', 'This link has expired or was already used')
@@ -208,7 +202,7 @@ export async function sendSecurityNotice(
 	change: string,
 	origin?: string,
 ): Promise<void> {
-	const user = await getConfig().userRepository.getUserById(userId)
+	const user = await userRepository.getUserById(userId)
 
 	if (!user) return
 
@@ -246,9 +240,9 @@ export async function sendAccountDeletedEmail(user: User): Promise<void> {
 }
 
 export function deleteExpiredEmailTokens(): Promise<number> {
-	return getConfig().emailTokenRepository.deleteExpiredTokens()
+	return emailTokenRepository.deleteExpiredTokens()
 }
 
 export function deleteOldSentEmails(): Promise<number> {
-	return getConfig().emailTokenRepository.deleteOldSentEmails()
+	return emailTokenRepository.deleteOldSentEmails()
 }

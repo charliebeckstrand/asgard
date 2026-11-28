@@ -1,7 +1,10 @@
 import { hash, verify } from '@node-rs/argon2'
 import type { User } from 'skuld'
 import { normalizeEmail } from 'skuld'
-import { getConfig } from './config.js'
+import { reportEvent } from 'vidar/client'
+import { isBreachedPassword } from '../lib/breached-passwords.js'
+import { userRepository } from '../lib/repositories.js'
+import { turnstile } from '../lib/turnstile.js'
 import { AuthError } from './errors.js'
 
 // Pre-compute a dummy hash for timing-safe login.
@@ -33,8 +36,6 @@ export async function authenticateUser(
 ): Promise<string> {
 	const normalizedEmail = normalizeEmail(email)
 
-	const { userRepository } = getConfig()
-
 	if (
 		!(await userRepository.countFailedLogin(
 			normalizedEmail,
@@ -56,11 +57,7 @@ export async function authenticateUser(
 	// An account made with GitHub or Google has no password, and the dummy hash
 	// must never let one in.
 	if (!creds?.hashed_password || !passwordOk) {
-		getConfig().onSecurityEvent?.({
-			type: 'login_failed',
-			ip,
-			details: { email: normalizedEmail },
-		})
+		reportEvent('login_failed', ip, { email: normalizedEmail }, 'bifrost')
 
 		throw new AuthError('invalid_credentials', 'Incorrect email or password')
 	}
@@ -75,11 +72,11 @@ export async function authenticateUser(
 }
 
 export function deleteStaleFailedLogins(): Promise<number> {
-	return getConfig().userRepository.deleteStaleFailedLogins(FAILED_LOGIN_TTL_SECONDS)
+	return userRepository.deleteStaleFailedLogins(FAILED_LOGIN_TTL_SECONDS)
 }
 
 export function deleteOldSignUps(): Promise<number> {
-	return getConfig().userRepository.deleteOldSignUps()
+	return userRepository.deleteOldSignUps()
 }
 
 /**
@@ -87,7 +84,7 @@ export function deleteOldSignUps(): Promise<number> {
  * since anyone trying leaked passwords against accounts would guess it first.
  */
 export async function hashNewPassword(password: string): Promise<string> {
-	if (await getConfig().isBreachedPassword?.(password)) {
+	if (await isBreachedPassword(password)) {
 		throw new AuthError(
 			'password_breached',
 			'This password has appeared in a data breach. Choose a different one.',
@@ -99,14 +96,14 @@ export async function hashNewPassword(password: string): Promise<string> {
 
 /** The key that the sign-up page shows Turnstile with, or null when sign-up has no check. */
 export function turnstileSiteKey(): string | null {
-	return getConfig().turnstile?.siteKey ?? null
+	return turnstile()?.siteKey ?? null
 }
 
 /** Refuses a sign-up without a valid Turnstile token, when Turnstile is on. */
 export async function checkTurnstile(token: string | undefined, ip?: string): Promise<void> {
-	const { turnstile } = getConfig()
+	const check = turnstile()
 
-	if (turnstile && !(token && (await turnstile.verify(token, ip)))) {
+	if (check && !(token && (await check.verify(token, ip)))) {
 		throw new AuthError('turnstile_failed', 'We could not confirm that you are human. Try again.')
 	}
 }
@@ -127,8 +124,6 @@ export async function registerUser(
 
 	const hashedPassword = await hashNewPassword(password)
 
-	const { userRepository } = getConfig()
-
 	if (!(await userRepository.countSignUp(ip, MAX_DAILY_SIGN_UPS))) {
 		throw new AuthError(
 			'too_many_sign_ups',
@@ -138,13 +133,7 @@ export async function registerUser(
 
 	const user = await userRepository.insertUser(normalizedEmail, hashedPassword, name)
 
-	if (user) {
-		getConfig().onSecurityEvent?.({
-			type: 'registration',
-			ip,
-			details: { email: normalizedEmail },
-		})
-	}
+	if (user) reportEvent('registration', ip, { email: normalizedEmail }, 'bifrost')
 
 	return user
 }

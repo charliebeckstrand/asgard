@@ -1,6 +1,13 @@
 import { type Db, sql } from 'saga'
 import type { User } from 'skuld'
-import type { CredentialsRow, UserRepository } from '../auth/types.js'
+
+export interface CredentialsRow {
+	id: string
+	/** Null for an account made with GitHub or Google. */
+	hashed_password: string | null
+	is_active: boolean
+	is_verified: boolean
+}
 
 const userColumns = sql`id, email, name, is_active, is_verified, roles, created_at, updated_at`
 
@@ -8,9 +15,10 @@ const userColumns = sql`id, email, name, is_active, is_verified, roles, created_
 const network = (ip: string) =>
 	sql`network(set_masklen(${ip}::inet, CASE family(${ip}::inet) WHEN 6 THEN 64 ELSE 32 END))`
 
-export function createUserRepository(db: Db): UserRepository {
+export function createUserRepository(db: Db) {
 	return {
-		async insertUser(email, hashedPassword, name = null) {
+		/** Returns null, and inserts nothing, when a user already has the email. */
+		async insertUser(email: string, hashedPassword: string, name: string | null = null) {
 			return db.first<User>(
 				sql`
 					INSERT INTO users (email, hashed_password, name)
@@ -21,7 +29,7 @@ export function createUserRepository(db: Db): UserRepository {
 			)
 		},
 
-		async getCredentialsByEmail(email) {
+		async getCredentialsByEmail(email: string) {
 			return db.first<CredentialsRow>(
 				sql`
 					SELECT id, hashed_password, is_active, is_verified
@@ -35,7 +43,7 @@ export function createUserRepository(db: Db): UserRepository {
 			return db.many<User>(sql`SELECT ${userColumns} FROM users ORDER BY created_at`)
 		},
 
-		async getUserById(id) {
+		async getUserById(id: string) {
 			return db.first<User>(
 				sql`
 					SELECT ${userColumns}
@@ -45,7 +53,8 @@ export function createUserRepository(db: Db): UserRepository {
 			)
 		},
 
-		async setUserActive(id, isActive) {
+		/** Returns null for admins and unknown ids. */
+		async setUserActive(id: string, isActive: boolean) {
 			return db.first<User>(
 				sql`
 					UPDATE users
@@ -56,7 +65,11 @@ export function createUserRepository(db: Db): UserRepository {
 			)
 		},
 
-		async deleteUser(id) {
+		/**
+		 * Deletes the user, and with them everything that names them. Returns null
+		 * for admins and unknown ids.
+		 */
+		async deleteUser(id: string) {
 			return db.first<User>(
 				sql`
 					DELETE FROM users
@@ -66,7 +79,12 @@ export function createUserRepository(db: Db): UserRepository {
 			)
 		},
 
-		async countFailedLogin(email, limit, waitSeconds) {
+		/**
+		 * Counts a login for `email` as failed until its password proves right. Past
+		 * `limit`, one try is let through each `waitSeconds`; returns false when this
+		 * one must wait.
+		 */
+		async countFailedLogin(email: string, limit: number, waitSeconds: number) {
 			// The row lock orders concurrent tries, so each sees the count of the last.
 			const counted = await db.exec(
 				sql`
@@ -81,17 +99,22 @@ export function createUserRepository(db: Db): UserRepository {
 			return counted > 0
 		},
 
-		async clearFailedLogins(email) {
+		async clearFailedLogins(email: string) {
 			await db.exec(sql`DELETE FROM failed_logins WHERE email = ${email}`)
 		},
 
-		async deleteStaleFailedLogins(seconds) {
+		/** Deletes the counts of emails with no failed login in the last `seconds`. */
+		async deleteStaleFailedLogins(seconds: number) {
 			return db.exec(
 				sql`DELETE FROM failed_logins WHERE last_failed_at <= now() - make_interval(secs => ${seconds})`,
 			)
 		},
 
-		async countSignUp(ip, limit) {
+		/**
+		 * Counts a sign-up from `ip`'s network, unless it already made `limit` in the
+		 * last day. Returns false, and counts nothing, when it has.
+		 */
+		async countSignUp(ip: string, limit: number) {
 			return db.tx(async (tx) => {
 				// Lets other sign-ups wait, so two can't both take the last one.
 				await tx.exec(sql`LOCK TABLE sign_ups IN EXCLUSIVE MODE`)
@@ -112,8 +135,11 @@ export function createUserRepository(db: Db): UserRepository {
 			})
 		},
 
+		/** Deletes the counts of sign-ups made more than a day ago. */
 		async deleteOldSignUps() {
 			return db.exec(sql`DELETE FROM sign_ups WHERE created_at <= now() - interval '1 day'`)
 		},
 	}
 }
+
+export type UserRepository = ReturnType<typeof createUserRepository>

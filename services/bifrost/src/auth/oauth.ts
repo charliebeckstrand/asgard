@@ -1,9 +1,11 @@
 import { hash } from 'node:crypto'
 import { normalizeEmail } from 'skuld'
-import { getConfig, type OAuthClient } from './config.js'
+import { reportEvent } from 'vidar/client'
+import { environment } from '../lib/env.js'
+import type { OAuthIdentity, OAuthProvider, StoredOAuthState } from '../lib/oauth-repository.js'
+import { oauthRepository, userRepository } from '../lib/repositories.js'
 import { AuthError } from './errors.js'
 import { expiresIn, hashToken, randomToken } from './sessions.js'
-import type { LinkedIdentity, OAuthIdentity, OAuthProvider, StoredOAuthState } from './types.js'
 
 export const OAUTH_STATE_TTL_SECONDS = 5 * 60
 
@@ -48,15 +50,30 @@ const endpoints = {
 	},
 } as const
 
+interface OAuthClient {
+	clientId: string
+	clientSecret: string
+}
+
+/** The provider's OAuth client, or undefined without both of its values, which turns it off. */
+function findClient(provider: OAuthProvider): OAuthClient | undefined {
+	const env = environment()
+
+	const [clientId, clientSecret] =
+		provider === 'github'
+			? [env.OAUTH_GITHUB_CLIENT_ID, env.OAUTH_GITHUB_CLIENT_SECRET]
+			: [env.OAUTH_GOOGLE_CLIENT_ID, env.OAUTH_GOOGLE_CLIENT_SECRET]
+
+	return clientId && clientSecret ? { clientId, clientSecret } : undefined
+}
+
 /** The providers that have a client, in a fixed order. */
 export function enabledProviders(): OAuthProvider[] {
-	const { oauth } = getConfig()
-
-	return OAUTH_PROVIDERS.filter((provider) => oauth[provider])
+	return OAUTH_PROVIDERS.filter((provider) => findClient(provider))
 }
 
 function client(provider: OAuthProvider): OAuthClient {
-	const found = getConfig().oauth[provider]
+	const found = findClient(provider)
 
 	if (!found) {
 		throw new AuthError('oauth_unavailable', 'This sign-in method is not set up')
@@ -104,7 +121,7 @@ export async function startOAuth(
 
 	const verifier = randomToken()
 
-	await getConfig().oauthRepository.createState(
+	await oauthRepository.createState(
 		hashToken(state),
 		{
 			provider,
@@ -147,8 +164,6 @@ export async function completeOAuth(
 	code: string,
 	ip: string,
 ): Promise<OAuthOutcome> {
-	const { oauthRepository, userRepository, onSecurityEvent } = getConfig()
-
 	const stored = await oauthRepository.useState(hashToken(state))
 
 	if (!stored || stored.provider !== provider) {
@@ -198,7 +213,7 @@ export async function completeOAuth(
 
 		userId = created.userId
 
-		onSecurityEvent?.({ type: 'registration', ip, details: { email: identity.email, provider } })
+		reportEvent('registration', ip, { email: identity.email, provider }, 'bifrost')
 	}
 
 	const user = await userRepository.getUserById(userId)
@@ -303,12 +318,8 @@ async function fetchGithubIdentity(accessToken: string): Promise<OAuthIdentity |
 	return { provider: 'github', subject: String(user.id), email: primary?.email ?? null }
 }
 
-export function getIdentities(userId: string): Promise<LinkedIdentity[]> {
-	return getConfig().oauthRepository.getIdentities(userId)
-}
-
 export async function unlinkIdentity(userId: string, provider: OAuthProvider): Promise<void> {
-	const result = await getConfig().oauthRepository.unlinkIdentity(userId, provider)
+	const result = await oauthRepository.unlinkIdentity(userId, provider)
 
 	if (result === 'not_found') {
 		throw new AuthError('identity_not_found', 'That account is not connected')
@@ -323,5 +334,5 @@ export async function unlinkIdentity(userId: string, provider: OAuthProvider): P
 }
 
 export function deleteExpiredOAuthStates(): Promise<number> {
-	return getConfig().oauthRepository.deleteExpiredStates()
+	return oauthRepository.deleteExpiredStates()
 }

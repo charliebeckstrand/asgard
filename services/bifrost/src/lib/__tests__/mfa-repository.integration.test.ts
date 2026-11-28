@@ -1,9 +1,11 @@
 import type { Pool } from 'pg'
 import { isDockerAvailable } from 'vali/containers'
-import type { MfaRepository, PasskeyRepository, UserRepository } from '../../auth/types.js'
 import { promote, resetSecondFactors } from '../admins.js'
+import type { MfaRepository } from '../mfa-repository.js'
 import { createMfaRepository } from '../mfa-repository.js'
+import type { PasskeyRepository } from '../passkey-repository.js'
 import { createPasskeyRepository } from '../passkey-repository.js'
+import type { UserRepository } from '../user-repository.js'
 import { createUserRepository } from '../user-repository.js'
 import { startTestDb, type TestDb } from './test-db.js'
 

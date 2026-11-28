@@ -6,11 +6,11 @@ import {
 	createRegistrationOptions,
 	deletePasskey,
 	getPasskeys,
-	passSecondStep,
 	registerPasskey,
 } from '../auth/index.js'
+import { recordChange } from '../lib/activity.js'
+import { sessionRepository } from '../lib/repositories.js'
 import { authorizeSignInChange, requireSession, type SessionEnv } from '../middleware/session.js'
-import { recordChange } from './activity.js'
 
 // A user manages only their own passkeys; no one else can add or remove them.
 
@@ -126,7 +126,7 @@ passkeysRoutes.openapi(addPasskeyRoute, async (c) => {
 	const passkey = await registerPasskey(session.user.id, credential)
 
 	// A first factor has no second step to pass, so adding it is one.
-	await passSecondStep(session.id)
+	await sessionRepository.passSecondStep(session.id)
 
 	await recordChange(c, session.user.id, 'passkey_added', 'A passkey was added to your account')
 

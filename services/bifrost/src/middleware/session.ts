@@ -4,11 +4,14 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import type { Role, Session } from 'skuld'
 import {
 	AuthError,
+	createSession,
 	findSession,
-	getFactors,
+	type OAuthProvider,
 	SESSION_TTL_SECONDS,
 	secondFactorMethods,
 } from '../auth/index.js'
+import { record } from '../lib/activity.js'
+import { mfaRepository } from '../lib/repositories.js'
 
 export type SessionEnv = {
 	Variables: {
@@ -20,11 +23,11 @@ export type SessionEnv = {
 // subdomain or a plain-HTTP page can't set or overwrite it.
 const COOKIE_NAME = 'session'
 
-export function getSessionToken(c: Context): string | undefined {
+function getSessionToken(c: Context): string | undefined {
 	return getCookie(c, COOKIE_NAME, 'host')
 }
 
-export function setSessionCookie(c: Context, token: string): void {
+function setSessionCookie(c: Context, token: string): void {
 	setCookie(c, COOKIE_NAME, token, {
 		prefix: 'host',
 		httpOnly: true,
@@ -37,6 +40,28 @@ export function setSessionCookie(c: Context, token: string): void {
 
 export function clearSessionCookie(c: Context): void {
 	deleteCookie(c, COOKIE_NAME, { prefix: 'host', secure: true, path: '/' })
+}
+
+/**
+ * Starts a session for `userId`, replacing the one the browser still holds, and
+ * sets its cookie. Every way to sign in ends here. A passkey sign-in passes the
+ * second step.
+ */
+export async function signIn(
+	c: Context,
+	userId: string,
+	method: 'password' | 'passkey' | OAuthProvider,
+) {
+	const { token, session } = await createSession(userId, {
+		replacing: getSessionToken(c),
+		twoStep: method === 'passkey',
+	})
+
+	setSessionCookie(c, token)
+
+	await record(c, { userId, actorId: userId, action: 'signed_in', detail: method })
+
+	return session
 }
 
 /**
@@ -109,7 +134,10 @@ export function authorizeAccountDeletion(c: Context<SessionEnv>): Promise<Sessio
  *   of its own and keep the account, or delete it.
  */
 async function confirmRecentSecondStep(current: Session, action: string): Promise<Session> {
-	if (!current.two_step && secondFactorMethods(await getFactors(current.user.id)).length > 0) {
+	if (
+		!current.two_step &&
+		secondFactorMethods(await mfaRepository.getFactors(current.user.id)).length > 0
+	) {
 		throw new AuthError('second_step_required', 'Confirm that it is you with a second step')
 	}
 
