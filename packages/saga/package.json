@@ -1,7 +1,7 @@
 {
 	"name": "saga",
 	"version": "0.1.0",
-	"description": "Data toolkit — Postgres client, SQL builder, migrations, and structured logging",
+	"description": "Postgres: the client, the sql template, file migrations and the saga CLI",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./src/index.ts",
@@ -9,10 +9,6 @@
 		".": {
 			"types": "./src/index.ts",
 			"default": "./dist/index.js"
-		},
-		"./log": {
-			"types": "./src/log/index.ts",
-			"default": "./dist/log.js"
 		}
 	},
 	"bin": {
@@ -32,9 +28,7 @@
 	},
 	"packageManager": "pnpm@12.23.0",
 	"dependencies": {
-		"pg": "^8.23.1",
-		"pino": "^10.4.0",
-		"pino-pretty": "^13.2.0"
+		"pg": "^8.23.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.6.9",

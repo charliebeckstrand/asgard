@@ -1,6 +1,5 @@
 import { Pool, type QueryConfig, type QueryResult, type QueryResultRow, types } from 'pg'
 import { type ConnectionOptions, connectionConfig } from './connection.js'
-import type { Logger } from './log/index.js'
 import type { SqlFragment } from './sql.js'
 
 export class NoRowsError extends Error {
@@ -40,8 +39,8 @@ export interface DbConfig extends ConnectionOptions {
 	connectionTimeoutMillis?: number
 	/** Cancels a statement that runs longer, so one stuck query can't hold a connection. */
 	statementTimeoutMillis?: number
-	/** Receives errors from idle connections. Defaults to the console. */
-	logger?: Logger
+	/** Receives errors from idle connections, like a pino logger. Defaults to the console. */
+	logger?: { error(details: object, message: string): void }
 }
 
 type Run = <T extends QueryResultRow>(query: QueryConfig) => Promise<QueryResult<T>>

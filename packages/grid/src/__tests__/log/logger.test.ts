@@ -1,5 +1,5 @@
 import { Writable } from 'node:stream'
-import { createLogger } from '../log/index.js'
+import { createLogger } from '../../log/logger.js'
 
 class CaptureStream extends Writable {
 	chunks: string[] = []

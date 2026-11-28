@@ -1,6 +1,6 @@
+import type { Logger } from 'grid/log'
 import { clientIp } from 'grid/middleware'
 import { Hono } from 'hono'
-import type { Logger } from 'saga/log'
 import { banCheck, configure, listThreats, removeBan, reportEvent, resolveThreat } from '@/client'
 
 const VIDAR_URL = 'http://vidar.test'

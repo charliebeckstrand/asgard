@@ -1,8 +1,8 @@
+import type { Logger } from 'grid/log'
 import { getIpAddress } from 'grid/middleware'
 import type { MiddlewareHandler } from 'hono'
 import { hc } from 'hono/client'
 import { HTTPException } from 'hono/http-exception'
-import type { Logger } from 'saga/log'
 import {
 	type BanList,
 	BanListSchema,

@@ -1,5 +1,5 @@
 import { hash } from 'node:crypto'
-import type { Logger } from 'saga/log'
+import type { Logger } from 'grid/log'
 import { logger } from './log.js'
 
 /**

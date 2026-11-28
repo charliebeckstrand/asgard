@@ -1,4 +1,4 @@
-import type { Logger } from 'saga/log'
+import type { Logger } from 'grid/log'
 import { createMailer } from '../mailer.js'
 
 const email = { to: 'alice@example.com', subject: 'Verify your email', text: 'https://link' }

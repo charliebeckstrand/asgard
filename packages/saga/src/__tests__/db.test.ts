@@ -16,7 +16,6 @@ vi.mock('pg', async (importOriginal) => ({
 
 import { types as pgTypes } from 'pg'
 import { createDb, type DbConfig } from '../db.js'
-import type { Logger } from '../log/index.js'
 import { sql } from '../sql.js'
 
 const url = 'postgres://user:pass@host:5432/db'
@@ -189,7 +188,7 @@ describe('createDb', () => {
 		it('logs idle client errors to the logger', async () => {
 			const logger = { error: vi.fn() }
 
-			const db = createDb(() => ({ url, logger: logger as unknown as Logger }))
+			const db = createDb(() => ({ url, logger }))
 
 			await db.ping()
 

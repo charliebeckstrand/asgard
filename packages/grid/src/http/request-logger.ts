@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from 'hono'
 import type { RequestIdVariables } from 'hono/request-id'
-import type { Logger } from 'pino'
+import type { Logger } from '../log/logger.js'
 
 export type RequestLoggerEnv = {
 	Variables: RequestIdVariables & {

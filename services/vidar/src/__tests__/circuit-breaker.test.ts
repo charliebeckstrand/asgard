@@ -1,4 +1,4 @@
-import type { Logger } from 'saga/log'
+import type { Logger } from 'grid/log'
 import { createCircuitBreaker } from '@/circuit-breaker'
 
 function makeLogger() {
