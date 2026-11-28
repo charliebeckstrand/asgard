@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { HTTPException } from 'grid'
 import { DataError } from '../lib/errors.js'
 import {
-	MAX_VISITS,
+	MAX_PLACE_VISITS,
 	type NewTrip,
 	type Place,
 	type StoredPlace,
@@ -109,8 +109,10 @@ export async function createTrip(
 
 			const visits = newestFirst([...held.visits.filter((kept) => kept.id !== stored.id), stored])
 
-			if (visits.length > MAX_VISITS) {
-				throw new HTTPException(409, { message: `A place holds at most ${MAX_VISITS} visits` })
+			if (visits.length > MAX_PLACE_VISITS) {
+				throw new HTTPException(409, {
+					message: `A place holds at most ${MAX_PLACE_VISITS} visits`,
+				})
 			}
 
 			changed.set(held.id, { ...held, visits })

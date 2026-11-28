@@ -10,7 +10,7 @@ import { storedPlaces } from './places.js'
  */
 
 /** The most regions one user marks in each scope, so no account can fill the database. */
-export const MAX_VISITS = 1000
+export const MAX_REGIONS = 1000
 
 /** The region names in an unknown list: trimmed, unique, alphabetical. */
 function names(input: unknown): string[] {
@@ -68,7 +68,7 @@ export async function listVisits(userId: string): Promise<Visits> {
 
 /**
  * Marks one region visited or not, and answers with both scopes. `null` where
- * marking it would pass {@link MAX_VISITS} in its scope.
+ * marking it would pass {@link MAX_REGIONS} in its scope.
  */
 export function setVisit(
 	userId: string,
@@ -81,7 +81,7 @@ export function setVisit(
 
 		const regions = new Set(held[scope])
 
-		if (visited && !regions.has(region) && regions.size >= MAX_VISITS) return { result: null }
+		if (visited && !regions.has(region) && regions.size >= MAX_REGIONS) return { result: null }
 
 		if (visited) regions.add(region)
 		else regions.delete(region)

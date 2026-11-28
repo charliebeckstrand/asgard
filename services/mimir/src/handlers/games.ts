@@ -1,6 +1,6 @@
 import { type Queryable, sql } from 'saga'
 import { db } from '../lib/db.js'
-import type { NumbersBoard } from '../lib/schemas.js'
+import type { NumbersBoard, NumbersBoardMode } from '../lib/schemas.js'
 
 /**
  * What every game keeps outside the documents of its users, for the reads
@@ -16,7 +16,13 @@ type Game = 'numbers'
 const BOARD_SIZE = 10
 
 /** The score of one run on the board `mode` of the day `date` (`YYYYMMDD`). */
-type DailyResult = { game: Game; mode: string; date: string; userId: string; score: number }
+type BoardScore = {
+	game: Game
+	mode: NumbersBoardMode
+	date: string
+	userId: string
+	score: number
+}
 
 /**
  * Keeps the best score of the user on a board of a day, in the transaction `q` of
@@ -24,7 +30,7 @@ type DailyResult = { game: Game; mode: string; date: string; userId: string; sco
  * and its time orders the ties. A run with an equal or lower score changes
  * nothing.
  */
-export async function recordDailyResult(q: Queryable, result: DailyResult): Promise<void> {
+export async function recordBestScore(q: Queryable, result: BoardScore): Promise<void> {
 	await q.exec(sql`
 		INSERT INTO game_results (game, mode, day, user_id, score)
 		VALUES (
@@ -45,9 +51,9 @@ type BoardRow = { rank: number; name: string | null; score: number; you: boolean
  * session (`null`) gets only the first players, and no entry is theirs. Equal
  * scores share a rank, and list in the order that the players got them.
  */
-export async function readDailyBoard(
+export async function readBoard(
 	game: Game,
-	mode: string,
+	mode: NumbersBoardMode,
 	date: string,
 	userId: string | null,
 ): Promise<NumbersBoard> {

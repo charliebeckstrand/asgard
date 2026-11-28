@@ -67,7 +67,7 @@ vi.mock('../handlers/places.js', () => ({
 }))
 
 vi.mock('../handlers/visits.js', () => ({
-	MAX_VISITS: 1000,
+	MAX_REGIONS: 1000,
 	listVisits: (...args: unknown[]) => mockListVisits(...args),
 	setVisit: (...args: unknown[]) => mockSetVisit(...args),
 }))

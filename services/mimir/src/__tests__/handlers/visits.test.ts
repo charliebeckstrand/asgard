@@ -1,7 +1,7 @@
 vi.mock('../../handlers/documents.js', () => import('./documents-mock.js'))
 
 import { addPlace } from '../../handlers/places.js'
-import { listVisits, MAX_VISITS, setVisit } from '../../handlers/visits.js'
+import { listVisits, MAX_REGIONS, setVisit } from '../../handlers/visits.js'
 import { documents } from './documents-mock.js'
 
 const USER = 'user-1'
@@ -55,8 +55,8 @@ describe('visits', () => {
 		expect(await listVisits(USER)).toEqual({ states: ['Ohio', 'Texas'], countries: [] })
 	})
 
-	it(`stops at ${MAX_VISITS} regions in a scope`, async () => {
-		const states = Array.from({ length: MAX_VISITS }, (_, i) => `State ${i}`)
+	it(`stops at ${MAX_REGIONS} regions in a scope`, async () => {
+		const states = Array.from({ length: MAX_REGIONS }, (_, i) => `State ${i}`)
 
 		documents.set(`${USER}:visits`, { states, countries: [] })
 
