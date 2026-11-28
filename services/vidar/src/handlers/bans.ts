@@ -19,7 +19,6 @@ export async function isIpBanned(ip: string): Promise<CheckIpResponse> {
 			FROM vdr_bans
 		 	WHERE ip = ${ip}
 			AND (expires_at IS NULL OR expires_at > now())
-		 	LIMIT 1
 		`,
 	)
 
