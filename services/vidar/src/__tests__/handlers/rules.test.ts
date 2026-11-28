@@ -22,7 +22,7 @@ vi.mock('../../lib/log.js', () => ({
 	logger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
-import { evaluateRules, getRules } from '../../handlers/rules.js'
+import { evaluateRules, RULES } from '../../handlers/rules.js'
 
 const IP = '203.0.113.42'
 
@@ -35,7 +35,7 @@ beforeEach(() => {
 })
 
 function rule(id: string) {
-	const found = getRules().find((r) => r.id === id)
+	const found = RULES.find((r) => r.id === id)
 
 	if (!found) throw new Error(`unknown rule ${id}`)
 
