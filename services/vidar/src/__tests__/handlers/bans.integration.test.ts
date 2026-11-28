@@ -4,7 +4,7 @@ stubServiceEnv({ VIDAR_API_KEY: 'test-vidar-api-key-that-is-at-least-32-chars' }
 
 import { sql } from 'saga'
 import { isDockerAvailable } from 'vali/containers'
-import { cleanExpiredBans, isIpBanned } from '@/handlers/bans'
+import { cleanExpiredBans, isIpBanned, removeBan } from '@/handlers/bans'
 import { purgeOldEvents } from '@/handlers/events'
 import { purgeOldThreats } from '@/handlers/threats'
 import { db } from '@/lib/db'
@@ -70,6 +70,20 @@ describeWithDocker('bans (integration)', () => {
 		expect(await isIpBanned('203.0.113.43')).toMatchObject({ banned: true })
 
 		expect(await isIpBanned('203.0.113.44')).toMatchObject({ banned: true })
+	})
+
+	it('lifts a ban in force', async () => {
+		await insertBan(IP, '1 hour')
+
+		expect(await removeBan(IP)).toBe(true)
+
+		expect(await isIpBanned(IP)).toEqual({ banned: false })
+	})
+
+	it('finds no ban to lift once it has expired', async () => {
+		await insertBan(IP, '-1 minute')
+
+		expect(await removeBan(IP)).toBe(false)
 	})
 })
 

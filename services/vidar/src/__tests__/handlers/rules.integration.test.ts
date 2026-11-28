@@ -85,6 +85,14 @@ describeWithDocker('evaluateRules (integration)', () => {
 
 			expect(await threats()).toHaveLength(1)
 		})
+
+		it('makes one threat when two events evaluate at once', async () => {
+			await insertEvents(IP, 'login_failed', 10)
+
+			await Promise.all([evaluateRules(IP, 'login_failed'), evaluateRules(IP, 'login_failed')])
+
+			expect(await threats()).toHaveLength(1)
+		})
 	})
 
 	describe('credential_stuffing', () => {

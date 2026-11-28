@@ -1,4 +1,4 @@
-import { sql } from 'saga'
+import { type Queryable, sql } from 'saga'
 import { type BanSource, type CheckIpResponse, toList } from 'skuld'
 import { db } from '../lib/db.js'
 
@@ -33,40 +33,38 @@ export async function isIpBanned(ip: string): Promise<CheckIpResponse> {
 	}
 }
 
-export async function createBan(
+/**
+ * Bans `ip` for `minutes`, unless a ban in force already lasts longer: a rule
+ * never shortens a longer or permanent ban. True when it banned.
+ */
+export async function banForAtLeast(
+	q: Queryable,
 	ip: string,
-	reason: string,
-	options?: { rule_id?: string; created_by?: BanSource; duration_minutes?: number },
-): Promise<BanRow> {
-	const expiresAt = options?.duration_minutes
-		? sql`now() + make_interval(mins => ${options.duration_minutes}::int)`
-		: sql`NULL`
-
-	return db.one<BanRow>(
-		sql`
+	minutes: number,
+	ban: { reason: string; rule_id: string },
+): Promise<boolean> {
+	const row = await q.first<{ id: string }>(sql`
 		INSERT INTO vdr_bans (ip, reason, rule_id, created_by, expires_at)
-		VALUES (
-			${ip},
-			${reason},
-			${options?.rule_id ?? null},
-			${options?.created_by ?? 'system'},
-			${expiresAt}
-		)
-		ON CONFLICT (ip) 
-		DO UPDATE SET
+		VALUES (${ip}, ${ban.reason}, ${ban.rule_id}, 'vidar', now() + make_interval(mins => ${minutes}::int))
+		ON CONFLICT (ip) DO UPDATE SET
 			reason = EXCLUDED.reason,
 			rule_id = EXCLUDED.rule_id,
 			created_by = EXCLUDED.created_by,
 			expires_at = EXCLUDED.expires_at,
 			created_at = now()
-		RETURNING *`,
-	)
+		WHERE vdr_bans.expires_at IS NOT NULL AND vdr_bans.expires_at < EXCLUDED.expires_at
+		RETURNING id
+	`)
+
+	return row !== null
 }
 
+/** Lifts the ban in force on `ip`. False when there is none. */
 export async function removeBan(ip: string): Promise<boolean> {
 	const count = await db.exec(sql`
 		DELETE FROM vdr_bans
 		WHERE ip = ${ip}
+		AND (expires_at IS NULL OR expires_at > now())
 	`)
 
 	return count > 0
